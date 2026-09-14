@@ -1,0 +1,19 @@
+{
+  "name": "listenup-platform",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@10.15.0",
+  "scripts": {
+    "dev:api": "corepack pnpm --dir apps/api dev",
+    "dev:user": "corepack pnpm --filter user-web dev",
+    "dev:admin": "corepack pnpm --filter admin-web dev",
+    "db:generate": "corepack pnpm --filter api prisma:generate",
+    "db:validate": "corepack pnpm --filter api prisma:validate",
+    "db:studio": "corepack pnpm --filter api db:studio",
+    "build": "corepack pnpm --dir apps/api build && corepack pnpm --filter user-web build && corepack pnpm --filter admin-web build",
+    "typecheck": "corepack pnpm --filter user-web typecheck && corepack pnpm --filter admin-web typecheck && corepack pnpm --filter api typecheck",
+    "lint": "corepack pnpm --filter user-web lint && corepack pnpm --filter admin-web lint",
+    "test": "corepack pnpm --dir apps/api test && corepack pnpm --filter user-web test && corepack pnpm --filter admin-web test",
+    "db:pull": "corepack pnpm --filter api db:pull"
+  }
+}

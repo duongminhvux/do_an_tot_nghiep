@@ -1,0 +1,16 @@
+{
+  "extends": "../../packages/tsconfig/base.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "types": ["node", "multer"],
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "useDefineForClassFields": false,
+    "verbatimModuleSyntax": false,
+    "rootDir": "."
+  },
+  "include": ["prisma.config.ts", "prisma/**/*.ts", "src/**/*.ts", "test/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

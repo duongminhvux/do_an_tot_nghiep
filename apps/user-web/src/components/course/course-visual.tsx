@@ -1,0 +1,2 @@
+import { cn } from "@/lib/utils";
+export function CourseVisual({ theme, className, label }: { theme: "person" | "meeting" | "headphones"; className?: string; label?: string }) { return <div role="img" aria-label={label ?? "Course illustration"} className={cn("relative min-h-32 overflow-hidden rounded-xl", theme === "person" && "hero-photo", theme === "meeting" && "meeting-photo", theme === "headphones" && "headphone-photo", className)}><div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-slate-950/35 to-transparent" /></div>; }

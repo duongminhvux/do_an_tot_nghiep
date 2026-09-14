@@ -1,0 +1,1 @@
+export default function Loading(){return <div className="min-h-screen animate-pulse bg-slate-50 p-6"><div className="h-10 w-64 rounded bg-slate-200"/><div className="mt-5 grid gap-4 md:grid-cols-4">{Array.from({length:4}).map((_,i)=><div className="h-28 rounded-xl bg-white" key={i}/>)}</div><div className="mt-4 h-96 rounded-xl bg-white"/></div>}

@@ -1,0 +1,44 @@
+{
+  "extends": "../../packages/tsconfig/base.json",
+  "compilerOptions": {
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ],
+      "@listenup/domain": [
+        "../../packages/domain/index.ts"
+      ],
+      "@listenup/domain/permissions": [
+        "../../packages/domain/permissions.ts"
+      ],
+      "@listenup/auth": [
+        "../../packages/auth/index.ts"
+      ],
+      "@listenup/config": [
+        "../../packages/config/index.ts"
+      ],
+      "@listenup/api-client": [
+        "../../packages/api-client/index.ts"
+      ],
+      "@listenup/mock-api": [
+        "../../packages/mock-api/index.ts"
+      ]
+    },
+    "allowJs": true
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

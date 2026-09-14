@@ -1,0 +1,5 @@
+import { AlertTriangle,Inbox } from "lucide-react";
+import { Button } from "./button";
+export function TableSkeleton({rows=5}:{rows?:number}){return <div className="animate-pulse space-y-3" aria-label="Loading">{Array.from({length:rows}).map((_,index)=><div className="h-14 rounded-lg bg-slate-100" key={index}/>)}</div>}
+export function EmptyState({title="No results",description="Try changing your filters or create a new record."}:{title?:string;description?:string}){return <div className="grid min-h-52 place-items-center p-8 text-center"><div><Inbox className="mx-auto size-9 text-blue-500"/><h3 className="mt-3 font-bold">{title}</h3><p className="mt-1 text-sm text-slate-500">{description}</p></div></div>}
+export function ErrorState({message,onRetry}:{message:string;onRetry?:()=>void}){return <div className="admin-surface grid min-h-56 place-items-center p-8 text-center"><div><AlertTriangle className="mx-auto size-9 text-red-500"/><h3 className="mt-3 font-bold">Unable to load data</h3><p className="mt-1 text-sm text-slate-500">{message}</p>{onRetry&&<Button className="mt-4" onClick={onRetry}>Retry</Button>}</div></div>}

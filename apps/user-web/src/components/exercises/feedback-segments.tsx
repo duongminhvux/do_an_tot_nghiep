@@ -1,0 +1,3 @@
+import type { FeedbackSegmentDto } from "@/domain/dto";
+import { cn } from "@/lib/utils";
+export function FeedbackSegments({ segments }: { segments: FeedbackSegmentDto[] }) { return <div className="flex flex-wrap gap-1.5" aria-label="Word-level feedback">{segments.map((segment, index) => <span key={`${segment.value}-${index}`} title={segment.type.toLowerCase()} className={cn("rounded px-1.5 py-0.5 text-sm", segment.type === "CORRECT" && "bg-green-100 text-green-800", segment.type === "MISSING" && "bg-amber-100 text-amber-800 line-through", segment.type === "EXTRA" && "bg-red-100 text-red-700 line-through", segment.type === "REPLACED" && "bg-orange-100 text-orange-800")}>{segment.value}</span>)}</div>; }
