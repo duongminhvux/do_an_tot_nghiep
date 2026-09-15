@@ -1,16 +1,22 @@
 {
-  "extends": "../../packages/tsconfig/base.json",
   "compilerOptions": {
-    "lib": ["ES2023"],
-    "types": ["node", "multer"],
-    "module": "commonjs",
-    "moduleResolution": "node",
-    "experimentalDecorators": true,
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "resolvePackageJsonExports": true,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "declaration": true,
+    "removeComments": true,
     "emitDecoratorMetadata": true,
-    "useDefineForClassFields": false,
-    "verbatimModuleSyntax": false,
-    "rootDir": "."
-  },
-  "include": ["prisma.config.ts", "prisma/**/*.ts", "src/**/*.ts", "test/**/*.ts"],
-  "exclude": ["node_modules", "dist"]
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "ES2023",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "incremental": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "strictPropertyInitialization": false,
+    "types": ["vitest/globals", "node"]
+  }
 }
