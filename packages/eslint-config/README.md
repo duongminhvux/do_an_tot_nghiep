@@ -1,3 +1,3 @@
-# ListenUp ESLint config
+# `@turbo/eslint-config`
 
-Applications currently own their Next.js flat configuration. This package reserves the shared configuration boundary for future consolidation.
+Collection of internal eslint configurations.

@@ -7,14 +7,19 @@
         "name": "next"
       }
     ],
-    "strictNullChecks": true
+    "strictNullChecks": true,
+    "paths": {
+      "@/*": ["./*"]
+    }
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
     "next-env.d.ts",
-    "next.config.js",
-    ".next/types/**/*.ts"
+    "next.config.ts",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts"
   ],
   "exclude": [
     "node_modules"
