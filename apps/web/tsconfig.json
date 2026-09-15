@@ -1,4 +1,4 @@
-﻿{
+{
   "$schema": "https://json.schemastore.org/tsconfig",
   "extends": "@repo/typescript-config/nextjs.json",
   "compilerOptions": {
@@ -16,7 +16,5 @@
     "next.config.js",
     ".next/types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules"
-  ]
+  "exclude": ["node_modules"]
 }
