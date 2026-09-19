@@ -1,0 +1,11 @@
+{
+  "brand": "English Admin",
+  "admin": "Administrator",
+  "logout": "Sign Out",
+  "loading": "Loading...",
+  "verifying_session": "Verifying admin access...",
+  "vietnamese": "Tiếng Việt",
+  "english": "English",
+  "dashboard": "Dashboard",
+  "welcome_back": "Welcome back, {{name}}! 👋"
+}

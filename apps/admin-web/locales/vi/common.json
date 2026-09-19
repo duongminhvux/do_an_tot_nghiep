@@ -1,0 +1,11 @@
+{
+  "brand": "English Admin",
+  "admin": "Quản trị viên",
+  "logout": "Đăng xuất",
+  "loading": "Đang tải...",
+  "verifying_session": "Đang kiểm tra quyền quản trị...",
+  "vietnamese": "Tiếng Việt",
+  "english": "English",
+  "dashboard": "Bảng điều khiển",
+  "welcome_back": "Chào mừng trở lại, {{name}}! 👋"
+}
