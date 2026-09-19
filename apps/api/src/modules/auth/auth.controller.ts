@@ -54,7 +54,7 @@ export class AuthController {
   async login(@Req() req: any, @Res({ passthrough: true }) res: express.Response) {
     const user = req.user;
     if (!user) {
-      throw new UnauthorizedException(this.i18n.t('auth.INVALID_CREDENTIALS'));
+      throw new UnauthorizedException(await this.i18n.t('auth.INVALID_CREDENTIALS'));
     }
     const payload = {
       _id: String(user._id),
@@ -69,9 +69,14 @@ export class AuthController {
     this.setCookie(res, refreshToken);
 
     return {
-      message: this.i18n.t('auth.LOGIN_SUCCESSFULLY'),
+      message: await this.i18n.t('auth.LOGIN_SUCCESSFULLY'),
       accessToken,
-      profile: payload,
+      profile: {
+        _id: String(user._id),
+        username: user.username,
+        email: user.email,
+        avatarUrl: user.avatarUrl
+      },
     };
   }
 
@@ -83,7 +88,7 @@ export class AuthController {
   @Public()
   @Get('google/callback')
   @UseGuards(GoogleOauthGuard)
-  async googleAuthCallback(@Req() req: any, @Res({ passthrough: true }) res: express.Response) {
+  async googleAuthCallback(@Req() req: any, @Res() res: express.Response) {
     const loginResult = await this.authService.googleLogin(req.user);
     const frontendUrl = this.configService.get<string>('FRONTEND_URL') || this.configService.get<string>('FRONTEND_CLIENT_URL') || 'http://localhost:3000';
     this.setCookie(res, loginResult.refreshToken);

@@ -7,15 +7,22 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { I18nContext, I18nService } from 'nestjs-i18n';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(HttpExceptionFilter.name);
 
-  catch(exception: unknown, host: ArgumentsHost) {
+  constructor(private readonly i18n?: I18nService) {}
+
+  async catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
+
+    if (response.headersSent) {
+      return;
+    }
 
     const status =
       exception instanceof HttpException
@@ -28,7 +35,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
         : null;
 
     let message: any = 'INTERNAL_SERVER_ERROR';
-    let error = 'Internal Server Error';
+    let error =
+      exception instanceof HttpException
+        ? (exceptionResponse?.error || exception.name.replace('Exception', ''))
+        : 'Internal Server Error';
 
     if (typeof exceptionResponse === 'string') {
       message = exceptionResponse;
@@ -37,6 +47,21 @@ export class HttpExceptionFilter implements ExceptionFilter {
       error = exceptionResponse.error || error;
     } else if (exception instanceof Error) {
       message = exception.message;
+    }
+
+    // Nếu message là key i18n dạng "auth.INVALID_CREDENTIALS" (không có khoảng trắng và có dấu chấm)
+    if (typeof message === 'string' && !message.includes(' ') && message.includes('.')) {
+      if (this.i18n) {
+        try {
+          const lang = I18nContext.current()?.lang || 'vi';
+          const translated = await this.i18n.t(message, { lang });
+          if (translated) {
+            message = translated;
+          }
+        } catch {
+          // giữ nguyên message nếu không tìm thấy key dịch
+        }
+      }
     }
 
     this.logger.error(

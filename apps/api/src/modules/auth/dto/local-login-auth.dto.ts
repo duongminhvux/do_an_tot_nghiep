@@ -9,6 +9,6 @@ export class LocalLoginAuthDto {
 
     @IsString({ message: i18nValidationMessage('auth.PASSWORD_MUST_BE_STRING') })
     @IsNotEmpty({ message: i18nValidationMessage('auth.PASSWORD_REQUIRED') })
-    @MinLength(8, { message: i18nValidationMessage('auth.PASSWORD_MIN_LENGTH') })
+    @MinLength(6, { message: i18nValidationMessage('auth.PASSWORD_MIN_LENGTH') })
     password!: string;
 }

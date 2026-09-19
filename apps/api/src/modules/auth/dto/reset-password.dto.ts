@@ -13,6 +13,6 @@ export class ResetPasswordDto {
 
   @IsNotEmpty({ message: i18nValidationMessage('auth.NEW_PASSWORD_REQUIRED') })
   @IsString({ message: i18nValidationMessage('auth.PASSWORD_MUST_BE_STRING') })
-  @MinLength(8, { message: i18nValidationMessage('auth.PASSWORD_MIN_LENGTH') })
+  @MinLength(6, { message: i18nValidationMessage('auth.PASSWORD_MIN_LENGTH') })
   newPassword!: string;
 }

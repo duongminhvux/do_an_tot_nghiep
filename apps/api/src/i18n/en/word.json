@@ -1,0 +1,11 @@
+{
+  "WORD_CREATED_SUCCESSFULLY": "Word created successfully.",
+  "WORD_FETCHED_SUCCESSFULLY": "Word fetched successfully.",
+  "WORD_LIST_FETCHED_SUCCESSFULLY": "Word list fetched successfully.",
+  "WORD_UPDATED_SUCCESSFULLY": "Word updated successfully.",
+  "WORD_DELETED_SUCCESSFULLY": "Word deleted successfully.",
+  "WORD_RESTORED_SUCCESSFULLY": "Word restored successfully.",
+  "WORD_NOT_FOUND": "Word not found.",
+  "WORD_NOT_FOUND_OR_NOT_DELETED": "Word not found or not deleted.",
+  "WORD_ALREADY_EXISTS": "Word already exists."
+}

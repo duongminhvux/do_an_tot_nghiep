@@ -19,13 +19,13 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
     async validate(email: string, password: string): Promise<any> {
         const user = await this.authService.validateUser(email, password);
         if (!user) {
-            throw new UnauthorizedException(this.i18n.t('auth.INVALID_CREDENTIALS'));
+            throw new UnauthorizedException(await this.i18n.t('auth.INVALID_CREDENTIALS'));
         }
         if (!user.isVerified) {
-            throw new BadRequestException(this.i18n.t('auth.ACCOUNT_NOT_VERIFIED'));
+            throw new BadRequestException(await this.i18n.t('auth.ACCOUNT_NOT_VERIFIED'));
         }
         if (user.isDeleted) {
-            throw new BadRequestException(this.i18n.t('auth.ACCOUNT_DELETED'));
+            throw new BadRequestException(await this.i18n.t('auth.ACCOUNT_DELETED'));
         }
         return user;
     }

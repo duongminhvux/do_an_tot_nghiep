@@ -98,12 +98,12 @@ export class AuthService {
     const { email, password, authProvider = AuthProvider.LOCAL, ggId } = createUserDto;
 
     if (await this.usersService.isExistingEmail(email)) {
-      throw new BadRequestException(this.i18n.t('auth.EMAIL_ALREADY_EXIST'));
+      throw new BadRequestException(await this.i18n.t('auth.EMAIL_ALREADY_EXIST'));
     }
 
     if (authProvider === AuthProvider.GOOGLE) {
       if (!ggId) {
-        throw new BadRequestException(this.i18n.t('auth.GOOGLE_ID_REQUIRED'));
+        throw new BadRequestException(await this.i18n.t('auth.GOOGLE_ID_REQUIRED'));
       }
 
       this.logger.log(`Creating user with Google authentication for email: ${email}`);
@@ -115,7 +115,7 @@ export class AuthService {
     }
 
     if (!password) {
-      throw new BadRequestException(this.i18n.t('auth.PASSWORD_REQUIRED'));
+      throw new BadRequestException(await this.i18n.t('auth.PASSWORD_REQUIRED'));
     }
 
     const hashPassword = await hashPasswordHelper(password);
@@ -141,7 +141,7 @@ export class AuthService {
     }
 
     return {
-      message: this.i18n.t('auth.CODE_SENT_SUCCESSFULLY')
+      message: await this.i18n.t('auth.CODE_SENT_SUCCESSFULLY')
     };
   }
 
@@ -151,44 +151,43 @@ export class AuthService {
   ): Promise<UserDocument | null> {
     const user = await this.usersService.findByEmail(email);
     if (!user) {
-      throw new UnauthorizedException(this.i18n.t('auth.INVALID_CREDENTIALS'));
+      throw new UnauthorizedException(await this.i18n.t('auth.INVALID_CREDENTIALS'));
     }
 
     if (user.authProvider !== AuthProvider.LOCAL && !user.password) {
-      throw new UnauthorizedException(this.i18n.t('auth.USE_GOOGLE_AUTH'));
+      throw new UnauthorizedException(await this.i18n.t('auth.USE_GOOGLE_AUTH'));
     }
 
     if (user.authProvider === AuthProvider.LOCAL && !user.password) {
-      throw new UnauthorizedException(this.i18n.t('auth.INVALID_CREDENTIALS'));
+      throw new UnauthorizedException(await this.i18n.t('auth.INVALID_CREDENTIALS'));
     }
 
     const isPasswordValid = await comparePassword(pass, user.password as string);
-    if (isPasswordValid) {
-      const { password, ...result } = user as any;
-      console.log(result);
-      return result;
+    if (!isPasswordValid) {
+      throw new UnauthorizedException(await this.i18n.t('auth.INVALID_CREDENTIALS'));
     }
 
-    return null;
+    const { password, ...result } = user as any;
+    return result;
   }
 
   async verifyEmail(email: string, code: string) {
     const user = await this.usersService.findByEmail(email);
 
     if (!user) {
-      throw new BadRequestException(this.i18n.t('auth.USER_NOT_FOUND'));
+      throw new BadRequestException(await this.i18n.t('auth.USER_NOT_FOUND'));
     }
 
     if (user.isVerified) {
-      throw new BadRequestException(this.i18n.t('auth.EMAIL_ALREADY_VERIFIED'));
+      throw new BadRequestException(await this.i18n.t('auth.EMAIL_ALREADY_VERIFIED'));
     }
 
     if (!user.code || user.code !== code) {
-      throw new BadRequestException(this.i18n.t('auth.INVALID_CODE'));
+      throw new BadRequestException(await this.i18n.t('auth.INVALID_CODE'));
     }
 
     if (!user.codeExpiresAt || new Date(user.codeExpiresAt).getTime() < Date.now()) {
-      throw new BadRequestException(this.i18n.t('auth.CODE_EXPIRED'));
+      throw new BadRequestException(await this.i18n.t('auth.CODE_EXPIRED'));
     }
 
     const updatedUser = await this.usersService.update(user._id.toString(), {
@@ -198,21 +197,21 @@ export class AuthService {
     });
 
     if (!updatedUser) {
-      throw new BadRequestException(this.i18n.t('auth.USER_NOT_FOUND'));
+      throw new BadRequestException(await this.i18n.t('auth.USER_NOT_FOUND'));
     }
 
-    return { message: this.i18n.t('auth.CODE_VERIFIED_SUCCESSFULLY') };
+    return { message: await this.i18n.t('auth.CODE_VERIFIED_SUCCESSFULLY') };
   }
 
   async resendCode(email: string) {
     const user = await this.usersService.findByEmail(email);
 
     if (!user) {
-      throw new BadRequestException(this.i18n.t('auth.USER_NOT_FOUND'));
+      throw new BadRequestException(await this.i18n.t('auth.USER_NOT_FOUND'));
     }
 
     if (user.isVerified) {
-      throw new BadRequestException(this.i18n.t('auth.EMAIL_ALREADY_VERIFIED'));
+      throw new BadRequestException(await this.i18n.t('auth.EMAIL_ALREADY_VERIFIED'));
     }
 
     const code = this.generateRandomString(6);
@@ -224,7 +223,7 @@ export class AuthService {
     });
 
     if (!updatedUser) {
-      throw new BadRequestException(this.i18n.t('auth.USER_NOT_FOUND'));
+      throw new BadRequestException(await this.i18n.t('auth.USER_NOT_FOUND'));
     }
 
     try {
@@ -237,7 +236,7 @@ export class AuthService {
     }
 
     return {
-      message: this.i18n.t('auth.CODE_RESENT_SUCCESSFULLY')
+      message: await this.i18n.t('auth.CODE_RESENT_SUCCESSFULLY')
     };
   }
   async googleLogin(googleUser: any) {

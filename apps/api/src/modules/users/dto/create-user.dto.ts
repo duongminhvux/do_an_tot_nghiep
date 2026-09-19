@@ -14,7 +14,7 @@ export class CreateUserDto {
 	@ValidateIf((dto) => dto.authProvider !== AuthProvider.GOOGLE)
 	@IsNotEmpty({ message: i18nValidationMessage('auth.PASSWORD_REQUIRED') })
 	@IsString({ message: i18nValidationMessage('auth.PASSWORD_MUST_BE_STRING') })
-	@MinLength(8, { message: i18nValidationMessage('auth.PASSWORD_MIN_LENGTH') })
+	@MinLength(6, { message: i18nValidationMessage('auth.PASSWORD_MIN_LENGTH') })
 	password?: string;
 
 	@IsOptional()

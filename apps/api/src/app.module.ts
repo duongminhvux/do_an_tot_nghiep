@@ -10,6 +10,9 @@ import { HeaderResolver, I18nModule, AcceptLanguageResolver } from 'nestjs-i18n'
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { VocabularyModule } from './modules/vocabulary/vocabulary.module.js';
+
+import { AdminsModule } from './modules/admins/admins.module.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -43,8 +46,10 @@ const i18nPath = fs.existsSync(path.join(__dirname, 'i18n'))
       }),
     }),
     UsersModule,
+    AdminsModule,
     AuthModule,
-    GmailModule
+    GmailModule,
+    VocabularyModule
   ],
   controllers: [AppController],
   providers: [AppService],
