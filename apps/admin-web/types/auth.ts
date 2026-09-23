@@ -15,10 +15,12 @@ export interface LoginDto {
 export interface AuthLoginResponse {
   message: string;
   accessToken: string;
+  refreshToken?: string;
   profile: UserProfile;
 }
 
 export interface RefreshTokenResponse {
   message: string;
   accessToken: string;
+  refreshToken?: string;
 }

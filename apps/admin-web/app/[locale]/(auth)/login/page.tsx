@@ -46,7 +46,7 @@ function AdminLoginForm() {
       };
 
       const res = await authService.login(payload);
-      const { accessToken, profile } = res.data;
+      const { accessToken, profile, refreshToken } = res.data;
 
       // Validate Admin role
       if (profile.role !== 'ADMIN') {
@@ -54,7 +54,7 @@ function AdminLoginForm() {
         return;
       }
 
-      dispatch(setCredentials({ user: profile, accessToken }));
+      dispatch(setCredentials({ user: profile, accessToken, refreshToken }));
       router.push(`/${locale}`);
     } catch (err: any) {
       const msg =

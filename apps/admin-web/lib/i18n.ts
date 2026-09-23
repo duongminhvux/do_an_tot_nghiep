@@ -3,17 +3,26 @@ import { initReactI18next } from 'react-i18next';
 
 import viCommon from '../locales/vi/common.json';
 import viAuth from '../locales/vi/auth.json';
+import viDashboard from '../locales/vi/dashboard.json';
+import viVocabulary from '../locales/vi/vocabulary.json';
+
 import enCommon from '../locales/en/common.json';
 import enAuth from '../locales/en/auth.json';
+import enDashboard from '../locales/en/dashboard.json';
+import enVocabulary from '../locales/en/vocabulary.json';
 
 const resources = {
   vi: {
     common: viCommon,
     auth: viAuth,
+    dashboard: viDashboard,
+    vocabulary: viVocabulary,
   },
   en: {
     common: enCommon,
     auth: enAuth,
+    dashboard: enDashboard,
+    vocabulary: enVocabulary,
   },
 };
 
@@ -37,6 +46,13 @@ if (!i18n.isInitialized) {
     react: {
       useSuspense: false,
     },
+  });
+} else {
+  // Ensure resources are refreshed on client-side hot-reloads
+  Object.entries(resources).forEach(([lng, namespaces]) => {
+    Object.entries(namespaces).forEach(([ns, res]) => {
+      i18n.addResourceBundle(lng, ns, res, true, true);
+    });
   });
 }
 

@@ -13,8 +13,16 @@ export const authService = {
     return res.data;
   },
 
-  refreshToken: async () => {
-    const res = await apiClient.post<ApiResponse<RefreshTokenResponse>>('/admin/auth/refresh-token');
+  refreshToken: async (token?: string) => {
+    const refreshToken =
+      token ||
+      (typeof window !== 'undefined'
+        ? localStorage.getItem('adminRefreshToken') || undefined
+        : undefined);
+    const res = await apiClient.post<ApiResponse<RefreshTokenResponse>>(
+      '/admin/auth/refresh-token',
+      { refreshToken }
+    );
     return res.data;
   },
 

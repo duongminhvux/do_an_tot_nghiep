@@ -23,7 +23,7 @@ export const authSlice = createSlice({
   reducers: {
     setCredentials: (
       state,
-      action: PayloadAction<{ user: UserProfile; accessToken: string }>
+      action: PayloadAction<{ user: UserProfile; accessToken: string; refreshToken?: string }>
     ) => {
       state.user = action.payload.user;
       state.accessToken = action.payload.accessToken;
@@ -31,6 +31,9 @@ export const authSlice = createSlice({
       state.isLoading = false;
       if (typeof window !== 'undefined') {
         localStorage.setItem('adminAccessToken', action.payload.accessToken);
+        if (action.payload.refreshToken) {
+          localStorage.setItem('adminRefreshToken', action.payload.refreshToken);
+        }
         localStorage.setItem('adminUser', JSON.stringify(action.payload.user));
         document.cookie = `adminAccessToken=${action.payload.accessToken}; path=/; max-age=604800; SameSite=Lax`;
       }
@@ -56,6 +59,7 @@ export const authSlice = createSlice({
       state.isInitialized = true;
       if (typeof window !== 'undefined') {
         localStorage.removeItem('adminAccessToken');
+        localStorage.removeItem('adminRefreshToken');
         localStorage.removeItem('adminUser');
         document.cookie = 'adminAccessToken=; path=/; max-age=0; SameSite=Lax';
       }
@@ -76,6 +80,7 @@ export const authSlice = createSlice({
             document.cookie = `adminAccessToken=${token}; path=/; max-age=604800; SameSite=Lax`;
           } catch {
             localStorage.removeItem('adminAccessToken');
+            localStorage.removeItem('adminRefreshToken');
             localStorage.removeItem('adminUser');
             document.cookie = 'adminAccessToken=; path=/; max-age=0; SameSite=Lax';
             state.isAuthenticated = false;

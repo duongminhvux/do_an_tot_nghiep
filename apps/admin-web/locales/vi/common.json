@@ -1,11 +1,29 @@
 {
-  "brand": "English Admin",
-  "admin": "Quản trị viên",
+  "brand": "English Platform",
+  "admin": "Quản trị",
+  "management_portal": "Hệ thống Quản trị",
+  "navigation": "Điều hướng",
+  "language": "Ngôn ngữ",
   "logout": "Đăng xuất",
   "loading": "Đang tải...",
   "verifying_session": "Đang kiểm tra quyền quản trị...",
   "vietnamese": "Tiếng Việt",
   "english": "English",
-  "dashboard": "Bảng điều khiển",
-  "welcome_back": "Chào mừng trở lại, {{name}}! 👋"
+  "words": "Từ vựng",
+  "collections": "Bộ sưu tập",
+  "vocabulary": "Từ vựng",
+  "nav": {
+    "dashboard": "Bảng điều khiển",
+    "vocabulary": "Từ vựng",
+    "collections": "Bộ sưu tập",
+    "words": "Từ vựng",
+    "lessons": "Bài học",
+    "users": "Người dùng"
+  },
+  "nav.dashboard": "Bảng điều khiển",
+  "nav.vocabulary": "Từ vựng",
+  "nav.collections": "Bộ sưu tập",
+  "nav.words": "Từ vựng",
+  "nav.lessons": "Bài học",
+  "nav.users": "Người dùng"
 }

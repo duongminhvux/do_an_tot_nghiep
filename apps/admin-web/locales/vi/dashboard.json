@@ -1,0 +1,27 @@
+{
+  "badge": "Bảng điều khiển Quản trị",
+  "welcome": "Chào mừng trở lại, {{name}}!",
+  "description": "Quản lý bộ sưu tập từ vựng, bài học, từ mới và tài khoản người dùng từ một trang quản trị tập trung.",
+  "cards": {
+    "collections": {
+      "tag": "Danh mục",
+      "title": "Bộ sưu tập",
+      "desc": "Quản lý các chủ đề và danh mục học"
+    },
+    "lessons": {
+      "tag": "Lộ trình",
+      "title": "Bài học",
+      "desc": "Tạo và sắp xếp lộ trình bài học"
+    },
+    "vocabulary": {
+      "tag": "Kho dữ liệu",
+      "title": "Từ vựng",
+      "desc": "Kho từ vựng, phiên âm, nghĩa và ví dụ"
+    },
+    "users": {
+      "tag": "Tài khoản",
+      "title": "Người dùng",
+      "desc": "Theo dõi tài khoản học viên và phân quyền"
+    }
+  }
+}

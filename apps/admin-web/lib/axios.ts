@@ -91,14 +91,28 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
+        const storedRefreshToken =
+          typeof window !== 'undefined'
+            ? localStorage.getItem('adminRefreshToken')
+            : undefined;
+
         const response = await axios.post(
           `${API_URL}/admin/auth/refresh-token`,
-          {},
+          {
+            refreshToken: storedRefreshToken || undefined,
+          },
           { withCredentials: true }
         );
 
         const newAccessToken =
           response.data?.data?.accessToken || response.data?.accessToken;
+
+        const newRefreshToken =
+          response.data?.data?.refreshToken || response.data?.refreshToken;
+
+        if (newRefreshToken && typeof window !== 'undefined') {
+          localStorage.setItem('adminRefreshToken', newRefreshToken);
+        }
 
         if (!newAccessToken) {
           throw new Error('Refresh token failed: No access token returned');

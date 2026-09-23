@@ -1,0 +1,27 @@
+{
+  "badge": "Administration Dashboard",
+  "welcome": "Welcome back, {{name}}!",
+  "description": "Manage vocabulary collections, lessons, word definitions, and user accounts from one unified portal.",
+  "cards": {
+    "collections": {
+      "tag": "Modules",
+      "title": "Collections",
+      "desc": "Manage topic collections and categories"
+    },
+    "lessons": {
+      "tag": "Curriculum",
+      "title": "Lessons",
+      "desc": "Create and organize structured lessons"
+    },
+    "vocabulary": {
+      "tag": "Database",
+      "title": "Vocabulary",
+      "desc": "Word bank, meanings, phonetics and examples"
+    },
+    "users": {
+      "tag": "Accounts",
+      "title": "User Accounts",
+      "desc": "Monitor registered learners and permissions"
+    }
+  }
+}

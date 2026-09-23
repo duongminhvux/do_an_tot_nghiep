@@ -1,11 +1,29 @@
 {
-  "brand": "English Admin",
-  "admin": "Administrator",
+  "brand": "English Platform",
+  "admin": "Admin",
+  "management_portal": "Management Portal",
+  "navigation": "Navigation",
+  "language": "Language",
   "logout": "Sign Out",
   "loading": "Loading...",
   "verifying_session": "Verifying admin access...",
   "vietnamese": "Tiếng Việt",
   "english": "English",
-  "dashboard": "Dashboard",
-  "welcome_back": "Welcome back, {{name}}! 👋"
+  "words": "Words",
+  "collections": "Collections",
+  "vocabulary": "Vocabulary",
+  "nav": {
+    "dashboard": "Dashboard",
+    "vocabulary": "Vocabulary",
+    "collections": "Collections",
+    "words": "Words",
+    "lessons": "Lessons",
+    "users": "User Accounts"
+  },
+  "nav.dashboard": "Dashboard",
+  "nav.vocabulary": "Vocabulary",
+  "nav.collections": "Collections",
+  "nav.words": "Words",
+  "nav.lessons": "Lessons",
+  "nav.users": "User Accounts"
 }
