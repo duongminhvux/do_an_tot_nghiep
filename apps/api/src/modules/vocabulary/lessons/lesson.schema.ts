@@ -12,13 +12,16 @@ export class Lesson {
   @Prop({ required: true, trim: true })
   title!: string;
 
+  @Prop({ required: true, trim: true, index: true })
+  slug!: string;
+
   @Prop({ trim: true })
   description?: string;
 
   @Prop({ trim: true })
   coverUrl?: string;
 
-  @Prop({ default: 0 })
+  @Prop({ default: 1 })
   order?: number;
 
   @Prop({ default: true })
@@ -29,3 +32,4 @@ export class Lesson {
 }
 
 export const LessonSchema = SchemaFactory.createForClass(Lesson);
+LessonSchema.index({ collectionId: 1, slug: 1 }, { unique: true });

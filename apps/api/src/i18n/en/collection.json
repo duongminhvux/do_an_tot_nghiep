@@ -1,0 +1,15 @@
+{
+  "COLLECTION_CREATED_SUCCESSFULLY": "Collection created successfully.",
+  "COLLECTION_FETCHED_SUCCESSFULLY": "Collection fetched successfully.",
+  "COLLECTION_LIST_FETCHED_SUCCESSFULLY": "Collection list fetched successfully.",
+  "COLLECTION_UPDATED_SUCCESSFULLY": "Collection updated successfully.",
+  "COLLECTION_DELETED_SUCCESSFULLY": "Collection deleted successfully.",
+  "COLLECTION_RESTORED_SUCCESSFULLY": "Collection restored successfully.",
+  "COLLECTION_NOT_FOUND": "Collection not found.",
+  "COLLECTION_ALREADY_EXISTS": "Collection already exists.",
+  "COLLECTION_ACTIVATED_SUCCESSFULLY": "Collection activated successfully.",
+  "COLLECTION_DEACTIVATED_SUCCESSFULLY": "Collection deactivated successfully.",
+  "COLLECTIONS_REORDERED_SUCCESSFULLY": "Collections reordered successfully.",
+  "COLLECTION_NAME_REQUIRED": "Collection name is required.",
+  "COLLECTION_NAME_MUST_BE_STRING": "Collection name must be a string."
+}

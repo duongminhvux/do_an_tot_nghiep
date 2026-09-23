@@ -7,5 +7,12 @@
   "WORD_RESTORED_SUCCESSFULLY": "Word restored successfully.",
   "WORD_NOT_FOUND": "Word not found.",
   "WORD_NOT_FOUND_OR_NOT_DELETED": "Word not found or not deleted.",
-  "WORD_ALREADY_EXISTS": "Word already exists."
+  "WORD_ALREADY_EXISTS": "Word already exists.",
+  "WORD_ACTIVATED_SUCCESSFULLY": "Word activated successfully.",
+  "WORD_DEACTIVATED_SUCCESSFULLY": "Word deactivated successfully.",
+  "WORDS_ACTIVATED_SUCCESSFULLY": "Selected words activated successfully.",
+  "WORDS_DEACTIVATED_SUCCESSFULLY": "Selected words deactivated successfully.",
+  "NO_WORDS_PROVIDED": "No word IDs provided.",
+  "WORD_REQUIRED": "Word is required.",
+  "LEVEL_REQUIRED": "Level is required."
 }

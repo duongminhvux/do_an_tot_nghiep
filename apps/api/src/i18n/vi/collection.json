@@ -1,0 +1,15 @@
+{
+  "COLLECTION_CREATED_SUCCESSFULLY": "Tạo bộ sưu tập thành công.",
+  "COLLECTION_FETCHED_SUCCESSFULLY": "Lấy thông tin bộ sưu tập thành công.",
+  "COLLECTION_LIST_FETCHED_SUCCESSFULLY": "Lấy danh sách bộ sưu tập thành công.",
+  "COLLECTION_UPDATED_SUCCESSFULLY": "Cập nhật bộ sưu tập thành công.",
+  "COLLECTION_DELETED_SUCCESSFULLY": "Xóa bộ sưu tập thành công.",
+  "COLLECTION_RESTORED_SUCCESSFULLY": "Khôi phục bộ sưu tập thành công.",
+  "COLLECTION_NOT_FOUND": "Không tìm thấy bộ sưu tập.",
+  "COLLECTION_ALREADY_EXISTS": "Bộ sưu tập này đã tồn tại.",
+  "COLLECTION_ACTIVATED_SUCCESSFULLY": "Kích hoạt bộ sưu tập thành công.",
+  "COLLECTION_DEACTIVATED_SUCCESSFULLY": "Hủy kích hoạt bộ sưu tập thành công.",
+  "COLLECTIONS_REORDERED_SUCCESSFULLY": "Cập nhật thứ tự bộ sưu tập thành công.",
+  "COLLECTION_NAME_REQUIRED": "Vui lòng nhập tên bộ sưu tập.",
+  "COLLECTION_NAME_MUST_BE_STRING": "Tên bộ sưu tập phải là một chuỗi ký tự."
+}

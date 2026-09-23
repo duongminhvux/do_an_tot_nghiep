@@ -6,10 +6,6 @@ export class QueryCollectionDto {
   @IsOptional()
   search?: string;
 
-  @IsString()
-  @IsOptional()
-  category?: string;
-
   @Transform(({ value }) => (value === 'true' ? true : value === 'false' ? false : value))
   @IsBoolean()
   @IsOptional()

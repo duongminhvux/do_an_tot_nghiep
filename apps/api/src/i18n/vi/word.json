@@ -7,5 +7,12 @@
   "WORD_RESTORED_SUCCESSFULLY": "Khôi phục từ vựng thành công.",
   "WORD_NOT_FOUND": "Không tìm thấy từ vựng.",
   "WORD_NOT_FOUND_OR_NOT_DELETED": "Không tìm thấy từ vựng hoặc từ vựng chưa bị xóa.",
-  "WORD_ALREADY_EXISTS": "Từ vựng này đã tồn tại."
+  "WORD_ALREADY_EXISTS": "Từ vựng này đã tồn tại.",
+  "WORD_ACTIVATED_SUCCESSFULLY": "Kích hoạt từ vựng thành công.",
+  "WORD_DEACTIVATED_SUCCESSFULLY": "Hủy kích hoạt từ vựng thành công.",
+  "WORDS_ACTIVATED_SUCCESSFULLY": "Kích hoạt các từ vựng đã chọn thành công.",
+  "WORDS_DEACTIVATED_SUCCESSFULLY": "Hủy kích hoạt các từ vựng đã chọn thành công.",
+  "NO_WORDS_PROVIDED": "Chưa chọn từ vựng nào.",
+  "WORD_REQUIRED": "Vui lòng nhập từ vựng.",
+  "LEVEL_REQUIRED": "Vui lòng chọn trình độ."
 }

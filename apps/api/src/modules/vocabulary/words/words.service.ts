@@ -18,6 +18,19 @@ export class WordsService {
     return I18nContext.current()?.lang || 'vi';
   }
 
+  private generateSlug(text: string): string {
+    if (!text) return '';
+    return text
+      .toString()
+      .toLowerCase()
+      .trim()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-');
+  }
+
   async create(createWordDto: CreateWordDto) {
     const lang = this.getLang();
     const existing = await this.wordModel.findOne({
@@ -31,7 +44,17 @@ export class WordsService {
       );
     }
 
-    const createdWord = new this.wordModel(createWordDto);
+    const baseSlug = this.generateSlug(createWordDto.word) || 'word';
+    let slug = baseSlug;
+    let counter = 1;
+    while (await this.wordModel.exists({ slug, isDeleted: { $ne: true } })) {
+      slug = `${baseSlug}-${counter++}`;
+    }
+
+    const createdWord = new this.wordModel({
+      ...createWordDto,
+      slug,
+    });
     const savedWord = await createdWord.save();
 
     return {
@@ -56,13 +79,7 @@ export class WordsService {
     }
 
     if (search) {
-      filter.$or = [
-        { word: { $regex: search, $options: 'i' } },
-        { 'parts.meanings.definition': { $regex: search, $options: 'i' } },
-        { 'parts.meanings.translation': { $regex: search, $options: 'i' } },
-        { definition: { $regex: search, $options: 'i' } },
-        { translation: { $regex: search, $options: 'i' } },
-      ];
+      filter.word = { $regex: search.trim(), $options: 'i' };
     }
 
     if (partOfSpeech) {
@@ -76,7 +93,13 @@ export class WordsService {
     const skip = (page - 1) * limit;
 
     const [data, total] = await Promise.all([
-      this.wordModel.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).exec(),
+      this.wordModel
+        .find(filter)
+        .select('word ipa audio parts.partOfSpeech parts.meanings.definition level isActive')
+        .sort({ createdAt: 1, _id: 1 })
+        .skip(skip)
+        .limit(limit)
+        .exec(),
       this.wordModel.countDocuments(filter).exec(),
     ]);
 
@@ -106,6 +129,7 @@ export class WordsService {
   async update(id: string, updateWordDto: UpdateWordDto) {
     const lang = this.getLang();
 
+    const updatePayload: Record<string, any> = { ...updateWordDto };
     if (updateWordDto.word) {
       const existing = await this.wordModel.findOne({
         _id: { $ne: id },
@@ -117,10 +141,18 @@ export class WordsService {
           await this.i18n.t('word.WORD_ALREADY_EXISTS', { lang }),
         );
       }
+
+      const baseSlug = this.generateSlug(updateWordDto.word) || 'word';
+      let slug = baseSlug;
+      let counter = 1;
+      while (await this.wordModel.exists({ _id: { $ne: id }, slug, isDeleted: { $ne: true } })) {
+        slug = `${baseSlug}-${counter++}`;
+      }
+      updatePayload.slug = slug;
     }
 
     const updatedWord = await this.wordModel
-      .findOneAndUpdate({ _id: id, isDeleted: { $ne: true } }, updateWordDto, { new: true })
+      .findOneAndUpdate({ _id: id, isDeleted: { $ne: true } }, updatePayload, { new: true })
       .exec();
 
     if (!updatedWord) {
@@ -170,4 +202,54 @@ export class WordsService {
       data: restoredWord,
     };
   }
+
+  async toggleActive(id: string, isActive?: boolean) {
+    const lang = this.getLang();
+    const word = await this.wordModel
+      .findOne({ _id: id, isDeleted: { $ne: true } })
+      .exec();
+
+    if (!word) {
+      throw new NotFoundException(
+        await this.i18n.t('word.WORD_NOT_FOUND', { lang }),
+      );
+    }
+
+    const nextState = typeof isActive === 'boolean' ? isActive : !word.isActive;
+    word.isActive = nextState;
+    await word.save();
+
+    const messageKey = nextState
+      ? 'word.WORD_ACTIVATED_SUCCESSFULLY'
+      : 'word.WORD_DEACTIVATED_SUCCESSFULLY';
+
+    return {
+      message: await this.i18n.t(messageKey, { lang }),
+      data: word,
+    };
+  }
+
+  async bulkToggleActive(ids: string[], isActive: boolean) {
+    const lang = this.getLang();
+    if (!Array.isArray(ids) || ids.length === 0) {
+      throw new BadRequestException(
+        await this.i18n.t('word.NO_WORDS_PROVIDED', { lang }),
+      );
+    }
+
+    await this.wordModel.updateMany(
+      { _id: { $in: ids }, isDeleted: { $ne: true } },
+      { $set: { isActive } },
+    );
+
+    const messageKey = isActive
+      ? 'word.WORDS_ACTIVATED_SUCCESSFULLY'
+      : 'word.WORDS_DEACTIVATED_SUCCESSFULLY';
+
+    return {
+      message: await this.i18n.t(messageKey, { lang }),
+      modifiedCount: ids.length,
+    };
+  }
 }
+

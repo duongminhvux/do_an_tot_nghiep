@@ -8,6 +8,7 @@ import {
   IsString,
   ValidateNested,
 } from 'class-validator';
+import { i18nValidationMessage } from 'nestjs-i18n';
 
 export enum WordLevel {
   A1 = 'A1',
@@ -88,12 +89,12 @@ export class WordPartDto {
 }
 
 export class CreateWordDto {
+  @IsNotEmpty({ message: i18nValidationMessage('word.WORD_REQUIRED') })
   @IsString()
-  @IsNotEmpty()
   word!: string;
 
+  @IsNotEmpty({ message: i18nValidationMessage('word.LEVEL_REQUIRED') })
   @IsEnum(WordLevel)
-  @IsNotEmpty()
   level!: WordLevel;
 
   @ValidateNested()

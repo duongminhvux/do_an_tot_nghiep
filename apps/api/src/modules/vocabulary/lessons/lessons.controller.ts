@@ -33,18 +33,31 @@ export class LessonsController {
     return this.lessonsService.removeLesson(id);
   }
 
+  // Sections
+  @Get(':id/sections')
+  getSections(@Param('id') id: string) {
+    return this.lessonsService.getSections(id);
+  }
+
   // Lesson Words Management
   @Post(':id/words')
   addWordsToLesson(
     @Param('id') id: string,
     @Body() addWordsDto: AddWordsToLessonDto,
   ) {
-    return this.lessonsService.addWordsToLesson(id, addWordsDto.wordIds);
+    return this.lessonsService.addWordsToLesson(
+      id,
+      addWordsDto.wordIds,
+      addWordsDto.sectionId,
+    );
   }
 
   @Get(':id/words')
-  getWordsInLesson(@Param('id') id: string) {
-    return this.lessonsService.getWordsInLesson(id);
+  getWordsInLesson(
+    @Param('id') id: string,
+    @Query('sectionId') sectionId?: string,
+  ) {
+    return this.lessonsService.getWordsInLesson(id, sectionId);
   }
 
   @Delete(':id/words/:wordId')

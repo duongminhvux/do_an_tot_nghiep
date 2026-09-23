@@ -105,6 +105,14 @@ export class Word {
 
   @Prop({
     required: true,
+    trim: true,
+    unique: true,
+    index: true,
+  })
+  slug: string;
+
+  @Prop({
+    required: true,
     uppercase: true,
     enum: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'],
     index: true,
