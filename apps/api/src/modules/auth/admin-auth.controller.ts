@@ -37,11 +37,12 @@ export class AdminAuthController {
     const refreshTokenExpires =
       this.configService.get<string>('JWT_REFRESH_TOKEN_EXPIRES') || '7d';
     const maxAge = ms(refreshTokenExpires as StringValue);
+    const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
 
     res.cookie('refresh_token', refresh_token, {
       httpOnly: true,
-      secure: false,
-      sameSite: 'strict',
+      secure: isProduction,
+      sameSite: isProduction ? 'strict' : 'lax',
       maxAge: typeof maxAge === 'number' ? maxAge : 7 * 24 * 60 * 60 * 1000,
     });
   }
@@ -84,6 +85,7 @@ export class AdminAuthController {
     return {
       message: await this.i18n.t('auth.LOGIN_SUCCESSFULLY'),
       accessToken,
+      refreshToken,
       profile: {
         _id: String(admin._id),
         username: admin.username,
@@ -98,9 +100,14 @@ export class AdminAuthController {
   @Post('refresh-token')
   async refreshToken(
     @Req() req: any,
+    @Body('refreshToken') bodyRefreshToken: string,
     @Res({ passthrough: true }) res: express.Response,
   ) {
-    const refreshToken = req.cookies?.['refresh_token'];
+    const refreshToken =
+      bodyRefreshToken ||
+      req.cookies?.['refresh_token'] ||
+      (req.headers?.['x-refresh-token'] as string);
+
     if (!refreshToken) {
       throw new UnauthorizedException(
         await this.i18n.t('auth.INVALID_REFRESH_TOKEN'),
@@ -144,6 +151,7 @@ export class AdminAuthController {
       return {
         message: await this.i18n.t('auth.REFRESH_TOKEN_SUCCESSFULLY'),
         accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
       };
     } catch {
       throw new UnauthorizedException(

@@ -11,15 +11,21 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { VocabularyModule } from './modules/vocabulary/vocabulary.module.js';
-
 import { AdminsModule } from './modules/admins/admins.module.js';
+import { UploadModule } from './modules/upload/upload.module.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const i18nPath = fs.existsSync(path.join(__dirname, 'i18n'))
-  ? path.join(__dirname, 'i18n')
-  : path.join(process.cwd(), 'src/i18n');
+// Prioritize source directory so Nest compiler clearing dist during watch mode never triggers ENOENT
+const candidatePaths = [
+  path.resolve(__dirname, '../src/i18n'),
+  path.resolve(process.cwd(), 'src/i18n'),
+  path.resolve(process.cwd(), 'apps/api/src/i18n'),
+  path.join(__dirname, 'i18n'),
+];
+const i18nPath = candidatePaths.find((p) => fs.existsSync(p)) || path.join(__dirname, 'i18n');
+const isDev = process.env.NODE_ENV !== 'production';
 
 @Module({
   imports: [
@@ -30,7 +36,7 @@ const i18nPath = fs.existsSync(path.join(__dirname, 'i18n'))
       fallbackLanguage: 'vi',
       loaderOptions: {
         path: i18nPath,
-        watch: true,
+        watch: isDev,
       },
       resolvers: [
         new HeaderResolver(['x-custom-lang']),
@@ -49,7 +55,8 @@ const i18nPath = fs.existsSync(path.join(__dirname, 'i18n'))
     AdminsModule,
     AuthModule,
     GmailModule,
-    VocabularyModule
+    VocabularyModule,
+    UploadModule,
   ],
   controllers: [AppController],
   providers: [AppService],
