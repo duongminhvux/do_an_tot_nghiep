@@ -204,6 +204,17 @@ export const wordService = {
     return res.data;
   },
 
+  bulkLookup: async (words: string[]) => {
+    const res = await apiClient.post<ApiResponse<{
+      found: WordListItem[];
+      notFound: string[];
+      totalInput: number;
+      totalFound: number;
+      totalNotFound: number;
+    }>>('/admin/words/bulk-lookup', { words });
+    return res.data;
+  },
+
   getById: async (id: string) => {
     const res = await apiClient.get<ApiResponse<WordDetail>>(`/admin/words/${id}`);
     return res.data;

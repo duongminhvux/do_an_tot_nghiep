@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { wordService } from '@/services/vocabulary.service';
@@ -33,6 +33,7 @@ import {
   ArrowLeft,
   AlertCircle,
   Quote,
+  X,
 } from 'lucide-react';
 
 const LEVEL_OPTIONS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
@@ -42,6 +43,8 @@ const POS_OPTIONS = [
   { value: 'noun', label: 'noun' },
   { value: 'adjective', label: 'adjective' },
   { value: 'adverb', label: 'adverb' },
+  { value: 'phrasal_verb', label: 'phrasal verb' },
+  { value: 'idiom', label: 'idiom' },
   { value: 'preposition', label: 'preposition' },
   { value: 'conjunction', label: 'conjunction' },
   { value: 'pronoun', label: 'pronoun' },
@@ -61,6 +64,8 @@ export interface MeaningRow {
   partOfSpeech: string;
   english: string;
   vietnamese: string;
+  synonyms: string;
+  antonyms: string;
   examples: MeaningExample[];
 }
 
@@ -95,6 +100,10 @@ export function EditWordDialog({ wordId, open, onOpenChange }: EditWordDialogPro
   const [level, setLevel] = useState('A1');
   const [isActive, setIsActive] = useState(true);
 
+  // Variations & Related Words (comma or semicolon separated)
+  const [variations, setVariations] = useState('');
+  const [relatedWords, setRelatedWords] = useState('');
+
   // Pronunciations & Audio Uploads
   const [usIpa, setUsIpa] = useState('');
   const [ukIpa, setUkIpa] = useState('');
@@ -110,8 +119,21 @@ export function EditWordDialog({ wordId, open, onOpenChange }: EditWordDialogPro
 
   // Meanings with nested examples
   const [meanings, setMeanings] = useState<MeaningRow[]>([
-    { id: '1', partOfSpeech: 'verb', english: '', vietnamese: '', examples: [] },
+    { id: '1', partOfSpeech: 'verb', english: '', vietnamese: '', synonyms: '', antonyms: '', examples: [] },
   ]);
+
+  const availablePosOptions = useMemo(() => {
+    const options = [...POS_OPTIONS];
+    meanings.forEach((m) => {
+      if (m.partOfSpeech && !options.some((opt) => opt.value === m.partOfSpeech)) {
+        options.push({
+          value: m.partOfSpeech,
+          label: m.partOfSpeech.replace(/_/g, ' '),
+        });
+      }
+    });
+    return options;
+  }, [meanings]);
 
   // Media (Image)
   const [imageUrl, setImageUrl] = useState('');
@@ -159,6 +181,9 @@ export function EditWordDialog({ wordId, open, onOpenChange }: EditWordDialogPro
     setLevel(wordDetail.level || 'A1');
     setIsActive(wordDetail.isActive !== false);
 
+    setVariations(Array.isArray(wordDetail.variations) ? wordDetail.variations.join(', ') : '');
+    setRelatedWords(Array.isArray(wordDetail.relatedWords) ? wordDetail.relatedWords.join(', ') : '');
+
     setUsIpa(wordDetail.ipa?.us || '');
     setUkIpa(wordDetail.ipa?.uk || '');
     setUsAudioUrl(wordDetail.audio?.us || '');
@@ -188,6 +213,8 @@ export function EditWordDialog({ wordId, open, onOpenChange }: EditWordDialogPro
             partOfSpeech: pos,
             english: m.definition || '',
             vietnamese: Array.isArray(m.translation) ? m.translation.join(', ') : '',
+            synonyms: Array.isArray(m.synonyms) ? m.synonyms.join(', ') : '',
+            antonyms: Array.isArray(m.antonyms) ? m.antonyms.join(', ') : '',
             examples: nestedExamples,
           });
         });
@@ -197,7 +224,7 @@ export function EditWordDialog({ wordId, open, onOpenChange }: EditWordDialogPro
     setMeanings(
       loadedMeanings.length > 0
         ? loadedMeanings
-        : [{ id: '1', partOfSpeech: 'verb', english: '', vietnamese: '', examples: [] }]
+        : [{ id: '1', partOfSpeech: 'verb', english: '', vietnamese: '', synonyms: '', antonyms: '', examples: [] }]
     );
 
     setImageUrl(wordDetail.image || '');
@@ -386,6 +413,8 @@ export function EditWordDialog({ wordId, open, onOpenChange }: EditWordDialogPro
     setActiveTab(targetTab);
   };
 
+
+
   // Dynamic Meaning Handlers
   const addMeaning = () => {
     setErrorMessage(null);
@@ -396,6 +425,8 @@ export function EditWordDialog({ wordId, open, onOpenChange }: EditWordDialogPro
         partOfSpeech: 'verb',
         english: '',
         vietnamese: '',
+        synonyms: '',
+        antonyms: '',
         examples: [],
       },
     ]);
@@ -406,7 +437,11 @@ export function EditWordDialog({ wordId, open, onOpenChange }: EditWordDialogPro
     setMeanings((prev) => prev.filter((m) => m.id !== id));
   };
 
-  const updateMeaning = (id: string, field: 'partOfSpeech' | 'english' | 'vietnamese', value: string) => {
+  const updateMeaning = (
+    id: string,
+    field: 'partOfSpeech' | 'english' | 'vietnamese' | 'synonyms' | 'antonyms',
+    value: string
+  ) => {
     setErrorMessage(null);
     setMeanings((prev) =>
       prev.map((m) => (m.id === id ? { ...m, [field]: value } : m))
@@ -525,6 +560,12 @@ export function EditWordDialog({ wordId, open, onOpenChange }: EditWordDialogPro
       const translations = m.vietnamese
         ? m.vietnamese.split(',').map((s) => s.trim()).filter(Boolean)
         : [];
+      const synonymsList = m.synonyms
+        ? m.synonyms.split(/[,;]+/).map((s) => s.trim()).filter(Boolean)
+        : [];
+      const antonymsList = m.antonyms
+        ? m.antonyms.split(/[,;]+/).map((s) => s.trim()).filter(Boolean)
+        : [];
 
       const validExamples = m.examples
         .filter((ex) => ex.sentence.trim() && ex.translation.trim())
@@ -543,11 +584,21 @@ export function EditWordDialog({ wordId, open, onOpenChange }: EditWordDialogPro
       partsMap.get(pos)!.meanings.push({
         definition: m.english.trim(),
         translation: translations,
-        synonyms: [],
-        antonyms: [],
+        synonyms: synonymsList,
+        antonyms: antonymsList,
         examples: validExamples,
       });
     });
+
+    const parsedVariations = variations
+      .split(/[,;]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const parsedRelatedWords = relatedWords
+      .split(/[,;]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
 
     const payload: UpdateWordDto = {
       word: word.trim(),
@@ -561,6 +612,8 @@ export function EditWordDialog({ wordId, open, onOpenChange }: EditWordDialogPro
         uk: ukAudioUrl.trim() || undefined,
       },
       image: imageUrl.trim() || undefined,
+      variations: parsedVariations,
+      relatedWords: parsedRelatedWords,
       parts: Array.from(partsMap.values()),
       isActive,
     };
@@ -731,6 +784,66 @@ export function EditWordDialog({ wordId, open, onOpenChange }: EditWordDialogPro
                           </span>
                         </div>
                       </div>
+                    </div>
+
+                    {/* Variations (Biến thể từ vựng) */}
+                    <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                      <div className="flex items-center justify-between">
+                        <label className="font-semibold text-slate-700">
+                          {t('variations_label', { defaultValue: 'Biến thể của từ (Variations)' })}
+                        </label>
+                        {variations.trim() && (
+                          <span className="text-[11px] font-medium text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">
+                            {variations.split(/[,;]+/).map((s) => s.trim()).filter(Boolean).length}{' '}
+                            {t('words_label', { defaultValue: 'từ' })}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-500 leading-normal">
+                        {t('variations_hint', {
+                          defaultValue:
+                            'Các dạng chia thì, số nhiều, V-ing, V-ed (ví dụ: baffles, baffled, baffling)... Phân cách bằng dấu phẩy (,) hoặc chấm phẩy (;)',
+                        })}
+                      </p>
+                      <input
+                        type="text"
+                        value={variations}
+                        onChange={(e) => setVariations(e.target.value)}
+                        placeholder={t('variations_placeholder', {
+                          defaultValue: 'ví dụ: baffles, baffled, baffling...',
+                        })}
+                        className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-mono"
+                      />
+                    </div>
+
+                    {/* Related Words (Từ liên quan) */}
+                    <div className="space-y-1.5 pt-2">
+                      <div className="flex items-center justify-between">
+                        <label className="font-semibold text-slate-700">
+                          {t('related_words_label', { defaultValue: 'Từ liên quan (Related Words)' })}
+                        </label>
+                        {relatedWords.trim() && (
+                          <span className="text-[11px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                            {relatedWords.split(/[,;]+/).map((s) => s.trim()).filter(Boolean).length}{' '}
+                            {t('words_label', { defaultValue: 'từ' })}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-500 leading-normal">
+                        {t('related_words_hint', {
+                          defaultValue:
+                            'Các từ cùng họ từ hoặc viết tắt liên quan (ví dụ: bafflement, baffling, AM)... Phân cách bằng dấu phẩy (,) hoặc chấm phẩy (;)',
+                        })}
+                      </p>
+                      <input
+                        type="text"
+                        value={relatedWords}
+                        onChange={(e) => setRelatedWords(e.target.value)}
+                        placeholder={t('related_words_placeholder', {
+                          defaultValue: 'ví dụ: bafflement, baffling, AM...',
+                        })}
+                        className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-mono"
+                      />
                     </div>
                   </div>
                 </div>
@@ -983,7 +1096,7 @@ export function EditWordDialog({ wordId, open, onOpenChange }: EditWordDialogPro
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                {POS_OPTIONS.map((pos) => (
+                                {availablePosOptions.map((pos) => (
                                   <SelectItem key={pos.value} value={pos.value} className="text-xs font-semibold">
                                     {pos.label}
                                   </SelectItem>
@@ -1035,6 +1148,45 @@ export function EditWordDialog({ wordId, open, onOpenChange }: EditWordDialogPro
                               updateMeaning(m.id, 'vietnamese', e.target.value)
                             }
                             placeholder="e.g. từ bỏ, bỏ rơi"
+                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Synonyms & Antonyms */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-semibold text-slate-600 flex items-center justify-between">
+                            <span>{t('synonyms_label', 'Từ đồng nghĩa (Synonyms)')}</span>
+                            <span className="text-[10px] text-slate-400 font-normal">
+                              {t('comma_separated_hint', 'Phân cách bởi dấu phẩy')}
+                            </span>
+                          </label>
+                          <input
+                            type="text"
+                            value={m.synonyms}
+                            onChange={(e) =>
+                              updateMeaning(m.id, 'synonyms', e.target.value)
+                            }
+                            placeholder={t('synonyms_placeholder', 'ví dụ: quick, fast, rapid')}
+                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-semibold text-slate-600 flex items-center justify-between">
+                            <span>{t('antonyms_label', 'Từ trái nghĩa (Antonyms)')}</span>
+                            <span className="text-[10px] text-slate-400 font-normal">
+                              {t('comma_separated_hint', 'Phân cách bởi dấu phẩy')}
+                            </span>
+                          </label>
+                          <input
+                            type="text"
+                            value={m.antonyms}
+                            onChange={(e) =>
+                              updateMeaning(m.id, 'antonyms', e.target.value)
+                            }
+                            placeholder={t('antonyms_placeholder', 'ví dụ: slow, sluggish')}
                             className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                           />
                         </div>

@@ -44,6 +44,7 @@ export default function WordsPage() {
   const targetLessonId = searchParams.get('lessonId');
   const targetLessonTitle = searchParams.get('lessonTitle');
   const targetSectionId = searchParams.get('sectionId');
+  const targetCollectionId = searchParams.get('collectionId');
 
   const [lessonAddedSuccess, setLessonAddedSuccess] = useState<{
     wordName: string;
@@ -129,9 +130,13 @@ export default function WordsPage() {
       search?: string;
       level?: string;
       isActive?: boolean;
+      sortBy?: string;
+      sortOrder?: 'asc' | 'desc';
     } = {
       page,
       limit: pageSize,
+      sortBy: 'createdAt',
+      sortOrder: 'desc',
     };
 
     if (debouncedSearch.trim()) {
@@ -259,6 +264,38 @@ export default function WordsPage() {
           <span>{t('create_word')}</span>
         </button>
       </div>
+
+      {/* BANNER THÔNG BÁO ĐANG TẠO TỪ CHO BÀI HỌC */}
+      {targetLessonId && !lessonAddedSuccess && (
+        <div className="p-3.5 bg-blue-50 border border-blue-200 text-blue-900 rounded-2xl flex items-center justify-between gap-3 animate-in fade-in duration-200 shadow-xs">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+              <Plus className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-blue-900 truncate">
+                Đang tạo từ mới cho bài học: <span className="underline">{targetLessonTitle || 'Bài học'}</span>
+              </p>
+              <p className="text-[11px] text-blue-700 truncate">
+                Sau khi tạo thành công, từ sẽ được thêm trực tiếp vào bài học và tự động chuyển về bài học.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              const returnQuery = new URLSearchParams({
+                lessonId: targetLessonId,
+                ...(targetCollectionId ? { collectionId: targetCollectionId } : {}),
+              });
+              router.push(`/${locale}/vocabulary/collections?${returnQuery.toString()}`);
+            }}
+            className="px-3 py-1.5 bg-white border border-blue-200 hover:bg-blue-50 text-blue-700 rounded-xl text-xs font-semibold shrink-0 cursor-pointer shadow-2xs transition-colors"
+          >
+            {t('back_to_collections', 'Quay lại bài học')}
+          </button>
+        </div>
+      )}
 
       {/* SUCCESS BANNER KHI TẠO TỪ VÀ TỰ ĐỘNG THÊM VÀO BÀI HỌC */}
       {lessonAddedSuccess && (
@@ -657,10 +694,20 @@ export default function WordsPage() {
         onOpenChange={(isOpen) => {
           setCreateOpen(isOpen);
           if (!isOpen && action === 'create') {
-            router.replace(`/${locale}/vocabulary/words`);
+            if (targetLessonId) {
+              const returnQuery = new URLSearchParams({
+                lessonId: targetLessonId,
+                ...(targetCollectionId ? { collectionId: targetCollectionId } : {}),
+              });
+              router.push(`/${locale}/vocabulary/collections?${returnQuery.toString()}`);
+            } else {
+              router.replace(`/${locale}/vocabulary/words`);
+            }
           }
         }}
         onSuccess={async (newWord) => {
+          setPage(1);
+          queryClient.invalidateQueries({ queryKey: ['words'] });
           if (targetLessonId && newWord?._id) {
             try {
               await lessonService.addWords(
@@ -669,10 +716,17 @@ export default function WordsPage() {
                 targetSectionId || undefined
               );
               queryClient.invalidateQueries({ queryKey: ['lesson-words', targetLessonId] });
-              setLessonAddedSuccess({
-                wordName: newWord.word || '',
-                lessonTitle: targetLessonTitle || '',
+              queryClient.invalidateQueries({ queryKey: ['lessons'] });
+              queryClient.invalidateQueries({ queryKey: ['target-lesson', targetLessonId] });
+
+              // TỰ ĐỘNG QUAY VỀ VÀ MỞ LẠI LESSON ĐANG QUẢN LÝ
+              const returnQuery = new URLSearchParams({
+                lessonId: targetLessonId,
+                ...(targetCollectionId ? { collectionId: targetCollectionId } : {}),
+                newWordAdded: newWord.word || '1',
               });
+              router.push(`/${locale}/vocabulary/collections?${returnQuery.toString()}`);
+              return;
             } catch (err) {
               console.error('Failed to auto-add word to lesson:', err);
             }

@@ -234,6 +234,8 @@ export interface QueryWordDto {
   partOfSpeech?: string;
   level?: string;
   isActive?: boolean;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
 }
 
 export interface CreateWordDto {
