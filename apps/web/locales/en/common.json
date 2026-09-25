@@ -1,5 +1,5 @@
 {
-  "brand": "Daily English",
+  "brand": "English Platform",
   "student": "Student",
   "logout": "Sign Out",
   "loading": "Loading...",
@@ -20,5 +20,19 @@
   "welcome_desc": "Learning a few new words every day helps you master English naturally and sustainably.",
   "explore_lessons": "Explore Lessons",
   "my_progress": "My Progress",
-  "daily_goal": "Today's Learning Goal"
+  "daily_goal": "Today's Learning Goal",
+  "portal": "Learning Portal",
+  "language": "Language",
+  "navigation": "Navigation",
+  "words": "Vocabulary",
+  "nav": {
+    "dashboard": "Home",
+    "vocabulary": "Vocabulary",
+    "collections": "Collections",
+    "words": "Words",
+    "lessons": "Lessons",
+    "my_learning": "My Learning",
+    "profile": "Profile",
+    "home": "Home"
+  }
 }

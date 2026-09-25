@@ -1,5 +1,5 @@
 {
-  "brand": "Daily English",
+  "brand": "English Platform",
   "student": "Học viên",
   "logout": "Đăng xuất",
   "loading": "Đang tải...",
@@ -20,5 +20,19 @@
   "welcome_desc": "Mỗi ngày học thêm một vài từ vựng mới sẽ giúp bạn làm chủ tiếng Anh một cách tự nhiên và bền vững.",
   "explore_lessons": "Khám phá bài học",
   "my_progress": "Tiến độ của tôi",
-  "daily_goal": "Mục tiêu học tập hôm nay"
+  "daily_goal": "Mục tiêu học tập hôm nay",
+  "portal": "Cổng học tập",
+  "language": "Ngôn ngữ",
+  "navigation": "Điều hướng",
+  "words": "Từ vựng",
+  "nav": {
+    "dashboard": "Trang chủ",
+    "vocabulary": "Từ vựng",
+    "collections": "Bộ sưu tập",
+    "words": "Từ vựng",
+    "lessons": "Bài học",
+    "my_learning": "Góc học tập",
+    "profile": "Tài khoản",
+    "home": "Trang chủ"
+  }
 }
