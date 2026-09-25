@@ -434,7 +434,7 @@ export class LessonsService {
       .find(filter)
       .populate('wordId')
       .populate('sectionId')
-      .sort({ order: 1, createdAt: 1 })
+      .sort({ createdAt: -1, _id: -1 })
       .exec();
   }
 

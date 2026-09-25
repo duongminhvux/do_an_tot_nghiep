@@ -14,5 +14,6 @@
   "WORDS_DEACTIVATED_SUCCESSFULLY": "Selected words deactivated successfully.",
   "NO_WORDS_PROVIDED": "No word IDs provided.",
   "WORD_REQUIRED": "Word is required.",
-  "LEVEL_REQUIRED": "Level is required."
+  "LEVEL_REQUIRED": "Level is required.",
+  "BULK_LOOKUP_COMPLETED": "Bulk lookup completed."
 }

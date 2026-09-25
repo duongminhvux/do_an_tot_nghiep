@@ -27,6 +27,11 @@ export class AdminWordsController {
     return this.wordsService.findAll(query);
   }
 
+  @Post('bulk-lookup')
+  bulkLookup(@Body('words') words: string[]) {
+    return this.wordsService.bulkLookup(words);
+  }
+
   @Patch('bulk-active')
   bulkToggleActive(
     @Body('ids') ids: string[],

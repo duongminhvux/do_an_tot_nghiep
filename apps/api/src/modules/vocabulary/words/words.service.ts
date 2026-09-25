@@ -65,7 +65,17 @@ export class WordsService {
 
   async findAll(query: QueryWordDto) {
     const lang = this.getLang();
-    const { search, partOfSpeech, level, isActive, isDeleted, page = 1, limit = 10 } = query;
+    const {
+      search,
+      partOfSpeech,
+      level,
+      isActive,
+      isDeleted,
+      page = 1,
+      limit = 10,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+    } = query;
     const filter: Record<string, any> = {};
 
     if (typeof isDeleted === 'boolean') {
@@ -91,12 +101,18 @@ export class WordsService {
     }
 
     const skip = (page - 1) * limit;
+    const sortDirection = sortOrder === 'asc' ? 1 : -1;
+    const sortField = sortBy || 'createdAt';
+    const sortObj: Record<string, 1 | -1> = {
+      [sortField]: sortDirection,
+      _id: sortDirection,
+    };
 
     const [data, total] = await Promise.all([
       this.wordModel
         .find(filter)
-        .select('word ipa audio parts.partOfSpeech parts.meanings.definition level isActive')
-        .sort({ createdAt: 1, _id: 1 })
+        .select('word ipa audio parts.partOfSpeech parts.meanings.definition level isActive createdAt')
+        .sort(sortObj)
         .skip(skip)
         .limit(limit)
         .exec(),
@@ -216,8 +232,13 @@ export class WordsService {
     }
 
     const nextState = typeof isActive === 'boolean' ? isActive : !word.isActive;
-    word.isActive = nextState;
-    await word.save();
+    const updatedWord = await this.wordModel
+      .findOneAndUpdate(
+        { _id: id, isDeleted: { $ne: true } },
+        { isActive: nextState },
+        { new: true },
+      )
+      .exec();
 
     const messageKey = nextState
       ? 'word.WORD_ACTIVATED_SUCCESSFULLY'
@@ -225,7 +246,7 @@ export class WordsService {
 
     return {
       message: await this.i18n.t(messageKey, { lang }),
-      data: word,
+      data: updatedWord,
     };
   }
 
@@ -249,6 +270,39 @@ export class WordsService {
     return {
       message: await this.i18n.t(messageKey, { lang }),
       modifiedCount: ids.length,
+    };
+  }
+
+  async bulkLookup(words: string[]) {
+    const lang = this.getLang();
+    if (!Array.isArray(words) || words.length === 0) {
+      throw new BadRequestException(
+        await this.i18n.t('word.NO_WORDS_PROVIDED', { lang }),
+      );
+    }
+
+    // Normalize and deduplicate input words
+    const uniqueWords = [...new Set(words.map((w) => w.trim().toLowerCase()).filter(Boolean))];
+
+    // Case-insensitive exact match for all words
+    const foundDocs = await this.wordModel
+      .find({
+        word: { $in: uniqueWords.map((w) => new RegExp(`^${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i')) },
+        isDeleted: { $ne: true },
+      })
+      .select('word ipa audio parts.partOfSpeech parts.meanings.definition parts.meanings.translation level isActive')
+      .exec();
+
+    const foundWordsLower = new Set(foundDocs.map((d) => d.word.toLowerCase()));
+    const notFound = uniqueWords.filter((w) => !foundWordsLower.has(w));
+
+    return {
+      message: await this.i18n.t('word.BULK_LOOKUP_COMPLETED', { lang }),
+      found: foundDocs,
+      notFound,
+      totalInput: uniqueWords.length,
+      totalFound: foundDocs.length,
+      totalNotFound: notFound.length,
     };
   }
 }

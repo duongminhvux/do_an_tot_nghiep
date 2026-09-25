@@ -35,4 +35,12 @@ export class QueryWordDto {
   @Min(1)
   @IsOptional()
   limit?: number = 10;
+
+  @IsString()
+  @IsOptional()
+  sortBy?: string = 'createdAt';
+
+  @IsString()
+  @IsOptional()
+  sortOrder?: 'asc' | 'desc' = 'desc';
 }

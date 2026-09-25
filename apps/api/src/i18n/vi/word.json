@@ -14,5 +14,6 @@
   "WORDS_DEACTIVATED_SUCCESSFULLY": "Hủy kích hoạt các từ vựng đã chọn thành công.",
   "NO_WORDS_PROVIDED": "Chưa chọn từ vựng nào.",
   "WORD_REQUIRED": "Vui lòng nhập từ vựng.",
-  "LEVEL_REQUIRED": "Vui lòng chọn trình độ."
+  "LEVEL_REQUIRED": "Vui lòng chọn trình độ.",
+  "BULK_LOOKUP_COMPLETED": "Tra cứu hàng loạt hoàn tất."
 }

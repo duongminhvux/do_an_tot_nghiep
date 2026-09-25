@@ -36,11 +36,11 @@ export const WordAudioSchema = SchemaFactory.createForClass(WordAudio);
  */
 @Schema({ _id: false })
 export class WordExample {
-  @Prop({ required: true })
-  en: string;
+  @Prop({ default: '' })
+  en?: string;
 
-  @Prop({ required: true })
-  vi: string;
+  @Prop({ default: '' })
+  vi?: string;
 }
 
 export const WordExampleSchema = SchemaFactory.createForClass(WordExample);
@@ -50,8 +50,8 @@ export const WordExampleSchema = SchemaFactory.createForClass(WordExample);
  */
 @Schema({ _id: false })
 export class WordMeaning {
-  @Prop({ required: true })
-  definition: string;
+  @Prop({ default: '' })
+  definition?: string;
 
   @Prop({ type: [String], default: [] })
   translation: string[];
