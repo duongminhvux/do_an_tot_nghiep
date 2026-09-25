@@ -4,11 +4,11 @@ import type { NextRequest } from 'next/server';
 const locales = ['vi', 'en'];
 const defaultLocale = 'vi';
 
-const authRoutes = ['/login', '/register', '/verify-email', '/forgot-password', '/reset-password'];
+const authRoutes = ['/login'];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const token = request.cookies.get('accessToken')?.value;
+  const token = request.cookies.get('adminAccessToken')?.value;
 
   // Check if pathname starts with a locale
   const pathnameLocale = locales.find(
@@ -21,7 +21,7 @@ export function middleware(request: NextRequest) {
       (route) => subPath === route || subPath.startsWith(`${route}/`)
     );
 
-    // If logged in, do not allow accessing (auth) pages
+    // If logged in, do not allow accessing /login
     if (token && isAuthRoute) {
       return NextResponse.redirect(new URL(`/${pathnameLocale}`, request.url));
     }
