@@ -5,18 +5,72 @@ import {
   CollectionListResponse,
   CreateCollectionDto,
   CreateLessonDto,
+  CreateVocabularyGroupDto,
   CreateWordDto,
   LessonItem,
   QueryCollectionDto,
+  QueryVocabularyGroupDto,
   QueryWordDto,
   UpdateCollectionDto,
   UpdateLessonDto,
+  UpdateVocabularyGroupDto,
   UpdateWordDto,
+  VocabularyGroupItem,
+  VocabularyGroupListResponse,
   WordDetail,
   WordItem,
   WordListItem,
   WordListResponse,
 } from './types';
+
+// ==========================
+// VOCABULARY GROUPS
+// ==========================
+export const vocabularyGroupService = {
+  getAll: async (params?: QueryVocabularyGroupDto) => {
+    const res = await apiClient.get<ApiResponse<VocabularyGroupListResponse>>('/admin/vocabulary-groups', {
+      params,
+    });
+    return res.data;
+  },
+
+  getById: async (id: string) => {
+    const res = await apiClient.get<ApiResponse<VocabularyGroupItem>>(`/admin/vocabulary-groups/${id}`);
+    return res.data;
+  },
+
+  create: async (data: CreateVocabularyGroupDto) => {
+    const res = await apiClient.post<ApiResponse<VocabularyGroupItem>>('/admin/vocabulary-groups', data);
+    return res.data;
+  },
+
+  update: async (id: string, data: UpdateVocabularyGroupDto) => {
+    const res = await apiClient.patch<ApiResponse<VocabularyGroupItem>>(`/admin/vocabulary-groups/${id}`, data);
+    return res.data;
+  },
+
+  toggleActive: async (id: string, isActive?: boolean) => {
+    const res = await apiClient.patch<ApiResponse<VocabularyGroupItem>>(`/admin/vocabulary-groups/${id}/active`, {
+      isActive,
+    });
+    return res.data;
+  },
+
+  delete: async (id: string) => {
+    const res = await apiClient.delete<ApiResponse<any>>(`/admin/vocabulary-groups/${id}`);
+    return res.data;
+  },
+
+  restore: async (id: string) => {
+    const res = await apiClient.patch<ApiResponse<any>>(`/admin/vocabulary-groups/${id}/restore`);
+    return res.data;
+  },
+
+  reorder: async (items: { id: string; order: number }[]) => {
+    const res = await apiClient.patch<ApiResponse<{ success: boolean }>>('/admin/vocabulary-groups/reorder', { items });
+    return res.data;
+  },
+};
 
 // ==========================
 // COLLECTIONS
@@ -63,6 +117,14 @@ export const collectionService = {
 
   reorder: async (items: { id: string; order: number }[]) => {
     const res = await apiClient.patch<ApiResponse<{ success: boolean }>>('/admin/collections/reorder', { items });
+    return res.data;
+  },
+
+  assignGroup: async (collectionIds: string[], groupId: string | null) => {
+    const res = await apiClient.patch<ApiResponse<{ success: boolean }>>('/admin/collections/assign-group', {
+      collectionIds,
+      groupId,
+    });
     return res.data;
   },
 };

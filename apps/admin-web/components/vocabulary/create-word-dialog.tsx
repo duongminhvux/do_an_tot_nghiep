@@ -569,7 +569,7 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
         onOpenChange(v);
       }}
     >
-      <DialogContent className="max-w-3xl md:max-w-4xl w-full max-h-[92vh] flex flex-col p-0 gap-0 rounded-2xl border border-slate-200/80 shadow-2xl bg-white overflow-hidden">
+      <DialogContent className="max-w-3xl md:max-w-4xl w-full max-h-[92vh] flex flex-col p-0 gap-0 rounded-[6px] border border-slate-200 shadow-none bg-white overflow-hidden">
         {/* TOP BAR / TITLE */}
         <div className="px-6 pt-5 pb-3 border-b border-slate-100 bg-white">
           <div className="flex items-center justify-between pb-3">
@@ -621,7 +621,7 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
 
         {/* ERROR MESSAGE ALERT (IF ANY) */}
         {errorMessage && (
-          <div className="mx-6 mt-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl font-medium flex items-center gap-2">
+          <div className="mx-6 mt-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-[6px] font-medium flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
             <span>{errorMessage}</span>
           </div>
@@ -654,7 +654,7 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
                       value={word}
                       onChange={(e) => handleWordChange(e.target.value)}
                       placeholder="e.g. abandon"
-                      className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                      className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-[6px] text-sm text-slate-900 focus:outline-hidden focus:border-blue-500 transition-all"
                     />
                   </div>
 
@@ -666,7 +666,7 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
                         <span className="text-rose-500">*</span>
                       </label>
                       <Select value={level} onValueChange={(val) => setLevel(val)}>
-                        <SelectTrigger className="w-full py-2.5 bg-white border-slate-200 rounded-xl text-sm font-semibold text-slate-800">
+                        <SelectTrigger className="w-full py-2.5 bg-white border-slate-200 rounded-[6px] text-sm font-semibold text-slate-800">
                           <SelectValue placeholder="Select level" />
                         </SelectTrigger>
                         <SelectContent>
@@ -692,7 +692,7 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
                           }`}
                         >
                           <span
-                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white transition duration-200 ease-in-out ${
                               isActive ? 'translate-x-5' : 'translate-x-0'
                             }`}
                           />
@@ -717,7 +717,7 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
                         {t('variations_label', { defaultValue: 'Biến thể của từ (Variations)' })}
                       </label>
                       {variations.trim() && (
-                        <span className="text-[11px] font-medium text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">
+                        <span className="text-[11px] font-medium text-purple-600 bg-purple-50 px-2 py-0.5 rounded-[4px]">
                           {variations.split(/[,;]+/).map((s) => s.trim()).filter(Boolean).length}{' '}
                           {t('words_label', { defaultValue: 'từ' })}
                         </span>
@@ -736,7 +736,7 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
                       placeholder={t('variations_placeholder', {
                         defaultValue: 'ví dụ: baffles, baffled, baffling...',
                       })}
-                      className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-mono"
+                      className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-[6px] text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-blue-500 transition-all font-mono"
                     />
                   </div>
 
@@ -747,7 +747,7 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
                         {t('related_words_label', { defaultValue: 'Từ liên quan (Related Words)' })}
                       </label>
                       {relatedWords.trim() && (
-                        <span className="text-[11px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                        <span className="text-[11px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-[4px]">
                           {relatedWords.split(/[,;]+/).map((s) => s.trim()).filter(Boolean).length}{' '}
                           {t('words_label', { defaultValue: 'từ' })}
                         </span>
@@ -766,7 +766,7 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
                       placeholder={t('related_words_placeholder', {
                         defaultValue: 'ví dụ: bafflement, baffling, AM...',
                       })}
-                      className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-mono"
+                      className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-[6px] text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-blue-500 transition-all font-mono"
                     />
                   </div>
                 </div>
@@ -787,10 +787,10 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                   {/* US Pronunciation Card */}
-                  <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
+                  <div className="p-4 rounded-[6px] border border-slate-200 bg-slate-50/50 space-y-3">
                     <div className="flex items-center justify-between gap-3">
                       <span className="font-bold text-slate-800 text-xs flex items-center gap-1.5 whitespace-nowrap">
-                        <span className="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 text-[10px] font-black uppercase">
+                        <span className="px-1.5 py-0.5 rounded-[4px] bg-blue-100 text-blue-700 text-[10px] font-black uppercase">
                           US
                         </span>
                         <span className="whitespace-nowrap">
@@ -802,7 +802,7 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
                         type="button"
                         disabled={isUploadingUs}
                         onClick={() => usAudioInputRef.current?.click()}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-blue-200 bg-white hover:bg-blue-50 text-blue-700 text-xs font-semibold shadow-2xs transition-colors cursor-pointer shrink-0 whitespace-nowrap disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] border border-blue-200 bg-white hover:bg-blue-50 text-blue-700 text-xs font-semibold shadow-none transition-colors cursor-pointer shrink-0 whitespace-nowrap disabled:opacity-50"
                       >
                         {isUploadingUs ? (
                           <Loader2 className="w-3.5 h-3.5 text-blue-600 animate-spin" />
@@ -834,18 +834,18 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
                         value={usIpa}
                         onChange={(e) => setUsIpa(e.target.value)}
                         placeholder="/əˈbændən/"
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-mono text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-[6px] text-sm font-mono text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                       />
                     </div>
 
                     {/* Audio Preview or URL */}
                     {usAudioUrl ? (
-                      <div className="flex items-center justify-between p-2 rounded-lg bg-white border border-blue-200 text-xs">
+                      <div className="flex items-center justify-between p-2 rounded-[6px] bg-white border border-blue-200 text-xs">
                         <div className="flex items-center gap-2 truncate pr-2">
                           <button
                             type="button"
                             onClick={() => playAudio(usAudioUrl)}
-                            className="w-7 h-7 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center shrink-0 cursor-pointer"
+                            className="w-7 h-7 rounded-[4px] bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center shrink-0 cursor-pointer"
                             title="Play Audio"
                           >
                             <Volume2 className="w-3.5 h-3.5" />
@@ -872,16 +872,16 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
                           setUsAudioName('');
                         }}
                         placeholder={t('or_paste_audio', { defaultValue: 'or paste audio URL' })}
-                        className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-600 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-[6px] text-xs text-slate-600 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                       />
                     )}
                   </div>
 
                   {/* UK Pronunciation Card */}
-                  <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
+                  <div className="p-4 rounded-[6px] border border-slate-200 bg-slate-50/50 space-y-3">
                     <div className="flex items-center justify-between gap-3">
                       <span className="font-bold text-slate-800 text-xs flex items-center gap-1.5 whitespace-nowrap">
-                        <span className="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 text-[10px] font-black uppercase">
+                        <span className="px-1.5 py-0.5 rounded-[4px] bg-blue-100 text-blue-700 text-[10px] font-black uppercase">
                           UK
                         </span>
                         <span className="whitespace-nowrap">
@@ -893,7 +893,7 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
                         type="button"
                         disabled={isUploadingUk}
                         onClick={() => ukAudioInputRef.current?.click()}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-blue-200 bg-white hover:bg-blue-50 text-blue-700 text-xs font-semibold shadow-2xs transition-colors cursor-pointer shrink-0 whitespace-nowrap disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] border border-blue-200 bg-white hover:bg-blue-50 text-blue-700 text-xs font-semibold shadow-none transition-colors cursor-pointer shrink-0 whitespace-nowrap disabled:opacity-50"
                       >
                         {isUploadingUk ? (
                           <Loader2 className="w-3.5 h-3.5 text-blue-600 animate-spin" />
@@ -925,18 +925,18 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
                         value={ukIpa}
                         onChange={(e) => setUkIpa(e.target.value)}
                         placeholder="/əˈbændən/"
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-mono text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-[6px] text-sm font-mono text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                       />
                     </div>
 
                     {/* Audio Preview or URL */}
                     {ukAudioUrl ? (
-                      <div className="flex items-center justify-between p-2 rounded-lg bg-white border border-blue-200 text-xs">
+                      <div className="flex items-center justify-between p-2 rounded-[6px] bg-white border border-blue-200 text-xs">
                         <div className="flex items-center gap-2 truncate pr-2">
                           <button
                             type="button"
                             onClick={() => playAudio(ukAudioUrl)}
-                            className="w-7 h-7 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center shrink-0 cursor-pointer"
+                            className="w-7 h-7 rounded-[4px] bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center shrink-0 cursor-pointer"
                             title="Play Audio"
                           >
                             <Volume2 className="w-3.5 h-3.5" />
@@ -963,7 +963,7 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
                           setUkAudioName('');
                         }}
                         placeholder={t('or_paste_audio', { defaultValue: 'or paste audio URL' })}
-                        className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-600 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-[6px] text-xs text-slate-600 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                       />
                     )}
                   </div>
@@ -984,7 +984,7 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
                 <button
                   type="button"
                   onClick={addMeaning}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg border border-blue-200 transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-[6px] border border-blue-200 transition-colors cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>
@@ -997,13 +997,13 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
                 {meanings.map((m, idx) => (
                   <div
                     key={m.id}
-                    className="p-4 rounded-xl border border-slate-200 bg-slate-50/40 hover:bg-slate-50/70 transition-all space-y-3.5"
+                    className="p-4 rounded-[6px] border border-slate-200 bg-slate-50/40 hover:bg-slate-50/70 transition-all space-y-3.5"
                   >
                     {/* Header: Meaning number, POS, remove meaning */}
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2.5">
                         <span
-                          className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${getIndexBadgeColor(
+                          className={`w-6 h-6 rounded-[4px] flex items-center justify-center text-xs font-bold shrink-0 ${getIndexBadgeColor(
                             idx
                           )}`}
                         >
@@ -1016,10 +1016,10 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
                               updateMeaning(m.id, 'partOfSpeech', val)
                             }
                           >
-                            <SelectTrigger className="h-8 px-2.5 py-1 text-xs font-semibold text-slate-800 rounded-lg border-slate-200 bg-white">
+                            <SelectTrigger className="h-8 px-2.5 py-1 text-xs font-semibold text-slate-800 rounded-[6px] border-slate-200 bg-white">
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="rounded-[6px]">
                               {POS_OPTIONS.map((pos) => (
                                 <SelectItem key={pos.value} value={pos.value} className="text-xs font-semibold">
                                   {pos.label}
@@ -1034,7 +1034,7 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
                         <button
                           type="button"
                           onClick={() => removeMeaning(m.id)}
-                          className="p-1.5 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer shrink-0"
+                          className="p-1.5 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-[6px] transition-colors cursor-pointer shrink-0"
                           title="Remove meaning"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -1056,7 +1056,7 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
                             updateMeaning(m.id, 'english', e.target.value)
                           }
                           placeholder="e.g. to leave completely"
-                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-[6px] text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                         />
                       </div>
 
@@ -1072,7 +1072,7 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
                             updateMeaning(m.id, 'vietnamese', e.target.value)
                           }
                           placeholder="e.g. từ bỏ, bỏ rơi"
-                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-[6px] text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                         />
                       </div>
                     </div>
@@ -1093,7 +1093,7 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
                             updateMeaning(m.id, 'synonyms', e.target.value)
                           }
                           placeholder={t('synonyms_placeholder', 'ví dụ: quick, fast, rapid')}
-                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-[6px] text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                         />
                       </div>
 
@@ -1111,7 +1111,7 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
                             updateMeaning(m.id, 'antonyms', e.target.value)
                           }
                           placeholder={t('antonyms_placeholder', 'ví dụ: slow, sluggish')}
-                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-[6px] text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                         />
                       </div>
                     </div>
@@ -1130,7 +1130,7 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
                         <button
                           type="button"
                           onClick={() => addExample(m.id)}
-                          className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 bg-white hover:bg-blue-50 px-2.5 py-1 rounded-md border border-blue-200 transition-colors cursor-pointer inline-flex items-center gap-1"
+                          className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 bg-white hover:bg-blue-50 px-2.5 py-1 rounded-[6px] border border-blue-200 transition-colors cursor-pointer inline-flex items-center gap-1"
                         >
                           <Plus className="w-3 h-3" />
                           <span>{t('btn_add_example', { defaultValue: 'Add Example' })}</span>
@@ -1142,9 +1142,9 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
                           {m.examples.map((ex, exIdx) => (
                             <div
                               key={ex.id}
-                              className="flex items-center gap-2 p-2.5 rounded-lg bg-white border border-slate-200/80 shadow-2xs"
+                              className="flex items-center gap-2 p-2.5 rounded-[6px] bg-white border border-slate-200 shadow-none"
                             >
-                              <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold flex items-center justify-center shrink-0">
+                              <span className="w-5 h-5 rounded-[4px] bg-slate-100 text-slate-600 text-[10px] font-bold flex items-center justify-center shrink-0">
                                 {exIdx + 1}
                               </span>
 
@@ -1156,7 +1156,7 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
                                     updateExample(m.id, ex.id, 'sentence', e.target.value)
                                   }
                                   placeholder={t('col_sentence', { defaultValue: 'English sentence' })}
-                                  className="w-full px-2.5 py-1.5 bg-slate-50/50 hover:bg-white border border-slate-200 rounded-md text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                  className="w-full px-2.5 py-1.5 bg-slate-50/50 hover:bg-white border border-slate-200 rounded-[6px] text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                                 />
                               </div>
 
@@ -1168,14 +1168,14 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
                                     updateExample(m.id, ex.id, 'translation', e.target.value)
                                   }
                                   placeholder={t('col_translation', { defaultValue: 'Vietnamese translation' })}
-                                  className="w-full px-2.5 py-1.5 bg-slate-50/50 hover:bg-white border border-slate-200 rounded-md text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                  className="w-full px-2.5 py-1.5 bg-slate-50/50 hover:bg-white border border-slate-200 rounded-[6px] text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                                 />
                               </div>
 
                               <button
                                 type="button"
                                 onClick={() => removeExample(m.id, ex.id)}
-                                className="p-1 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer shrink-0"
+                                className="p-1 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-[6px] transition-colors cursor-pointer shrink-0"
                                 title="Remove example"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -1220,12 +1220,12 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
 
                 {imageUrl ? (
                   /* IMAGE PREVIEW CARD */
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4 flex flex-col items-center gap-3">
-                    <div className="relative group max-h-64 flex items-center justify-center bg-white rounded-xl border border-slate-200 p-2 overflow-hidden shadow-xs">
+                  <div className="rounded-[6px] border border-slate-200 bg-slate-50/50 p-4 flex flex-col items-center gap-3">
+                    <div className="relative group max-h-64 flex items-center justify-center bg-white rounded-[6px] border border-slate-200 p-2 overflow-hidden shadow-none">
                       <img
                         src={imageUrl}
                         alt={word || 'Preview'}
-                        className="max-h-56 max-w-full rounded-lg object-contain"
+                        className="max-h-56 max-w-full rounded-[4px] object-contain"
                         onError={(e) => {
                           (e.target as HTMLImageElement).src =
                             'https://placehold.co/400x300?text=Invalid+Image+URL';
@@ -1238,7 +1238,7 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
                         type="button"
                         disabled={isUploadingImage}
                         onClick={() => imageInputRef.current?.click()}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 shadow-2xs transition-colors cursor-pointer disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 rounded-[6px] text-xs font-semibold text-slate-700 shadow-none transition-colors cursor-pointer disabled:opacity-50"
                       >
                         {isUploadingImage ? (
                           <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
@@ -1251,7 +1251,7 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
                       <button
                         type="button"
                         onClick={handleRemoveImage}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl text-xs font-semibold text-rose-700 transition-colors cursor-pointer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-[6px] text-xs font-semibold text-rose-700 transition-colors cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5 text-rose-600" />
                         <span>{t('remove_image', { defaultValue: 'Remove image' })}</span>
@@ -1267,7 +1267,7 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
                           setImageName('');
                         }}
                         placeholder="Image URL"
-                        className="w-full max-w-md px-3 py-1 text-xs bg-white border border-slate-200 rounded-lg text-slate-600 font-mono text-center"
+                        className="w-full max-w-md px-3 py-1 text-xs bg-white border border-slate-200 rounded-[6px] text-slate-600 font-mono text-center"
                       />
                     </div>
                   </div>
@@ -1275,9 +1275,9 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
                   /* DROPZONE / FILE SELECTOR */
                   <div
                     onClick={() => !isUploadingImage && imageInputRef.current?.click()}
-                    className="border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-2xl p-8 text-center flex flex-col items-center justify-center gap-2 bg-slate-50/40 hover:bg-blue-50/20 transition-all cursor-pointer"
+                    className="border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-[6px] p-8 text-center flex flex-col items-center justify-center gap-2 bg-slate-50/40 hover:bg-blue-50/20 transition-all cursor-pointer"
                   >
-                    <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-[6px] bg-blue-50 text-blue-600 flex items-center justify-center">
                       {isUploadingImage ? (
                         <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
                       ) : (
@@ -1303,7 +1303,7 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
                         setImageName('');
                       }}
                       placeholder="or paste image URL directly"
-                      className="w-full max-w-sm mt-3 px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl text-slate-700 text-center"
+                      className="w-full max-w-sm mt-3 px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-[6px] text-slate-700 text-center"
                     />
                   </div>
                 )}
@@ -1320,7 +1320,7 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
               resetForm(true);
               onOpenChange(false);
             }}
-            className="px-4 py-2 border border-slate-200 hover:bg-white rounded-xl text-sm font-semibold text-slate-600 transition-colors cursor-pointer"
+            className="px-4 py-2 border border-slate-200 hover:bg-white rounded-[6px] text-sm font-semibold text-slate-600 transition-colors cursor-pointer"
           >
             {t('cancel', { defaultValue: 'Cancel' })}
           </button>
@@ -1335,7 +1335,7 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
                   if (activeTab === 'media') setActiveTab('meanings');
                   else if (activeTab === 'meanings') setActiveTab('general');
                 }}
-                className="px-4 py-2 border border-slate-200 bg-white hover:bg-slate-100 rounded-xl text-sm font-semibold text-slate-700 inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                className="px-4 py-2 border border-slate-200 bg-white hover:bg-slate-100 rounded-[6px] text-sm font-semibold text-slate-700 inline-flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span>{t('btn_back', { defaultValue: 'Back' })}</span>
@@ -1347,7 +1347,7 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
               <button
                 type="button"
                 onClick={handleNextFromGeneral}
-                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold inline-flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-[6px] text-sm font-semibold inline-flex items-center gap-1.5 shadow-none transition-all cursor-pointer"
               >
                 <span>{t('btn_next', { defaultValue: 'Next' })}</span>
                 <ArrowRight className="w-4 h-4" />
@@ -1359,7 +1359,7 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
               <button
                 type="button"
                 onClick={handleNextFromMeanings}
-                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold inline-flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-[6px] text-sm font-semibold inline-flex items-center gap-1.5 shadow-none transition-all cursor-pointer"
               >
                 <span>{t('btn_next', { defaultValue: 'Next' })}</span>
                 <ArrowRight className="w-4 h-4" />
@@ -1372,7 +1372,7 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: CreateWordDi
                 type="button"
                 onClick={handleSubmit}
                 disabled={createMutation.isPending || isUploadingImage || isUploadingUs || isUploadingUk}
-                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 text-white rounded-xl text-sm font-semibold inline-flex items-center gap-2 shadow-sm transition-all cursor-pointer"
+                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 text-white rounded-[6px] text-sm font-semibold inline-flex items-center gap-2 shadow-none transition-all cursor-pointer"
               >
                 {createMutation.isPending && (
                   <Loader2 className="w-4 h-4 animate-spin" />

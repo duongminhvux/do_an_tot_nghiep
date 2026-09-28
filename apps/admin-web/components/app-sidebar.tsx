@@ -10,6 +10,7 @@ import {
   FolderKanban,
   BookOpen,
   FileText,
+  Layers,
   Users,
   LogOut,
   Globe,
@@ -65,6 +66,9 @@ export function AppSidebar() {
 
   const isDashboardActive = pathname === `/${locale}`;
   const isVocabActive = pathname?.includes(`/${locale}/vocabulary`);
+  const isGroupsActive =
+    pathname === `/${locale}/vocabulary/groups` ||
+    pathname?.startsWith(`/${locale}/vocabulary/groups/`);
   const isCollectionsActive =
     pathname === `/${locale}/vocabulary/collections` ||
     pathname?.startsWith(`/${locale}/vocabulary/collections/`);
@@ -165,6 +169,26 @@ export function AppSidebar() {
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <SidebarMenuSub className="pl-4 ml-3.5 border-l border-slate-200 space-y-1 mt-1">
+                      {/* Sub-item: Groups */}
+                      <SidebarMenuSubItem>
+                        <SidebarMenuSubButton
+                          asChild
+                          isActive={isGroupsActive}
+                          className={cn(
+                            'h-8 px-2 rounded-md text-xs font-medium transition-all text-slate-600 hover:text-blue-600 hover:bg-blue-50',
+                            isGroupsActive && 'bg-blue-50 text-blue-600 font-semibold'
+                          )}
+                        >
+                          <Link
+                            href={`/${locale}/vocabulary/groups`}
+                            className="flex items-center gap-2"
+                          >
+                            <Layers className="h-3.5 w-3.5 shrink-0" />
+                            <span>{t('nav.groups', locale === 'en' ? 'Groups' : 'Nhóm từ vựng')}</span>
+                          </Link>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+
                       {/* Sub-item: Collections */}
                       <SidebarMenuSubItem>
                         <SidebarMenuSubButton

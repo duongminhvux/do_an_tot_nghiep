@@ -97,14 +97,14 @@ export function WordsTable({
       colorClass = 'bg-purple-50 text-purple-700 border-purple-200';
     }
     return (
-      <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${colorClass} shrink-0`}>
+      <span className={`px-2 py-0.5 rounded-[4px] text-[10px] font-bold border ${colorClass} shrink-0`}>
         {level}
       </span>
     );
   };
 
   return (
-    <div className="lg:col-span-9 flex flex-col overflow-hidden border border-slate-200 rounded-2xl bg-white shadow-xs">
+    <div className="lg:col-span-9 flex flex-col overflow-hidden border border-slate-200 rounded-[6px] bg-white shadow-none">
       {/* Header bảng hoặc Thanh Bulk Action */}
       <div className="p-3 border-b border-slate-100 flex items-center justify-between gap-3 bg-slate-50/50 shrink-0">
         {selectedWordIds.length > 0 ? (
@@ -114,7 +114,7 @@ export function WordsTable({
               <button
                 type="button"
                 onClick={() => setSelectedWordIds([])}
-                className="px-2.5 py-1 bg-blue-600 text-white rounded-lg text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
+                className="px-2.5 py-1 bg-blue-600 text-white rounded-[6px] text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
               >
                 <Check className="w-3 h-3" />
                 <span>{t('selected_words_count', { count: selectedWordIds.length })}</span>
@@ -137,10 +137,10 @@ export function WordsTable({
                 }}
                 disabled={isBulkMoving}
               >
-                <SelectTrigger className="h-8 w-auto min-w-[130px] rounded-lg text-xs font-semibold border-purple-200 bg-white text-purple-700">
+                <SelectTrigger className="h-8 w-auto min-w-[130px] rounded-[6px] text-xs font-semibold border-purple-200 bg-white text-purple-700">
                   <SelectValue placeholder={t('btn_assign_to_group', 'Đưa vào nhóm')} />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-[6px]">
                   {sections.map((s) => (
                     <SelectItem key={s._id} value={s._id}>
                       {s.name}
@@ -154,7 +154,7 @@ export function WordsTable({
                 type="button"
                 onClick={() => onBulkMove(null)}
                 disabled={isBulkMoving}
-                className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer transition-colors"
+                className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-[6px] text-xs font-semibold cursor-pointer transition-colors"
               >
                 {t('btn_remove_from_group', 'Xóa khỏi nhóm')}
               </button>
@@ -163,7 +163,7 @@ export function WordsTable({
               <button
                 type="button"
                 onClick={() => onBulkDeleteRequest(selectedWordIds.length)}
-                className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-semibold inline-flex items-center gap-1 cursor-pointer transition-colors"
+                className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-[6px] text-xs font-semibold inline-flex items-center gap-1 cursor-pointer transition-colors"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>{t('delete', 'Xóa')}</span>
@@ -181,7 +181,7 @@ export function WordsTable({
                   : `${sections.find((s) => s._id === filterSection)?.name || t('th_group', 'Nhóm')} (${filteredWords.length})`}
             </span>
 
-            <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-purple-50 text-purple-700 border border-purple-100">
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-[4px] bg-purple-50 text-purple-700 border border-purple-100">
               <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
               <span>{t('unassigned_count_badge', { count: unassignedWordsCount })}</span>
             </span>
@@ -199,7 +199,7 @@ export function WordsTable({
         ) : lessonWords.length === 0 ? (
           /* Empty state */
           <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center mb-3.5 shadow-xs">
+            <div className="w-14 h-14 rounded-[6px] bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center mb-3.5 shadow-none">
               <BookOpen className="w-7 h-7" />
             </div>
             <h4 className="font-bold text-base text-slate-900 mb-1">
@@ -211,7 +211,7 @@ export function WordsTable({
             <button
               type="button"
               onClick={onOpenAddWordModal}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-[6px] text-xs font-semibold inline-flex items-center gap-1.5 shadow-none transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>{t('add_words_btn', 'Thêm từ vựng')}</span>
@@ -250,7 +250,7 @@ export function WordsTable({
                         )
                       }
                       onChange={handleSelectAllTable}
-                      className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
+                      className="w-4 h-4 rounded-[3px] text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
                       title={t('select_all', 'Chọn tất cả')}
                     />
                   </th>
@@ -285,7 +285,7 @@ export function WordsTable({
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => handleToggleSelectRow(wordId)}
-                          className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
+                          className="w-4 h-4 rounded-[3px] text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
                         />
                       </td>
 
@@ -316,7 +316,7 @@ export function WordsTable({
                           <button
                             type="button"
                             onClick={() => onEditWordSection({ wordId, currentSecId: secId, word: w.word })}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium border bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 transition-colors cursor-pointer"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-[4px] text-[11px] font-medium border bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 transition-colors cursor-pointer"
                             title={t('change_group_title', 'Nhấn để đổi nhóm')}
                           >
                             <span>{sectionObj.name}</span>
@@ -325,7 +325,7 @@ export function WordsTable({
                           <button
                             type="button"
                             onClick={() => onEditWordSection({ wordId, currentSecId: null, word: w.word })}
-                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-500 border border-slate-200 cursor-pointer"
+                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-[4px] text-[11px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-500 border border-slate-200 cursor-pointer"
                             title={t('assign_group', 'Nhấn để gán nhóm')}
                           >
                             {t('unassigned_label', 'Chưa phân nhóm')}
@@ -339,7 +339,7 @@ export function WordsTable({
                             <button
                               type="button"
                               onClick={() => handlePlayAudio(audioUrl)}
-                              className="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer"
+                              className="p-1.5 text-slate-400 hover:text-blue-600 rounded-[6px] hover:bg-blue-50 transition-colors cursor-pointer"
                               title={t('play_us', 'Phát âm')}
                             >
                               <Volume2 className="w-3.5 h-3.5" />
@@ -351,7 +351,7 @@ export function WordsTable({
                             onClick={() =>
                               onSingleDeleteRequest(wordId, w.word || 'từ vựng')
                             }
-                            className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                            className="p-1.5 text-slate-400 hover:text-rose-600 rounded-[6px] hover:bg-rose-50 transition-colors cursor-pointer"
                             title={t('remove_from_lesson_tooltip', 'Xóa khỏi bài học')}
                           >
                             <Trash2 className="w-3.5 h-3.5" />

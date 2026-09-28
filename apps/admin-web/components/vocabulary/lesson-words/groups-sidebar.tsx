@@ -43,7 +43,7 @@ export function GroupsSidebar({
   };
 
   return (
-    <div className="lg:col-span-3 flex flex-col justify-between p-4 bg-white border border-slate-200 rounded-2xl shadow-xs overflow-y-auto">
+    <div className="lg:col-span-3 flex flex-col justify-between p-4 bg-white border border-slate-200 rounded-[6px] shadow-none overflow-y-auto">
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div>
@@ -58,7 +58,7 @@ export function GroupsSidebar({
             <button
               type="button"
               onClick={onOpenCreateGroupModal}
-              className="p-1.5 rounded-lg border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 transition-colors cursor-pointer shrink-0"
+              className="p-1.5 rounded-[6px] border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 transition-colors cursor-pointer shrink-0"
               title={t('btn_create_group', 'Tạo nhóm mới')}
             >
               <Plus className="w-3.5 h-3.5" />
@@ -71,9 +71,9 @@ export function GroupsSidebar({
           <button
             type="button"
             onClick={() => setFilterSection('all')}
-            className={`w-full p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
+            className={`w-full p-2.5 rounded-[6px] border text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
               filterSection === 'all'
-                ? 'border-blue-300 bg-blue-50 text-blue-700 shadow-xs'
+                ? 'border-blue-300 bg-blue-50 text-blue-700 shadow-none'
                 : 'border-slate-100 hover:border-slate-200 bg-slate-50/50 text-slate-700'
             }`}
           >
@@ -92,13 +92,13 @@ export function GroupsSidebar({
 
             if (isInlineEditing) {
               return (
-                <div key={sec._id} className="p-2 rounded-xl border border-purple-300 bg-purple-50/50 space-y-2">
+                <div key={sec._id} className="p-2 rounded-[6px] border border-purple-300 bg-purple-50/50 space-y-2">
                   <input
                     type="text"
                     autoFocus
                     value={editingSectionName}
                     onChange={(e) => setEditingSectionName(e.target.value)}
-                    className="w-full px-2.5 py-1 text-xs rounded-lg border border-purple-200 bg-white"
+                    className="w-full px-2.5 py-1 text-xs rounded-[6px] border border-purple-200 bg-white"
                   />
                   <div className="flex justify-end gap-1">
                     <button
@@ -111,7 +111,7 @@ export function GroupsSidebar({
                     <button
                       type="button"
                       onClick={() => handleSaveEdit(sec._id)}
-                      className="px-2.5 py-0.5 text-[11px] bg-purple-600 text-white rounded-md font-semibold"
+                      className="px-2.5 py-0.5 text-[11px] bg-purple-600 text-white rounded-[6px] font-semibold"
                     >
                       {t('save', 'Lưu')}
                     </button>
@@ -123,9 +123,9 @@ export function GroupsSidebar({
             return (
               <div
                 key={sec._id}
-                className={`group w-full p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-between transition-all ${
+                className={`group w-full p-2.5 rounded-[6px] border text-xs font-semibold flex items-center justify-between transition-all ${
                   isActive
-                    ? 'border-purple-300 bg-purple-50 text-purple-700 shadow-xs'
+                    ? 'border-purple-300 bg-purple-50 text-purple-700 shadow-none'
                     : 'border-slate-100 hover:border-slate-200 bg-slate-50/50 text-slate-700'
                 }`}
               >
@@ -147,7 +147,7 @@ export function GroupsSidebar({
                       e.stopPropagation();
                       handleStartEdit(sec);
                     }}
-                    className="p-1 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-200/60 transition-colors cursor-pointer"
+                    className="p-1 text-slate-400 hover:text-slate-600 rounded-[4px] hover:bg-slate-200/60 transition-colors cursor-pointer"
                     title={t('edit_group', 'Đổi tên')}
                   >
                     <Pencil className="w-3 h-3" />
@@ -158,7 +158,7 @@ export function GroupsSidebar({
                       e.stopPropagation();
                       onDeleteSectionRequest(sec._id, sec.name);
                     }}
-                    className="p-1 text-slate-400 hover:text-rose-600 rounded-md hover:bg-rose-50 transition-colors cursor-pointer"
+                    className="p-1 text-slate-400 hover:text-rose-600 rounded-[4px] hover:bg-rose-50 transition-colors cursor-pointer"
                     title={t('delete_group', 'Xóa nhóm')}
                   >
                     <Trash2 className="w-3 h-3" />
@@ -175,7 +175,7 @@ export function GroupsSidebar({
         <button
           type="button"
           onClick={onOpenCreateGroupModal}
-          className="mt-4 w-full py-2.5 rounded-xl border border-dashed border-purple-300 hover:border-purple-400 bg-purple-50/60 hover:bg-purple-100 active:bg-purple-200 text-purple-700 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer shrink-0 shadow-2xs"
+          className="mt-4 w-full py-2.5 rounded-[6px] border border-dashed border-purple-300 hover:border-purple-400 bg-purple-50/60 hover:bg-purple-100 active:bg-purple-200 text-purple-700 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer shrink-0 shadow-none"
         >
           <Plus className="w-3.5 h-3.5" />
           <span>{t('btn_create_group', 'Tạo nhóm mới')}</span>

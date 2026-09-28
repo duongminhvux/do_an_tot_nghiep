@@ -58,9 +58,9 @@ export function DeleteCollectionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md w-full p-6 rounded-2xl border border-slate-200 shadow-2xl bg-white space-y-4">
+      <DialogContent className="max-w-md w-full p-6 rounded-[6px] border border-slate-200 shadow-none bg-white space-y-4">
         <div className="flex items-start gap-4">
-          <div className="w-11 h-11 rounded-2xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center shrink-0">
+          <div className="w-11 h-11 rounded-[6px] bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center shrink-0">
             <Trash2 className="w-5 h-5" />
           </div>
 
@@ -78,7 +78,7 @@ export function DeleteCollectionDialog({
         </div>
 
         {errorMessage && (
-          <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-center gap-2 font-medium">
+          <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-[6px] flex items-center gap-2 font-medium">
             <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
             <span>{errorMessage}</span>
           </div>
@@ -89,7 +89,7 @@ export function DeleteCollectionDialog({
             type="button"
             onClick={() => onOpenChange(false)}
             disabled={deleteMutation.isPending}
-            className="px-4 py-2 border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-600 transition-colors cursor-pointer"
+            className="px-4 py-2 border border-slate-200 hover:bg-slate-50 rounded-[6px] text-xs font-semibold text-slate-600 transition-colors cursor-pointer"
           >
             {t('cancel', { defaultValue: 'Cancel' })}
           </button>
@@ -98,7 +98,7 @@ export function DeleteCollectionDialog({
             type="button"
             onClick={handleConfirmDelete}
             disabled={deleteMutation.isPending}
-            className="px-4 py-2 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 disabled:opacity-50 text-white rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+            className="px-4 py-2 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 disabled:opacity-50 text-white rounded-[6px] text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             {deleteMutation.isPending && (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />

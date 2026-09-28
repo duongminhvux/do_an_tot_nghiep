@@ -34,7 +34,7 @@ export function ImportSummaryBanner({
   };
 
   return (
-    <div className="p-4 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-3 animate-in fade-in duration-150 shrink-0">
+    <div className="p-4 bg-white border border-slate-200 rounded-[6px] shadow-none space-y-3 animate-in fade-in duration-150 shrink-0">
       <div className="flex items-center justify-between pb-2 border-b border-slate-100">
         <div className="flex items-center gap-2">
           <FileSpreadsheet className="w-4 h-4 text-blue-600" />
@@ -48,7 +48,7 @@ export function ImportSummaryBanner({
         <button
           type="button"
           onClick={onClose}
-          className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 cursor-pointer"
+          className="text-slate-400 hover:text-slate-600 p-1 rounded-[6px] hover:bg-slate-100 cursor-pointer"
         >
           <X className="w-4 h-4" />
         </button>
@@ -56,7 +56,7 @@ export function ImportSummaryBanner({
 
       {/* Success section if words were added */}
       {result.addedCount > 0 && (
-        <div className="flex items-center gap-2 p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-semibold">
+        <div className="flex items-center gap-2 p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-[6px] text-xs font-semibold">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
           <div className="flex-1">
             <span>
@@ -81,7 +81,7 @@ export function ImportSummaryBanner({
 
       {/* Warning section if words were NOT found in database */}
       {result.notFoundWords.length > 0 && (
-        <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-xl text-xs space-y-2">
+        <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-[6px] text-xs space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5 text-amber-900 font-semibold">
               <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
@@ -95,7 +95,7 @@ export function ImportSummaryBanner({
             <button
               type="button"
               onClick={handleCopy}
-              className="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-amber-100/60 border border-amber-300 text-amber-800 font-semibold rounded-lg text-[11px] transition-colors cursor-pointer shadow-2xs"
+              className="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-amber-100/60 border border-amber-300 text-amber-800 font-semibold rounded-[6px] text-[11px] transition-colors cursor-pointer shadow-none"
             >
               {isCopied ? (
                 <>
@@ -116,7 +116,7 @@ export function ImportSummaryBanner({
             {result.notFoundWords.map((word) => (
               <span
                 key={word}
-                className="px-2 py-0.5 bg-white border border-amber-300/80 text-amber-800 font-medium rounded-md text-[11px] font-mono shadow-2xs"
+                className="px-2 py-0.5 bg-white border border-amber-300/80 text-amber-800 font-medium rounded-[4px] text-[11px] font-mono shadow-none"
               >
                 {word}
               </span>

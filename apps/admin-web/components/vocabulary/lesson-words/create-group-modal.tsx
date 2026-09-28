@@ -31,7 +31,7 @@ export function CreateGroupModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl p-5 max-w-sm w-full space-y-4">
+      <div className="bg-white rounded-[6px] border border-slate-200 shadow-none p-5 max-w-sm w-full space-y-4">
         <div className="flex items-center justify-between pb-2 border-b border-slate-100">
           <h4 className="font-bold text-sm text-slate-900">
             {t('create_group_modal_title', 'Tạo nhóm từ vựng')}
@@ -57,7 +57,7 @@ export function CreateGroupModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Part 1"
-              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
+              className="w-full px-3 py-2 text-xs rounded-[6px] border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
             />
           </div>
 
@@ -65,14 +65,14 @@ export function CreateGroupModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-3.5 py-1.5 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
+              className="px-3.5 py-1.5 border border-slate-200 rounded-[6px] text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
             >
               {t('cancel', 'Hủy')}
             </button>
             <button
               type="submit"
               disabled={!name.trim() || isSubmitting}
-              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 text-white rounded-xl text-xs font-semibold inline-flex items-center gap-1 shadow-sm cursor-pointer"
+              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 text-white rounded-[6px] text-xs font-semibold inline-flex items-center gap-1 shadow-none cursor-pointer"
             >
               {isSubmitting ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />

@@ -27,7 +27,7 @@ export function ChangeGroupModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl p-5 max-w-xs w-full space-y-3.5">
+      <div className="bg-white rounded-[6px] border border-slate-200 shadow-none p-5 max-w-xs w-full space-y-3.5">
         <div className="flex items-center justify-between pb-2 border-b border-slate-100">
           <h4 className="font-bold text-sm text-slate-900 truncate">
             {t('change_group_for_word', { word: editingWordItem.word })}
@@ -46,7 +46,7 @@ export function ChangeGroupModal({
             type="button"
             disabled={isPending}
             onClick={() => onSelectSection(editingWordItem.wordId, null)}
-            className={`w-full p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer ${
+            className={`w-full p-2.5 rounded-[6px] border text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer ${
               !editingWordItem.currentSecId
                 ? 'border-amber-300 bg-amber-50 text-amber-800'
                 : 'border-slate-100 bg-slate-50 hover:bg-slate-100 text-slate-700'
@@ -65,7 +65,7 @@ export function ChangeGroupModal({
                 type="button"
                 disabled={isPending}
                 onClick={() => onSelectSection(editingWordItem.wordId, s._id)}
-                className={`w-full p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer ${
+                className={`w-full p-2.5 rounded-[6px] border text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer ${
                   isCur
                     ? 'border-purple-300 bg-purple-50 text-purple-700'
                     : 'border-slate-100 bg-slate-50 hover:bg-slate-100 text-slate-700'
@@ -85,7 +85,7 @@ export function ChangeGroupModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-3.5 py-1.5 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
+            className="px-3.5 py-1.5 border border-slate-200 rounded-[6px] text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
           >
             {t('close', 'Đóng')}
           </button>

@@ -324,7 +324,7 @@ export function LessonWordsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl w-full p-5 sm:p-8 rounded-2xl border border-slate-200 shadow-2xl bg-white max-h-[92vh] flex flex-col">
+      <DialogContent className="max-w-6xl w-full p-5 sm:p-8 rounded-[6px] border border-slate-200 shadow-none bg-white max-h-[92vh] flex flex-col">
         {/* ======================================================== */}
         {/* 1. HEADER */}
         {/* ======================================================== */}
@@ -332,13 +332,13 @@ export function LessonWordsDialog({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             {/* Title & Stats */}
             <div className="flex items-start gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0 mt-0.5">
+              <div className="w-10 h-10 rounded-[6px] bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0 mt-0.5">
                 <BookOpen className="w-5 h-5" />
               </div>
               <div className="min-w-0">
                 <DialogTitle className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2 flex-wrap">
                   <span className="truncate">{lesson?.title || 'Unit 2 - Thinking learning'}</span>
-                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-100">
+                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-[4px] bg-purple-50 text-purple-700 border border-purple-100">
                     {lessonWords.length} {t('words_label', 'từ')}
                   </span>
                 </DialogTitle>
@@ -353,7 +353,7 @@ export function LessonWordsDialog({
               <button
                 type="button"
                 onClick={() => setIsAddWordModalOpen(true)}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl text-xs sm:text-sm font-semibold inline-flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-[6px] text-xs sm:text-sm font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 <span>{t('add_words_btn', 'Thêm từ vựng')}</span>
@@ -364,7 +364,7 @@ export function LessonWordsDialog({
 
         {/* Global Error Alert */}
         {errorMessage && (
-          <div className="mt-2 p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-center justify-between gap-2 font-medium shrink-0">
+          <div className="mt-2 p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-[6px] flex items-center justify-between gap-2 font-medium shrink-0">
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
               <span>{errorMessage}</span>
@@ -381,7 +381,7 @@ export function LessonWordsDialog({
 
         {/* THÔNG BÁO TẠO TỪ MỚI VÀ ĐÃ THÊM VÀO BÀI HỌC THÀNH CÔNG */}
         {newWordAdded && (
-          <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-semibold flex items-center justify-between animate-in fade-in duration-150">
+          <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-[6px] text-xs font-semibold flex items-center justify-between animate-in fade-in duration-150">
             <div className="flex items-center gap-2">
               <Check className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>
@@ -434,7 +434,7 @@ export function LessonWordsDialog({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t('search_lesson_words_placeholder', 'Tìm từ vựng hoặc nghĩa...')}
-              className="w-full pl-9 pr-8 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400"
+              className="w-full pl-9 pr-8 py-2 text-xs rounded-[6px] border border-slate-200 bg-white focus:outline-none focus:border-blue-500 transition-all placeholder:text-slate-400"
             />
             {searchQuery && (
               <button
@@ -450,7 +450,7 @@ export function LessonWordsDialog({
           {/* Lọc Trình độ (CEFR) & Nút Tạo nhóm */}
           <div className="flex items-center gap-2 flex-wrap">
             <Select value={filterLevel} onValueChange={setFilterLevel}>
-              <SelectTrigger className="h-9 w-auto min-w-[130px] rounded-xl text-xs font-medium border-slate-200 bg-white text-slate-700">
+              <SelectTrigger className="h-9 w-auto min-w-[130px] rounded-[6px] text-xs font-medium border-slate-200 bg-white text-slate-700">
                 <SelectValue placeholder={t('filter_level', 'Trình độ: Tất cả')} />
               </SelectTrigger>
               <SelectContent>

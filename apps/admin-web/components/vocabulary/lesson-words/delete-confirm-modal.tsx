@@ -26,9 +26,9 @@ export function DeleteConfirmModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl p-5 max-w-sm w-full space-y-4">
+      <div className="bg-white rounded-[6px] border border-slate-200 shadow-none p-5 max-w-sm w-full space-y-4">
         <div className="flex items-start gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center shrink-0 mt-0.5">
+          <div className="w-10 h-10 rounded-[6px] bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center shrink-0 mt-0.5">
             <Trash2 className="w-5 h-5" />
           </div>
           <div className="flex-1 min-w-0">
@@ -63,7 +63,7 @@ export function DeleteConfirmModal({
             type="button"
             onClick={onClose}
             disabled={isPending}
-            className="px-3.5 py-1.5 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
+            className="px-3.5 py-1.5 border border-slate-200 rounded-[6px] text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
           >
             {t('cancel', 'Hủy')}
           </button>
@@ -71,7 +71,7 @@ export function DeleteConfirmModal({
             type="button"
             onClick={() => onConfirm(state)}
             disabled={isPending}
-            className="px-4 py-1.5 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 disabled:opacity-50 text-white rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 shadow-sm cursor-pointer"
+            className="px-4 py-1.5 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 disabled:opacity-50 text-white rounded-[6px] text-xs font-semibold inline-flex items-center gap-1.5 shadow-none cursor-pointer"
           >
             {isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
             <span>{t('btn_confirm_delete', 'Xác nhận xóa')}</span>

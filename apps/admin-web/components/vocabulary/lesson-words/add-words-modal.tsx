@@ -242,7 +242,7 @@ export function AddWordsModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-150">
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl p-5 sm:p-6 max-w-3xl w-full space-y-4 max-h-[88vh] flex flex-col">
+      <div className="bg-white rounded-[6px] border border-slate-200 shadow-none p-5 sm:p-6 max-w-3xl w-full space-y-4 max-h-[88vh] flex flex-col">
         {/* Modal Header */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
           <div>
@@ -261,7 +261,7 @@ export function AddWordsModal({
                 type="button"
                 onClick={() => onNavigateToCreateWord(targetDictSectionId || undefined)}
                 title={t('create_new_word_in_bank_hint', 'Chuyển sang trang tạo từ vựng mới rồi tự động thêm vào bài học')}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200/60 rounded-xl transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-[6px] transition-colors cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>{t('create_new_word_in_bank', 'Tạo từ mới')}</span>
@@ -271,7 +271,7 @@ export function AddWordsModal({
             <button
               type="button"
               onClick={handleClose}
-              className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 cursor-pointer"
+              className="text-slate-400 hover:text-slate-600 p-1.5 rounded-[6px] hover:bg-slate-100 cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -279,13 +279,13 @@ export function AddWordsModal({
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex gap-1 bg-slate-100 p-1 rounded-xl shrink-0">
+        <div className="flex gap-1 bg-slate-100 p-1 rounded-[6px] shrink-0">
           <button
             type="button"
             onClick={() => setAddWordTab('search')}
-            className={`flex-1 px-3 py-2 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+            className={`flex-1 px-3 py-2 text-xs font-semibold rounded-[6px] flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
               addWordTab === 'search'
-                ? 'bg-white text-slate-900 shadow-xs'
+                ? 'bg-white text-slate-900 shadow-none'
                 : 'text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -295,9 +295,9 @@ export function AddWordsModal({
           <button
             type="button"
             onClick={() => setAddWordTab('import')}
-            className={`flex-1 px-3 py-2 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+            className={`flex-1 px-3 py-2 text-xs font-semibold rounded-[6px] flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
               addWordTab === 'import'
-                ? 'bg-white text-slate-900 shadow-xs'
+                ? 'bg-white text-slate-900 shadow-none'
                 : 'text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -310,7 +310,7 @@ export function AddWordsModal({
         {addWordTab === 'search' && (
           <div className="space-y-3 flex-1 flex flex-col overflow-hidden min-h-0">
             <div className="grid grid-cols-3 gap-2.5 shrink-0">
-              <div className="col-span-2 border border-slate-200 rounded-xl flex items-center gap-3 px-3">
+              <div className="col-span-2 border border-slate-200 rounded-[6px] flex items-center gap-3 px-3">
                 <Search className="w-4 h-4 text-slate-400" />
                 <input
                   type="text"
@@ -324,10 +324,10 @@ export function AddWordsModal({
                 value={targetDictSectionId || 'unassigned'}
                 onValueChange={(val) => setTargetDictSectionId(val === 'unassigned' ? '' : val)}
               >
-                <SelectTrigger className="h-[36px] w-full rounded-xl text-xs border-slate-200 bg-white">
+                <SelectTrigger className="h-[36px] w-full rounded-[6px] text-xs border-slate-200 bg-white">
                   <SelectValue placeholder={t('unassigned_label', 'Chưa phân nhóm')} />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-[6px]">
                   <SelectItem value="unassigned">{t('unassigned_label', 'Chưa phân nhóm')}</SelectItem>
                   {sections.map((s) => (
                     <SelectItem key={s._id} value={s._id}>
@@ -339,7 +339,7 @@ export function AddWordsModal({
             </div>
 
             {/* Dictionary Results List */}
-            <div className="flex-1 overflow-y-auto pr-1 border border-slate-100 rounded-xl p-2.5 min-h-0">
+            <div className="flex-1 overflow-y-auto pr-1 border border-slate-100 rounded-[6px] p-2.5 min-h-0">
               {isLoadingDict ? (
                 <div className="py-12 flex flex-col items-center justify-center text-slate-400 gap-2">
                   <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
@@ -356,7 +356,7 @@ export function AddWordsModal({
                   <button
                     type="button"
                     onClick={() => onNavigateToCreateWord(targetDictSectionId || undefined)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-[6px] shadow-none transition-colors cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>{t('create_new_word_in_bank', 'Tạo từ mới')}</span>
@@ -378,11 +378,11 @@ export function AddWordsModal({
                             prev.includes(w._id) ? prev.filter((id) => id !== w._id) : [...prev, w._id]
                           );
                         }}
-                        className={`p-2.5 rounded-xl border text-xs flex items-center justify-between transition-all ${
+                        className={`p-2.5 rounded-[6px] border text-xs flex items-center justify-between transition-all ${
                           isAdded
                             ? 'bg-slate-50 border-slate-100 opacity-50 cursor-not-allowed'
                             : isSelected
-                              ? 'bg-blue-50 border-blue-300 shadow-xs cursor-pointer'
+                              ? 'bg-blue-50 border-blue-300 shadow-none cursor-pointer'
                               : 'bg-white border-slate-200 hover:bg-slate-50 cursor-pointer'
                         }`}
                       >
@@ -392,13 +392,13 @@ export function AddWordsModal({
                             disabled={isAdded}
                             checked={isAdded || isSelected}
                             onChange={() => {}}
-                            className="w-3.5 h-3.5 rounded text-blue-600 pointer-events-none shrink-0"
+                            className="w-3.5 h-3.5 rounded-[3px] text-blue-600 pointer-events-none shrink-0"
                           />
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5">
                               <span className="font-bold text-slate-900 truncate">{w.word}</span>
                               {w.level && (
-                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-semibold shrink-0">
+                                <span className="text-[10px] px-1.5 py-0.2 rounded-[4px] bg-slate-100 text-slate-600 font-semibold shrink-0">
                                   {w.level}
                                 </span>
                               )}
@@ -427,7 +427,7 @@ export function AddWordsModal({
                 <button
                   type="button"
                   onClick={handleClose}
-                  className="px-3 py-1.5 border border-slate-200 rounded-xl font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                  className="px-3 py-1.5 border border-slate-200 rounded-[6px] font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
                 >
                   {t('cancel', 'Hủy')}
                 </button>
@@ -440,7 +440,7 @@ export function AddWordsModal({
                     });
                   }}
                   disabled={selectedDictWordIds.length === 0 || addWordsMutation.isPending}
-                  className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold cursor-pointer disabled:opacity-50"
+                  className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-[6px] font-semibold cursor-pointer disabled:opacity-50"
                 >
                   {addWordsMutation.isPending ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -458,7 +458,7 @@ export function AddWordsModal({
           <div className="space-y-3 flex-1 flex flex-col overflow-y-auto min-h-0 pr-1">
             {/* Import error message if any */}
             {importModalError && (
-              <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-center gap-2 font-medium shrink-0 animate-in fade-in duration-150">
+              <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-[6px] flex items-center gap-2 font-medium shrink-0 animate-in fade-in duration-150">
                 <AlertTriangle className="w-4 h-4 shrink-0" />
                 <span className="flex-1">{importModalError}</span>
                 <button
@@ -481,10 +481,10 @@ export function AddWordsModal({
                   value={importTargetSectionId || 'unassigned'}
                   onValueChange={(val) => setImportTargetSectionId(val === 'unassigned' ? '' : val)}
                 >
-                  <SelectTrigger className="h-[34px] w-full rounded-xl text-xs border-slate-200 bg-white">
+                  <SelectTrigger className="h-[34px] w-full rounded-[6px] text-xs border-slate-200 bg-white">
                     <SelectValue placeholder={t('unassigned_label', 'Chưa phân nhóm')} />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="rounded-[6px]">
                     <SelectItem value="unassigned">{t('unassigned_label', 'Chưa phân nhóm')}</SelectItem>
                     {sections.map((s) => (
                       <SelectItem key={s._id} value={s._id}>
@@ -499,13 +499,13 @@ export function AddWordsModal({
                 <label className="text-[11px] font-semibold text-slate-600 block mb-1">
                   {t('import_method_label', 'Phương thức nhập')}
                 </label>
-                <div className="flex bg-slate-100 p-1 rounded-xl h-[34px]">
+                <div className="flex bg-slate-100 p-1 rounded-[6px] h-[34px]">
                   <button
                     type="button"
                     onClick={() => setImportSourceType('file')}
-                    className={`flex-1 text-[11px] font-semibold rounded-lg flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                    className={`flex-1 text-[11px] font-semibold rounded-[6px] flex items-center justify-center gap-1 transition-all cursor-pointer ${
                       importSourceType === 'file'
-                        ? 'bg-white text-slate-900 shadow-2xs'
+                        ? 'bg-white text-slate-900 shadow-none'
                         : 'text-slate-500 hover:text-slate-700'
                     }`}
                   >
@@ -515,9 +515,9 @@ export function AddWordsModal({
                   <button
                     type="button"
                     onClick={() => setImportSourceType('text')}
-                    className={`flex-1 text-[11px] font-semibold rounded-lg flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                    className={`flex-1 text-[11px] font-semibold rounded-[6px] flex items-center justify-center gap-1 transition-all cursor-pointer ${
                       importSourceType === 'text'
-                        ? 'bg-white text-slate-900 shadow-2xs'
+                        ? 'bg-white text-slate-900 shadow-none'
                         : 'text-slate-500 hover:text-slate-700'
                     }`}
                   >
@@ -537,14 +537,14 @@ export function AddWordsModal({
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onClick={() => fileInputRef.current?.click()}
-                    className={`flex-1 flex flex-col items-center justify-center gap-3 border-2 border-dashed rounded-2xl p-8 cursor-pointer transition-all ${
+                    className={`flex-1 flex flex-col items-center justify-center gap-3 border-2 border-dashed rounded-[6px] p-8 cursor-pointer transition-all ${
                       isDraggingOver
                         ? 'border-blue-400 bg-blue-50/70 scale-[1.01]'
                         : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50/30'
                     }`}
                   >
                     <div
-                      className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${
+                      className={`w-14 h-14 rounded-[6px] flex items-center justify-center transition-colors ${
                         isDraggingOver ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400'
                       }`}
                     >
@@ -558,7 +558,7 @@ export function AddWordsModal({
                         {t('import_file_supported', 'Hỗ trợ: .xlsx, .csv, .xls')}
                       </p>
                     </div>
-                    <div className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-[11px] text-slate-500 flex items-center gap-1.5 mt-1">
+                    <div className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-[6px] text-[11px] text-slate-500 flex items-center gap-1.5 mt-1">
                       <Info className="w-3.5 h-3.5 shrink-0 text-slate-400" />
                       <span>
                         {t('import_file_column_hint', 'Cột đầu tiên hoặc cột có tiêu đề "Word" sẽ được đọc')}
@@ -576,11 +576,11 @@ export function AddWordsModal({
                     />
                   </div>
                 ) : (
-                  <div className="flex-1 flex flex-col justify-between border border-slate-200 rounded-2xl p-5 bg-slate-50/50 space-y-3">
+                  <div className="flex-1 flex flex-col justify-between border border-slate-200 rounded-[6px] p-5 bg-slate-50/50 space-y-3">
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                          <div className="w-10 h-10 rounded-[6px] bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
                             <FileSpreadsheet className="w-5 h-5" />
                           </div>
                           <div className="min-w-0">
@@ -595,7 +595,7 @@ export function AddWordsModal({
                         <button
                           type="button"
                           onClick={resetImportState}
-                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-blue-600 px-2 py-1 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-blue-600 px-2 py-1 rounded-[6px] hover:bg-slate-100 transition-colors cursor-pointer"
                         >
                           <RefreshCw className="w-3 h-3" />
                           <span>{t('import_file_reset', 'Chọn file khác')}</span>
@@ -609,7 +609,7 @@ export function AddWordsModal({
                         </div>
                       ) : fileParseResult && (
                         <div className="space-y-2">
-                          <div className="p-2.5 bg-blue-50 border border-blue-200/80 rounded-xl flex items-center justify-between text-xs">
+                          <div className="p-2.5 bg-blue-50 border border-blue-200/80 rounded-[6px] flex items-center justify-between text-xs">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="font-semibold text-blue-800">
                                 {t('import_detected_words', {
@@ -649,7 +649,7 @@ export function AddWordsModal({
 
                           {/* Duplicate Warning */}
                           {fileParseResult.duplicates.length > 0 && (
-                            <div className="p-2 bg-amber-50 border border-amber-200/80 rounded-xl text-amber-800 text-[11px] flex items-start gap-1.5">
+                            <div className="p-2 bg-amber-50 border border-amber-200/80 rounded-[6px] text-amber-800 text-[11px] flex items-start gap-1.5">
                               <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
                               <span>
                                 {t('import_detected_duplicates', {
@@ -663,7 +663,7 @@ export function AddWordsModal({
 
                           {/* Skipped Warning */}
                           {fileParseResult.skipped.length > 0 && (
-                            <div className="p-2 bg-slate-100 border border-slate-200 rounded-xl text-slate-700 text-[11px] flex items-start gap-1.5">
+                            <div className="p-2 bg-slate-100 border border-slate-200 rounded-[6px] text-slate-700 text-[11px] flex items-start gap-1.5">
                               <Info className="w-3.5 h-3.5 text-slate-500 shrink-0 mt-0.5" />
                               <span>
                                 {t('import_detected_skipped', {
@@ -690,7 +690,7 @@ export function AddWordsModal({
                                 ).map((w, idx) => (
                                   <span
                                     key={`${w}-${idx}`}
-                                    className="px-2 py-0.5 bg-white border border-slate-200 rounded-md text-[11px] text-slate-700 font-mono shadow-2xs inline-flex items-center gap-1"
+                                    className="px-2 py-0.5 bg-white border border-slate-200 rounded-[4px] text-[11px] text-slate-700 font-mono shadow-none inline-flex items-center gap-1"
                                   >
                                     <span className="text-[10px] font-semibold text-slate-400">#{idx + 1}</span>
                                     <span className="font-semibold text-slate-800">{w}</span>
@@ -729,7 +729,7 @@ export function AddWordsModal({
                     'import_paste_placeholder',
                     'Nhập hoặc dán danh sách từ tiếng Anh (ngăn cách bằng dấu phẩy, chấm phẩy hoặc xuống dòng)... Ví dụ: apple, banana, computer'
                   )}
-                  className="w-full h-36 p-3 text-xs rounded-xl border border-slate-200 focus:outline-none font-mono resize-none leading-relaxed shrink-0"
+                  className="w-full h-36 p-3 text-xs rounded-[6px] border border-slate-200 focus:outline-none font-mono resize-none leading-relaxed shrink-0"
                 />
                 <div className="flex items-center justify-between text-[11px] text-slate-500 px-1 shrink-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
@@ -780,7 +780,7 @@ export function AddWordsModal({
 
                 {/* Duplicate Warning */}
                 {textParseResult.duplicates.length > 0 && (
-                  <div className="p-2 bg-amber-50 border border-amber-200/80 rounded-xl text-amber-800 text-[11px] flex items-start gap-1.5 shrink-0">
+                  <div className="p-2 bg-amber-50 border border-amber-200/80 rounded-[6px] text-amber-800 text-[11px] flex items-start gap-1.5 shrink-0">
                     <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
                     <span>
                       {t('import_detected_duplicates', {
@@ -794,7 +794,7 @@ export function AddWordsModal({
 
                 {/* Skipped Warning */}
                 {textParseResult.skipped.length > 0 && (
-                  <div className="p-2 bg-slate-100 border border-slate-200 rounded-xl text-slate-700 text-[11px] flex items-start gap-1.5 shrink-0">
+                  <div className="p-2 bg-slate-100 border border-slate-200 rounded-[6px] text-slate-700 text-[11px] flex items-start gap-1.5 shrink-0">
                     <Info className="w-3.5 h-3.5 text-slate-500 shrink-0 mt-0.5" />
                     <span>
                       {t('import_detected_skipped', {
@@ -808,7 +808,7 @@ export function AddWordsModal({
 
                 {/* Expandable list of all recognized words */}
                 {isShowWordsList && textParseResult.words.length > 0 && (
-                  <div className="border border-slate-200 rounded-xl p-2.5 bg-slate-50/70 space-y-1.5 max-h-36 overflow-y-auto">
+                  <div className="border border-slate-200 rounded-[6px] p-2.5 bg-slate-50/70 space-y-1.5 max-h-36 overflow-y-auto">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
                       {t('import_view_all_words', {
                         count: textParseResult.words.length,
@@ -819,7 +819,7 @@ export function AddWordsModal({
                       {textParseResult.words.map((w, idx) => (
                         <span
                           key={`${w}-${idx}`}
-                          className="px-2 py-0.5 bg-white border border-slate-200 rounded-md text-[11px] text-slate-700 font-mono shadow-2xs inline-flex items-center gap-1"
+                          className="px-2 py-0.5 bg-white border border-slate-200 rounded-[4px] text-[11px] text-slate-700 font-mono shadow-none inline-flex items-center gap-1"
                         >
                           <span className="text-[10px] font-semibold text-slate-400">#{idx + 1}</span>
                           <span className="font-semibold text-slate-800">{w}</span>
@@ -832,7 +832,7 @@ export function AddWordsModal({
             )}
 
             {/* Guidance hint */}
-            <div className="px-2.5 py-2 bg-amber-50/60 border border-amber-200/70 rounded-xl text-[11px] text-amber-800 flex items-start gap-1.5 shrink-0">
+            <div className="px-2.5 py-2 bg-amber-50/60 border border-amber-200/70 rounded-[6px] text-[11px] text-amber-800 flex items-start gap-1.5 shrink-0">
               <Info className="w-3.5 h-3.5 shrink-0 text-amber-600 mt-0.5" />
               <span>
                 {t(
@@ -856,7 +856,7 @@ export function AddWordsModal({
                 <button
                   type="button"
                   onClick={handleClose}
-                  className="px-3 py-1.5 border border-slate-200 rounded-xl font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                  className="px-3 py-1.5 border border-slate-200 rounded-[6px] font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
                 >
                   {t('cancel', 'Hủy')}
                 </button>
@@ -868,7 +868,7 @@ export function AddWordsModal({
                     isImportSubmitting ||
                     importIsReadingFile
                   }
-                  className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5 shadow-sm transition-all"
+                  className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-[6px] font-semibold cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5 shadow-none transition-all"
                 >
                   {isImportSubmitting ? (
                     <>

@@ -69,7 +69,7 @@ export function WordDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto p-0 gap-0 rounded-2xl border border-slate-200/80 shadow-2xl bg-white">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto p-0 gap-0 rounded-[6px] border border-slate-200 shadow-none bg-white">
         {/* HEADER */}
         <div className="p-6 border-b border-slate-100 bg-slate-50/50">
           <DialogHeader className="space-y-3 text-left">
@@ -80,7 +80,7 @@ export function WordDetailDialog({
                 </DialogTitle>
                 {word?.level && (
                   <span
-                    className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${getLevelBadgeClass(
+                    className={`px-2.5 py-0.5 rounded-[4px] text-xs font-bold border ${getLevelBadgeClass(
                       word.level
                     )}`}
                   >
@@ -89,7 +89,7 @@ export function WordDetailDialog({
                 )}
                 {word && (
                   <span
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-[4px] text-xs font-medium border ${
                       word.isActive !== false
                         ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                         : 'bg-slate-100 text-slate-600 border-slate-200'
@@ -116,7 +116,7 @@ export function WordDetailDialog({
             {word && (word.ipa?.us || word.ipa?.uk) && (
               <div className="flex flex-wrap items-center gap-4 pt-1">
                 {word.ipa?.us && (
-                  <div className="inline-flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-700 shadow-2xs">
+                  <div className="inline-flex items-center gap-2 bg-white px-3 py-1.5 rounded-[6px] border border-slate-200 text-xs text-slate-700">
                     <button
                       type="button"
                       onClick={() => playAudio(word.audio?.us)}
@@ -134,7 +134,7 @@ export function WordDetailDialog({
                 )}
 
                 {word.ipa?.uk && (
-                  <div className="inline-flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-700 shadow-2xs">
+                  <div className="inline-flex items-center gap-2 bg-white px-3 py-1.5 rounded-[6px] border border-slate-200 text-xs text-slate-700">
                     <button
                       type="button"
                       onClick={() => playAudio(word.audio?.uk)}
@@ -171,12 +171,12 @@ export function WordDetailDialog({
             <>
               {/* Image & Extra info banner (if exists) */}
               {(word.image || (word.variations && word.variations.length > 0) || (word.relatedWords && word.relatedWords.length > 0)) && (
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-xl bg-slate-50 border border-slate-100">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-[6px] bg-slate-50 border border-slate-200">
                   {word.image && (
                     <img
                       src={word.image}
                       alt={word.word}
-                      className="w-20 h-20 object-cover rounded-lg border border-slate-200 shadow-xs"
+                      className="w-20 h-20 object-cover rounded-[4px] border border-slate-200"
                       onError={(e) => {
                         (e.target as HTMLElement).style.display = 'none';
                       }}
@@ -189,7 +189,7 @@ export function WordDetailDialog({
                         {word.variations.map((v, i) => (
                           <span
                             key={i}
-                            className="px-2 py-0.5 rounded-md bg-white border border-slate-200 font-mono text-slate-700"
+                            className="px-2 py-0.5 rounded-[4px] bg-white border border-slate-200 font-mono text-slate-700"
                           >
                             {v}
                           </span>
@@ -202,7 +202,7 @@ export function WordDetailDialog({
                         {word.relatedWords.map((rw, i) => (
                           <span
                             key={i}
-                            className="px-2 py-0.5 rounded-md bg-blue-50 border border-blue-100 text-blue-700"
+                            className="px-2 py-0.5 rounded-[4px] bg-blue-50 border border-blue-100 text-blue-700"
                           >
                             {rw}
                           </span>
@@ -229,11 +229,11 @@ export function WordDetailDialog({
                     {word.parts.map((part, pIdx) => (
                       <div
                         key={pIdx}
-                        className="rounded-xl border border-slate-200/90 overflow-hidden bg-white shadow-2xs"
+                        className="rounded-[6px] border border-slate-200 overflow-hidden bg-white"
                       >
                         {/* Part Header */}
                         <div className="px-4 py-2.5 bg-slate-50/80 border-b border-slate-100 flex items-center justify-between">
-                          <span className="text-xs font-bold uppercase tracking-wider text-blue-700 bg-blue-50 px-2.5 py-1 rounded-md border border-blue-100/80">
+                          <span className="text-xs font-bold uppercase tracking-wider text-blue-700 bg-blue-50 px-2.5 py-1 rounded-[4px] border border-blue-100/80">
                             {part.partOfSpeech}
                           </span>
                           <span className="text-xs text-slate-400">
@@ -265,7 +265,7 @@ export function WordDetailDialog({
                                       {meaning.translation.map((tr, tIdx) => (
                                         <span
                                           key={tIdx}
-                                          className="text-xs bg-emerald-50 text-emerald-800 border border-emerald-200/70 px-2 py-0.5 rounded font-medium"
+                                          className="text-xs bg-emerald-50 text-emerald-800 border border-emerald-200/70 px-2 py-0.5 rounded-[4px] font-medium"
                                         >
                                           {tr}
                                         </span>
@@ -295,7 +295,7 @@ export function WordDetailDialog({
 
                               {/* Examples */}
                               {meaning.examples && meaning.examples.length > 0 && (
-                                <div className="ml-7 mt-2 space-y-1.5 bg-slate-50/70 p-3 rounded-lg border border-slate-100 text-xs">
+                                <div className="ml-7 mt-2 space-y-1.5 bg-slate-50/70 p-3 rounded-[6px] border border-slate-100 text-xs">
                                   <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                                     {t('examples')}
                                   </div>

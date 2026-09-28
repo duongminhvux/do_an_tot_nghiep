@@ -87,10 +87,10 @@ export function EditLessonDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md w-full p-6 rounded-2xl border border-slate-200 shadow-2xl bg-white">
+      <DialogContent className="max-w-md w-full p-6 rounded-[6px] border border-slate-200 shadow-none bg-white">
         <DialogHeader className="space-y-1">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-[6px] bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
               <Edit3 className="w-5 h-5" />
             </div>
             <div>
@@ -105,7 +105,7 @@ export function EditLessonDialog({
         </DialogHeader>
 
         {errorMessage && (
-          <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-center gap-2 font-medium">
+          <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-[6px] flex items-center gap-2 font-medium">
             <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
             <span>{errorMessage}</span>
           </div>
@@ -123,7 +123,7 @@ export function EditLessonDialog({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Unit 1: Family & Friends"
-              className="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400"
+              className="w-full px-3.5 py-2 text-sm rounded-[6px] border border-slate-200 focus:outline-none focus:border-blue-500 transition-all placeholder:text-slate-400"
             />
           </div>
 
@@ -137,7 +137,7 @@ export function EditLessonDialog({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Brief description of the lesson's target topic..."
-              className="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400 resize-none"
+              className="w-full px-3.5 py-2 text-sm rounded-[6px] border border-slate-200 focus:outline-none focus:border-blue-500 transition-all placeholder:text-slate-400 resize-none"
             />
           </div>
 
@@ -152,7 +152,7 @@ export function EditLessonDialog({
                 value={order}
                 onChange={(e) => setOrder(Math.max(1, Number(e.target.value)))}
                 min={1}
-                className="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                className="w-full px-3.5 py-2 text-sm rounded-[6px] border border-slate-200 focus:outline-none focus:border-blue-500 transition-all"
               />
             </div>
 
@@ -184,7 +184,7 @@ export function EditLessonDialog({
               type="button"
               onClick={() => onOpenChange(false)}
               disabled={updateMutation.isPending}
-              className="px-4 py-2 border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-600 transition-colors cursor-pointer"
+              className="px-4 py-2 border border-slate-200 hover:bg-slate-50 rounded-[6px] text-xs font-semibold text-slate-600 transition-colors cursor-pointer"
             >
               {t('cancel', { defaultValue: 'Cancel' })}
             </button>
@@ -192,7 +192,7 @@ export function EditLessonDialog({
             <button
               type="submit"
               disabled={updateMutation.isPending}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 text-white rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 text-white rounded-[6px] text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               {updateMutation.isPending && (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />

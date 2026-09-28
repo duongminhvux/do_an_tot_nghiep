@@ -1,8 +1,58 @@
 // ==========================
+// VOCABULARY GROUPS
+// ==========================
+export interface VocabularyGroupItem {
+  _id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  order?: number;
+  isActive?: boolean;
+  isDeleted?: boolean;
+  collectionsCount?: number;
+  lessonsCount?: number;
+  wordsCount?: number;
+  collections?: CollectionItem[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface VocabularyGroupListResponse {
+  data: VocabularyGroupItem[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface QueryVocabularyGroupDto {
+  search?: string;
+  isActive?: boolean;
+  page?: number;
+  limit?: number;
+}
+
+export interface CreateVocabularyGroupDto {
+  name: string;
+  slug?: string;
+  description?: string;
+  order?: number;
+  isActive?: boolean;
+}
+
+export interface UpdateVocabularyGroupDto {
+  name?: string;
+  slug?: string;
+  description?: string;
+  order?: number;
+  isActive?: boolean;
+}
+
+// ==========================
 // COLLECTIONS
 // ==========================
 export interface CollectionItem {
   _id: string;
+  groupId?: string | { _id: string; name: string; slug: string };
   name: string;
   slug?: string;
   description?: string;
@@ -26,6 +76,7 @@ export interface CollectionListResponse {
 
 export interface QueryCollectionDto {
   search?: string;
+  groupId?: string;
   isActive?: boolean;
   page?: number;
   limit?: number;
@@ -33,6 +84,7 @@ export interface QueryCollectionDto {
 
 export interface CreateCollectionDto {
   name: string;
+  groupId?: string;
   slug?: string;
   description?: string;
   coverUrl?: string;
@@ -43,6 +95,7 @@ export interface CreateCollectionDto {
 
 export interface UpdateCollectionDto {
   name?: string;
+  groupId?: string;
   slug?: string;
   description?: string;
   coverUrl?: string;
