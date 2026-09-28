@@ -4,15 +4,53 @@ import {
   CollectionItem,
   CreateCollectionDto,
   CreateLessonDto,
+  CreateVocabularyGroupDto,
   CreateWordDto,
   LessonItem,
+  LessonWordItem,
   QueryCollectionDto,
+  QueryVocabularyGroupDto,
   QueryWordDto,
+  SectionItem,
   UpdateCollectionDto,
   UpdateLessonDto,
+  UpdateVocabularyGroupDto,
   UpdateWordDto,
+  VocabularyGroupItem,
   WordItem,
 } from './types';
+
+// ==========================
+// VOCABULARY GROUPS
+// ==========================
+export const vocabularyGroupService = {
+  getAll: async (params?: QueryVocabularyGroupDto) => {
+    const res = await apiClient.get<ApiResponse<VocabularyGroupItem[]>>('/vocabulary-groups', {
+      params,
+    });
+    return res.data;
+  },
+
+  getById: async (id: string) => {
+    const res = await apiClient.get<ApiResponse<VocabularyGroupItem>>(`/vocabulary-groups/${id}`);
+    return res.data;
+  },
+
+  create: async (data: CreateVocabularyGroupDto) => {
+    const res = await apiClient.post<ApiResponse<VocabularyGroupItem>>('/vocabulary-groups', data);
+    return res.data;
+  },
+
+  update: async (id: string, data: UpdateVocabularyGroupDto) => {
+    const res = await apiClient.patch<ApiResponse<VocabularyGroupItem>>(`/vocabulary-groups/${id}`, data);
+    return res.data;
+  },
+
+  delete: async (id: string) => {
+    const res = await apiClient.delete<ApiResponse<any>>(`/vocabulary-groups/${id}`);
+    return res.data;
+  },
+};
 
 // ==========================
 // COLLECTIONS
@@ -27,6 +65,11 @@ export const collectionService = {
 
   getById: async (id: string) => {
     const res = await apiClient.get<ApiResponse<CollectionItem>>(`/collections/${id}`);
+    return res.data;
+  },
+
+  getBySlug: async (slug: string) => {
+    const res = await apiClient.get<ApiResponse<CollectionItem>>(`/collections/slug/${slug}`);
     return res.data;
   },
 
@@ -62,6 +105,13 @@ export const lessonService = {
     return res.data;
   },
 
+  getBySlug: async (slug: string, collectionId?: string) => {
+    const res = await apiClient.get<ApiResponse<LessonItem>>(`/lessons/slug/${slug}`, {
+      params: collectionId ? { collectionId } : undefined,
+    });
+    return res.data;
+  },
+
   create: async (data: CreateLessonDto) => {
     const res = await apiClient.post<ApiResponse<LessonItem>>('/lessons', data);
     return res.data;
@@ -77,8 +127,15 @@ export const lessonService = {
     return res.data;
   },
 
-  getWords: async (lessonId: string) => {
-    const res = await apiClient.get<ApiResponse<WordItem[]>>(`/lessons/${lessonId}/words`);
+  getSections: async (lessonId: string) => {
+    const res = await apiClient.get<ApiResponse<SectionItem[]>>(`/lessons/${lessonId}/sections`);
+    return res.data;
+  },
+
+  getWords: async (lessonId: string, sectionId?: string) => {
+    const res = await apiClient.get<ApiResponse<LessonWordItem[]>>(`/lessons/${lessonId}/words`, {
+      params: sectionId ? { sectionId } : undefined,
+    });
     return res.data;
   },
 

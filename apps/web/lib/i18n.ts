@@ -3,17 +3,21 @@ import { initReactI18next } from 'react-i18next';
 
 import viCommon from '../locales/vi/common.json';
 import viAuth from '../locales/vi/auth.json';
+import viVocabulary from '../locales/vi/vocabulary.json';
 import enCommon from '../locales/en/common.json';
 import enAuth from '../locales/en/auth.json';
+import enVocabulary from '../locales/en/vocabulary.json';
 
 const resources = {
   vi: {
     common: viCommon,
     auth: viAuth,
+    vocabulary: viVocabulary,
   },
   en: {
     common: enCommon,
     auth: enAuth,
+    vocabulary: enVocabulary,
   },
 };
 
