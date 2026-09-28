@@ -33,13 +33,13 @@ import {
   GripVertical,
 } from 'lucide-react';
 
-const GRADIENT_PALETTES = [
-  'from-blue-600 via-indigo-700 to-slate-900',
-  'from-emerald-600 via-teal-700 to-slate-900',
-  'from-purple-600 via-violet-700 to-slate-900',
-  'from-amber-600 via-orange-700 to-slate-900',
-  'from-rose-600 via-pink-700 to-slate-900',
-  'from-cyan-600 via-blue-700 to-slate-900',
+const SOLID_PALETTES = [
+  'bg-blue-600',
+  'bg-emerald-600',
+  'bg-purple-600',
+  'bg-amber-600',
+  'bg-rose-600',
+  'bg-cyan-600',
 ];
 
 export default function CollectionsPage() {
@@ -100,18 +100,35 @@ export default function CollectionsPage() {
 
   const collections: CollectionItem[] = collectionsRes?.data?.data || [];
 
+  // Helper to select collection and sync with URL query param
+  const selectCollection = (id: string) => {
+    setSelectedId(id);
+    setSearchLesson('');
+    const newParams = new URLSearchParams(searchParams.toString());
+    newParams.set('collectionId', id);
+    router.replace(`/${locale}/vocabulary/collections?${newParams.toString()}`);
+  };
+
   // Auto-select collection from URL param or fallback to first collection
   useEffect(() => {
+    if (collections.length === 0) {
+      setSelectedId(null);
+      return;
+    }
+
     if (urlCollectionId && collections.some((c) => c._id === urlCollectionId)) {
-      setSelectedId(urlCollectionId);
-    } else if (collections.length > 0 && collections[0]) {
-      if (!selectedId || !collections.some((c) => c._id === selectedId)) {
+      if (selectedId !== urlCollectionId) {
+        setSelectedId(urlCollectionId);
+      }
+      return;
+    }
+
+    if (!selectedId || !collections.some((c) => c._id === selectedId)) {
+      if (collections[0]?._id) {
         setSelectedId(collections[0]._id);
       }
-    } else {
-      setSelectedId(null);
     }
-  }, [collections, selectedId, urlCollectionId]);
+  }, [collections, urlCollectionId]);
 
   // Fetch target lesson if URL has lessonId (e.g. returning from Create Word page)
   const { data: targetLessonRes } = useQuery({
@@ -276,10 +293,10 @@ export default function CollectionsPage() {
     return lessons.reduce((acc, l) => acc + (l.wordsCount || 0), 0);
   }, [lessons]);
 
-  // Helper for color gradient based on string hash
-  const getGradient = (name: string, index: number) => {
-    const palIdx = (name.length + index) % GRADIENT_PALETTES.length;
-    return GRADIENT_PALETTES[palIdx];
+  // Helper for color based on string hash
+  const getColor = (name: string, index: number) => {
+    const palIdx = (name.length + index) % SOLID_PALETTES.length;
+    return SOLID_PALETTES[palIdx];
   };
 
   return (
@@ -300,7 +317,7 @@ export default function CollectionsPage() {
         <button
           type="button"
           onClick={() => setCreateColOpen(true)}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium text-sm shadow-sm transition-all cursor-pointer shrink-0"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-[6px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium text-sm transition-colors cursor-pointer shrink-0"
         >
           <FolderPlus className="w-4 h-4" />
           <span>{t('add_collection', { defaultValue: 'Add Collection' })}</span>
@@ -310,7 +327,7 @@ export default function CollectionsPage() {
       {/* Main Split Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column: Collection List */}
-        <div className="sticky top-16 lg:col-span-4 xl:col-span-3 rounded-2xl border border-slate-200 bg-white p-4 space-y-3 shadow-xs">
+        <div className="sticky top-16 lg:col-span-4 xl:col-span-3 rounded-[6px] border border-slate-200 bg-white p-4 space-y-3">
           {/* Search Collections */}
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -319,7 +336,7 @@ export default function CollectionsPage() {
               value={searchCollection}
               onChange={(e) => setSearchCollection(e.target.value)}
               placeholder={t('search_collections_placeholder', { defaultValue: 'Search collections...' })}
-              className="w-full pl-9 pr-3.5 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400 bg-slate-50/50"
+              className="w-full pl-9 pr-3.5 py-2 text-xs rounded-[6px] border border-slate-200 focus:outline-none focus:border-blue-500 transition-all placeholder:text-slate-400 bg-slate-50/50"
             />
           </div>
 
@@ -331,7 +348,7 @@ export default function CollectionsPage() {
                 <span className="text-xs">{t('loading_collections', { defaultValue: 'Loading collections...' })}</span>
               </div>
             ) : collections.length === 0 ? (
-              <div className="py-14 text-center border-2 border-dashed border-slate-200 rounded-2xl p-6">
+              <div className="py-14 text-center border-2 border-dashed border-slate-200 rounded-[6px] p-6">
                 <FolderKanban className="w-10 h-10 text-slate-300 mx-auto mb-2" />
                 <p className="text-sm font-semibold text-slate-700">
                   {t('no_collections_found', { defaultValue: 'No collections found' })}
@@ -342,7 +359,7 @@ export default function CollectionsPage() {
                 <button
                   type="button"
                   onClick={() => setCreateColOpen(true)}
-                  className="mt-3 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
+                  className="mt-3 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-[6px] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition-colors"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>{t('add_collection', { defaultValue: 'Add Collection' })}</span>
@@ -352,7 +369,7 @@ export default function CollectionsPage() {
               collections.map((col, idx) => {
                 const isSelected = col._id === currentCollection?._id;
                 const cover = col.coverUrl || col.thumbnail;
-                const gradient = getGradient(col.name, idx);
+                const color = getColor(col.name, idx);
                 const isDragging = draggedColId === col._id;
                 const isDragOver = dragOverColId === col._id;
 
@@ -386,16 +403,15 @@ export default function CollectionsPage() {
                       setDragOverColId(null);
                     }}
                     onClick={() => {
-                      setSelectedId(col._id);
-                      setSearchLesson('');
+                      selectCollection(col._id);
                     }}
-                    className={`group flex items-center justify-between gap-2 p-2.5 rounded-xl border transition-all duration-150 cursor-pointer ${isDragging
-                      ? 'opacity-40 border-dashed border-blue-400 bg-blue-50/40 scale-[0.99]'
+                    className={`group flex items-center justify-between gap-2 p-2.5 rounded-[6px] border transition-all duration-150 cursor-pointer ${isDragging
+                      ? 'opacity-40 border-dashed border-blue-400 bg-blue-50/40'
                       : isDragOver
-                        ? 'border-blue-500 ring-2 ring-blue-500/20 bg-blue-50/30 shadow-md'
+                        ? 'border-blue-500 bg-blue-50/30'
                         : isSelected
-                          ? 'bg-blue-50/70 border-blue-300 shadow-xs'
-                          : 'bg-white border-slate-200/80 hover:border-slate-300 hover:bg-slate-50/60'
+                          ? 'bg-blue-50/70 border-blue-400'
+                          : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/60'
                       }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -410,7 +426,7 @@ export default function CollectionsPage() {
 
                       {/* Thumbnail Box (Compact 16:9) */}
                       {cover ? (
-                        <div className="w-11 aspect-[16/9] rounded-md overflow-hidden shrink-0 border border-slate-200 shadow-2xs">
+                        <div className="w-11 aspect-[16/9] rounded-[4px] overflow-hidden shrink-0 border border-slate-200">
                           <img
                             src={cover}
                             alt={col.name}
@@ -419,7 +435,7 @@ export default function CollectionsPage() {
                         </div>
                       ) : (
                         <div
-                          className={`w-11 aspect-[16/9] rounded-md bg-gradient-to-br ${gradient} flex items-center justify-center text-white shrink-0 shadow-2xs`}
+                          className={`w-11 aspect-[16/9] rounded-[4px] ${color} flex items-center justify-center text-white shrink-0`}
                         >
                           <FolderKanban className="w-3.5 h-3.5 text-white/90" />
                         </div>
@@ -478,19 +494,22 @@ export default function CollectionsPage() {
         </div>
 
         {/* Right Column: Collection Detail & Lessons */}
-        <div className="lg:col-span-8 xl:col-span-9 rounded-2xl  bg-white shadow-xs">
+        <div className="lg:col-span-8 xl:col-span-9 rounded-[6px] bg-white ">
           {currentCollection ? (
             <>
-              <div className='sticky top-16 z-20 bg-white rounded-t-2xl'>
+              <div className=" bg-white sticky top-16">
+                <div className='w-[calc(100%+4px)] absolute h-10 bg-slate-50 z-[-1] -translate-y-4'>
+
+                </div>
                 {/* Sticky Top: Collection Header & Navigation Tabs */}
-                <div className=" bg-white rounded-t-2xl px-6 pt-6 pb-0 border border-slate-200 shadow-xs">
+                <div className="bg-white px-6 pt-6 pb-5 border rounded border-slate-200">
                   {/* Collection Banner Header */}
-                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-5">
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                     <div className="flex items-start gap-4 min-w-0 flex-1">
                       {/* Large Thumbnail */}
                       {currentCollection.coverUrl || currentCollection.thumbnail ? (
-                        <div className="w-36 sm:w-44 aspect-[16/9] rounded-2xl overflow-hidden shrink-0 border border-slate-200 shadow-sm">
-                          <img  
+                        <div className="w-36 sm:w-44 aspect-[16/9] rounded-[6px] overflow-hidden shrink-0 border border-slate-200">
+                          <img
                             src={currentCollection.coverUrl || currentCollection.thumbnail}
                             alt={currentCollection.name}
                             className="w-full h-full object-cover"
@@ -498,10 +517,10 @@ export default function CollectionsPage() {
                         </div>
                       ) : (
                         <div
-                          className={`w-36 sm:w-44 aspect-[16/9] rounded-2xl bg-gradient-to-br ${getGradient(
+                          className={`w-36 sm:w-44 aspect-[16/9] rounded-[6px] ${getColor(
                             currentCollection.name,
                             0,
-                          )} flex flex-col items-center justify-center text-white shrink-0 shadow-md p-3 text-center`}
+                          )} flex flex-col items-center justify-center text-white shrink-0 p-3 text-center`}
                         >
                           <span className="text-xs font-extrabold uppercase tracking-wider">
                             {currentCollection.name.split(' ')[0]}
@@ -519,7 +538,7 @@ export default function CollectionsPage() {
                             {currentCollection.name}
                           </h2>
                           {currentCollection.slug && (
-                            <span className="font-mono text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                            <span className="font-mono text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-[4px] border border-slate-200">
                               /{currentCollection.slug}
                             </span>
                           )}
@@ -533,7 +552,7 @@ export default function CollectionsPage() {
                                 nextActive: !currentCollection.isActive,
                               })
                             }
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border transition-all cursor-pointer ${currentCollection.isActive !== false
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] text-xs font-semibold border transition-colors cursor-pointer ${currentCollection.isActive !== false
                               ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
                               : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
                               }`}
@@ -579,7 +598,7 @@ export default function CollectionsPage() {
                       <button
                         type="button"
                         onClick={() => setEditingCol(currentCollection)}
-                        className="p-2 border border-slate-200 hover:bg-slate-50 rounded-xl text-slate-600 transition-colors cursor-pointer"
+                        className="p-2 border border-slate-200 hover:bg-slate-50 rounded-[6px] text-slate-600 transition-colors cursor-pointer"
                         title={t('edit_collection', { defaultValue: 'Edit Collection' })}
                       >
                         <Pencil className="w-4 h-4" />
@@ -588,14 +607,11 @@ export default function CollectionsPage() {
                       <button
                         type="button"
                         onClick={() => setDeletingCol(currentCollection)}
-                        className="p-2 border border-slate-200 hover:bg-rose-50 hover:border-rose-200 text-slate-600 hover:text-rose-600 rounded-xl transition-colors cursor-pointer"
+                        className="p-2 border border-slate-200 hover:bg-rose-50 hover:border-rose-200 text-slate-600 hover:text-rose-600 rounded-[6px] transition-colors cursor-pointer"
                         title={t('delete_collection', { defaultValue: 'Delete Collection' })}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
-                    </div>
-                    <div className='w-[calc(100%+4px)] bg-slate-50 h-10 absolute left-0 top-0 -translate-y-4 -translate-x-[2px] z-[-1]'>
-
                     </div>
                   </div>
                 </div>
@@ -606,14 +622,14 @@ export default function CollectionsPage() {
                   <button
                     type="button"
                     onClick={() => setActiveTab('lessons')}
-                    className={`pb-3 text-sm font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${activeTab === 'lessons'
+                    className={`pb-3 text-sm font-semibold border-b-2 transition-colors cursor-pointer flex items-center gap-2 ${activeTab === 'lessons'
                       ? 'border-blue-600 text-blue-600'
                       : 'border-transparent text-slate-500 hover:text-slate-800'
                       }`}
                   >
                     <BookOpen className="w-4 h-4" />
                     <span>{t('lessons_tab', { defaultValue: 'Lessons' })}</span>
-                    <span className="px-2 py-0.5 text-xs rounded-full bg-slate-100 text-slate-600">
+                    <span className="px-2 py-0.5 text-xs rounded-[4px] bg-slate-100 text-slate-600">
                       {lessons.length}
                     </span>
                   </button>
@@ -621,7 +637,7 @@ export default function CollectionsPage() {
                   <button
                     type="button"
                     onClick={() => setActiveTab('info')}
-                    className={`pb-3 text-sm font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${activeTab === 'info'
+                    className={`pb-3 text-sm font-semibold border-b-2 transition-colors cursor-pointer flex items-center gap-2 ${activeTab === 'info'
                       ? 'border-blue-600 text-blue-600'
                       : 'border-transparent text-slate-500 hover:text-slate-800'
                       }`}
@@ -630,15 +646,10 @@ export default function CollectionsPage() {
                     <span>{t('info_tab', { defaultValue: 'Overview & Info' })}</span>
                   </button>
                 </div>
-              </div>
 
-              {/* Main Tab Content */}
-              <div className="p-6 space-y-6">
-                {/* Tab 1: Lessons List */}
-                {activeTab === 'lessons' && (
-                  <div className="space-y-4">
-                    {/* Actions bar */}
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                {
+                  activeTab === 'lessons' && (
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-4">
                       <div className="relative w-full sm:w-72">
                         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input
@@ -646,19 +657,29 @@ export default function CollectionsPage() {
                           value={searchLesson}
                           onChange={(e) => setSearchLesson(e.target.value)}
                           placeholder={t('search_lessons_placeholder', { defaultValue: 'Search lessons in this collection...' })}
-                          className="w-full pl-9 pr-3.5 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400 bg-slate-50/50"
+                          className="w-full pl-9 pr-3.5 py-2 text-xs rounded-[6px] border border-slate-200 focus:outline-none focus:border-blue-500 transition-all placeholder:text-slate-400 bg-slate-50/50"
                         />
                       </div>
 
                       <button
                         type="button"
                         onClick={() => setCreateLessonOpen(true)}
-                        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium text-xs shadow-sm transition-all cursor-pointer"
+                        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-[6px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium text-xs transition-colors cursor-pointer"
                       >
                         <BookPlus className="w-3.5 h-3.5" />
                         <span>{t('add_lesson', { defaultValue: 'Add Lesson' })}</span>
                       </button>
                     </div>
+                  )
+                }
+              </div>
+
+              {/* Main Tab Content */}
+              <div className="p-6 pt-4 space-y-6">
+                {/* Tab 1: Lessons List */}
+                {activeTab === 'lessons' && (
+                  <div className="space-y-4">
+                    {/* Actions bar */}
 
                     {/* Lessons Table / List */}
                     {isLoadingLessons ? (
@@ -667,7 +688,7 @@ export default function CollectionsPage() {
                         <span className="text-xs">{t('loading_lessons', { defaultValue: 'Loading lessons...' })}</span>
                       </div>
                     ) : filteredLessons.length === 0 ? (
-                      <div className="py-16 text-center border-2 border-dashed border-slate-200 rounded-2xl p-6">
+                      <div className="py-16 text-center rounded-[6px] p-6">
                         <BookOpen className="w-10 h-10 text-slate-300 mx-auto mb-2" />
                         <p className="text-sm font-semibold text-slate-700">
                           {t('no_lessons_found', {
@@ -680,7 +701,7 @@ export default function CollectionsPage() {
                         <button
                           type="button"
                           onClick={() => setCreateLessonOpen(true)}
-                          className="mt-3 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
+                          className="mt-3 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-[6px] text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition-colors"
                         >
                           <Plus className="w-3.5 h-3.5" />
                           <span>{t('add_lesson', { defaultValue: 'Create First Lesson' })}</span>
@@ -721,11 +742,11 @@ export default function CollectionsPage() {
                                 setDraggedLessonId(null);
                                 setDragOverLessonId(null);
                               }}
-                              className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border transition-all duration-150 ${isDragging
-                                ? 'opacity-40 border-dashed border-blue-400 bg-blue-50/40 scale-[0.99]'
+                              className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-[6px] border transition-all duration-150 ${isDragging
+                                ? 'opacity-40 border-dashed border-blue-400 bg-blue-50/40'
                                 : isDragOver
-                                  ? 'border-blue-500 ring-2 ring-blue-500/20 bg-blue-50/30 shadow-md scale-[1.005]'
-                                  : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-2xs'
+                                  ? 'border-blue-500 bg-blue-50/30'
+                                  : 'border-slate-200 bg-white hover:border-slate-300'
                                 }`}
                             >
                               <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -738,7 +759,7 @@ export default function CollectionsPage() {
                                 </div>
 
                                 {/* Order Badge */}
-                                <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-700 border border-blue-100 flex items-center justify-center font-bold text-xs shrink-0 select-none">
+                                <div className="w-7 h-7 rounded-[4px] bg-blue-50 text-blue-700 border border-blue-200 flex items-center justify-center font-bold text-xs shrink-0 select-none">
                                   {l.order ?? index + 1}
                                 </div>
 
@@ -748,7 +769,7 @@ export default function CollectionsPage() {
                                       {l.title}
                                     </span>
                                     {l.slug && (
-                                      <span className="font-mono text-[11px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200">
+                                      <span className="font-mono text-[11px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded-[4px] border border-slate-200">
                                         /{l.slug}
                                       </span>
                                     )}
@@ -763,7 +784,7 @@ export default function CollectionsPage() {
                                         })
                                       }
                                       title={t('click_to_toggle_status', { defaultValue: 'Click to toggle active status' })}
-                                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border transition-all cursor-pointer ${l.isActive !== false
+                                      className={`inline-flex items-center px-2 py-0.5 rounded-[4px] text-[10px] font-semibold border transition-colors cursor-pointer ${l.isActive !== false
                                         ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
                                         : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
                                         }`}
@@ -773,11 +794,11 @@ export default function CollectionsPage() {
                                   </div>
 
                                   <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5 flex-wrap">
-                                    <span className="font-semibold text-purple-700 flex items-center gap-1 bg-purple-50 px-2 py-0.5 rounded-lg border border-purple-100">
+                                    <span className="font-semibold text-purple-700 flex items-center gap-1 bg-purple-50 px-2 py-0.5 rounded-[4px] border border-purple-100">
                                       <Layers className="w-3 h-3 text-purple-500" />
                                       {l.sectionsCount ?? 0} {t('sections_label', { defaultValue: 'sections' })}
                                     </span>
-                                    <span className="font-semibold text-blue-700 flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100">
+                                    <span className="font-semibold text-blue-700 flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded-[4px] border border-blue-100">
                                       <BookOpen className="w-3 h-3 text-blue-500" />
                                       {l.wordsCount ?? 0} {t('words_label', { defaultValue: 'words' })}
                                     </span>
@@ -798,7 +819,7 @@ export default function CollectionsPage() {
                                 <button
                                   type="button"
                                   onClick={() => setManagingWordsLesson(l)}
-                                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 hover:from-blue-100 hover:to-indigo-100 border border-blue-200 text-xs font-semibold inline-flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+                                  className="px-3 py-1.5 rounded-[6px] bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
                                 >
                                   <Layers className="w-3.5 h-3.5 text-blue-600" />
                                   <span>{t('manage_content', { defaultValue: 'Manage Content' })}</span>
@@ -807,7 +828,7 @@ export default function CollectionsPage() {
                                 <button
                                   type="button"
                                   onClick={() => setEditingLesson(l)}
-                                  className="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                                  className="p-1.5 text-slate-400 hover:text-blue-600 rounded-[6px] hover:bg-slate-100 transition-colors cursor-pointer"
                                   title={t('edit_lesson', { defaultValue: 'Edit Lesson' })}
                                 >
                                   <Pencil className="w-3.5 h-3.5" />
@@ -816,7 +837,7 @@ export default function CollectionsPage() {
                                 <button
                                   type="button"
                                   onClick={() => setDeletingLesson(l)}
-                                  className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                                  className="p-1.5 text-slate-400 hover:text-rose-600 rounded-[6px] hover:bg-rose-50 transition-colors cursor-pointer"
                                   title={t('delete_lesson', { defaultValue: 'Delete Lesson' })}
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -834,7 +855,7 @@ export default function CollectionsPage() {
                 {activeTab === 'info' && (
                   <div className="space-y-4 pt-1">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-1">
+                      <div className="p-4 rounded-[6px] border border-slate-200 bg-slate-50/50 space-y-1">
                         <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                           {t('collection_name', { defaultValue: 'Collection Name' })}
                         </span>
@@ -843,7 +864,7 @@ export default function CollectionsPage() {
                         </p>
                       </div>
 
-                      <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-1">
+                      <div className="p-4 rounded-[6px] border border-slate-200 bg-slate-50/50 space-y-1">
                         <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                           {t('slug_label', { defaultValue: 'Slug (Định danh URL)' })}
                         </span>
@@ -852,7 +873,7 @@ export default function CollectionsPage() {
                         </p>
                       </div>
 
-                      <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-1">
+                      <div className="p-4 rounded-[6px] border border-slate-200 bg-slate-50/50 space-y-1">
                         <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                           {t('order', { defaultValue: 'Order' })}
                         </span>
@@ -861,7 +882,7 @@ export default function CollectionsPage() {
                         </p>
                       </div>
 
-                      <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-1">
+                      <div className="p-4 rounded-[6px] border border-slate-200 bg-slate-50/50 space-y-1">
                         <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                           {t('status', { defaultValue: 'Status' })}
                         </span>
@@ -871,7 +892,7 @@ export default function CollectionsPage() {
                       </div>
                     </div>
 
-                    <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-1">
+                    <div className="p-4 rounded-[6px] border border-slate-200 bg-slate-50/50 space-y-1">
                       <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                         {t('description', { defaultValue: 'Description' })}
                       </span>
@@ -904,7 +925,7 @@ export default function CollectionsPage() {
       <CreateCollectionDialog
         open={createColOpen}
         onOpenChange={setCreateColOpen}
-        onSuccessCreated={(id) => setSelectedId(id)}
+        onSuccessCreated={(id) => selectCollection(id)}
         defaultOrder={collections.length + 1}
       />
 
@@ -924,6 +945,14 @@ export default function CollectionsPage() {
         }}
         onSuccessDeleted={() => {
           setSelectedId(null);
+          const currentParams = new URLSearchParams(window.location.search);
+          currentParams.delete('collectionId');
+          const newSearch = currentParams.toString();
+          router.replace(
+            newSearch
+              ? `/${locale}/vocabulary/collections?${newSearch}`
+              : `/${locale}/vocabulary/collections`
+          );
         }}
       />
 

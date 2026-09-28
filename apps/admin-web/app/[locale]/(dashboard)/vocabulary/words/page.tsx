@@ -258,7 +258,7 @@ export default function WordsPage() {
         <button
           type="button"
           onClick={() => setCreateOpen(true)}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-semibold shadow-xs hover:shadow-md transition-all cursor-pointer shrink-0"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-[6px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-semibold transition-colors cursor-pointer shrink-0"
         >
           <Plus className="w-4 h-4 stroke-[2.5]" />
           <span>{t('create_word')}</span>
@@ -267,9 +267,9 @@ export default function WordsPage() {
 
       {/* BANNER THÔNG BÁO ĐANG TẠO TỪ CHO BÀI HỌC */}
       {targetLessonId && !lessonAddedSuccess && (
-        <div className="p-3.5 bg-blue-50 border border-blue-200 text-blue-900 rounded-2xl flex items-center justify-between gap-3 animate-in fade-in duration-200 shadow-xs">
+        <div className="p-3.5 bg-blue-50 border border-blue-200 text-blue-900 rounded-[6px] flex items-center justify-between gap-3 animate-in fade-in duration-200">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-[4px] bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
               <Plus className="w-4 h-4" />
             </div>
             <div className="min-w-0">
@@ -290,7 +290,7 @@ export default function WordsPage() {
               });
               router.push(`/${locale}/vocabulary/collections?${returnQuery.toString()}`);
             }}
-            className="px-3 py-1.5 bg-white border border-blue-200 hover:bg-blue-50 text-blue-700 rounded-xl text-xs font-semibold shrink-0 cursor-pointer shadow-2xs transition-colors"
+            className="px-3 py-1.5 bg-white border border-blue-200 hover:bg-blue-50 text-blue-700 rounded-[6px] text-xs font-semibold shrink-0 cursor-pointer transition-colors"
           >
             {t('back_to_collections', 'Quay lại bài học')}
           </button>
@@ -299,9 +299,9 @@ export default function WordsPage() {
 
       {/* SUCCESS BANNER KHI TẠO TỪ VÀ TỰ ĐỘNG THÊM VÀO BÀI HỌC */}
       {lessonAddedSuccess && (
-        <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl flex items-center justify-between gap-3 animate-in fade-in duration-200 shadow-xs">
+        <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-[6px] flex items-center justify-between gap-3 animate-in fade-in duration-200">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 rounded-[4px] bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
               <CheckCircle2 className="w-5 h-5" />
             </div>
             <div className="min-w-0">
@@ -320,7 +320,7 @@ export default function WordsPage() {
           <button
             type="button"
             onClick={() => router.push(`/${locale}/vocabulary/collections`)}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl text-xs font-semibold shrink-0 cursor-pointer shadow-xs transition-colors"
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-[6px] text-xs font-semibold shrink-0 cursor-pointer transition-colors"
           >
             {t('back_to_collections', 'Quay lại bài học')}
           </button>
@@ -328,7 +328,7 @@ export default function WordsPage() {
       )}
 
       {/* FILTER BAR */}
-      <div className="flex flex-col lg:flex-row items-stretch lg:items-end gap-4 bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs">
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-end gap-4 bg-white p-4 rounded-[6px] border border-slate-200">
         {/* Search Input */}
         <div className="relative flex-1">
           <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -339,7 +339,7 @@ export default function WordsPage() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder={t('search_placeholder')}
-            className="w-full pl-10 pr-4 py-2.5 bg-slate-50/50 hover:bg-white focus:bg-white border border-slate-200 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+            className="w-full pl-10 pr-4 py-2.5 bg-slate-50/50 hover:bg-white focus:bg-white border border-slate-200 rounded-[6px] text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-blue-500 transition-all"
           />
         </div>
 
@@ -355,7 +355,7 @@ export default function WordsPage() {
               setPage(1);
             }}
           >
-            <SelectTrigger className="w-full bg-white hover:bg-slate-50 border-slate-200 rounded-lg px-3.5 py-2.5 text-sm font-medium text-slate-700">
+            <SelectTrigger className="w-full bg-white hover:bg-slate-50 border-slate-200 rounded-[6px] px-3.5 py-2.5 text-sm font-medium text-slate-700">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -381,7 +381,7 @@ export default function WordsPage() {
               setPage(1);
             }}
           >
-            <SelectTrigger className="w-full bg-white hover:bg-slate-50 border-slate-200 rounded-lg px-3.5 py-2.5 text-sm font-medium text-slate-700">
+            <SelectTrigger className="w-full bg-white hover:bg-slate-50 border-slate-200 rounded-[6px] px-3.5 py-2.5 text-sm font-medium text-slate-700">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -397,7 +397,7 @@ export default function WordsPage() {
           <button
             type="button"
             onClick={handleReset}
-            className="w-full sm:w-auto h-[42px] px-5 inline-flex items-center justify-center gap-2 border border-slate-200 hover:border-slate-300 rounded-lg bg-white hover:bg-slate-50 text-sm font-medium text-slate-700 transition-colors cursor-pointer"
+            className="w-full sm:w-auto h-[42px] px-5 inline-flex items-center justify-center gap-2 border border-slate-200 hover:border-slate-300 rounded-[6px] bg-white hover:bg-slate-50 text-sm font-medium text-slate-700 transition-colors cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
             {t('reset')}
@@ -407,9 +407,9 @@ export default function WordsPage() {
 
       {/* BULK ACTIONS BAR */}
       {selectedIds.length > 0 && (
-        <div className="flex items-center justify-between p-3.5 px-5 bg-blue-50/80 border border-blue-200/80 rounded-2xl shadow-sm text-sm animate-in fade-in-0 duration-200">
+        <div className="flex items-center justify-between p-3.5 px-5 bg-blue-50/80 border border-blue-200 rounded-[6px] text-sm animate-in fade-in-0 duration-200">
           <div className="flex items-center gap-2 font-semibold text-blue-900">
-            <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold">
+            <span className="w-5 h-5 rounded-[4px] bg-blue-600 text-white text-xs flex items-center justify-center font-bold">
               {selectedIds.length}
             </span>
             <span>{t('selected_count', { count: selectedIds.length })}</span>
@@ -420,7 +420,7 @@ export default function WordsPage() {
               type="button"
               disabled={isBulking}
               onClick={() => handleBulkToggle(true)}
-              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer inline-flex items-center gap-1.5 shadow-2xs"
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 text-white text-xs font-semibold rounded-[6px] transition-colors cursor-pointer inline-flex items-center gap-1.5"
             >
               {isBulking && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
               <span>{t('bulk_activate')}</span>
@@ -430,7 +430,7 @@ export default function WordsPage() {
               type="button"
               disabled={isBulking}
               onClick={() => handleBulkToggle(false)}
-              className="px-3 py-1.5 bg-white hover:bg-slate-100 active:bg-slate-200 disabled:opacity-50 text-slate-700 text-xs font-semibold rounded-xl border border-slate-300 transition-colors cursor-pointer inline-flex items-center gap-1.5 shadow-2xs"
+              className="px-3 py-1.5 bg-white hover:bg-slate-100 active:bg-slate-200 disabled:opacity-50 text-slate-700 text-xs font-semibold rounded-[6px] border border-slate-300 transition-colors cursor-pointer inline-flex items-center gap-1.5"
             >
               {isBulking && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
               <span>{t('bulk_deactivate')}</span>
@@ -448,7 +448,7 @@ export default function WordsPage() {
       )}
 
       {/* TABLE CONTAINER */}
-      <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs overflow-hidden">
+      <div className="bg-white rounded-[6px] border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -571,7 +571,7 @@ export default function WordsPage() {
                       {/* Level */}
                       <td className="py-4 px-4 text-center">
                         <span
-                          className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold border ${getLevelBadgeClass(
+                          className={`inline-block px-2.5 py-0.5 rounded-[4px] text-xs font-semibold border ${getLevelBadgeClass(
                             item.level
                           )}`}
                         >
@@ -600,7 +600,7 @@ export default function WordsPage() {
                             }`}
                           >
                             <span
-                              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs transition duration-200 ease-in-out ${
+                              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white transition duration-200 ease-in-out ${
                                 item.isActive !== false ? 'translate-x-4' : 'translate-x-0'
                               }`}
                             />
@@ -632,7 +632,7 @@ export default function WordsPage() {
                             type="button"
                             onClick={() => setViewingWordId(item._id)}
                             title={t('view_details')}
-                            className="p-1.5 rounded-lg border border-blue-100 bg-blue-50/40 text-blue-600 hover:bg-blue-100/70 hover:text-blue-700 transition-colors cursor-pointer"
+                            className="p-1.5 rounded-[6px] border border-blue-100 bg-blue-50/40 text-blue-600 hover:bg-blue-100/70 hover:text-blue-700 transition-colors cursor-pointer"
                           >
                             <Eye className="w-4 h-4" />
                           </button>
@@ -642,7 +642,7 @@ export default function WordsPage() {
                             type="button"
                             onClick={() => setEditingWordId(item._id)}
                             title={t('edit_word')}
-                            className="p-1.5 rounded-lg border border-blue-100 bg-blue-50/40 text-blue-600 hover:bg-blue-100/70 hover:text-blue-700 transition-colors cursor-pointer"
+                            className="p-1.5 rounded-[6px] border border-blue-100 bg-blue-50/40 text-blue-600 hover:bg-blue-100/70 hover:text-blue-700 transition-colors cursor-pointer"
                           >
                             <Pencil className="w-4 h-4" />
                           </button>
@@ -652,7 +652,7 @@ export default function WordsPage() {
                             type="button"
                             onClick={() => setDeletingWord(item)}
                             title={t('delete_word')}
-                            className="p-1.5 rounded-lg border border-rose-100 bg-rose-50/40 text-rose-500 hover:bg-rose-100/70 hover:text-rose-600 transition-colors cursor-pointer"
+                            className="p-1.5 rounded-[6px] border border-rose-100 bg-rose-50/40 text-rose-500 hover:bg-rose-100/70 hover:text-rose-600 transition-colors cursor-pointer"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
