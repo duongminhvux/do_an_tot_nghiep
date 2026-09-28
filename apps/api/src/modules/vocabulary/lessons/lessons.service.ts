@@ -108,6 +108,36 @@ export class LessonsService {
     }));
   }
 
+  async findBySlug(slug: string, collectionId?: string): Promise<any> {
+    const lang = this.getLang();
+    const filter: Record<string, any> = { slug, isDeleted: { $ne: true } };
+    if (collectionId && Types.ObjectId.isValid(collectionId)) {
+      filter.collectionId = new Types.ObjectId(collectionId);
+    }
+    let lesson = await this.lessonModel.findOne(filter).lean().exec();
+    if (!lesson) {
+      if (Types.ObjectId.isValid(slug)) {
+        return this.findOneLesson(slug);
+      }
+      throw new NotFoundException(
+        await this.i18n.t('lesson.LESSON_NOT_FOUND', { lang }),
+      );
+    }
+    const [wordsCount, sectionsCount] = await Promise.all([
+      this.lessonWordModel.countDocuments({
+        lessonId: lesson._id,
+      }).exec(),
+      this.sectionModel.countDocuments({
+        lessonId: lesson._id,
+      }).exec(),
+    ]);
+    return {
+      ...lesson,
+      wordsCount,
+      sectionsCount,
+    };
+  }
+
   async findOneLesson(id: string): Promise<any> {
     const lang = this.getLang();
     const lesson = await this.lessonModel.findOne({ _id: id, isDeleted: { $ne: true } }).lean().exec();
@@ -130,6 +160,7 @@ export class LessonsService {
       sectionsCount,
     };
   }
+
 
   async updateLesson(id: string, updateLessonDto: UpdateLessonDto): Promise<Lesson> {
     const lang = this.getLang();

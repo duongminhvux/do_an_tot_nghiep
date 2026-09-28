@@ -18,6 +18,11 @@ export class CollectionsController {
     return this.collectionsService.findAll(query);
   }
 
+  @Get('slug/:slug')
+  findBySlug(@Param('slug') slug: string) {
+    return this.collectionsService.findBySlug(slug);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.collectionsService.findOne(id);

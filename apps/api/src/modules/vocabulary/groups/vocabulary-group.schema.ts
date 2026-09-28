@@ -1,14 +1,10 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
-import { VocabularyGroup } from '../groups/vocabulary-group.schema.js';
+import { HydratedDocument } from 'mongoose';
 
-export type CollectionDocument = HydratedDocument<Collection>;
+export type VocabularyGroupDocument = HydratedDocument<VocabularyGroup>;
 
 @Schema({ timestamps: true })
-export class Collection {
-  @Prop({ type: Types.ObjectId, ref: VocabularyGroup.name, index: true })
-  groupId?: Types.ObjectId;
-
+export class VocabularyGroup {
   @Prop({ required: true, trim: true })
   name!: string;
 
@@ -17,9 +13,6 @@ export class Collection {
 
   @Prop({ trim: true })
   description?: string;
-
-  @Prop({ trim: true })
-  coverUrl?: string;
 
   @Prop({ default: 1 })
   order?: number;
@@ -31,14 +24,14 @@ export class Collection {
   isDeleted?: boolean;
 }
 
-export const CollectionSchema = SchemaFactory.createForClass(Collection);
+export const VocabularyGroupSchema = SchemaFactory.createForClass(VocabularyGroup);
 
 // Partial unique index: only active records must have unique name and slug
-CollectionSchema.index(
+VocabularyGroupSchema.index(
   { name: 1 },
   { unique: true, partialFilterExpression: { isDeleted: { $ne: true } } },
 );
-CollectionSchema.index(
+VocabularyGroupSchema.index(
   { slug: 1 },
   { unique: true, partialFilterExpression: { isDeleted: { $ne: true } } },
 );

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { I18nContext, I18nService } from 'nestjs-i18n';
@@ -9,12 +9,26 @@ import { UpdateCollectionDto } from './dto/update-collection.dto.js';
 import { QueryCollectionDto } from './dto/query-collection.dto.js';
 
 @Injectable()
-export class CollectionsService {
+export class CollectionsService implements OnModuleInit {
   constructor(
     @InjectModel(Collection.name) private readonly collectionModel: Model<CollectionDocument>,
     @InjectModel(Lesson.name) private readonly lessonModel: Model<LessonDocument>,
     private readonly i18n: I18nService,
   ) {}
+
+  async onModuleInit() {
+    try {
+      const indexes = await this.collectionModel.collection.indexes();
+      for (const idx of indexes) {
+        if ((idx.name === 'name_1' || idx.name === 'slug_1') && !idx.partialFilterExpression) {
+          await this.collectionModel.collection.dropIndex(idx.name);
+        }
+      }
+      await this.collectionModel.syncIndexes();
+    } catch {
+      // Ignore
+    }
+  }
 
   private getLang(): string {
     return I18nContext.current()?.lang || 'vi';
@@ -34,12 +48,40 @@ export class CollectionsService {
   }
 
   async create(createCollectionDto: CreateCollectionDto): Promise<Collection> {
-    const rawSlug = createCollectionDto.slug?.trim() || createCollectionDto.name;
+    const lang = this.getLang();
+    const trimmedName = createCollectionDto.name.trim();
+
+    // Check if active collection already exists
+    const escapedName = trimmedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const existingActive = await this.collectionModel.findOne({
+      name: { $regex: new RegExp(`^${escapedName}$`, 'i') },
+      isDeleted: { $ne: true },
+    });
+    if (existingActive) {
+      throw new ConflictException(
+        await this.i18n.t('collection.COLLECTION_ALREADY_EXISTS', { lang }),
+      );
+    }
+
+    const rawSlug = createCollectionDto.slug?.trim() || trimmedName;
     const baseSlug = this.generateSlug(rawSlug) || 'collection';
     let slug = baseSlug;
     let counter = 1;
     while (await this.collectionModel.exists({ slug, isDeleted: { $ne: true } })) {
       slug = `${baseSlug}-${counter++}`;
+    }
+
+    // Free any legacy deleted records
+    const legacyDeleted = await this.collectionModel.find({
+      $or: [{ name: trimmedName }, { slug }],
+      isDeleted: true,
+    });
+    for (const legacy of legacyDeleted) {
+      const ts = Date.now();
+      await this.collectionModel.findByIdAndUpdate(legacy._id, {
+        name: `${legacy.name}_deleted_${ts}`,
+        slug: `${legacy.slug}_deleted_${ts}`,
+      });
     }
 
     let order = createCollectionDto.order;
@@ -50,6 +92,8 @@ export class CollectionsService {
 
     const createdCollection = new this.collectionModel({
       ...createCollectionDto,
+      name: trimmedName,
+      groupId: createCollectionDto.groupId ? new Types.ObjectId(createCollectionDto.groupId) : undefined,
       slug,
       order,
     });
@@ -57,8 +101,12 @@ export class CollectionsService {
   }
 
   async findAll(query: QueryCollectionDto): Promise<{ data: any[]; total: number; page: number; limit: number }> {
-    const { search, isActive, page = 1, limit = 10 } = query;
+    const { search, isActive, groupId, page = 1, limit = 10 } = query;
     const filter: Record<string, any> = { isDeleted: { $ne: true } };
+
+    if (groupId) {
+      filter.groupId = new Types.ObjectId(groupId);
+    }
 
     if (search) {
       filter.$or = [
@@ -76,6 +124,7 @@ export class CollectionsService {
     const [rawCollections, total] = await Promise.all([
       this.collectionModel
         .find(filter)
+        .populate('groupId', 'name slug order isActive')
         .sort({ order: 1, createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -108,7 +157,11 @@ export class CollectionsService {
 
   async findOne(id: string): Promise<any> {
     const lang = this.getLang();
-    const collection = await this.collectionModel.findOne({ _id: id, isDeleted: { $ne: true } }).lean().exec();
+    const collection = await this.collectionModel
+      .findOne({ _id: id, isDeleted: { $ne: true } })
+      .populate('groupId', 'name slug order isActive')
+      .lean()
+      .exec();
     if (!collection) {
       throw new NotFoundException(
         await this.i18n.t('collection.COLLECTION_NOT_FOUND', { lang }),
@@ -124,9 +177,67 @@ export class CollectionsService {
     };
   }
 
+  async findBySlug(slug: string): Promise<any> {
+    const lang = this.getLang();
+    const collection = await this.collectionModel
+      .findOne({ slug, isDeleted: { $ne: true } })
+      .populate('groupId', 'name slug order isActive')
+      .lean()
+      .exec();
+    if (!collection) {
+      throw new NotFoundException(
+        await this.i18n.t('collection.COLLECTION_NOT_FOUND', { lang }),
+      );
+    }
+    const lessonsCount = await this.lessonModel.countDocuments({
+      collectionId: collection._id,
+      isDeleted: { $ne: true },
+    }).exec();
+    return {
+      ...collection,
+      lessonsCount,
+    };
+  }
+
   async update(id: string, updateCollectionDto: UpdateCollectionDto): Promise<Collection> {
     const lang = this.getLang();
     const updateData: Partial<Collection> = { ...updateCollectionDto } as any;
+
+    if (updateCollectionDto.groupId !== undefined) {
+      updateData.groupId = updateCollectionDto.groupId
+        ? new Types.ObjectId(updateCollectionDto.groupId)
+        : (null as any);
+    }
+
+    if (updateCollectionDto.name) {
+      const trimmedName = updateCollectionDto.name.trim();
+      const escapedName = trimmedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const existingActive = await this.collectionModel.findOne({
+        _id: { $ne: id },
+        name: { $regex: new RegExp(`^${escapedName}$`, 'i') },
+        isDeleted: { $ne: true },
+      });
+      if (existingActive) {
+        throw new ConflictException(
+          await this.i18n.t('collection.COLLECTION_ALREADY_EXISTS', { lang }),
+        );
+      }
+      updateData.name = trimmedName;
+
+      // Free any legacy deleted records
+      const legacyDeleted = await this.collectionModel.find({
+        _id: { $ne: id },
+        name: trimmedName,
+        isDeleted: true,
+      });
+      for (const legacy of legacyDeleted) {
+        const ts = Date.now();
+        await this.collectionModel.findByIdAndUpdate(legacy._id, {
+          name: `${legacy.name}_deleted_${ts}`,
+          slug: `${legacy.slug}_deleted_${ts}`,
+        });
+      }
+    }
 
     if (updateCollectionDto.slug || updateCollectionDto.name) {
       const rawSlug = updateCollectionDto.slug?.trim() || updateCollectionDto.name;
@@ -144,6 +255,20 @@ export class CollectionsService {
           slug = `${baseSlug}-${counter++}`;
         }
         updateData.slug = slug;
+
+        // Free any legacy deleted records with this slug
+        const legacySlugDeleted = await this.collectionModel.find({
+          _id: { $ne: id },
+          slug,
+          isDeleted: true,
+        });
+        for (const legacy of legacySlugDeleted) {
+          const ts = Date.now();
+          await this.collectionModel.findByIdAndUpdate(legacy._id, {
+            name: `${legacy.name}_deleted_${ts}`,
+            slug: `${legacy.slug}_deleted_${ts}`,
+          });
+        }
       }
     }
 
@@ -179,15 +304,30 @@ export class CollectionsService {
 
   async remove(id: string): Promise<Collection> {
     const lang = this.getLang();
-    const deletedCollection = await this.collectionModel
-      .findOneAndUpdate({ _id: id, isDeleted: { $ne: true } }, { isDeleted: true }, { new: true })
-      .exec();
-    if (!deletedCollection) {
+    const collection = await this.collectionModel.findOne({ _id: id, isDeleted: { $ne: true } });
+    if (!collection) {
       throw new NotFoundException(
         await this.i18n.t('collection.COLLECTION_NOT_FOUND', { lang }),
       );
     }
-    return deletedCollection;
+
+    const timestamp = Date.now();
+    const deletedName = `${collection.name}_deleted_${timestamp}`;
+    const deletedSlug = `${collection.slug}_deleted_${timestamp}`;
+
+    const deletedCollection = await this.collectionModel
+      .findByIdAndUpdate(
+        id,
+        {
+          isDeleted: true,
+          name: deletedName,
+          slug: deletedSlug,
+        },
+        { new: true },
+      )
+      .exec();
+
+    return deletedCollection!;
   }
 
   async restore(id: string): Promise<Collection> {
@@ -213,5 +353,13 @@ export class CollectionsService {
     if (operations.length > 0) {
       await this.collectionModel.bulkWrite(operations);
     }
+  }
+
+  async assignGroup(collectionIds: string[], groupId: string | null): Promise<void> {
+    const targetGroupId = groupId ? new Types.ObjectId(groupId) : null;
+    await this.collectionModel.updateMany(
+      { _id: { $in: collectionIds.map((id) => new Types.ObjectId(id)) } },
+      { $set: { groupId: targetGroupId } },
+    );
   }
 }

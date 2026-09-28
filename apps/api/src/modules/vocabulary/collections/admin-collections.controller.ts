@@ -38,6 +38,15 @@ export class AdminCollectionsController {
     return { success: true };
   }
 
+  @Patch('assign-group')
+  async assignGroup(
+    @Body('collectionIds') collectionIds: string[],
+    @Body('groupId') groupId: string | null,
+  ) {
+    await this.collectionsService.assignGroup(collectionIds || [], groupId);
+    return { success: true };
+  }
+
   @Patch(':id')
   update(
     @Param('id') id: string,

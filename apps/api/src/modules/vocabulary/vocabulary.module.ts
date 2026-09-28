@@ -6,6 +6,11 @@ import { WordsController } from './words/words.controller.js';
 import { AdminWordsController } from './words/admin-words.controller.js';
 import { WordsService } from './words/words.service.js';
 
+import { VocabularyGroup, VocabularyGroupSchema } from './groups/vocabulary-group.schema.js';
+import { VocabularyGroupsController } from './groups/vocabulary-groups.controller.js';
+import { AdminVocabularyGroupsController } from './groups/admin-vocabulary-groups.controller.js';
+import { VocabularyGroupsService } from './groups/vocabulary-groups.service.js';
+
 import { Collection, CollectionSchema } from './collections/collection.schema.js';
 import { CollectionsController } from './collections/collections.controller.js';
 import { AdminCollectionsController } from './collections/admin-collections.controller.js';
@@ -22,6 +27,7 @@ import { LessonsService } from './lessons/lessons.service.js';
   imports: [
     MongooseModule.forFeature([
       { name: Word.name, schema: WordSchema },
+      { name: VocabularyGroup.name, schema: VocabularyGroupSchema },
       { name: Collection.name, schema: CollectionSchema },
       { name: Lesson.name, schema: LessonSchema },
       { name: Section.name, schema: SectionSchema },
@@ -31,6 +37,8 @@ import { LessonsService } from './lessons/lessons.service.js';
   controllers: [
     WordsController,
     AdminWordsController,
+    VocabularyGroupsController,
+    AdminVocabularyGroupsController,
     CollectionsController,
     AdminCollectionsController,
     LessonsController,
@@ -38,14 +46,17 @@ import { LessonsService } from './lessons/lessons.service.js';
   ],
   providers: [
     WordsService,
+    VocabularyGroupsService,
     CollectionsService,
     LessonsService,
   ],
   exports: [
     WordsService,
+    VocabularyGroupsService,
     CollectionsService,
     LessonsService,
     MongooseModule,
   ],
 })
 export class VocabularyModule {}
+

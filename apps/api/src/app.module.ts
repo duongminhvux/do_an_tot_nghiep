@@ -13,6 +13,7 @@ import { fileURLToPath } from 'url';
 import { VocabularyModule } from './modules/vocabulary/vocabulary.module.js';
 import { AdminsModule } from './modules/admins/admins.module.js';
 import { UploadModule } from './modules/upload/upload.module.js';
+import { LearningModule } from './modules/learning/learning.module.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -57,6 +58,7 @@ const isDev = process.env.NODE_ENV !== 'production';
     GmailModule,
     VocabularyModule,
     UploadModule,
+    LearningModule,
   ],
   controllers: [AppController],
   providers: [AppService],

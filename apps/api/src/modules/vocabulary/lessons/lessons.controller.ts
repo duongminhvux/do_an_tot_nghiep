@@ -18,6 +18,14 @@ export class LessonsController {
     return this.lessonsService.findAllLessons(collectionId);
   }
 
+  @Get('slug/:slug')
+  findBySlug(
+    @Param('slug') slug: string,
+    @Query('collectionId') collectionId?: string,
+  ) {
+    return this.lessonsService.findBySlug(slug, collectionId);
+  }
+
   @Get(':id')
   findOneLesson(@Param('id') id: string) {
     return this.lessonsService.findOneLesson(id);

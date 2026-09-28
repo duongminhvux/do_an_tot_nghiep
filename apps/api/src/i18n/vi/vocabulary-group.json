@@ -1,0 +1,15 @@
+{
+  "GROUP_CREATED_SUCCESSFULLY": "Tạo nhóm từ vựng thành công.",
+  "GROUP_FETCHED_SUCCESSFULLY": "Lấy thông tin nhóm từ vựng thành công.",
+  "GROUP_LIST_FETCHED_SUCCESSFULLY": "Lấy danh sách nhóm từ vựng thành công.",
+  "GROUP_UPDATED_SUCCESSFULLY": "Cập nhật nhóm từ vựng thành công.",
+  "GROUP_DELETED_SUCCESSFULLY": "Xóa nhóm từ vựng thành công.",
+  "GROUP_RESTORED_SUCCESSFULLY": "Khôi phục nhóm từ vựng thành công.",
+  "GROUP_NOT_FOUND": "Không tìm thấy nhóm từ vựng.",
+  "GROUP_ALREADY_EXISTS": "Nhóm từ vựng này đã tồn tại.",
+  "GROUP_ACTIVATED_SUCCESSFULLY": "Kích hoạt nhóm từ vựng thành công.",
+  "GROUP_DEACTIVATED_SUCCESSFULLY": "Hủy kích hoạt nhóm từ vựng thành công.",
+  "GROUPS_REORDERED_SUCCESSFULLY": "Cập nhật thứ tự nhóm từ vựng thành công.",
+  "GROUP_NAME_REQUIRED": "Vui lòng nhập tên nhóm từ vựng.",
+  "GROUP_NAME_MUST_BE_STRING": "Tên nhóm từ vựng phải là một chuỗi ký tự."
+}

@@ -1,0 +1,15 @@
+{
+  "GROUP_CREATED_SUCCESSFULLY": "Vocabulary group created successfully.",
+  "GROUP_FETCHED_SUCCESSFULLY": "Vocabulary group fetched successfully.",
+  "GROUP_LIST_FETCHED_SUCCESSFULLY": "Vocabulary group list fetched successfully.",
+  "GROUP_UPDATED_SUCCESSFULLY": "Vocabulary group updated successfully.",
+  "GROUP_DELETED_SUCCESSFULLY": "Vocabulary group deleted successfully.",
+  "GROUP_RESTORED_SUCCESSFULLY": "Vocabulary group restored successfully.",
+  "GROUP_NOT_FOUND": "Vocabulary group not found.",
+  "GROUP_ALREADY_EXISTS": "Vocabulary group already exists.",
+  "GROUP_ACTIVATED_SUCCESSFULLY": "Vocabulary group activated successfully.",
+  "GROUP_DEACTIVATED_SUCCESSFULLY": "Vocabulary group deactivated successfully.",
+  "GROUPS_REORDERED_SUCCESSFULLY": "Vocabulary groups reordered successfully.",
+  "GROUP_NAME_REQUIRED": "Vocabulary group name is required.",
+  "GROUP_NAME_MUST_BE_STRING": "Vocabulary group name must be a string."
+}

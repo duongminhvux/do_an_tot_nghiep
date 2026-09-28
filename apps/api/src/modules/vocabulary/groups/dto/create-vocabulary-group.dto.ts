@@ -1,14 +1,10 @@
 import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
 
-export class CreateCollectionDto {
-  @IsNotEmpty({ message: i18nValidationMessage('collection.COLLECTION_NAME_REQUIRED') })
-  @IsString({ message: i18nValidationMessage('collection.COLLECTION_NAME_MUST_BE_STRING') })
+export class CreateVocabularyGroupDto {
+  @IsNotEmpty({ message: i18nValidationMessage('vocabulary-group.GROUP_NAME_REQUIRED') })
+  @IsString({ message: i18nValidationMessage('vocabulary-group.GROUP_NAME_MUST_BE_STRING') })
   name!: string;
-
-  @IsString()
-  @IsOptional()
-  groupId?: string;
 
   @IsString()
   @IsOptional()
@@ -17,10 +13,6 @@ export class CreateCollectionDto {
   @IsString()
   @IsOptional()
   description?: string;
-
-  @IsString()
-  @IsOptional()
-  coverUrl?: string;
 
   @IsNumber()
   @IsOptional()

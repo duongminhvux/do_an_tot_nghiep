@@ -1,14 +1,10 @@
 import { IsBoolean, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 
-export class QueryCollectionDto {
+export class QueryVocabularyGroupDto {
   @IsString()
   @IsOptional()
   search?: string;
-
-  @IsString()
-  @IsOptional()
-  groupId?: string;
 
   @Transform(({ value }) => (value === 'true' ? true : value === 'false' ? false : value))
   @IsBoolean()
