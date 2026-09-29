@@ -7,6 +7,14 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 export class ProgressController {
   constructor(private readonly progressService: ProgressService) {}
 
+  @Get('dashboard-stats')
+  getDashboardStats(
+    @Req() req: any,
+    @Query('timezoneOffset') timezoneOffset?: string,
+  ) {
+    return this.progressService.getDashboardStats(req.user._id, timezoneOffset);
+  }
+
   @Get('lesson/:lessonId')
   getLessonProgress(
     @Req() req: any,

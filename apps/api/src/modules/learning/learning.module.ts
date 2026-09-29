@@ -28,6 +28,7 @@ import {
 } from './sessions/schemas/learning-session-word.schema.js';
 
 import { VocabularyModule } from '../vocabulary/vocabulary.module.js';
+import { SavedWordsModule } from './saved-words/saved-words.module.js';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { VocabularyModule } from '../vocabulary/vocabulary.module.js';
         schema: LearningSessionWordSchema,
       },
     ]),
+    SavedWordsModule,
   ],
   controllers: [
     ProgressController,
@@ -69,6 +71,7 @@ import { VocabularyModule } from '../vocabulary/vocabulary.module.js';
     ProgressService,
     ReviewsService,
     SessionsService,
+    SavedWordsModule,
     MongooseModule,
   ],
 })

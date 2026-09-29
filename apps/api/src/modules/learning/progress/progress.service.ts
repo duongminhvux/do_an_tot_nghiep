@@ -25,6 +25,14 @@ import {
   LessonWord,
   LessonWordDocument,
 } from '../../vocabulary/lessons/lesson-word.schema.js';
+import {
+  LearningSession,
+  LearningSessionDocument,
+} from '../sessions/schemas/learning-session.schema.js';
+import {
+  Collection,
+  CollectionDocument,
+} from '../../vocabulary/collections/collection.schema.js';
 
 @Injectable()
 export class ProgressService {
@@ -41,6 +49,10 @@ export class ProgressService {
     private sectionModel: Model<SectionDocument>,
     @InjectModel(LessonWord.name)
     private lessonWordModel: Model<LessonWordDocument>,
+    @InjectModel(LearningSession.name)
+    private sessionModel: Model<LearningSessionDocument>,
+    @InjectModel(Collection.name)
+    private collectionModel: Model<CollectionDocument>,
   ) {}
 
   /**
@@ -385,4 +397,166 @@ export class ProgressService {
       .find({ userId: new Types.ObjectId(userId) })
       .sort({ lastStudiedAt: -1 });
   }
+
+  /**
+   * Thống kê tổng quan cho Widget "Học hôm nay" và "Thành tích của bạn"
+   */
+  async getDashboardStats(userId: string, timezoneOffset?: string) {
+    const userObjId = new Types.ObjectId(userId);
+
+    // Tính toán thời gian theo múi giờ client (offset phút, mặc định -420 cho UTC+7)
+    const offsetMinutes =
+      timezoneOffset !== undefined && !isNaN(Number(timezoneOffset))
+        ? Number(timezoneOffset)
+        : -420;
+
+    const now = new Date();
+    const localNowMs = now.getTime() - offsetMinutes * 60 * 1000;
+    const localNow = new Date(localNowMs);
+
+    const startOfTodayLocal = new Date(localNow);
+    startOfTodayLocal.setUTCHours(0, 0, 0, 0);
+    const startOfToday = new Date(
+      startOfTodayLocal.getTime() + offsetMinutes * 60 * 1000,
+    );
+
+    const endOfTodayLocal = new Date(localNow);
+    endOfTodayLocal.setUTCHours(23, 59, 59, 999);
+    const endOfToday = new Date(
+      endOfTodayLocal.getTime() + offsetMinutes * 60 * 1000,
+    );
+
+    // 1. Số từ học hôm nay
+    const todayReviewedWords = await this.reviewModel.countDocuments({
+      userId: userObjId,
+      lastReviewedAt: { $gte: startOfToday, $lte: endOfToday },
+    });
+
+    const todayLearnedLessonWords = await this.userLessonWordModel.countDocuments({
+      userId: userObjId,
+      learnedAt: { $gte: startOfToday, $lte: endOfToday },
+    });
+
+    const todayLearnedCount = Math.max(todayReviewedWords, todayLearnedLessonWords);
+    const dailyGoal = 20;
+
+    // 2. Tổng số từ đã học và từ đã ghi nhớ (Mastered)
+    const [totalReviewedWords, totalMasteredWords, totalLessonWords, totalMasteredLessonWords] =
+      await Promise.all([
+        this.reviewModel.countDocuments({ userId: userObjId }),
+        this.reviewModel.countDocuments({
+          userId: userObjId,
+          status: 'MASTERED',
+        }),
+        this.userLessonWordModel.countDocuments({ userId: userObjId }),
+        this.userLessonWordModel.countDocuments({
+          userId: userObjId,
+          completedAt: { $exists: true, $ne: null },
+        }),
+      ]);
+
+    const totalLearnedWords = Math.max(totalReviewedWords, totalLessonWords);
+    const totalMastered = Math.max(totalMasteredWords, totalMasteredLessonWords);
+
+    // 3. Tính streak: Tìm các ngày có hoạt động học
+    const [sessions, reviews, progresses] = await Promise.all([
+      this.sessionModel
+        .find({ userId: userObjId })
+        .select('startedAt')
+        .lean(),
+      this.reviewModel
+        .find({ userId: userObjId, lastReviewedAt: { $exists: true } })
+        .select('lastReviewedAt')
+        .lean(),
+      this.progressModel
+        .find({ userId: userObjId, lastStudiedAt: { $exists: true } })
+        .select('lastStudiedAt')
+        .lean(),
+    ]);
+
+    const toLocalDateStr = (d: Date) => {
+      const local = new Date(d.getTime() - offsetMinutes * 60 * 1000);
+      return local.toISOString().slice(0, 10);
+    };
+
+    const studyDates = new Set<string>();
+    sessions.forEach((s) => {
+      if (s.startedAt) studyDates.add(toLocalDateStr(new Date(s.startedAt)));
+    });
+    reviews.forEach((r) => {
+      if (r.lastReviewedAt)
+        studyDates.add(toLocalDateStr(new Date(r.lastReviewedAt)));
+    });
+    progresses.forEach((p) => {
+      if (p.lastStudiedAt)
+        studyDates.add(toLocalDateStr(new Date(p.lastStudiedAt)));
+    });
+
+    const todayStr = toLocalDateStr(now);
+    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const yesterdayStr = toLocalDateStr(yesterday);
+
+    let streak = 0;
+    let checkDate = new Date(now);
+
+    if (studyDates.has(todayStr)) {
+      while (studyDates.has(toLocalDateStr(checkDate))) {
+        streak += 1;
+        checkDate = new Date(checkDate.getTime() - 24 * 60 * 60 * 1000);
+      }
+    } else if (studyDates.has(yesterdayStr)) {
+      checkDate = yesterday;
+      while (studyDates.has(toLocalDateStr(checkDate))) {
+        streak += 1;
+        checkDate = new Date(checkDate.getTime() - 24 * 60 * 60 * 1000);
+      }
+    } else {
+      streak = 0;
+    }
+
+    // 4. Tìm bài học đang học dở hoặc gần nhất để làm CTA
+    const lastProgress = await this.progressModel
+      .findOne({ userId: userObjId })
+      .sort({ lastStudiedAt: -1, updatedAt: -1 })
+      .populate('lessonId');
+
+    let continueLesson: {
+      lessonId: string;
+      lessonTitle: string;
+      lessonSlug: string;
+      collectionSlug?: string;
+      progress: number;
+    } | null = null;
+
+    if (lastProgress && lastProgress.lessonId) {
+      const lessonObj = lastProgress.lessonId as any;
+      if (lessonObj && lessonObj.slug) {
+        let colSlug = '';
+        if (lessonObj.collectionId) {
+          const col = await this.collectionModel
+            .findById(lessonObj.collectionId)
+            .select('slug');
+          colSlug = col?.slug || String(lessonObj.collectionId);
+        }
+        continueLesson = {
+          lessonId: String(lessonObj._id),
+          lessonTitle: lessonObj.title,
+          lessonSlug: lessonObj.slug,
+          collectionSlug: colSlug,
+          progress: lastProgress.progress || 0,
+        };
+      }
+    }
+
+    return {
+      dailyGoal,
+      todayLearnedCount,
+      streak,
+      totalLearnedWords,
+      totalMasteredWords: totalMastered,
+      hasStudiedToday: studyDates.has(todayStr),
+      continueLesson,
+    };
+  }
 }
+
