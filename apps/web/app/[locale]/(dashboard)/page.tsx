@@ -7,7 +7,6 @@ import { useTranslation } from 'react-i18next';
 import {
   BookOpen,
   GraduationCap,
-  Sparkles,
   Flame,
   Target,
   ArrowRight,
@@ -26,7 +25,7 @@ export default function StudentHomePage() {
       <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm">
         <div className="max-w-2xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold mb-3">
-            <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+            <GraduationCap className="w-3.5 h-3.5 text-blue-600" />
             <span>{t('student', 'Học viên')}</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">

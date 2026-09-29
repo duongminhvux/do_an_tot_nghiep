@@ -27,20 +27,20 @@ import {
 } from 'lucide-react';
 
 // Tab items
-const TABS = [
-  { id: 'lessons', label: 'Danh sách bài học', icon: FileText },
-  { id: 'words', label: 'Từ vựng', icon: BookOpen },
-  { id: 'stats', label: 'Thống kê', icon: BarChart3 },
-  { id: 'about', label: 'Giới thiệu', icon: Info },
+const TAB_KEYS = [
+  { id: 'lessons', labelKey: 'tab_lessons', icon: FileText },
+  { id: 'words', labelKey: 'tab_words', icon: BookOpen },
+  { id: 'stats', labelKey: 'tab_stats', icon: BarChart3 },
+  { id: 'about', labelKey: 'tab_about', icon: Info },
 ] as const;
 
-type TabId = typeof TABS[number]['id'];
+type TabId = typeof TAB_KEYS[number]['id'];
 
 export default function CollectionDetailPage() {
   const params = useParams();
   const locale = (params?.locale as string) || 'vi';
   const slug = (params?.slug as string) || '';
-  const { t } = useTranslation('common');
+  const { t } = useTranslation('vocabulary');
 
   const [activeTab, setActiveTab] = useState<TabId>('lessons');
 
@@ -114,17 +114,17 @@ export default function CollectionDetailPage() {
         <div className="text-center py-20">
           <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-3" />
           <p className="text-sm font-semibold text-slate-600">
-            Không tìm thấy bộ sưu tập
+            {t('collection_detail.not_found_title')}
           </p>
           <p className="text-xs text-slate-400 mt-1">
-            Vui lòng quay lại trang khám phá để chọn bộ sưu tập.
+            {t('collection_detail.not_found_desc')}
           </p>
           <Link
             href={`/${locale}/vocabulary`}
             className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors"
           >
             <ArrowRight className="w-3.5 h-3.5 rotate-180" />
-            <span>Quay lại</span>
+            <span>{t('back')}</span>
           </Link>
         </div>
       </div>
@@ -140,6 +140,7 @@ export default function CollectionDetailPage() {
         <Link
           href={`/${locale}`}
           className="flex items-center gap-1 hover:text-blue-600 transition-colors"
+          title={t('collection_detail.breadcrumb_home')}
         >
           <Home className="w-3.5 h-3.5" />
         </Link>
@@ -148,14 +149,14 @@ export default function CollectionDetailPage() {
           href={`/${locale}/vocabulary`}
           className="hover:text-blue-600 transition-colors font-medium"
         >
-          Vocabulary
+          {t('collection_detail.breadcrumb_vocab')}
         </Link>
         <ChevronRight className="w-3 h-3 text-slate-300" />
         <Link
           href={`/${locale}/vocabulary`}
           className="hover:text-blue-600 transition-colors font-medium"
         >
-          Khám phá
+          {t('collection_detail.breadcrumb_explore')}
         </Link>
         <ChevronRight className="w-3 h-3 text-slate-300" />
         {isColLoading ? (
@@ -225,16 +226,20 @@ export default function CollectionDetailPage() {
                 <div className="flex items-center gap-4 sm:gap-6 text-xs text-slate-500 pt-1">
                   <div className="flex items-center gap-1.5">
                     <FileText className="w-3.5 h-3.5 text-blue-500" />
-                    <span className="font-semibold">{collection.lessonsCount || lessons.length} bài học</span>
+                    <span className="font-semibold">
+                      {collection.lessonsCount || lessons.length} {t('collection_detail.stat_lessons').toLowerCase()}
+                    </span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <BookOpen className="w-3.5 h-3.5 text-emerald-500" />
-                    <span className="font-semibold">{totalWordsCount || collection.wordsCount || 0} từ vựng</span>
+                    <span className="font-semibold">
+                      {totalWordsCount || collection.wordsCount || 0} {t('collection_detail.stat_words').toLowerCase()}
+                    </span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <GraduationCap className="w-3.5 h-3.5 text-amber-500" />
                     <span className="font-semibold">
-                      {groupName || 'Tổng quát'}
+                      {groupName || 'General'}
                     </span>
                   </div>
                 </div>
@@ -251,14 +256,14 @@ export default function CollectionDetailPage() {
                   className="px-5 py-2.5 rounded bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-xs sm:text-sm inline-flex items-center gap-2 transition-all shadow-sm shadow-blue-500/20 cursor-pointer"
                 >
                   <Play className="w-4 h-4" />
-                  <span>Bắt đầu học</span>
+                  <span>{t('collection_detail.start_btn')}</span>
                 </button>
                 <button
                   type="button"
                   className="px-4 py-2.5 rounded border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs sm:text-sm inline-flex items-center gap-2 transition-all cursor-pointer"
                 >
                   <Bookmark className="w-4 h-4" />
-                  <span>Lưu bộ sưu tập</span>
+                  <span>{t('collection_detail.save_collection')}</span>
                 </button>
               </div>
             </div>
@@ -271,10 +276,13 @@ export default function CollectionDetailPage() {
       {/* ===================== */}
       <div className="rounded border border-slate-200 bg-white p-5 space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-slate-900">Tiến độ của bạn</h3>
+          <h3 className="text-sm font-bold text-slate-900">{t('collection_detail.your_progress')}</h3>
           <div className="flex items-center gap-2 text-xs text-slate-500">
             <span className="font-semibold">
-              {collectionProgress?.completedLessonsCount || 0}/{lessons.length} bài đã hoàn thành
+              {t('collection_detail.completed_lessons', {
+                completed: collectionProgress?.completedLessonsCount || 0,
+                total: lessons.length,
+              })}
             </span>
             <span className="font-bold text-blue-600">
               {collectionProgress?.overallProgress || 0}%
@@ -295,29 +303,31 @@ export default function CollectionDetailPage() {
           <div className="flex items-center gap-2.5 p-3 rounded bg-emerald-50/60 border border-emerald-100">
             <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
             <div>
-              <p className="text-[10px] text-slate-500 font-medium">Đã thuộc</p>
+              <p className="text-[10px] text-slate-500 font-medium">{t('collection_detail.mastered')}</p>
               <p className="text-base font-black text-slate-900">0</p>
             </div>
           </div>
           <div className="flex items-center gap-2.5 p-3 rounded bg-amber-50/60 border border-amber-100">
             <div className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" />
             <div>
-              <p className="text-[10px] text-slate-500 font-medium">Đang học</p>
+              <p className="text-[10px] text-slate-500 font-medium">{t('collection_detail.learning')}</p>
               <p className="text-base font-black text-slate-900">0</p>
             </div>
           </div>
           <div className="flex items-center gap-2.5 p-3 rounded bg-rose-50/60 border border-rose-100">
             <div className="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0" />
             <div>
-              <p className="text-[10px] text-slate-500 font-medium">Chưa thuộc</p>
+              <p className="text-[10px] text-slate-500 font-medium">{t('collection_detail.not_mastered')}</p>
               <p className="text-base font-black text-slate-900">{totalWordsCount}</p>
             </div>
           </div>
           <div className="flex items-center gap-2.5 p-3 rounded bg-blue-50/60 border border-blue-100">
             <Clock className="w-4 h-4 text-blue-500 shrink-0" />
             <div>
-              <p className="text-[10px] text-slate-500 font-medium">Thời gian học</p>
-              <p className="text-sm font-black text-slate-900">0 phút</p>
+              <p className="text-[10px] text-slate-500 font-medium">{t('collection_detail.study_time')}</p>
+              <p className="text-sm font-black text-slate-900">
+                {t('collection_detail.minutes_count', { count: 0 })}
+              </p>
             </div>
           </div>
         </div>
@@ -327,7 +337,7 @@ export default function CollectionDetailPage() {
       {/* 4. TAB NAVIGATION */}
       {/* ===================== */}
       <div className="flex items-center gap-1 border-b border-slate-200 overflow-x-auto scrollbar-none">
-        {TABS.map((tab) => {
+        {TAB_KEYS.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
@@ -342,7 +352,7 @@ export default function CollectionDetailPage() {
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
-              <span>{tab.label}</span>
+              <span>{t(`collection_detail.${tab.labelKey}`)}</span>
             </button>
           );
         })}
@@ -373,10 +383,10 @@ export default function CollectionDetailPage() {
                     <div className="col-span-full py-12 text-center rounded border border-dashed border-slate-200 bg-white">
                       <Layers className="w-9 h-9 text-slate-300 mx-auto mb-2" />
                       <p className="text-sm font-semibold text-slate-700">
-                        Chưa có bài học nào
+                        {t('collection_detail.no_lessons_title')}
                       </p>
                       <p className="text-xs text-slate-400 mt-1">
-                        Bộ sưu tập này chưa có bài học. Hãy quay lại sau!
+                        {t('collection_detail.no_lessons_desc')}
                       </p>
                     </div>
                   ) : (
@@ -422,14 +432,14 @@ export default function CollectionDetailPage() {
                             <div className="flex items-center gap-2 text-[11px] text-slate-400 font-medium">
                               <div className="flex items-center gap-1">
                                 <FileText className="w-3 h-3" />
-                                <span>{lesson.wordsCount || 0} từ vựng</span>
+                                <span>{t('words_count', { count: lesson.wordsCount || 0 })}</span>
                               </div>
                               {lesson.sectionsCount !== undefined && lesson.sectionsCount > 0 && (
                                 <>
                                   <span>•</span>
                                   <div className="flex items-center gap-1 text-blue-600 font-semibold">
                                     <Layers className="w-3 h-3" />
-                                    <span>{lesson.sectionsCount} phần</span>
+                                    <span>{t('collection_detail.sections_count', { count: lesson.sectionsCount })}</span>
                                   </div>
                                 </>
                               )}
@@ -447,11 +457,11 @@ export default function CollectionDetailPage() {
                                 <div className="flex-1 space-y-1">
                                   <div className="flex items-center justify-between text-[10px] font-bold text-slate-400">
                                     {st === 'COMPLETED' ? (
-                                      <span className="text-emerald-600 font-bold">Đã hoàn thành</span>
+                                      <span className="text-emerald-600 font-bold">{t('collection_detail.status_completed')}</span>
                                     ) : st === 'IN_PROGRESS' ? (
-                                      <span className="text-blue-600 font-bold">Đang học ({prog}%)</span>
+                                      <span className="text-blue-600 font-bold">{t('collection_detail.status_in_progress', { prog })}</span>
                                     ) : (
-                                      <span>Chưa học</span>
+                                      <span>{t('collection_detail.status_not_started')}</span>
                                     )}
                                     {prog > 0 && <span className="font-semibold text-slate-500">{prog}%</span>}
                                   </div>
@@ -483,10 +493,13 @@ export default function CollectionDetailPage() {
           <div className="rounded border border-dashed border-slate-200 bg-white p-10 text-center">
             <BookOpen className="w-10 h-10 text-slate-300 mx-auto mb-3" />
             <p className="text-sm font-semibold text-slate-700">
-              Từ vựng của bộ sưu tập
+              {t('collection_detail.words_tab_title')}
             </p>
             <p className="text-xs text-slate-400 mt-1">
-              Tổng cộng {totalWordsCount} từ vựng trong {lessons.length} bài học. Chọn bài học để xem chi tiết từ vựng.
+              {t('collection_detail.words_tab_desc', {
+                words: totalWordsCount,
+                lessons: lessons.length,
+              })}
             </p>
           </div>
         )}
@@ -495,10 +508,10 @@ export default function CollectionDetailPage() {
           <div className="rounded border border-dashed border-slate-200 bg-white p-10 text-center">
             <BarChart3 className="w-10 h-10 text-slate-300 mx-auto mb-3" />
             <p className="text-sm font-semibold text-slate-700">
-              Thống kê học tập
+              {t('collection_detail.stats_tab_title')}
             </p>
             <p className="text-xs text-slate-400 mt-1">
-              Chưa có dữ liệu thống kê. Hãy bắt đầu học để xem tiến độ của bạn!
+              {t('collection_detail.stats_tab_desc')}
             </p>
           </div>
         )}
@@ -506,7 +519,7 @@ export default function CollectionDetailPage() {
         {activeTab === 'about' && (
           <div className="rounded border border-slate-200 bg-white p-5 sm:p-6 space-y-4">
             <h3 className="text-base font-bold text-slate-900">
-              Giới thiệu về {collection?.name || 'bộ sưu tập'}
+              {t('collection_detail.about_title', { name: collection?.name || '' })}
             </h3>
             {collection?.description ? (
               <p className="text-sm text-slate-600 leading-relaxed">
@@ -514,7 +527,7 @@ export default function CollectionDetailPage() {
               </p>
             ) : (
               <p className="text-sm text-slate-400 italic">
-                Chưa có mô tả cho bộ sưu tập này.
+                {t('collection_detail.no_description')}
               </p>
             )}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
@@ -522,19 +535,19 @@ export default function CollectionDetailPage() {
                 <p className="text-lg font-black text-slate-900">
                   {collection?.lessonsCount || lessons.length}
                 </p>
-                <p className="text-[10px] text-slate-500 font-medium">Bài học</p>
+                <p className="text-[10px] text-slate-500 font-medium">{t('collection_detail.stat_lessons')}</p>
               </div>
               <div className="p-3 rounded bg-emerald-50/60 border border-emerald-100 text-center">
                 <p className="text-lg font-black text-slate-900">
                   {totalWordsCount}
                 </p>
-                <p className="text-[10px] text-slate-500 font-medium">Từ vựng</p>
+                <p className="text-[10px] text-slate-500 font-medium">{t('collection_detail.stat_words')}</p>
               </div>
               <div className="p-3 rounded bg-amber-50/60 border border-amber-100 text-center">
                 <p className="text-lg font-black text-slate-900">
                   {groupName || 'N/A'}
                 </p>
-                <p className="text-[10px] text-slate-500 font-medium">Nhóm</p>
+                <p className="text-[10px] text-slate-500 font-medium">{t('collection_detail.stat_group')}</p>
               </div>
             </div>
           </div>

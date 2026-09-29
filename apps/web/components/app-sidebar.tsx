@@ -172,7 +172,7 @@ export function AppSidebar() {
                             isVocabExploreActive ? 'text-blue-600' : 'text-slate-400'
                           )}
                         />
-                        <span>Khám phá</span>
+                        <span>{t('nav.explore', 'Khám phá')}</span>
                       </Link>
 
                       <Link
@@ -190,7 +190,7 @@ export function AppSidebar() {
                             isVocabMyWordsActive ? 'text-blue-600' : 'text-slate-400'
                           )}
                         />
-                        <span>Từ vựng của tôi</span>
+                        <span>{t('nav.my_words', 'Từ vựng của tôi')}</span>
                       </Link>
                     </div>
                   )}

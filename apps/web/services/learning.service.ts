@@ -6,6 +6,9 @@ import {
   LessonProgressDetail,
   CollectionProgressDetail,
   ReviewStats,
+  DashboardStudyStats,
+  CheckDueReviewResult,
+  UserWordReviewItem,
 } from './types';
 
 export const learningService = {
@@ -100,14 +103,38 @@ export const learningService = {
   },
 
   /**
+   * Kiểm tra xem user có từ nào cần ôn tập hôm nay không (cho popup & banner)
+   */
+  checkDueReviews: async () => {
+    const res = await apiClient.get<ApiResponse<CheckDueReviewResult>>(
+      '/learning/reviews/check-due',
+    );
+    return res.data;
+  },
+
+  /**
    * Lấy danh sách từ đến hạn ôn tập
    */
   getDueReviews: async (limit: number = 30) => {
-    const res = await apiClient.get<ApiResponse<any[]>>(
+    const res = await apiClient.get<ApiResponse<UserWordReviewItem[]>>(
       '/learning/reviews/due',
       {
         params: { limit },
       },
+    );
+    return res.data;
+  },
+
+  /**
+   * Đánh giá 1 từ trong phiên ôn tập độc lập (SRS)
+   */
+  recordReview: async (
+    wordId: string,
+    rating: 'AGAIN' | 'HARD' | 'GOOD' | 'EASY',
+  ) => {
+    const res = await apiClient.post<ApiResponse<any>>(
+      '/learning/reviews/record',
+      { wordId, rating },
     );
     return res.data;
   },
@@ -121,4 +148,22 @@ export const learningService = {
     );
     return res.data;
   },
+
+  /**
+   * Lấy thống kê tiến độ học tập cho Dashboard ("Học hôm nay", "Thành tích", streak)
+   */
+  getDashboardStats: async (timezoneOffset?: number) => {
+    const offset =
+      timezoneOffset !== undefined
+        ? timezoneOffset
+        : new Date().getTimezoneOffset();
+    const res = await apiClient.get<ApiResponse<DashboardStudyStats>>(
+      '/learning/progress/dashboard-stats',
+      {
+        params: { timezoneOffset: offset },
+      },
+    );
+    return res.data;
+  },
 };
+

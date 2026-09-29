@@ -93,3 +93,41 @@ export interface ReviewStats {
   masteredWords: number;
   dueToday: number;
 }
+
+export interface DashboardStudyStats {
+  dailyGoal: number;
+  todayLearnedCount: number;
+  streak: number;
+  totalLearnedWords: number;
+  totalMasteredWords: number;
+  hasStudiedToday: boolean;
+  continueLesson?: {
+    lessonId: string;
+    lessonTitle: string;
+    lessonSlug: string;
+    collectionSlug?: string;
+    progress: number;
+  } | null;
+}
+
+export interface CheckDueReviewResult {
+  hasDueWords: boolean;
+  dueCount: number;
+  dueToday: number;
+  totalLearning: number;
+  previewWords?: string[];
+}
+
+export interface UserWordReviewItem {
+  _id: string;
+  userId: string;
+  wordId: any;
+  status: 'LEARNING' | 'MASTERED';
+  reviewCount: number;
+  correctCount: number;
+  incorrectCount: number;
+  intervalDays: number;
+  lastReviewedAt?: string;
+  nextReviewAt?: string;
+}
+
