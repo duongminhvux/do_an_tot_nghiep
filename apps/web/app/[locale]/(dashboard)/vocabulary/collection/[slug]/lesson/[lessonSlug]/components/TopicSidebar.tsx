@@ -97,7 +97,7 @@ export function TopicSidebar({
                       </h3>
                       {isAllMastered && (
                         <span className="inline-flex items-center text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200 shrink-0">
-                          ✓ Đã thuộc
+                          {t('sidebar.mastered_badge')}
                         </span>
                       )}
                     </div>
@@ -127,7 +127,7 @@ export function TopicSidebar({
                       {learnedInSec > 0 ? (
                         <>
                           <span className="font-semibold text-slate-700">
-                            Đã học: {learnedInSec}/{wordCount}
+                            {t('sidebar.learned_in_sec', { learned: learnedInSec, total: wordCount })}
                           </span>
                           <span className="text-[11px] text-blue-600 font-bold">
                             ({progressPercent}%)
@@ -139,12 +139,12 @@ export function TopicSidebar({
                     </span>
                     {learnedInSec > 0 && masteredInSec > 0 && (
                       <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50/80 px-1.5 py-0.2 rounded border border-emerald-100">
-                        {masteredInSec} đã thuộc
+                        {t('sidebar.mastered_in_sec', { count: masteredInSec })}
                       </span>
                     )}
                     {learnedInSec === 0 && (
                       <span className="text-[10px] text-slate-400">
-                        Chưa học
+                        {t('sidebar.not_studied')}
                       </span>
                     )}
                   </div>
@@ -191,12 +191,12 @@ export function TopicSidebar({
                   <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
                     <span className="font-semibold text-slate-700">
                       {learnedTotal > 0
-                        ? `Đã học: ${learnedTotal}/${total} (${totalPercent}%)`
+                        ? `${t('sidebar.learned_in_sec', { learned: learnedTotal, total })} (${totalPercent}%)`
                         : t('all_words_in_lesson', { count: total })}
                     </span>
                     {masteredWords.size > 0 && (
                       <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50/80 px-1.5 py-0.2 rounded border border-emerald-100">
-                        {masteredWords.size} đã thuộc
+                        {t('sidebar.mastered_in_sec', { count: masteredWords.size })}
                       </span>
                     )}
                   </div>
@@ -225,11 +225,11 @@ export function TopicSidebar({
             className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-slate-300 cursor-pointer"
           />
           <span className="font-medium flex-1">
-            Học lại toàn bộ (bao gồm từ đã học)
+            {t('sidebar.review_all_label')}
           </span>
           {reviewAll && (
             <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full border border-blue-200">
-              Bật
+              {t('sidebar.review_all_on')}
             </span>
           )}
         </label>
@@ -241,18 +241,18 @@ export function TopicSidebar({
           <span className="flex items-center gap-1.5 text-slate-600">
             <CheckCheck className="w-4 h-4 text-emerald-600" />
             <span>
-              Đã học: <strong className="text-emerald-700 font-bold">{learnedWords.size}</strong>/{rawWords.length}
+              {t('sidebar.learned_label')} <strong className="text-emerald-700 font-bold">{learnedWords.size}</strong>/{rawWords.length}
             </span>
           </span>
           <span className="flex items-center gap-1.5 text-slate-600">
             <Bookmark className="w-3.5 h-3.5 text-amber-500" />
             <span>
-              Chưa học: <strong className="text-amber-700 font-bold">{Math.max(0, rawWords.length - learnedWords.size)}</strong>
+              {t('sidebar.unlearned_label')} <strong className="text-amber-700 font-bold">{Math.max(0, rawWords.length - learnedWords.size)}</strong>
             </span>
           </span>
         </div>
         <p className="text-[10.5px] text-slate-400 leading-tight">
-          💡 Từ đã học sẽ được tự động chuyển sang hệ thống Ôn tập (SRS) định kỳ.
+          {t('sidebar.srs_tip')}
         </p>
       </div>
     </aside>

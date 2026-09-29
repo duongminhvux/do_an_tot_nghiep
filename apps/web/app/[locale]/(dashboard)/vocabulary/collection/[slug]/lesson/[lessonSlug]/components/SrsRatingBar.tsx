@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
-import { CheckCircle2, Bookmark } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 import { useSidebar } from '@/components/ui/sidebar';
+import { SaveWordButton } from '@/components/vocabulary/SaveWordButton';
 
 export type SrsLevel = 'again' | 'hard' | 'good' | 'easy';
 
@@ -141,19 +142,12 @@ export function SrsRatingBar({
           </button>
 
           {/* Lưu */}
-          <button
-            type="button"
-            onClick={onToggleSave}
-            className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
-              isSaved
-                ? 'bg-sky-100 text-sky-700 border-sky-300 shadow-2xs'
-                : 'bg-slate-50 hover:bg-sky-50 text-slate-600 hover:text-sky-700 border-slate-200 hover:border-sky-200'
-            }`}
-            title={`${isSaved ? t('srs.saved') : t('srs.save')} (${keyLabel} S)`}
-          >
-            <Bookmark className={`w-3.5 h-3.5 ${isSaved ? 'fill-sky-500 text-sky-500' : 'text-slate-400'}`} />
-            <span>{isSaved ? t('srs.saved') : t('srs.save')}</span>
-          </button>
+          <SaveWordButton
+            isSaved={isSaved}
+            onToggle={onToggleSave}
+            shortcutKey="S"
+            variant="pill"
+          />
         </div>
       </div>
     </div>

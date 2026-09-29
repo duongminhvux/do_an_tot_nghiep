@@ -245,11 +245,20 @@ export function RepeatModeView({
                   <h4 className="text-xl sm:text-2xl font-black text-slate-900">
                     {wordText}
                   </h4>
-                  {(ipaUs || ipaUk) && (
-                    <span className="text-xs font-mono text-slate-600 font-semibold bg-white px-2 py-0.5 rounded-md border border-slate-200">
-                      {ipaUs || ipaUk}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                    {ipaUs && (
+                      <span className="text-xs font-mono text-slate-600 font-semibold bg-white px-2 py-0.5 rounded-md border border-slate-200 inline-flex items-center gap-1">
+                        <span>{ipaUs}</span>
+                        <span className="text-[10px] font-black text-blue-700 bg-blue-50 px-1 rounded">US</span>
+                      </span>
+                    )}
+                    {ipaUk && (
+                      <span className="text-xs font-mono text-slate-600 font-semibold bg-white px-2 py-0.5 rounded-md border border-slate-200 inline-flex items-center gap-1">
+                        <span>{ipaUk}</span>
+                        <span className="text-[10px] font-black text-indigo-700 bg-indigo-50 px-1 rounded">UK</span>
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <p className="text-sm font-bold text-blue-700">
                   {primaryVietnameseWord}
@@ -265,11 +274,20 @@ export function RepeatModeView({
                   <h4 className="text-xl sm:text-2xl font-black text-slate-900">
                     {wordText}
                   </h4>
-                  {(ipaUs || ipaUk) && (
-                    <span className="text-xs font-mono text-slate-600 font-semibold bg-white px-2 py-0.5 rounded-md border border-slate-200">
-                      {ipaUs || ipaUk}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                    {ipaUs && (
+                      <span className="text-xs font-mono text-slate-600 font-semibold bg-white px-2 py-0.5 rounded-md border border-slate-200 inline-flex items-center gap-1">
+                        <span>{ipaUs}</span>
+                        <span className="text-[10px] font-black text-blue-700 bg-blue-50 px-1 rounded">US</span>
+                      </span>
+                    )}
+                    {ipaUk && (
+                      <span className="text-xs font-mono text-slate-600 font-semibold bg-white px-2 py-0.5 rounded-md border border-slate-200 inline-flex items-center gap-1">
+                        <span>{ipaUk}</span>
+                        <span className="text-[10px] font-black text-indigo-700 bg-indigo-50 px-1 rounded">UK</span>
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <p className="text-sm font-bold text-blue-700">
                   {primaryVietnameseWord}
