@@ -85,6 +85,42 @@ export default function VocabularyPage() {
     return (collectionsRes as any)?.data?.data || (collectionsRes as any)?.data || [];
   }, [collectionsRes]);
 
+  // 2.1. Fetch Real User Progress by Collection
+  const { data: vocabProgressRes } = useQuery({
+    queryKey: ['user-vocabulary-progress'],
+    queryFn: () => learningService.getVocabularyProgressList(),
+    staleTime: 30 * 1000,
+  });
+
+  const progressMap = useMemo(() => {
+    const rawList =
+      vocabProgressRes?.data || (Array.isArray(vocabProgressRes) ? vocabProgressRes : []);
+    const map = new Map<string, number>();
+    rawList.forEach((item: any) => {
+      const prog = item.progress || 0;
+      if (item.collectionId) {
+        map.set(String(item.collectionId), prog);
+      }
+      if (item.collectionSlug) {
+        map.set(String(item.collectionSlug), prog);
+      }
+    });
+    return map;
+  }, [vocabProgressRes]);
+
+  // Merge real progress into collection items
+  const allCollectionsWithProgress = useMemo(() => {
+    return allCollections.map((col) => {
+      const colId = String(col._id);
+      const colSlug = col.slug || '';
+      const userProg = progressMap.get(colId) ?? progressMap.get(colSlug) ?? 0;
+      return {
+        ...col,
+        progress: userProg,
+      };
+    });
+  }, [allCollections, progressMap]);
+
   // 3. Fetch Real Dashboard Study Stats (Today's count, streak, total learned, total mastered)
   const { data: statsRes, isLoading: isStatsLoading } = useQuery({
     queryKey: ['dashboard-study-stats'],
@@ -109,7 +145,7 @@ export default function VocabularyPage() {
 
   // Filter collections by selected group
   const filteredCollections = useMemo(() => {
-    let result = [...allCollections];
+    let result = [...allCollectionsWithProgress];
 
     if (selectedGroupId !== 'all') {
       result = result.filter((col) => {
@@ -130,19 +166,19 @@ export default function VocabularyPage() {
     }
 
     return result;
-  }, [allCollections, selectedGroupId, sortOption]);
+  }, [allCollectionsWithProgress, selectedGroupId, sortOption]);
 
   // Featured collections: top 4 collections from database
   const featuredCollections = useMemo(() => {
-    if (allCollections.length <= 4) return allCollections;
-    return allCollections.slice(0, 4);
-  }, [allCollections]);
+    if (allCollectionsWithProgress.length <= 4) return allCollectionsWithProgress;
+    return allCollectionsWithProgress.slice(0, 4);
+  }, [allCollectionsWithProgress]);
 
   // Recommended collections: top 3 collections from database
   const recommendedCollections = useMemo(() => {
-    if (allCollections.length <= 3) return allCollections;
-    return allCollections.slice(0, 3);
-  }, [allCollections]);
+    if (allCollectionsWithProgress.length <= 3) return allCollectionsWithProgress;
+    return allCollectionsWithProgress.slice(0, 3);
+  }, [allCollectionsWithProgress]);
 
   return (
     <div className="w-full max-w-[1720px] mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
