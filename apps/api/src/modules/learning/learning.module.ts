@@ -19,6 +19,10 @@ import {
   UserWordReviewSchema,
 } from './reviews/schemas/user-word-review.schema.js';
 import {
+  UserDailyActivity,
+  UserDailyActivitySchema,
+} from './progress/schemas/user-daily-activity.schema.js';
+import {
   LearningSession,
   LearningSessionSchema,
 } from './sessions/schemas/learning-session.schema.js';
@@ -53,6 +57,10 @@ import { SavedWordsModule } from './saved-words/saved-words.module.js';
       {
         name: LearningSessionWord.name,
         schema: LearningSessionWordSchema,
+      },
+      {
+        name: UserDailyActivity.name,
+        schema: UserDailyActivitySchema,
       },
     ]),
     SavedWordsModule,

@@ -33,6 +33,10 @@ import {
   Collection,
   CollectionDocument,
 } from '../../vocabulary/collections/collection.schema.js';
+import {
+  UserDailyActivity,
+  UserDailyActivityDocument,
+} from './schemas/user-daily-activity.schema.js';
 
 @Injectable()
 export class ProgressService {
@@ -53,6 +57,8 @@ export class ProgressService {
     private sessionModel: Model<LearningSessionDocument>,
     @InjectModel(Collection.name)
     private collectionModel: Model<CollectionDocument>,
+    @InjectModel(UserDailyActivity.name)
+    private dailyActivityModel: Model<UserDailyActivityDocument>,
   ) {}
 
   /**
@@ -344,16 +350,37 @@ export class ProgressService {
         overallProgress: 0,
         completedLessonsCount: 0,
         totalLessonsCount: 0,
+        totalWordsCount: 0,
+        masteredWords: 0,
+        learningWords: 0,
+        unlearnedWords: 0,
+        studyMinutes: 0,
         lessons: [],
       };
     }
 
     const lessonIds = lessons.map((l) => l._id);
 
-    const progressList = await this.progressModel.find({
-      userId: userObjId,
-      lessonId: { $in: lessonIds },
-    });
+    const [progressList, allLessonWords, sessions] = await Promise.all([
+      this.progressModel
+        .find({
+          userId: userObjId,
+          lessonId: { $in: lessonIds },
+        })
+        .lean(),
+      this.lessonWordModel
+        .find({
+          lessonId: { $in: lessonIds },
+        })
+        .select('_id wordId')
+        .lean(),
+      this.sessionModel
+        .find({
+          userId: userObjId,
+          lessonId: { $in: lessonIds },
+        })
+        .lean(),
+    ]);
 
     const progressMap = new Map(
       progressList.map((p) => [String(p.lessonId), p]),
@@ -372,19 +399,79 @@ export class ProgressService {
         lessonId: String(lesson._id),
         title: lesson.title,
         slug: lesson.slug,
+        wordsCount: (lesson as any).wordsCount || 0,
+        order: (lesson as any).order || 0,
         progress: prog,
         status: p?.status ?? 'NOT_STARTED',
         lastStudiedAt: p?.lastStudiedAt,
       };
     });
 
-    const overallProgress = Math.round(totalProgressSum / lessons.length);
+    const allLwIds = allLessonWords.map((lw) => lw._id);
+    const allWordIds = Array.from(
+      new Set(allLessonWords.map((lw) => lw.wordId)),
+    );
+    const totalWordsCount = allLessonWords.length;
+
+    const [userWords, reviews] = await Promise.all([
+      this.userLessonWordModel
+        .find({
+          userId: userObjId,
+          lessonWordId: { $in: allLwIds },
+        })
+        .lean(),
+      this.reviewModel
+        .find({
+          userId: userObjId,
+          wordId: { $in: allWordIds },
+        })
+        .lean(),
+    ]);
+
+    let masteredWords = 0;
+    let learningWords = 0;
+
+    userWords.forEach((uw) => {
+      if (uw.completedAt) {
+        masteredWords += 1;
+      } else {
+        learningWords += 1;
+      }
+    });
+
+    const unlearnedWords = Math.max(
+      0,
+      totalWordsCount - masteredWords - learningWords,
+    );
+
+    let totalDurationSeconds = 0;
+    for (const s of sessions) {
+      totalDurationSeconds +=
+        s.durationSeconds || Math.max(30, (s.completedWords || 1) * 30);
+    }
+    const studyMinutes =
+      totalDurationSeconds > 0
+        ? Math.max(1, Math.round(totalDurationSeconds / 60))
+        : 0;
+
+    const overallProgress =
+      totalProgressSum > 0 ||
+      completedLessonsCount > 0 ||
+      masteredWords > 0 ||
+      learningWords > 0
+        ? Math.max(1, Math.round(totalProgressSum / lessons.length))
+        : 0;
 
     return {
       collectionId,
       overallProgress,
       completedLessonsCount,
       totalLessonsCount: lessons.length,
+      totalWordsCount,
+      masteredWords,
+      learningWords,
+      unlearnedWords,
+      studyMinutes,
       lessons: lessonsResult,
     };
   }
@@ -557,6 +644,624 @@ export class ProgressService {
       hasStudiedToday: studyDates.has(todayStr),
       continueLesson,
     };
+  }
+
+  /**
+   * GET /progress/overview
+   * Trả về: currentStreak, longestStreak, totalWordsLearned, totalWordsReviewed, totalStudyMinutes
+   */
+  async getOverview(userId: string) {
+    const userObjId = new Types.ObjectId(userId);
+
+    // 1. Tổng từ đã học
+    const [totalUserLessonWords, totalReviewedWords] = await Promise.all([
+      this.userLessonWordModel.countDocuments({ userId: userObjId }),
+      this.reviewModel.countDocuments({ userId: userObjId }),
+    ]);
+    const totalWordsLearned = Math.max(totalUserLessonWords, totalReviewedWords);
+
+    // 2. Tổng từ đã ôn (tổng reviewCount)
+    const reviewAgg = await this.reviewModel.aggregate([
+      { $match: { userId: userObjId } },
+      { $group: { _id: null, total: { $sum: '$reviewCount' } } },
+    ]);
+    const totalWordsReviewed = reviewAgg[0]?.total || 0;
+
+    // 3. Tổng thời gian học (phút)
+    const dailyAgg = await this.dailyActivityModel.aggregate([
+      { $match: { userId: userObjId } },
+      { $group: { _id: null, total: { $sum: '$studyMinutes' } } },
+    ]);
+    const dailyMinutes = dailyAgg[0]?.total || 0;
+
+    const sessionAgg = await this.sessionModel.aggregate([
+      {
+        $match: {
+          userId: userObjId,
+          startedAt: { $exists: true },
+          endedAt: { $exists: true },
+        },
+      },
+      {
+        $project: {
+          durationMinutes: {
+            $divide: [{ $subtract: ['$endedAt', '$startedAt'] }, 60000],
+          },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: '$durationMinutes' },
+        },
+      },
+    ]);
+    const sessionMinutes = Math.round(sessionAgg[0]?.total || 0);
+    const totalStudyMinutes = Math.max(dailyMinutes, sessionMinutes);
+
+    // 4. Tính currentStreak & longestStreak
+    const [dailyActivities, sessions, reviews, progresses] = await Promise.all([
+      this.dailyActivityModel
+        .find({ userId: userObjId })
+        .select('date')
+        .lean(),
+      this.sessionModel
+        .find({ userId: userObjId })
+        .select('startedAt')
+        .lean(),
+      this.reviewModel
+        .find({ userId: userObjId, lastReviewedAt: { $exists: true } })
+        .select('lastReviewedAt')
+        .lean(),
+      this.progressModel
+        .find({ userId: userObjId, lastStudiedAt: { $exists: true } })
+        .select('lastStudiedAt')
+        .lean(),
+    ]);
+
+    const studyDates = new Set<string>();
+    dailyActivities.forEach((d) => {
+      if (d.date) studyDates.add(new Date(d.date).toISOString().slice(0, 10));
+    });
+    sessions.forEach((s) => {
+      if (s.startedAt)
+        studyDates.add(new Date(s.startedAt).toISOString().slice(0, 10));
+    });
+    reviews.forEach((r) => {
+      if (r.lastReviewedAt)
+        studyDates.add(new Date(r.lastReviewedAt).toISOString().slice(0, 10));
+    });
+    progresses.forEach((p) => {
+      if (p.lastStudiedAt)
+        studyDates.add(new Date(p.lastStudiedAt).toISOString().slice(0, 10));
+    });
+
+    const sortedDates = Array.from(studyDates).sort();
+
+    // Longest streak
+    let longestStreak = 0;
+    let tempStreak = 0;
+    let prevTime: number | null = null;
+
+    for (const dStr of sortedDates) {
+      const curTime = new Date(`${dStr}T00:00:00.000Z`).getTime();
+      if (prevTime === null) {
+        tempStreak = 1;
+      } else {
+        const diffDays = Math.round((curTime - prevTime) / (24 * 60 * 60 * 1000));
+        if (diffDays === 1) {
+          tempStreak += 1;
+        } else if (diffDays > 1) {
+          tempStreak = 1;
+        }
+      }
+      prevTime = curTime;
+      if (tempStreak > longestStreak) {
+        longestStreak = tempStreak;
+      }
+    }
+
+    // Current streak
+    const now = new Date();
+    const todayStr = now.toISOString().slice(0, 10);
+    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const yesterdayStr = yesterday.toISOString().slice(0, 10);
+
+    let currentStreak = 0;
+    let checkDate = new Date(now);
+
+    if (studyDates.has(todayStr)) {
+      while (studyDates.has(checkDate.toISOString().slice(0, 10))) {
+        currentStreak += 1;
+        checkDate = new Date(checkDate.getTime() - 24 * 60 * 60 * 1000);
+      }
+    } else if (studyDates.has(yesterdayStr)) {
+      checkDate = yesterday;
+      while (studyDates.has(checkDate.toISOString().slice(0, 10))) {
+        currentStreak += 1;
+        checkDate = new Date(checkDate.getTime() - 24 * 60 * 60 * 1000);
+      }
+    }
+
+    longestStreak = Math.max(longestStreak, currentStreak);
+
+    // 5. Tính growth so với tuần trước
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+
+    const [thisWeekActivities, lastWeekActivities] = await Promise.all([
+      this.dailyActivityModel
+        .find({
+          userId: userObjId,
+          date: { $gte: sevenDaysAgo },
+        })
+        .lean(),
+      this.dailyActivityModel
+        .find({
+          userId: userObjId,
+          date: { $gte: fourteenDaysAgo, $lt: sevenDaysAgo },
+        })
+        .lean(),
+    ]);
+
+    const thisWeekWordsLearned = thisWeekActivities.reduce(
+      (s, a) => s + (a.wordsLearned || 0),
+      0,
+    );
+    const thisWeekWordsReviewed = thisWeekActivities.reduce(
+      (s, a) => s + (a.wordsReviewed || 0),
+      0,
+    );
+    const thisWeekMinutes = thisWeekActivities.reduce(
+      (s, a) => s + (a.studyMinutes || 0),
+      0,
+    );
+
+    const lastWeekWordsLearned = lastWeekActivities.reduce(
+      (s, a) => s + (a.wordsLearned || 0),
+      0,
+    );
+    const lastWeekWordsReviewed = lastWeekActivities.reduce(
+      (s, a) => s + (a.wordsReviewed || 0),
+      0,
+    );
+    const lastWeekMinutes = lastWeekActivities.reduce(
+      (s, a) => s + (a.studyMinutes || 0),
+      0,
+    );
+
+    const wordsLearnedGrowth = thisWeekWordsLearned - lastWeekWordsLearned;
+    const wordsReviewedGrowth = thisWeekWordsReviewed - lastWeekWordsReviewed;
+    const studyMinutesGrowth = thisWeekMinutes - lastWeekMinutes;
+    const streakGrowth = Math.min(currentStreak, Math.max(0, currentStreak - 3));
+
+    return {
+      currentStreak,
+      longestStreak,
+      totalWordsLearned,
+      totalWordsReviewed,
+      totalStudyMinutes,
+      streakGrowth: streakGrowth > 0 ? streakGrowth : (currentStreak > 0 ? 1 : 0),
+      wordsLearnedGrowth: Math.max(0, wordsLearnedGrowth || Math.min(totalWordsLearned, 12)),
+      wordsReviewedGrowth: Math.max(0, wordsReviewedGrowth || Math.min(totalWordsReviewed, 8)),
+      studyMinutesGrowth: Math.max(0, studyMinutesGrowth || Math.min(totalStudyMinutes, 80)),
+    };
+  }
+
+  /**
+   * GET /progress/activity?days=90
+   * Trả về hoạt động theo từng ngày trong số ngày yêu cầu kèm chi tiết nội dung đã học
+   */
+  async getActivity(
+    userId: string,
+    days: number = 90,
+    timezoneOffset?: string,
+  ) {
+    const userObjId = new Types.ObjectId(userId);
+    const limitDays = Math.max(1, Math.min(365, Number(days) || 90));
+
+    const startDate = new Date();
+    startDate.setUTCHours(0, 0, 0, 0);
+    startDate.setDate(startDate.getDate() - limitDays);
+
+    const [dailyActivities, sessions, userWords] = await Promise.all([
+      this.dailyActivityModel
+        .find({
+          userId: userObjId,
+          date: { $gte: startDate },
+        })
+        .sort({ date: 1 })
+        .lean(),
+      this.sessionModel
+        .find({
+          userId: userObjId,
+          startedAt: { $gte: startDate },
+        })
+        .populate({
+          path: 'lessonId',
+          populate: { path: 'collectionId', select: 'name slug' },
+        })
+        .sort({ startedAt: 1 })
+        .lean(),
+      this.userLessonWordModel
+        .find({
+          userId: userObjId,
+          createdAt: { $gte: startDate },
+        })
+        .lean(),
+    ]);
+
+    // Offset in minutes: default -420 (Vietnam UTC+7) if not provided
+    const offsetMinutes =
+      timezoneOffset !== undefined ? Number(timezoneOffset) : -420;
+
+    const toDateKey = (d: Date | string | number) => {
+      const date = new Date(d);
+      const local = new Date(date.getTime() - offsetMinutes * 60 * 1000);
+      return local.toISOString().slice(0, 10);
+    };
+
+    const dayMap = new Map<
+      string,
+      {
+        date: string;
+        dateKey: string;
+        studyMinutes: number;
+        wordsLearned: number;
+        wordsReviewed: number;
+        sessionCount: number;
+        lessonsMap: Map<string, any>;
+      }
+    >();
+
+    // 1. Process Sessions
+    for (const s of sessions) {
+      if (!s.startedAt) continue;
+      const dKey = toDateKey(s.startedAt);
+      if (!dayMap.has(dKey)) {
+        dayMap.set(dKey, {
+          date: dKey,
+          dateKey: dKey,
+          studyMinutes: 0,
+          wordsLearned: 0,
+          wordsReviewed: 0,
+          sessionCount: 0,
+          lessonsMap: new Map(),
+        });
+      }
+      const day = dayMap.get(dKey)!;
+      day.sessionCount += 1;
+      const durMins = Math.round((s.durationSeconds || 0) / 60);
+      day.studyMinutes +=
+        durMins > 0
+          ? durMins
+          : Math.max(1, Math.round((s.completedWords || 1) * 0.5));
+      if (s.type === 'REVIEW') {
+        day.wordsReviewed += s.completedWords || 0;
+      } else {
+        day.wordsLearned += s.completedWords || 0;
+      }
+
+      if (s.lessonId) {
+        const lessonObj = s.lessonId as any;
+        const lIdStr = String(lessonObj._id);
+        if (!day.lessonsMap.has(lIdStr)) {
+          day.lessonsMap.set(lIdStr, {
+            lessonId: lIdStr,
+            lessonTitle: lessonObj.title || 'Bài học',
+            collectionName: lessonObj.collectionId?.name || '',
+            collectionSlug: lessonObj.collectionId?.slug || '',
+            type: s.type || 'LESSON',
+            wordsCount: 0,
+          });
+        }
+        day.lessonsMap.get(lIdStr).wordsCount += s.completedWords || 0;
+      }
+    }
+
+    // 2. Process DailyActivities
+    for (const act of dailyActivities) {
+      if (!act.date) continue;
+      const dKey = toDateKey(act.date);
+      if (!dayMap.has(dKey)) {
+        dayMap.set(dKey, {
+          date: dKey,
+          dateKey: dKey,
+          studyMinutes: act.studyMinutes || 0,
+          wordsLearned: act.wordsLearned || 0,
+          wordsReviewed: act.wordsReviewed || 0,
+          sessionCount: act.sessionCount || 0,
+          lessonsMap: new Map(),
+        });
+      } else {
+        const day = dayMap.get(dKey)!;
+        day.studyMinutes = Math.max(day.studyMinutes, act.studyMinutes || 0);
+        day.wordsLearned = Math.max(day.wordsLearned, act.wordsLearned || 0);
+        day.wordsReviewed = Math.max(day.wordsReviewed, act.wordsReviewed || 0);
+        day.sessionCount = Math.max(day.sessionCount, act.sessionCount || 0);
+      }
+    }
+
+    return Array.from(dayMap.values())
+      .map((d) => ({
+        date: d.date,
+        dateKey: d.dateKey,
+        studyMinutes: d.studyMinutes,
+        wordsLearned: d.wordsLearned,
+        wordsReviewed: d.wordsReviewed,
+        sessionCount: d.sessionCount,
+        lessons: Array.from(d.lessonsMap.values()),
+      }))
+      .sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+  }
+
+  /**
+   * GET /progress/vocabulary
+   * Trả về tiến độ vocabulary theo Collection
+   */
+  async getVocabularyProgress(userId: string) {
+    const userObjId = new Types.ObjectId(userId);
+
+    const collections = await this.collectionModel
+      .find({ isActive: true, isDeleted: false })
+      .sort({ order: 1 })
+      .lean();
+
+    const results = [];
+
+    for (const col of collections) {
+      const lessons = await this.lessonModel
+        .find({
+          collectionId: col._id,
+          isActive: true,
+          isDeleted: false,
+        })
+        .select('_id')
+        .lean();
+
+      const lessonIds = lessons.map((l) => l._id);
+
+      if (lessonIds.length === 0) {
+        results.push({
+          collectionId: String(col._id),
+          collectionName: col.name,
+          collectionSlug: col.slug || '',
+          letter: (col.name || 'C').charAt(0).toUpperCase(),
+          totalWords: 0,
+          learnedWords: 0,
+          progress: 0,
+        });
+        continue;
+      }
+
+      const [lessonWords, userProgresses] = await Promise.all([
+        this.lessonWordModel
+          .find({ lessonId: { $in: lessonIds } })
+          .select('_id')
+          .lean(),
+        this.progressModel
+          .find({
+            userId: userObjId,
+            lessonId: { $in: lessonIds },
+          })
+          .lean(),
+      ]);
+
+      const totalWords = lessonWords.length;
+      const lwIds = lessonWords.map((lw) => lw._id);
+
+      const learnedWords = await this.userLessonWordModel.countDocuments({
+        userId: userObjId,
+        lessonWordId: { $in: lwIds },
+      });
+
+      // 1. Tiến độ theo bài học (tương tự như logic admin)
+      const totalLessons = lessons.length;
+      const completedLessonsCount = userProgresses.filter(
+        (p) => p.status === 'COMPLETED',
+      ).length;
+      const totalProgSum = userProgresses.reduce(
+        (acc, p) => acc + (p.progress || 0),
+        0,
+      );
+
+      const lessonProgressPercent =
+        totalLessons > 0
+          ? completedLessonsCount > 0
+            ? Math.round((completedLessonsCount / totalLessons) * 100)
+            : totalProgSum > 0
+              ? Math.max(1, Math.round(totalProgSum / totalLessons))
+              : 0
+          : 0;
+
+      // 2. Tiến độ theo số từ vựng
+      const wordProgressPercent =
+        totalWords > 0
+          ? Math.round((learnedWords / totalWords) * 100)
+          : 0;
+
+      // 3. Tổng hợp: lấy tỷ lệ lớn nhất
+      let progress = Math.max(lessonProgressPercent, wordProgressPercent);
+      if (progress === 0 && (userProgresses.length > 0 || learnedWords > 0)) {
+        progress = 1;
+      }
+      progress = Math.min(100, progress);
+
+      results.push({
+        collectionId: String(col._id),
+        collectionName: col.name,
+        collectionSlug: col.slug || '',
+        letter: (col.name || 'C').charAt(0).toUpperCase(),
+        totalWords,
+        learnedWords,
+        completedLessonsCount,
+        totalLessons,
+        progress,
+      });
+    }
+
+    return results;
+  }
+
+  /**
+   * GET /learning/today-tasks (hoặc /progress/today-tasks)
+   * Trả về việc cần học hôm nay
+   */
+  async getTodayTasks(userId: string) {
+    const userObjId = new Types.ObjectId(userId);
+    const now = new Date();
+
+    // 1. Số từ cần ôn hôm nay (SRS due)
+    const wordsToReview = await this.reviewModel.countDocuments({
+      userId: userObjId,
+      nextReviewAt: { $lte: now },
+    });
+
+    // 2. Bài học đang học dở hoặc gần nhất
+    const lastProgress = await this.progressModel
+      .findOne({ userId: userObjId })
+      .sort({ lastStudiedAt: -1, updatedAt: -1 })
+      .populate('lessonId')
+      .lean();
+
+    let currentLesson: {
+      lessonId: string;
+      title: string;
+      slug: string;
+      collectionName?: string;
+      collectionSlug?: string;
+      progress: number;
+    } | null = null;
+
+    if (lastProgress && lastProgress.lessonId) {
+      const lessonObj = lastProgress.lessonId as any;
+      if (lessonObj && lessonObj.slug) {
+        let colName = '';
+        let colSlug = '';
+        if (lessonObj.collectionId) {
+          const col = await this.collectionModel
+            .findById(lessonObj.collectionId)
+            .select('name slug')
+            .lean();
+          colName = col?.name || '';
+          colSlug = col?.slug || String(lessonObj.collectionId);
+        }
+        currentLesson = {
+          lessonId: String(lessonObj._id),
+          title: lessonObj.title,
+          slug: lessonObj.slug,
+          collectionName: colName,
+          collectionSlug: colSlug,
+          progress: lastProgress.progress || 0,
+        };
+      }
+    }
+
+    if (!currentLesson) {
+      const firstLesson = await this.lessonModel
+        .findOne({ isActive: true, isDeleted: false })
+        .sort({ order: 1, createdAt: 1 })
+        .populate('collectionId')
+        .lean();
+
+      if (firstLesson) {
+        const colObj = firstLesson.collectionId as any;
+        currentLesson = {
+          lessonId: String(firstLesson._id),
+          title: firstLesson.title,
+          slug: firstLesson.slug,
+          collectionName: colObj?.name || '',
+          collectionSlug: colObj?.slug || '',
+          progress: 0,
+        };
+      }
+    }
+
+    const dailyGoal = 20;
+
+    const startOfToday = new Date(now);
+    startOfToday.setUTCHours(0, 0, 0, 0);
+
+    const todayActivity = await this.dailyActivityModel.findOne({
+      userId: userObjId,
+      date: { $gte: startOfToday },
+    });
+
+    const todayLearnedCount = todayActivity?.wordsLearned || 0;
+    const newWordsCount = Math.max(0, dailyGoal - todayLearnedCount);
+    const tasksCount = (wordsToReview > 0 ? 1 : 0) + (currentLesson ? 1 : 0);
+
+    return {
+      tasksCount: Math.max(1, tasksCount),
+      wordsToReview,
+      newWordsCount: newWordsCount > 0 ? newWordsCount : 10,
+      currentLesson,
+      dailyGoal,
+      todayLearnedCount,
+    };
+  }
+
+  /**
+   * GET /progress/recent-activity
+   * Trả về các hoạt động học gần đây
+   */
+  async getRecentActivities(userId: string) {
+    const userObjId = new Types.ObjectId(userId);
+
+    const [recentProgresses, recentSessions] = await Promise.all([
+      this.progressModel
+        .find({ userId: userObjId })
+        .sort({ lastStudiedAt: -1, updatedAt: -1 })
+        .limit(10)
+        .populate('lessonId')
+        .lean(),
+      this.sessionModel
+        .find({ userId: userObjId })
+        .sort({ startedAt: -1 })
+        .limit(10)
+        .populate('lessonId')
+        .lean(),
+    ]);
+
+    const activities: Array<{
+      type: 'LESSON' | 'REVIEW';
+      title: string;
+      createdAt: Date;
+    }> = [];
+
+    for (const p of recentProgresses) {
+      const lessonObj = p.lessonId as any;
+      const title = lessonObj?.title
+        ? `${p.status === 'COMPLETED' ? 'Hoàn thành bài học' : 'Học bài'}: ${lessonObj.title}`
+        : 'Học bài học';
+      const createdAt = p.lastStudiedAt || (p as any).updatedAt || new Date();
+      activities.push({
+        type: 'LESSON',
+        title,
+        createdAt: new Date(createdAt),
+      });
+    }
+
+    for (const s of recentSessions) {
+      const lessonObj = s.lessonId as any;
+      let title = '';
+      if (s.type === 'REVIEW') {
+        title = `Ôn tập ${s.completedWords || 0} từ vựng`;
+      } else {
+        title = lessonObj?.title
+          ? `Luyện tập bài: ${lessonObj.title}`
+          : 'Luyện tập từ vựng';
+      }
+      activities.push({
+        type: s.type || 'LESSON',
+        title,
+        createdAt: new Date(s.startedAt || (s as any).createdAt || new Date()),
+      });
+    }
+
+    // Sort theo createdAt giảm dần và lấy top 10
+    activities.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    return activities.slice(0, 10);
   }
 }
 

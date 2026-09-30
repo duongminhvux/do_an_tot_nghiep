@@ -10,7 +10,7 @@ import {
 import { ReviewsService } from './reviews.service.js';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 
-@Controller('learning/reviews')
+@Controller(['reviews', 'learning/reviews'])
 @UseGuards(JwtAuthGuard)
 export class ReviewsController {
   constructor(private readonly reviewsService: ReviewsService) {}

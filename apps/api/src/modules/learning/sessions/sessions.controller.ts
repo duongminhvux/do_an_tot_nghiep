@@ -29,7 +29,19 @@ export class SessionsController {
     return this.sessionsService.recordAction(req.user._id, recordActionDto);
   }
 
-  @Patch(':id/complete')
+  @Post(':sessionId/words')
+  recordSessionWord(
+    @Req() req: any,
+    @Param('sessionId') sessionId: string,
+    @Body() recordActionDto: RecordActionDto,
+  ) {
+    return this.sessionsService.recordAction(req.user._id, {
+      ...recordActionDto,
+      sessionId,
+    });
+  }
+
+  @Patch([':id', ':id/complete'])
   complete(
     @Req() req: any,
     @Param('id') id: string,
@@ -38,7 +50,7 @@ export class SessionsController {
     return this.sessionsService.complete(
       req.user._id,
       id,
-      completeSessionDto.endedAt,
+      completeSessionDto?.endedAt,
     );
   }
 
