@@ -66,6 +66,10 @@ export class User {
     @IsOptional()
     @Prop({ default: '' })
     notes?: string;
+
+    @IsOptional()
+    @Prop()
+    profileUpdatedAt?: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

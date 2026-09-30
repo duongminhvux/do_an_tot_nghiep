@@ -26,6 +26,21 @@ export class AdminUsersController {
     return this.usersService.findOneAdmin(id);
   }
 
+  @Get(':id/overview')
+  getOverview(@Param('id') id: string) {
+    return this.usersService.getUserOverviewAdmin(id);
+  }
+
+  @Get(':id/progress')
+  getProgress(@Param('id') id: string) {
+    return this.usersService.getUserProgressAdmin(id);
+  }
+
+  @Get(':id/activity')
+  getActivity(@Param('id') id: string) {
+    return this.usersService.getUserActivityAdmin(id);
+  }
+
   @Post()
   create(@Body() createDto: CreateAdminUserDto) {
     return this.usersService.createAdmin(createDto);

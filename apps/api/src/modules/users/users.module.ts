@@ -20,6 +20,10 @@ import {
   UserWordReview,
   UserWordReviewSchema,
 } from '../learning/reviews/schemas/user-word-review.schema.js';
+import {
+  UserDailyActivity,
+  UserDailyActivitySchema,
+} from '../learning/progress/schemas/user-daily-activity.schema.js';
 import { Lesson, LessonSchema } from '../vocabulary/lessons/lesson.schema.js';
 import {
   LessonWord,
@@ -43,6 +47,7 @@ import {
       { name: LessonWord.name, schema: LessonWordSchema },
       { name: Word.name, schema: WordSchema },
       { name: Collection.name, schema: CollectionSchema },
+      { name: UserDailyActivity.name, schema: UserDailyActivitySchema },
     ]),
   ],
   controllers: [UsersController, AdminUsersController],

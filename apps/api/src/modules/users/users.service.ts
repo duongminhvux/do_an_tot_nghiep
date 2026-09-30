@@ -15,6 +15,7 @@ import { Lesson } from '../vocabulary/lessons/lesson.schema.js';
 import { LessonWord } from '../vocabulary/lessons/lesson-word.schema.js';
 import { Word } from '../vocabulary/words/word.schema.js';
 import { Collection } from '../vocabulary/collections/collection.schema.js';
+import { UserDailyActivity } from '../learning/progress/schemas/user-daily-activity.schema.js';
 
 function formatVietnamDate(dateInput: Date | string | null | undefined): string {
   if (!dateInput) return '';
@@ -136,6 +137,8 @@ export class UsersService {
     private readonly wordModel: Model<Word>,
     @InjectModel(Collection.name)
     private readonly collectionModel: Model<Collection>,
+    @InjectModel(UserDailyActivity.name)
+    private readonly userDailyActivityModel: Model<UserDailyActivity>,
     private readonly i18n: I18nService,
   ) {}
 
@@ -172,7 +175,12 @@ export class UsersService {
   async updateProfile(id: string, updateProfileDto: UpdateProfileDto) {
     const updatedUser = await this.userModel.findByIdAndUpdate(
       id,
-      { $set: updateProfileDto },
+      {
+        $set: {
+          ...updateProfileDto,
+          profileUpdatedAt: new Date(),
+        },
+      },
       { new: true, select: '-password -code -codeExpiresAt -__v' }
     );
 
@@ -208,9 +216,12 @@ export class UsersService {
       ];
     }
 
-    if (query.status && query.status !== 'all' && query.status !== 'Tất cả') {
-      const isBanned = query.status === 'banned' || query.status === 'Bị khóa';
-      filter.isBanned = isBanned ? true : { $ne: true };
+    if (query.status) {
+      const statusLower = query.status.trim().toLowerCase();
+      if (statusLower !== 'all' && statusLower !== 'tất cả') {
+        const isBanned = statusLower === 'banned' || statusLower === 'bị khóa';
+        filter.isBanned = isBanned ? true : { $ne: true };
+      }
     }
 
     if (query.dateRange && query.dateRange !== 'all') {
@@ -350,7 +361,7 @@ export class UsersService {
 
     const user: any = await this.userModel.findOne(filter).lean().exec();
     if (!user) {
-      throw new BadRequestException('User not found');
+      throw new BadRequestException(await this.i18n.t('user.USER_NOT_FOUND'));
     }
 
     const createdDate = user.createdAt ? new Date(user.createdAt) : new Date();
@@ -565,13 +576,13 @@ export class UsersService {
       }
     }
 
-    if (user.updatedAt && String(user.updatedAt) !== String(user.createdAt)) {
+    if (user.profileUpdatedAt) {
       recentActivities.push({
         id: 'act-profile',
         title: 'Cập nhật thông tin cá nhân',
-        time: formatVietnamLastActive(user.updatedAt),
+        time: formatVietnamLastActive(user.profileUpdatedAt),
         type: 'profile',
-        timestamp: new Date(user.updatedAt).getTime(),
+        timestamp: new Date(user.profileUpdatedAt).getTime(),
       });
     }
 
@@ -709,9 +720,6 @@ export class UsersService {
     }
 
     user.isBanned = !user.isBanned;
-    if (!user.isBanned) {
-      user.lastActive = new Date();
-    }
     await user.save();
 
     return {
@@ -724,7 +732,7 @@ export class UsersService {
   async removeAdmin(id: string) {
     const user = await this.userModel.findById(id);
     if (!user || user.isDeleted) {
-      throw new BadRequestException('User not found');
+      throw new BadRequestException(await this.i18n.t('user.USER_NOT_FOUND'));
     }
 
     user.isDeleted = true;
@@ -732,5 +740,355 @@ export class UsersService {
     await user.save();
 
     return { success: true };
+  }
+
+  /**
+   * GET /admin/users/:userId/overview
+   */
+  async getUserOverviewAdmin(userId: string) {
+    const filter: Record<string, any> = { isDeleted: false };
+    if (isValidObjectId(userId)) {
+      filter._id = userId;
+    } else {
+      filter._id = userId;
+    }
+    const user = await this.userModel.findOne(filter).lean();
+    if (!user) {
+      throw new BadRequestException(await this.i18n.t('user.USER_NOT_FOUND'));
+    }
+
+    const userObjId = new Types.ObjectId(String(user._id));
+
+    // 1. Tổng từ đã học
+    const [totalUserLessonWords, totalReviewedWords] = await Promise.all([
+      this.userLessonWordModel.countDocuments({ userId: userObjId }),
+      this.userWordReviewModel.countDocuments({ userId: userObjId }),
+    ]);
+    const totalWordsLearned = Math.max(totalUserLessonWords, totalReviewedWords);
+
+    // 2. Tổng từ đã ôn
+    const reviewAgg = await this.userWordReviewModel.aggregate([
+      { $match: { userId: userObjId } },
+      { $group: { _id: null, total: { $sum: '$reviewCount' } } },
+    ]);
+    const totalWordsReviewed = reviewAgg[0]?.total || 0;
+
+    // 3. Tổng thời gian học
+    const dailyAgg = await this.userDailyActivityModel.aggregate([
+      { $match: { userId: userObjId } },
+      { $group: { _id: null, total: { $sum: '$studyMinutes' } } },
+    ]);
+    const dailyMinutes = dailyAgg[0]?.total || 0;
+
+    const sessionAgg = await this.learningSessionModel.aggregate([
+      {
+        $match: {
+          userId: userObjId,
+          startedAt: { $exists: true },
+          endedAt: { $exists: true },
+        },
+      },
+      {
+        $project: {
+          durationMinutes: {
+            $divide: [{ $subtract: ['$endedAt', '$startedAt'] }, 60000],
+          },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: '$durationMinutes' },
+        },
+      },
+    ]);
+    const sessionMinutes = Math.round(sessionAgg[0]?.total || 0);
+    const studyMinutes = Math.max(dailyMinutes, sessionMinutes);
+
+    // 4. Streak
+    const [dailyActivities, sessions, reviews, progresses] = await Promise.all([
+      this.userDailyActivityModel
+        .find({ userId: userObjId })
+        .select('date')
+        .lean(),
+      this.learningSessionModel
+        .find({ userId: userObjId })
+        .select('startedAt')
+        .lean(),
+      this.userWordReviewModel
+        .find({ userId: userObjId, lastReviewedAt: { $exists: true } })
+        .select('lastReviewedAt')
+        .lean(),
+      this.userLessonProgressModel
+        .find({ userId: userObjId, lastStudiedAt: { $exists: true } })
+        .select('lastStudiedAt')
+        .lean(),
+    ]);
+
+    const studyDates = new Set<string>();
+    dailyActivities.forEach((d) => {
+      if (d.date) studyDates.add(new Date(d.date).toISOString().slice(0, 10));
+    });
+    sessions.forEach((s) => {
+      if (s.startedAt)
+        studyDates.add(new Date(s.startedAt).toISOString().slice(0, 10));
+    });
+    reviews.forEach((r) => {
+      if (r.lastReviewedAt)
+        studyDates.add(new Date(r.lastReviewedAt).toISOString().slice(0, 10));
+    });
+    progresses.forEach((p) => {
+      if (p.lastStudiedAt)
+        studyDates.add(new Date(p.lastStudiedAt).toISOString().slice(0, 10));
+    });
+
+    const sortedDates = Array.from(studyDates).sort();
+
+    let longestStreak = 0;
+    let tempStreak = 0;
+    let prevTime: number | null = null;
+
+    for (const dStr of sortedDates) {
+      const curTime = new Date(`${dStr}T00:00:00.000Z`).getTime();
+      if (prevTime === null) {
+        tempStreak = 1;
+      } else {
+        const diffDays = Math.round((curTime - prevTime) / (24 * 60 * 60 * 1000));
+        if (diffDays === 1) {
+          tempStreak += 1;
+        } else if (diffDays > 1) {
+          tempStreak = 1;
+        }
+      }
+      prevTime = curTime;
+      if (tempStreak > longestStreak) {
+        longestStreak = tempStreak;
+      }
+    }
+
+    const now = new Date();
+    const todayStr = now.toISOString().slice(0, 10);
+    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const yesterdayStr = yesterday.toISOString().slice(0, 10);
+
+    let currentStreak = 0;
+    let checkDate = new Date(now);
+
+    if (studyDates.has(todayStr)) {
+      while (studyDates.has(checkDate.toISOString().slice(0, 10))) {
+        currentStreak += 1;
+        checkDate = new Date(checkDate.getTime() - 24 * 60 * 60 * 1000);
+      }
+    } else if (studyDates.has(yesterdayStr)) {
+      checkDate = yesterday;
+      while (studyDates.has(checkDate.toISOString().slice(0, 10))) {
+        currentStreak += 1;
+        checkDate = new Date(checkDate.getTime() - 24 * 60 * 60 * 1000);
+      }
+    }
+
+    longestStreak = Math.max(longestStreak, currentStreak);
+
+    return {
+      totalWordsLearned,
+      totalWordsReviewed,
+      studyMinutes,
+      currentStreak,
+      longestStreak,
+    };
+  }
+
+  /**
+   * GET /admin/users/:userId/progress
+   * Tiến độ vocabulary của user theo Collection/Lesson
+   */
+  async getUserProgressAdmin(userId: string) {
+    const filter: Record<string, any> = { isDeleted: false };
+    if (isValidObjectId(userId)) {
+      filter._id = userId;
+    } else {
+      filter._id = userId;
+    }
+    const user = await this.userModel.findOne(filter).lean();
+    if (!user) {
+      throw new BadRequestException(await this.i18n.t('user.USER_NOT_FOUND'));
+    }
+
+    const userObjId = new Types.ObjectId(String(user._id));
+
+    const collections = await this.collectionModel
+      .find({ isActive: true, isDeleted: false })
+      .sort({ order: 1 })
+      .lean();
+
+    const result = [];
+
+    for (const col of collections) {
+      const lessons = await this.lessonModel
+        .find({
+          collectionId: col._id,
+          isActive: true,
+          isDeleted: false,
+        })
+        .sort({ order: 1 })
+        .lean();
+
+      const lessonIds = lessons.map((l) => l._id);
+
+      const [userProgresses, allLessonWords] = await Promise.all([
+        this.userLessonProgressModel
+          .find({
+            userId: userObjId,
+            lessonId: { $in: lessonIds },
+          })
+          .lean(),
+        this.lessonWordModel
+          .find({
+            lessonId: { $in: lessonIds },
+          })
+          .select('_id lessonId')
+          .lean(),
+      ]);
+
+      const progressMap = new Map(
+        userProgresses.map((p) => [String(p.lessonId), p]),
+      );
+
+      const allLwIds = allLessonWords.map((lw) => lw._id);
+      const learnedWordsCount = await this.userLessonWordModel.countDocuments({
+        userId: userObjId,
+        lessonWordId: { $in: allLwIds },
+      });
+
+      const totalWords = allLessonWords.length;
+      let completedLessons = 0;
+
+      const lessonList = lessons.map((l) => {
+        const p = progressMap.get(String(l._id));
+        const prog = p?.progress || 0;
+        const status = p?.status || 'NOT_STARTED';
+        if (status === 'COMPLETED') completedLessons += 1;
+
+        return {
+          lessonId: String(l._id),
+          title: l.title,
+          slug: l.slug,
+          status,
+          progress: prog,
+          lastStudiedAt: p?.lastStudiedAt,
+        };
+      });
+
+      const colProgress =
+        totalWords > 0
+          ? Math.min(100, Math.round((learnedWordsCount / totalWords) * 100))
+          : lessons.length > 0
+            ? Math.round((completedLessons / lessons.length) * 100)
+            : 0;
+
+      result.push({
+        collectionId: String(col._id),
+        collectionName: col.name,
+        totalLessons: lessons.length,
+        completedLessons,
+        totalWords,
+        learnedWords: learnedWordsCount,
+        progress: colProgress,
+        lessons: lessonList,
+      });
+    }
+
+    return result;
+  }
+
+  /**
+   * GET /admin/users/:userId/activity
+   * Hoạt động học của user
+   */
+  async getUserActivityAdmin(userId: string) {
+    const filter: Record<string, any> = { isDeleted: false };
+    if (isValidObjectId(userId)) {
+      filter._id = userId;
+    } else {
+      filter._id = userId;
+    }
+    const user = await this.userModel.findOne(filter).lean();
+    if (!user) {
+      throw new BadRequestException(await this.i18n.t('user.USER_NOT_FOUND'));
+    }
+
+    const userObjId = new Types.ObjectId(String(user._id));
+
+    const [recentProgresses, recentSessions, dailyActivities] =
+      await Promise.all([
+        this.userLessonProgressModel
+          .find({ userId: userObjId })
+          .sort({ lastStudiedAt: -1, updatedAt: -1 })
+          .limit(10)
+          .populate('lessonId')
+          .lean(),
+        this.learningSessionModel
+          .find({ userId: userObjId })
+          .sort({ startedAt: -1 })
+          .limit(10)
+          .populate('lessonId')
+          .lean(),
+        this.userDailyActivityModel
+          .find({ userId: userObjId })
+          .sort({ date: -1 })
+          .limit(30)
+          .lean(),
+      ]);
+
+    const recentActivities: any[] = [];
+
+    for (const lp of recentProgresses) {
+      const lessonObj = lp.lessonId as any;
+      const title = lessonObj?.title
+        ? `${lp.status === 'COMPLETED' ? 'Hoàn thành bài học' : 'Học bài'}: ${lessonObj.title}`
+        : 'Học bài học';
+      const time = lp.lastStudiedAt || (lp as any).updatedAt || new Date();
+      recentActivities.push({
+        id: `act-lp-${lp._id}`,
+        type: 'LESSON',
+        title,
+        time: formatVietnamLastActive(time),
+        createdAt: time,
+      });
+    }
+
+    for (const s of recentSessions) {
+      const lessonObj = s.lessonId as any;
+      let title = '';
+      if (s.type === 'REVIEW') {
+        title = `Ôn tập ${s.completedWords || 0} từ vựng`;
+      } else {
+        title = lessonObj?.title
+          ? `Luyện tập: ${lessonObj.title}`
+          : 'Luyện tập từ vựng';
+      }
+      recentActivities.push({
+        id: `act-sess-${s._id}`,
+        type: s.type || 'LESSON',
+        title,
+        time: formatVietnamLastActive(s.startedAt),
+        createdAt: s.startedAt,
+      });
+    }
+
+    recentActivities.sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+
+    return {
+      recentActivities: recentActivities.slice(0, 15),
+      dailyActivities: dailyActivities.map((d) => ({
+        date: d.date,
+        studyMinutes: d.studyMinutes || 0,
+        wordsLearned: d.wordsLearned || 0,
+        wordsReviewed: d.wordsReviewed || 0,
+        sessionCount: d.sessionCount || 0,
+      })),
+    };
   }
 }

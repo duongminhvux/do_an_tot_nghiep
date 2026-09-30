@@ -1,0 +1,22 @@
+{
+  "USER_NOT_FOUND": "Không tìm thấy người dùng.",
+  "USER_CREATED_SUCCESSFULLY": "Tạo người dùng thành công.",
+  "USER_UPDATED_SUCCESSFULLY": "Cập nhật người dùng thành công.",
+  "USER_DELETED_SUCCESSFULLY": "Xóa người dùng thành công.",
+  "STATUS_INACTIVE": "Không hoạt động",
+  "NO_ACTIVITY_YET": "Chưa có hoạt động",
+  "TODAY": "Hôm nay",
+  "YESTERDAY": "Hôm qua",
+  "JUST_NOW": "Vừa xong",
+  "AGO_YEARS": "{count} năm trước",
+  "AGO_MONTHS": "{count} tháng trước",
+  "AGO_DAYS": "{count} ngày trước",
+  "AGO_HOURS": "{count} giờ trước",
+  "AGO_MINUTES": "{count} phút trước",
+  "LOGIN_EVENT": "Đăng nhập hệ thống",
+  "PROFILE_UPDATE_EVENT": "Cập nhật thông tin cá nhân",
+  "ACCOUNT_CREATED_EVENT": "Tài khoản được tạo",
+  "LEARN_WORD_EVENT": "Học từ mới: {word}",
+  "STATUS_BANNED": "Bị khóa",
+  "STATUS_ACTIVE": "Hoạt động"
+}
