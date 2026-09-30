@@ -139,6 +139,31 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
+              {/* User Accounts */}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isUsersActive}
+                  tooltip={t('nav.users')}
+                  className={cn(
+                    'h-9 px-2 rounded-lg text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition-all font-medium text-sm',
+                    isUsersActive && 'bg-blue-50 text-blue-600 font-semibold shadow-xs'
+                  )}
+                >
+                  <Link href={`/${locale}/users`} className="flex items-center gap-2.5">
+                    <Users
+                      className={cn(
+                        'h-4.5 w-4.5 shrink-0',
+                        isUsersActive ? 'text-blue-600' : 'text-slate-500'
+                      )}
+                    />
+                    <span className="truncate group-data-[collapsible=icon]:hidden">
+                      {t('nav.users')}
+                    </span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
               {/* Vocabulary (Collapsible with Collections & Words) */}
               <Collapsible
                 asChild
@@ -253,31 +278,6 @@ export function AppSidebar() {
                     />
                     <span className="truncate group-data-[collapsible=icon]:hidden">
                       {t('nav.lessons')}
-                    </span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              {/* User Accounts */}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={isUsersActive}
-                  tooltip={t('nav.users')}
-                  className={cn(
-                    'h-9 px-2 rounded-lg text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition-all font-medium text-sm',
-                    isUsersActive && 'bg-blue-50 text-blue-600 font-semibold shadow-xs'
-                  )}
-                >
-                  <Link href={`/${locale}/users`} className="flex items-center gap-2.5">
-                    <Users
-                      className={cn(
-                        'h-4.5 w-4.5 shrink-0',
-                        isUsersActive ? 'text-blue-600' : 'text-slate-500'
-                      )}
-                    />
-                    <span className="truncate group-data-[collapsible=icon]:hidden">
-                      {t('nav.users')}
                     </span>
                   </Link>
                 </SidebarMenuButton>
