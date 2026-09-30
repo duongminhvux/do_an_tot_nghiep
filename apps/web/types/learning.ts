@@ -74,6 +74,8 @@ export interface CollectionLessonProgress {
   lessonId: string;
   title: string;
   slug: string;
+  wordsCount?: number;
+  order?: number;
   progress: number;
   status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
   lastStudiedAt?: string;
@@ -84,6 +86,11 @@ export interface CollectionProgressDetail {
   overallProgress: number;
   completedLessonsCount: number;
   totalLessonsCount: number;
+  totalWordsCount?: number;
+  masteredWords?: number;
+  learningWords?: number;
+  unlearnedWords?: number;
+  studyMinutes?: number;
   lessons: CollectionLessonProgress[];
 }
 
@@ -130,4 +137,68 @@ export interface UserWordReviewItem {
   lastReviewedAt?: string;
   nextReviewAt?: string;
 }
+
+export interface UserProgressOverview {
+  currentStreak: number;
+  longestStreak: number;
+  totalWordsLearned: number;
+  totalWordsReviewed: number;
+  totalStudyMinutes: number;
+  streakGrowth?: number;
+  wordsLearnedGrowth?: number;
+  wordsReviewedGrowth?: number;
+  studyMinutesGrowth?: number;
+}
+
+export interface CollectionVocabularyProgressItem {
+  collectionId: string;
+  collectionName: string;
+  collectionSlug: string;
+  letter?: string;
+  totalWords: number;
+  learnedWords: number;
+  progress: number;
+}
+
+export interface DailyActivityLessonItem {
+  lessonId?: string;
+  lessonTitle: string;
+  collectionName?: string;
+  collectionSlug?: string;
+  type: 'LESSON' | 'REVIEW';
+  wordsCount: number;
+}
+
+export interface DailyActivityItem {
+  date: string;
+  dateKey?: string;
+  studyMinutes: number;
+  wordsLearned: number;
+  wordsReviewed: number;
+  sessionCount: number;
+  lessons?: DailyActivityLessonItem[];
+}
+
+export interface TodayTasksResult {
+  tasksCount: number;
+  wordsToReview: number;
+  newWordsCount: number;
+  currentLesson?: {
+    lessonId: string;
+    title: string;
+    slug: string;
+    collectionName?: string;
+    collectionSlug?: string;
+    progress: number;
+  } | null;
+  dailyGoal: number;
+  todayLearnedCount: number;
+}
+
+export interface RecentActivityItem {
+  type: 'LESSON' | 'REVIEW';
+  title: string;
+  createdAt: string;
+}
+
 

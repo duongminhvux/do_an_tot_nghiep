@@ -1,0 +1,38 @@
+{
+  "title": "Learning Progress",
+  "subtitle": "Track your achievements, study time, and vocabulary journey",
+  "overview": {
+    "title": "Learning Overview",
+    "current_streak": "Current Streak",
+    "longest_streak": "Longest Streak",
+    "words_learned": "Words Learned",
+    "words_reviewed": "Words Reviewed",
+    "study_minutes": "Study Time",
+    "days_unit": "days",
+    "words_unit": "words",
+    "minutes_unit": "mins"
+  },
+  "activity": {
+    "title": "Activity History",
+    "subtitle": "Daily study activity charts and statistics",
+    "filter_30_days": "Last 30 days",
+    "filter_90_days": "Last 90 days",
+    "sessions_count": "{{count}} sessions",
+    "minutes_count": "{{count}} mins",
+    "words_count": "{{count}} words",
+    "no_activity": "No activity recorded in this period"
+  },
+  "vocabulary": {
+    "title": "Vocabulary by Collection",
+    "subtitle": "Vocabulary completion progress across courses and collections",
+    "words_progress": "{{learned}} / {{total}} words",
+    "percent_completed": "{{percent}}% completed",
+    "empty": "No collections available"
+  },
+  "recent_activity": {
+    "title": "Recent Activity",
+    "subtitle": "Recent study sessions and lessons you interacted with",
+    "empty": "No recent activity recorded",
+    "just_now": "Just now"
+  }
+}

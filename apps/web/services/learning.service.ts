@@ -9,6 +9,7 @@ import {
   DashboardStudyStats,
   CheckDueReviewResult,
   UserWordReviewItem,
+  DailyActivityItem,
 } from './types';
 
 export const learningService = {
@@ -165,5 +166,64 @@ export const learningService = {
     );
     return res.data;
   },
+
+  /**
+   * 1. GET /progress/overview (currentStreak, longestStreak, totalWordsLearned, totalWordsReviewed, totalStudyMinutes)
+   */
+  getProgressOverview: async () => {
+    const res = await apiClient.get<ApiResponse<any>>('/progress/overview');
+    return res.data;
+  },
+
+  /**
+   * 2. GET /progress/vocabulary (Collection progress list)
+   */
+  getVocabularyProgressList: async () => {
+    const res = await apiClient.get<ApiResponse<any[]>>('/progress/vocabulary');
+    return res.data;
+  },
+
+  /**
+   * 3. GET /progress/activity?days=90 (Daily activities)
+   */
+  getActivityHistory: async (days: number = 90, timezoneOffset?: string) => {
+    const tz =
+      timezoneOffset ??
+      (typeof window !== 'undefined'
+        ? String(new Date().getTimezoneOffset())
+        : '-420');
+    const res = await apiClient.get<ApiResponse<DailyActivityItem[]>>('/progress/activity', {
+      params: { days, timezoneOffset: tz },
+    });
+    return res.data;
+  },
+
+  /**
+   * 4. GET /progress/recent-activity (Recent activities)
+   */
+  getRecentActivities: async () => {
+    const res = await apiClient.get<ApiResponse<any[]>>('/progress/recent-activity');
+    return res.data;
+  },
+
+  /**
+   * 5. GET /learning/today-tasks (Today tasks: due review, current lesson, daily goal)
+   */
+  getTodayTasks: async () => {
+    const res = await apiClient.get<ApiResponse<any>>('/learning/today-tasks');
+    return res.data;
+  },
+
+  /**
+   * 8. POST /learning/sessions/:sessionId/words
+   */
+  recordSessionWord: async (sessionId: string, data: RecordActionPayload) => {
+    const res = await apiClient.post<ApiResponse<RecordActionResult>>(
+      `/learning/sessions/${sessionId}/words`,
+      data,
+    );
+    return res.data;
+  },
 };
+
 
