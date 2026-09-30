@@ -1,0 +1,8 @@
+services:
+  tts-service:
+    build:
+      args:
+        TORCH_INDEX_URL: https://download.pytorch.org/whl/cu126
+    environment:
+      KOKORO_DEVICE: cuda
+    gpus: all

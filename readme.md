@@ -157,3 +157,17 @@ Learn more about the power of Turborepo:
 - [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
 - [Configuration Options](https://turborepo.dev/docs/reference/configuration)
 - [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+
+---
+
+## TOEIC Docker stack
+
+The repository now includes Docker support for `web`, `admin-web`, `api`, MongoDB, and Kokoro TTS.
+
+Start everything with:
+
+```bash
+docker compose up --build
+```
+
+See [`DOCKER.md`](./DOCKER.md) for the architecture, GPU command, backend-to-TTS endpoints, and troubleshooting notes.

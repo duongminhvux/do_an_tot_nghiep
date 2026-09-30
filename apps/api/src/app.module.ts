@@ -14,6 +14,7 @@ import { VocabularyModule } from './modules/vocabulary/vocabulary.module.js';
 import { AdminsModule } from './modules/admins/admins.module.js';
 import { UploadModule } from './modules/upload/upload.module.js';
 import { LearningModule } from './modules/learning/learning.module.js';
+import { TtsModule } from './modules/tts/tts.module.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -59,6 +60,7 @@ const isDev = process.env.NODE_ENV !== 'production';
     VocabularyModule,
     UploadModule,
     LearningModule,
+    TtsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

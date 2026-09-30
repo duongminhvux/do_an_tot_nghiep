@@ -1,12 +1,12 @@
 # ListenUp local Kokoro TTS service
 
-This service is a small FastAPI wrapper around `hexgrad/Kokoro-82M`. It is designed to run as the `tts-service` container in the root Docker Compose stack and use one NVIDIA GPU.
+FastAPI wrapper around `hexgrad/Kokoro-82M`, designed to run as the internal `tts-service` container in the root Docker Compose stack.
 
 Runtime:
 
 - Python 3.11
 - Kokoro 0.9.4
-- PyTorch 2.7.1 CUDA 12.6 wheel
+- PyTorch 2.7.1
 - 24 kHz PCM WAV output
 - American English (`en-US`) and British English (`en-GB`)
 - persistent Hugging Face model/voice cache at `/models/huggingface`
@@ -20,6 +20,6 @@ POST /v1/synthesize
 POST /v1/synthesize-sequence
 ```
 
-`/v1/synthesize-sequence` is used for multi-segment TOEIC stimuli. NestJS composes the authoring segments and can assign a separate Kokoro voice to each speaker before calling this endpoint.
+`/v1/synthesize-sequence` supports multi-segment TOEIC listening stimuli with separate voices, speeds, and pauses.
 
-The service deliberately fails startup when `KOKORO_DEVICE=cuda` is requested but CUDA is unavailable. This avoids silently running a supposedly GPU-backed deployment on CPU.
+The base Compose stack installs CPU PyTorch so it works on machines without NVIDIA container support. Use `docker-compose.gpu.yml` together with the base Compose file to install the CUDA 12.6 PyTorch wheel and run Kokoro on an NVIDIA GPU.
