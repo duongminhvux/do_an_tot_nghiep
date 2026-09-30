@@ -1000,10 +1000,10 @@ export default function LessonStudyPage() {
                   </div>
                   <div className="space-y-1.5 max-w-md">
                     <h3 className="text-lg font-bold text-slate-900">
-                      Bạn đã học qua tất cả từ vựng trong phần này!
+                      {t('study_page.all_completed_title')}
                     </h3>
                     <p className="text-xs text-slate-500 leading-relaxed">
-                      Tất cả {allSectionWords.length} từ trong phần này đã được ghi nhận vào hệ thống học tập. Các từ này đã được chuyển sang chế độ <strong>Ôn tập định kỳ (SRS)</strong> để ôn luyện riêng.
+                      {t('study_page.all_completed_desc', { count: allSectionWords.length })}
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
@@ -1016,7 +1016,7 @@ export default function LessonStudyPage() {
                       }}
                       className="px-5 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-all shadow-sm cursor-pointer"
                     >
-                      Học lại toàn bộ phần này ({allSectionWords.length} từ)
+                      {t('study_page.replay_section_btn', { count: allSectionWords.length })}
                     </button>
                     {(() => {
                       const curIdx = sections.findIndex((s) => s._id === selectedSectionId);
@@ -1033,7 +1033,7 @@ export default function LessonStudyPage() {
                           }}
                           className="px-5 py-2.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200 transition-all cursor-pointer border border-slate-200"
                         >
-                          Học tiếp: {nextSec.name}
+                          {t('study_page.next_section_btn', { name: nextSec.name })}
                         </button>
                       );
                     })()}

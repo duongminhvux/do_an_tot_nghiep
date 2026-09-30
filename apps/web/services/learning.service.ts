@@ -6,6 +6,10 @@ import {
   LessonProgressDetail,
   CollectionProgressDetail,
   ReviewStats,
+  DashboardStudyStats,
+  CheckDueReviewResult,
+  UserWordReviewItem,
+  DailyActivityItem,
 } from './types';
 
 export const learningService = {
@@ -100,14 +104,38 @@ export const learningService = {
   },
 
   /**
+   * Kiểm tra xem user có từ nào cần ôn tập hôm nay không (cho popup & banner)
+   */
+  checkDueReviews: async () => {
+    const res = await apiClient.get<ApiResponse<CheckDueReviewResult>>(
+      '/learning/reviews/check-due',
+    );
+    return res.data;
+  },
+
+  /**
    * Lấy danh sách từ đến hạn ôn tập
    */
   getDueReviews: async (limit: number = 30) => {
-    const res = await apiClient.get<ApiResponse<any[]>>(
+    const res = await apiClient.get<ApiResponse<UserWordReviewItem[]>>(
       '/learning/reviews/due',
       {
         params: { limit },
       },
+    );
+    return res.data;
+  },
+
+  /**
+   * Đánh giá 1 từ trong phiên ôn tập độc lập (SRS)
+   */
+  recordReview: async (
+    wordId: string,
+    rating: 'AGAIN' | 'HARD' | 'GOOD' | 'EASY',
+  ) => {
+    const res = await apiClient.post<ApiResponse<any>>(
+      '/learning/reviews/record',
+      { wordId, rating },
     );
     return res.data;
   },
@@ -121,4 +149,81 @@ export const learningService = {
     );
     return res.data;
   },
+
+  /**
+   * Lấy thống kê tiến độ học tập cho Dashboard ("Học hôm nay", "Thành tích", streak)
+   */
+  getDashboardStats: async (timezoneOffset?: number) => {
+    const offset =
+      timezoneOffset !== undefined
+        ? timezoneOffset
+        : new Date().getTimezoneOffset();
+    const res = await apiClient.get<ApiResponse<DashboardStudyStats>>(
+      '/learning/progress/dashboard-stats',
+      {
+        params: { timezoneOffset: offset },
+      },
+    );
+    return res.data;
+  },
+
+  /**
+   * 1. GET /progress/overview (currentStreak, longestStreak, totalWordsLearned, totalWordsReviewed, totalStudyMinutes)
+   */
+  getProgressOverview: async () => {
+    const res = await apiClient.get<ApiResponse<any>>('/progress/overview');
+    return res.data;
+  },
+
+  /**
+   * 2. GET /progress/vocabulary (Collection progress list)
+   */
+  getVocabularyProgressList: async () => {
+    const res = await apiClient.get<ApiResponse<any[]>>('/progress/vocabulary');
+    return res.data;
+  },
+
+  /**
+   * 3. GET /progress/activity?days=90 (Daily activities)
+   */
+  getActivityHistory: async (days: number = 90, timezoneOffset?: string) => {
+    const tz =
+      timezoneOffset ??
+      (typeof window !== 'undefined'
+        ? String(new Date().getTimezoneOffset())
+        : '-420');
+    const res = await apiClient.get<ApiResponse<DailyActivityItem[]>>('/progress/activity', {
+      params: { days, timezoneOffset: tz },
+    });
+    return res.data;
+  },
+
+  /**
+   * 4. GET /progress/recent-activity (Recent activities)
+   */
+  getRecentActivities: async () => {
+    const res = await apiClient.get<ApiResponse<any[]>>('/progress/recent-activity');
+    return res.data;
+  },
+
+  /**
+   * 5. GET /learning/today-tasks (Today tasks: due review, current lesson, daily goal)
+   */
+  getTodayTasks: async () => {
+    const res = await apiClient.get<ApiResponse<any>>('/learning/today-tasks');
+    return res.data;
+  },
+
+  /**
+   * 8. POST /learning/sessions/:sessionId/words
+   */
+  recordSessionWord: async (sessionId: string, data: RecordActionPayload) => {
+    const res = await apiClient.post<ApiResponse<RecordActionResult>>(
+      `/learning/sessions/${sessionId}/words`,
+      data,
+    );
+    return res.data;
+  },
 };
+
+

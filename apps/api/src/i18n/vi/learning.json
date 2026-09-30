@@ -1,0 +1,12 @@
+{
+  "SESSION_NOT_FOUND": "Không tìm thấy phiên học.",
+  "LESSON_NOT_FOUND": "Không tìm thấy bài học.",
+  "LESSON_ID_REQUIRED": "Mã bài học là bắt buộc khi không có mã phiên học.",
+  "LESSON_LEARN_TITLE": "Học bài: {title}",
+  "LESSON_COMPLETE_TITLE": "Hoàn thành bài học: {title}",
+  "LESSON_DEFAULT_TITLE": "Bài học",
+  "REVIEW_WORDS_TITLE": "Ôn tập {count} từ vựng",
+  "PRACTICE_WORDS_TITLE": "Luyện tập: {title}",
+  "PRACTICE_VOCABULARY_TITLE": "Luyện tập từ vựng",
+  "COURSE_DEFAULT_TITLE": "Khóa học"
+}

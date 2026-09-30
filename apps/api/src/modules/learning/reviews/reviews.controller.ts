@@ -1,6 +1,8 @@
 import {
   Controller,
   Get,
+  Post,
+  Body,
   Query,
   UseGuards,
   Req,
@@ -8,10 +10,27 @@ import {
 import { ReviewsService } from './reviews.service.js';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 
-@Controller('learning/reviews')
+@Controller(['reviews', 'learning/reviews'])
 @UseGuards(JwtAuthGuard)
 export class ReviewsController {
   constructor(private readonly reviewsService: ReviewsService) {}
+
+  @Get('check-due')
+  checkDue(@Req() req: any) {
+    return this.reviewsService.checkDue(req.user._id);
+  }
+
+  @Post('record')
+  recordReview(
+    @Req() req: any,
+    @Body() body: { wordId: string; rating: 'AGAIN' | 'HARD' | 'GOOD' | 'EASY' },
+  ) {
+    return this.reviewsService.recordReview(
+      req.user._id,
+      body.wordId,
+      body.rating,
+    );
+  }
 
   @Get('due')
   getDueReviews(

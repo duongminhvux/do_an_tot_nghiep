@@ -40,6 +40,12 @@ export class LearningSession {
     type: Number,
     default: 0,
   })
+  durationSeconds?: number;
+
+  @Prop({
+    type: Number,
+    default: 0,
+  })
   totalWords: number;
 
   @Prop({

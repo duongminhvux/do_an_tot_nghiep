@@ -5,11 +5,13 @@ import viCommon from '../locales/vi/common.json';
 import viAuth from '../locales/vi/auth.json';
 import viDashboard from '../locales/vi/dashboard.json';
 import viVocabulary from '../locales/vi/vocabulary.json';
+import viUsers from '../locales/vi/users.json';
 
 import enCommon from '../locales/en/common.json';
 import enAuth from '../locales/en/auth.json';
 import enDashboard from '../locales/en/dashboard.json';
 import enVocabulary from '../locales/en/vocabulary.json';
+import enUsers from '../locales/en/users.json';
 
 const resources = {
   vi: {
@@ -17,12 +19,14 @@ const resources = {
     auth: viAuth,
     dashboard: viDashboard,
     vocabulary: viVocabulary,
+    users: viUsers,
   },
   en: {
     common: enCommon,
     auth: enAuth,
     dashboard: enDashboard,
     vocabulary: enVocabulary,
+    users: enUsers,
   },
 };
 

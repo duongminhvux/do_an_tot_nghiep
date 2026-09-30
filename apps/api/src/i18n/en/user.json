@@ -1,0 +1,22 @@
+{
+  "USER_NOT_FOUND": "User not found.",
+  "USER_CREATED_SUCCESSFULLY": "User created successfully.",
+  "USER_UPDATED_SUCCESSFULLY": "User updated successfully.",
+  "USER_DELETED_SUCCESSFULLY": "User deleted successfully.",
+  "STATUS_INACTIVE": "Inactive",
+  "NO_ACTIVITY_YET": "No activity yet",
+  "TODAY": "Today",
+  "YESTERDAY": "Yesterday",
+  "JUST_NOW": "Just now",
+  "AGO_YEARS": "{count} years ago",
+  "AGO_MONTHS": "{count} months ago",
+  "AGO_DAYS": "{count} days ago",
+  "AGO_HOURS": "{count} hours ago",
+  "AGO_MINUTES": "{count} minutes ago",
+  "LOGIN_EVENT": "System login",
+  "PROFILE_UPDATE_EVENT": "Personal information updated",
+  "ACCOUNT_CREATED_EVENT": "Account created",
+  "LEARN_WORD_EVENT": "Learned new word: {word}",
+  "STATUS_BANNED": "Banned",
+  "STATUS_ACTIVE": "Active"
+}

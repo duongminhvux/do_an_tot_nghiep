@@ -51,6 +51,25 @@ export class User {
 
     @Prop()
     deletedAt?: Date;
+
+    @Prop({ default: false })
+    isBanned!: boolean;
+
+    @IsOptional()
+    @Prop()
+    phone?: string;
+
+    @IsOptional()
+    @Prop({ default: Date.now })
+    lastActive?: Date;
+
+    @IsOptional()
+    @Prop({ default: '' })
+    notes?: string;
+
+    @IsOptional()
+    @Prop()
+    profileUpdatedAt?: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

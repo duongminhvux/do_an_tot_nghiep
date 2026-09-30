@@ -1,0 +1,38 @@
+{
+  "title": "Tiến độ học tập",
+  "subtitle": "Theo dõi thành tích, thời gian học và hành trình chinh phục từ vựng của bạn",
+  "overview": {
+    "title": "Tổng quan học tập",
+    "current_streak": "Chuỗi học liên tiếp",
+    "longest_streak": "Chuỗi kỷ lục",
+    "words_learned": "Từ vựng đã học",
+    "words_reviewed": "Lượt ôn tập",
+    "study_minutes": "Thời gian học",
+    "days_unit": "ngày",
+    "words_unit": "từ",
+    "minutes_unit": "phút"
+  },
+  "activity": {
+    "title": "Lịch sử hoạt động",
+    "subtitle": "Biểu đồ và thống kê hoạt động học tập theo ngày",
+    "filter_30_days": "30 ngày qua",
+    "filter_90_days": "90 ngày qua",
+    "sessions_count": "{{count}} phiên",
+    "minutes_count": "{{count}} phút",
+    "words_count": "{{count}} từ",
+    "no_activity": "Chưa có hoạt động nào trong khoảng thời gian này"
+  },
+  "vocabulary": {
+    "title": "Tiến độ từ vựng theo Bộ sưu tập",
+    "subtitle": "Tiến độ hoàn thành từ vựng trong từng khóa học và bộ sưu tập",
+    "words_progress": "{{learned}} / {{total}} từ",
+    "percent_completed": "Hoàn thành {{percent}}%",
+    "empty": "Chưa có bộ sưu tập nào"
+  },
+  "recent_activity": {
+    "title": "Hoạt động gần đây",
+    "subtitle": "Các phiên học và bài học bạn vừa tương tác",
+    "empty": "Chưa có hoạt động nào được ghi nhận",
+    "just_now": "Vừa xong"
+  }
+}

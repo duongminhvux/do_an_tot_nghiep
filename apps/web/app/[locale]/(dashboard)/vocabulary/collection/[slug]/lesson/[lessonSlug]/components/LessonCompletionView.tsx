@@ -7,7 +7,6 @@ import {
   Flame,
   Volume2,
   RotateCcw,
-  Sparkles,
 } from 'lucide-react';
 import { WordDetail } from '@/types/vocabulary';
 
@@ -130,15 +129,15 @@ export function LessonCompletionView({
               onClick={() => onReplay(true)}
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md shadow-blue-500/25 cursor-pointer"
             >
-              <Sparkles className="w-4 h-4" />
-              <span>Chỉ học từ chưa học ({unmasteredWordsCount} từ)</span>
+              <RotateCcw className="w-4 h-4" />
+              <span>{t('study_page.replay_unmastered_btn', { count: unmasteredWordsCount })}</span>
             </button>
             <button
               onClick={() => onReplay(false)}
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-all cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>Học lại toàn bộ phần này</span>
+              <span>{t('study_page.replay_all_btn')}</span>
             </button>
           </>
         ) : (

@@ -1,0 +1,12 @@
+{
+  "SESSION_NOT_FOUND": "Learning session not found.",
+  "LESSON_NOT_FOUND": "Lesson not found.",
+  "LESSON_ID_REQUIRED": "Lesson ID is required when session ID is not provided.",
+  "LESSON_LEARN_TITLE": "Study lesson: {title}",
+  "LESSON_COMPLETE_TITLE": "Completed lesson: {title}",
+  "LESSON_DEFAULT_TITLE": "Lesson",
+  "REVIEW_WORDS_TITLE": "Reviewed {count} vocabulary words",
+  "PRACTICE_WORDS_TITLE": "Practice: {title}",
+  "PRACTICE_VOCABULARY_TITLE": "Practice vocabulary",
+  "COURSE_DEFAULT_TITLE": "Course"
+}
