@@ -126,11 +126,24 @@ export class QuestionsService {
 
   parseQuestionText(rawText: string, defaultPart?: number, defaultSection?: 'LISTENING' | 'READING') {
     const lines = rawText.split(/\r?\n/);
-    let passageTitle = '';
-    let passageContent = '';
+    const passages: Array<{
+      tempId: string;
+      title?: string;
+      content?: string;
+      audioUrl?: string;
+      imageUrl?: string;
+    }> = [];
+    const questions: any[] = [];
+
+    let currentPassage: {
+      tempId: string;
+      title?: string;
+      content?: string;
+      audioUrl?: string;
+      imageUrl?: string;
+    } | null = null;
     let inPassage = false;
 
-    const questions: any[] = [];
     let currentQ: any = null;
     let currentOptions: { key: 'A' | 'B' | 'C' | 'D'; text: string }[] = [];
     let inExplanation = false;
@@ -154,17 +167,26 @@ export class QuestionsService {
 
       // 1. Check Passage start
       const passageMatch = line.match(
-        /^(?:\[PASSAGE\]|passage|đoạn văn|đoạn hội thoại|bài đọc|bài nghe|bài nói)(?:\s+\d+)?[:\s\-]*(.*)$/i,
+        /^(?:\[PASSAGE\]|passage|đoạn văn|doan van|đoạn hội thoại|bài đọc|bài nghe|bài nói)(?:\s+\d+)?[:\s\-]*(.*)$/i,
       );
       if (passageMatch) {
+        finalizeCurrent();
         inPassage = true;
         inExplanation = false;
         const inlineTitle = passageMatch[1]?.trim();
-        if (inlineTitle) passageTitle = inlineTitle;
+        const passageIndex = passages.length + 1;
+        currentPassage = {
+          tempId: `passage-${passageIndex}`,
+          title: inlineTitle || `Đoạn văn ${passageIndex}`,
+          content: '',
+          audioUrl: undefined,
+          imageUrl: undefined,
+        };
+        passages.push(currentPassage);
         continue;
       }
 
-      if (inPassage) {
+      if (inPassage && currentPassage) {
         const isQ = line.match(
           /^(?:(?:\d+)[\.\/\:\)]\s*|(?:câu|question)\s+\d+[:.]\s*|\[QUESTION[^\]]*\]\s*)(.+)$/i,
         );
@@ -172,12 +194,19 @@ export class QuestionsService {
           inPassage = false;
           // fall through to process question
         } else {
-          if (/^(title|tiêu đề):/i.test(line)) {
-            passageTitle = line.replace(/^(title|tiêu đề):\s*/i, '').trim();
-          } else if (/^(transcript|content|nội dung):/i.test(line)) {
-            // Label
+          if (/^(?:title|tiêu đề|tieu de):/i.test(line)) {
+            currentPassage.title = line.replace(/^(?:title|tiêu đề|tieu de):\s*/i, '').trim();
+          } else if (/^(?:audio|âm thanh|am thanh|\[audio\]):/i.test(line)) {
+            currentPassage.audioUrl = line.replace(/^(?:audio|âm thanh|am thanh|\[audio\]):\s*/i, '').trim();
+          } else if (/^(?:image|ảnh|hình ảnh|hinh anh|\[image\]):/i.test(line)) {
+            currentPassage.imageUrl = line.replace(/^(?:image|ảnh|hình ảnh|hinh anh|\[image\]):\s*/i, '').trim();
+          } else if (/^(?:transcript|content|nội dung|noi dung|lời thoại):/i.test(line)) {
+            const extra = line.replace(/^(?:transcript|content|nội dung|noi dung|lời thoại):\s*/i, '').trim();
+            if (extra) {
+              currentPassage.content = (currentPassage.content ? currentPassage.content + '\n' : '') + extra;
+            }
           } else {
-            passageContent += (passageContent ? '\n' : '') + line;
+            currentPassage.content = (currentPassage.content ? currentPassage.content + '\n' : '') + line;
           }
           continue;
         }
@@ -196,6 +225,8 @@ export class QuestionsService {
           options: [],
           correctAnswer: 'A',
           explanation: '',
+          passageTempId: currentPassage ? currentPassage.tempId : undefined,
+          passageTitle: currentPassage ? currentPassage.title : undefined,
         };
         continue;
       }
@@ -262,13 +293,8 @@ export class QuestionsService {
     finalizeCurrent();
 
     return {
-      passage:
-        passageTitle || passageContent
-          ? {
-              title: passageTitle || 'Đoạn văn / Bài đọc',
-              content: passageContent,
-            }
-          : null,
+      passages,
+      passage: passages[0] || null,
       questions,
     };
   }
@@ -310,6 +336,7 @@ export class QuestionsService {
 
     return {
       success: true,
+      passages: result.passages,
       passage: result.passage,
       questions: result.questions,
       total: result.questions.length,
@@ -339,6 +366,15 @@ export class QuestionsService {
       }
     }
 
+    let parsedPassages = body.passages;
+    if (typeof parsedPassages === 'string') {
+      try {
+        parsedPassages = JSON.parse(parsedPassages);
+      } catch {
+        parsedPassages = undefined;
+      }
+    }
+
     let parsedPassage = body.passage;
     if (typeof parsedPassage === 'string') {
       try {
@@ -348,14 +384,18 @@ export class QuestionsService {
       }
     }
 
+    if ((!parsedPassages || parsedPassages.length === 0) && parsedPassage) {
+      parsedPassages = [parsedPassage];
+    }
+
     const part = body.part ? Number(body.part) : 1;
     const section = body.section || (part >= 5 ? 'READING' : 'LISTENING');
 
     if ((!parsedQuestions || !Array.isArray(parsedQuestions) || parsedQuestions.length === 0) && rawText) {
       const result = this.parseQuestionText(rawText, part, section);
       parsedQuestions = result.questions;
-      if (!parsedPassage && result.passage) {
-        parsedPassage = result.passage;
+      if (!parsedPassages || parsedPassages.length === 0) {
+        parsedPassages = result.passages;
       }
     }
 
@@ -363,26 +403,40 @@ export class QuestionsService {
       throw new BadRequestException('Không tìm thấy câu hỏi hợp lệ trong dữ liệu để import.');
     }
 
-    let createdPassageId: Types.ObjectId | undefined = undefined;
-    if (parsedPassage && (parsedPassage.title || parsedPassage.content)) {
+    const passageMap = new Map<string, Types.ObjectId>();
+    let singleCreatedPassageId: Types.ObjectId | undefined = undefined;
+
+    if (Array.isArray(parsedPassages) && parsedPassages.length > 0) {
       const highestPassage = await this.passageModel
         .findOne({ examId: new Types.ObjectId(examId) })
         .sort({ order: -1 })
         .select('order')
         .lean()
         .exec();
-      const nextPassageOrder = highestPassage ? (highestPassage.order || 0) + 1 : 1;
+      let nextPassageOrder = highestPassage ? (highestPassage.order || 0) + 1 : 1;
 
-      const passageDoc = await this.passageModel.create({
-        examId: new Types.ObjectId(examId),
-        title: parsedPassage.title || `Passage Part ${part}`,
-        content: parsedPassage.content || '',
-        audioUrl: parsedPassage.audioUrl,
-        imageUrl: parsedPassage.imageUrl,
-        section,
-        order: nextPassageOrder,
-      });
-      createdPassageId = passageDoc._id;
+      for (let pIdx = 0; pIdx < parsedPassages.length; pIdx++) {
+        const p = parsedPassages[pIdx];
+        if (!p || (!p.title && !p.content && !p.audioUrl && !p.imageUrl)) continue;
+
+        const passageDoc = await this.passageModel.create({
+          examId: new Types.ObjectId(examId),
+          title: p.title || `Passage Part ${part} #${pIdx + 1}`,
+          content: p.content || '',
+          audioUrl: p.audioUrl,
+          imageUrl: p.imageUrl,
+          section,
+          order: nextPassageOrder++,
+        });
+
+        if (p.tempId) {
+          passageMap.set(p.tempId, passageDoc._id);
+        }
+        passageMap.set(String(pIdx), passageDoc._id);
+        if (!singleCreatedPassageId) {
+          singleCreatedPassageId = passageDoc._id;
+        }
+      }
     }
 
     const highest = await this.questionModel
@@ -395,10 +449,20 @@ export class QuestionsService {
 
     const docsToInsert = parsedQuestions.map((q: any) => {
       currentOrder += 1;
+      let matchedPassageId: Types.ObjectId | undefined = undefined;
+
+      if (q.passageId && Types.ObjectId.isValid(q.passageId)) {
+        matchedPassageId = new Types.ObjectId(q.passageId);
+      } else if (q.passageTempId && passageMap.has(q.passageTempId)) {
+        matchedPassageId = passageMap.get(q.passageTempId);
+      } else if (passageMap.size === 1) {
+        matchedPassageId = singleCreatedPassageId;
+      }
+
       return {
         examId: new Types.ObjectId(examId),
-        passageId: q.passageId ? new Types.ObjectId(q.passageId) : createdPassageId,
-        passageTitle: q.passageTitle || parsedPassage?.title,
+        passageId: matchedPassageId,
+        passageTitle: q.passageTitle || parsedPassages?.[0]?.title,
         section: q.section || section,
         part: q.part ? Number(q.part) : part,
         content: q.content,
@@ -419,7 +483,7 @@ export class QuestionsService {
       success: true,
       message: `Đã import thành công ${inserted.length} câu hỏi vào đề thi!`,
       importedCount: inserted.length,
-      passageId: createdPassageId?.toString(),
+      passageCount: passageMap.size,
       data: inserted,
     };
   }

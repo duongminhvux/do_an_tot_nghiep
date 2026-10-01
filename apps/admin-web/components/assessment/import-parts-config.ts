@@ -509,6 +509,7 @@ Explanation:
           'Dòng Content: [Nội dung đoạn văn chứa các chỗ trống [1], [2], [3], [4] hoặc [131], [132]...] (Hoặc Image: https://... nếu là ảnh bài đọc).',
           'Ngay sau đó là đúng chùm 4 câu hỏi liên tiếp tương ứng với 4 chỗ trống.',
           'Mỗi câu hỏi có 4 phương án A, B, C, D, Answer và Explanation.',
+          'Có thể nhập nhiều đoạn văn liên tiếp cùng lúc (Đoạn văn 1 kèm chùm 4 câu hỏi, Đoạn văn 2 kèm chùm 4 câu hỏi...).',
         ],
         formatRulesEn: [
           'Start with Passage: to declare the reading text.',
@@ -516,6 +517,7 @@ Explanation:
           'Content: [Passage content with blanks [1], [2], [3], [4]] (or Image: https://...).',
           'Follow with exactly 4 consecutive questions for the 4 blanks.',
           'Each question has choices A, B, C, D, Answer, and Explanation.',
+          'Supports multiple consecutive passages in a single import (Passage 1 with 4 questions, Passage 2 with 4 questions...).',
         ],
         sampleText: `Passage:
 Title: Thông báo nội bộ về vị trí kỹ sư phần mềm
@@ -570,7 +572,58 @@ D. effective
 Answer: A
 
 Explanation:
-Cần trạng từ bổ nghĩa cho động từ "building" -> chọn "effectively".`,
+Cần trạng từ bổ nghĩa cho động từ "building" -> chọn "effectively".
+
+Passage 2:
+Title: Thông báo bảo trì hệ thống dịch vụ đám mây
+Content:
+Dear Valued Customers,
+Please be informed that our cloud services will undergo scheduled system maintenance on Sunday between 1:00 AM and 5:00 AM. During this period, our web portal will be [1] _______ unavailable.
+We apologize for any inconvenience this may cause and appreciate your [2] _______. Our technical team is working hard to ensure that all systems are upgraded [3] _______. If you experience any persistent issues following the maintenance, please contact our support desk [4] _______.
+
+135. Which word best fits blank [1]?
+A. temporary
+B. temporarily
+C. temporariness
+D. temporal
+
+Answer: B
+
+Explanation:
+Cần phó từ (adverb) "temporarily" bổ nghĩa cho tính từ "unavailable".
+
+136. Which word best fits blank [2]?
+A. understanding
+B. understand
+C. understandably
+D. understood
+
+Answer: A
+
+Explanation:
+Đứng sau tính từ sở hữu "your" cần một danh từ -> "understanding".
+
+137. Which word best fits blank [3]?
+A. smoothly
+B. smoothness
+C. smooth
+D. smoothen
+
+Answer: A
+
+Explanation:
+Bổ nghĩa cho động từ "upgraded" cần trạng từ "smoothly".
+
+138. Which phrase best fits blank [4]?
+A. as soon as possible
+B. much more slow
+C. before next year
+D. without any delay
+
+Answer: A
+
+Explanation:
+Cụm từ "as soon as possible" (càng sớm càng tốt) phù hợp ngữ cảnh liên hệ hỗ trợ.`,
         blankTemplate: `Passage:
 Title: [Tiêu đề đoạn văn]
 Content:
@@ -915,27 +968,34 @@ export function shouldShowQuestionAudioInput(
   return false;
 }
 
+export interface ParsedPassageItem {
+  id: string;
+  title?: string;
+  content?: string;
+  audioUrl?: string;
+  imageUrl?: string;
+}
+
 /**
- * Enhanced Natural Parser that handles standard numbering, tags, and cluster passages
+ * Enhanced Natural Parser that handles standard numbering, tags, and cluster passages (supports multiple passages)
  */
 export function parseQuestionsFromText(
   rawText: string,
   currentPart: ExamPartConfig,
 ): {
-  passage: { title?: string; content?: string; imageUrl?: string; audioUrl?: string } | null;
-  questions: Partial<QuestionItem>[];
+  passages: ParsedPassageItem[];
+  passage: ParsedPassageItem | null;
+  questions: (Partial<QuestionItem> & { passageTempId?: string })[];
 } {
-  const lines = rawText.split('\n');
-  const questions: Partial<QuestionItem>[] = [];
+  const lines = rawText.split(/\r?\n/);
+  const passages: ParsedPassageItem[] = [];
+  const questions: (Partial<QuestionItem> & { passageTempId?: string })[] = [];
 
-  let passageTitle: string | null = null;
-  let passageContent: string | null = null;
-  let passageAudioUrl: string | null = null;
-  let passageImageUrl: string | null = null;
+  let currentPassage: ParsedPassageItem | null = null;
   let inPassage = false;
   let inTranscript = false;
 
-  let currentQ: Partial<QuestionItem> | null = null;
+  let currentQ: (Partial<QuestionItem> & { passageTempId?: string }) | null = null;
   let currentOptions: { key: 'A' | 'B' | 'C' | 'D'; text: string }[] = [];
   let inExplanation = false;
 
@@ -963,40 +1023,51 @@ export function parseQuestionsFromText(
     const line = rawLine.trim();
 
     if (!line) {
-      if (inPassage && passageContent) {
-        passageContent += '\n';
+      if (inPassage && currentPassage && currentPassage.content) {
+        currentPassage.content += '\n';
       }
       continue;
     }
 
-    // 1. Passage header: Passage: or Đoạn văn: or [PASSAGE]
-    if (line.match(/^(?:Passage|Đoạn văn|Doan van|\[PASSAGE\])[:\s]*/i)) {
+    // 1. Passage header: Passage: or Đoạn văn: or [PASSAGE] (e.g. Passage 1:, Passage 2:)
+    const passageHeaderMatch = line.match(
+      /^(?:Passage|Đoạn văn|Doan van|Đoạn hội thoại|Bài đọc|Bài nói|\[PASSAGE\])(?:\s+\d+)?[:\s\-]*(.*)$/i,
+    );
+
+    if (passageHeaderMatch) {
       finalizeCurrentQuestion();
       inPassage = true;
       inTranscript = false;
-      const titleMatch = line.match(/^(?:Passage|Đoạn văn|Doan van|\[PASSAGE\])[:\s]*(.*)$/i);
-      if (titleMatch && titleMatch[1] && titleMatch[1].trim()) {
-        passageTitle = titleMatch[1].trim();
-      }
+
+      const inlineTitle = passageHeaderMatch[1]?.trim();
+      const pIndex = passages.length + 1;
+      currentPassage = {
+        id: `passage-${pIndex}`,
+        title: inlineTitle || `${currentPart.subtitle || 'Đoạn văn'} #${pIndex}`,
+        content: '',
+        audioUrl: undefined,
+        imageUrl: undefined,
+      };
+      passages.push(currentPassage);
       continue;
     }
 
-    if (inPassage) {
+    if (inPassage && currentPassage) {
       const titleMatch = line.match(/^(?:Title|Tiêu đề|Tieu de)[:\s]*(.*)$/i);
       if (titleMatch) {
-        passageTitle = (titleMatch[1] || '').trim();
+        currentPassage.title = (titleMatch[1] || '').trim();
         continue;
       }
 
       const pAudioMatch = line.match(/^(?:Audio|Âm thanh|Am thanh|\[AUDIO\])[:\s]+(.*)$/i);
       if (pAudioMatch && pAudioMatch[1]) {
-        passageAudioUrl = pAudioMatch[1].trim();
+        currentPassage.audioUrl = pAudioMatch[1].trim();
         continue;
       }
 
       const pImgMatch = line.match(/^(?:Image|Ảnh|Hình ảnh|\[IMAGE\])[:\s]+(.*)$/i);
       if (pImgMatch && pImgMatch[1]) {
-        passageImageUrl = pImgMatch[1].trim();
+        currentPassage.imageUrl = pImgMatch[1].trim();
         continue;
       }
 
@@ -1006,13 +1077,13 @@ export function parseQuestionsFromText(
           /^(?:Transcript|Lời thoại|Content|Nội dung)[:\s]*(.*)$/i,
         );
         if (textMatch && textMatch[1] && textMatch[1].trim()) {
-          passageContent = (passageContent ? passageContent + '\n' : '') + textMatch[1].trim();
+          currentPassage.content = (currentPassage.content ? currentPassage.content + '\n' : '') + textMatch[1].trim();
         }
         continue;
       }
     }
 
-    // 2. Check for question start
+    // 2. Check for question start: 101. or 1. or Câu 101: or [QUESTION]
     const questionMatch = line.match(
       /^(?:(?:Câu|Cau|Question)\s*(\d+)[:\.]?|(\d+)[\.\)]|\[QUESTION\])\s*(.*)$/i,
     );
@@ -1028,13 +1099,15 @@ export function parseQuestionsFromText(
         options: [],
         correctAnswer: 'A',
         explanation: '',
+        passageTempId: currentPassage ? currentPassage.id : undefined,
+        passageTitle: currentPassage ? currentPassage.title : undefined,
       };
       continue;
     }
 
     // If still in passage block and haven't hit question
-    if (inPassage) {
-      passageContent = (passageContent ? passageContent + '\n' : '') + line;
+    if (inPassage && currentPassage) {
+      currentPassage.content = (currentPassage.content ? currentPassage.content + '\n' : '') + line;
       continue;
     }
 
@@ -1102,16 +1175,13 @@ export function parseQuestionsFromText(
 
   finalizeCurrentQuestion();
 
+  const validPassages = currentPart.hasPassage
+    ? passages.filter((p) => p.title || p.content || p.audioUrl || p.imageUrl)
+    : [];
+
   return {
-    passage:
-      passageTitle || passageContent || passageAudioUrl || passageImageUrl
-        ? {
-            title: passageTitle || undefined,
-            content: passageContent || '',
-            audioUrl: passageAudioUrl || undefined,
-            imageUrl: passageImageUrl || undefined,
-          }
-        : null,
+    passages: validPassages,
+    passage: validPassages[0] || null,
     questions,
   };
 }

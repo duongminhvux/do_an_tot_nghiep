@@ -5,6 +5,10 @@ import { QuestionOptionDto } from './create-question.dto.js';
 export class ImportPassageDto {
   @IsString()
   @IsOptional()
+  tempId?: string;
+
+  @IsString()
+  @IsOptional()
   title?: string;
 
   @IsString()
@@ -14,6 +18,10 @@ export class ImportPassageDto {
   @IsString()
   @IsOptional()
   audioUrl?: string;
+
+  @IsString()
+  @IsOptional()
+  imageUrl?: string;
 }
 
 export class ImportSingleQuestionDto {
@@ -49,6 +57,10 @@ export class ImportSingleQuestionDto {
 
   @IsString()
   @IsOptional()
+  passageTempId?: string;
+
+  @IsString()
+  @IsOptional()
   passageTitle?: string;
 }
 
@@ -65,6 +77,11 @@ export class ImportQuestionsDto {
   @Type(() => ImportPassageDto)
   @IsOptional()
   passage?: ImportPassageDto;
+
+  @ValidateNested({ each: true })
+  @Type(() => ImportPassageDto)
+  @IsOptional()
+  passages?: ImportPassageDto[];
 
   @ValidateNested({ each: true })
   @Type(() => ImportSingleQuestionDto)

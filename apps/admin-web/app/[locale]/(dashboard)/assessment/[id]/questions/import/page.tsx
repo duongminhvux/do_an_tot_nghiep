@@ -15,6 +15,7 @@ import {
   shouldShowQuestionImageInput,
   shouldShowQuestionAudioInput,
   ExamPartConfig,
+  ParsedPassageItem,
 } from '@/components/assessment/import-parts-config';
 import { AutoResizeTextarea } from '@/components/assessment/auto-resize-textarea';
 import {
@@ -96,14 +97,9 @@ export default function ImportQuestionsPage() {
   const [copied, setCopied] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Parsed questions state
-  const [parsedPassage, setParsedPassage] = useState<{
-    title?: string;
-    content?: string;
-    audioUrl?: string;
-    imageUrl?: string;
-  } | null>(null);
-  const [parsedQuestions, setParsedQuestions] = useState<Partial<QuestionItem>[]>([]);
+  // Parsed passages & questions state
+  const [parsedPassages, setParsedPassages] = useState<ParsedPassageItem[]>([]);
+  const [parsedQuestions, setParsedQuestions] = useState<(Partial<QuestionItem> & { passageTempId?: string })[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState<{ current: number; total: number } | null>(null);
@@ -226,7 +222,8 @@ export default function ImportQuestionsPage() {
         const result = (res as any)?.data || res;
 
         if (result && Array.isArray(result.questions) && result.questions.length > 0) {
-          setParsedPassage(result.passage || null);
+          const incomingPassages = result.passages || (result.passage ? [{ id: 'passage-1', ...result.passage }] : []);
+          setParsedPassages(incomingPassages);
           setParsedQuestions(result.questions);
           setStep(3);
         } else {
@@ -248,14 +245,14 @@ export default function ImportQuestionsPage() {
       return;
     }
 
-    const { passage, questions } = parseQuestionsFromText(textToParse, currentPart);
+    const { passages, questions } = parseQuestionsFromText(textToParse, currentPart);
 
     if (questions.length === 0) {
       setErrorMessage(t('importModal.msg.noQuestionsFound'));
       return;
     }
 
-    setParsedPassage(passage);
+    setParsedPassages(passages);
     setParsedQuestions(questions);
     setStep(3);
   };
@@ -290,7 +287,7 @@ export default function ImportQuestionsPage() {
     setParsedQuestions((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleAddQuestion = () => {
+  const handleAddQuestion = (passageTempId?: string) => {
     setParsedQuestions((prev) => [
       ...prev,
       {
@@ -303,18 +300,44 @@ export default function ImportQuestionsPage() {
         ],
         correctAnswer: 'A',
         explanation: '',
+        passageTempId,
       },
     ]);
   };
 
   const handleUpdatePassage = (
+    pIndex: number,
     field: 'title' | 'content' | 'audioUrl' | 'imageUrl',
     value: string,
   ) => {
-    setParsedPassage((prev) => {
-      if (!prev) return { [field]: value };
-      return { ...prev, [field]: value };
+    setParsedPassages((prev) => {
+      const next = [...prev];
+      const target = next[pIndex];
+      if (target) {
+        next[pIndex] = { ...target, [field]: value };
+      }
+      return next;
     });
+  };
+
+  const handleAddPassage = () => {
+    const newId = `passage-${Date.now()}`;
+    const newPassage: ParsedPassageItem = {
+      id: newId,
+      title: `${currentPart?.subtitle || 'Đoạn văn'} #${parsedPassages.length + 1}`,
+      content: '',
+      audioUrl: undefined,
+      imageUrl: undefined,
+    };
+    setParsedPassages((prev) => [...prev, newPassage]);
+    handleAddQuestion(newId);
+  };
+
+  const handleDeletePassage = (pIndex: number) => {
+    const target = parsedPassages[pIndex];
+    if (!target) return;
+    setParsedPassages((prev) => prev.filter((_, i) => i !== pIndex));
+    setParsedQuestions((prev) => prev.filter((q) => q.passageTempId !== target.id));
   };
 
   // Confirm Import
@@ -326,7 +349,14 @@ export default function ImportQuestionsPage() {
     try {
       const res = await examService.importQuestions(exam._id, {
         part: currentPart.id,
-        passage: parsedPassage || undefined,
+        passages: parsedPassages.length > 0 ? parsedPassages.map((p) => ({
+          tempId: p.id,
+          title: p.title,
+          content: p.content,
+          audioUrl: p.audioUrl,
+          imageUrl: p.imageUrl,
+        })) : undefined,
+        passage: parsedPassages[0] || undefined,
         questions: parsedQuestions,
       });
 
@@ -346,22 +376,28 @@ export default function ImportQuestionsPage() {
       console.warn('API import failed, trying fallback sequential question creation:', err);
 
       try {
-        let createdPassageId: string | undefined = undefined;
+        const passageIdMap = new Map<string, string>();
+        let singleCreatedPassageId: string | undefined = undefined;
 
-        if (
-          parsedPassage &&
-          (parsedPassage.title || parsedPassage.content || parsedPassage.audioUrl || parsedPassage.imageUrl)
-        ) {
+        for (let pIdx = 0; pIdx < parsedPassages.length; pIdx++) {
+          const p = parsedPassages[pIdx];
+          if (!p || (!p.title && !p.content && !p.audioUrl && !p.imageUrl)) continue;
+
           const passageRes = await examService.createPassage({
             examId: exam._id,
             section: currentPart.section,
-            title: parsedPassage.title || `Passage Part ${currentPart.id}`,
-            content: parsedPassage.content || '',
-            audioUrl: parsedPassage.audioUrl,
-            imageUrl: parsedPassage.imageUrl,
-            order: 1,
+            title: p.title || `Passage Part ${currentPart.id} #${pIdx + 1}`,
+            content: p.content || '',
+            audioUrl: p.audioUrl,
+            imageUrl: p.imageUrl,
+            order: pIdx + 1,
           });
-          createdPassageId = (passageRes as any)?.data?._id || (passageRes as any)?._id;
+
+          const createdId = (passageRes as any)?.data?._id || (passageRes as any)?._id;
+          if (createdId) {
+            passageIdMap.set(p.id, createdId);
+            if (!singleCreatedPassageId) singleCreatedPassageId = createdId;
+          }
         }
 
         const total = parsedQuestions.length;
@@ -369,6 +405,10 @@ export default function ImportQuestionsPage() {
         for (const q of parsedQuestions) {
           count++;
           setImportProgress({ current: count, total });
+
+          const matchedPassageId = q.passageTempId
+            ? passageIdMap.get(q.passageTempId)
+            : singleCreatedPassageId;
 
           await examService.createQuestion({
             examId: exam._id,
@@ -380,8 +420,8 @@ export default function ImportQuestionsPage() {
             explanation: q.explanation || '',
             order: count,
             status: 'ACTIVE',
-            passageId: createdPassageId,
-            passageTitle: parsedPassage?.title,
+            passageId: matchedPassageId,
+            passageTitle: q.passageTitle || parsedPassages[0]?.title,
             imageUrl: q.imageUrl,
             audioUrl: q.audioUrl,
           });
@@ -1035,212 +1075,414 @@ export default function ImportQuestionsPage() {
             </div>
           </div>
 
-          {/* Attached Passage Card if exists */}
-          {parsedPassage && (
-            <div className="p-4 rounded border border-indigo-200 bg-indigo-50/40 space-y-2.5">
-              <div className="flex items-center gap-2 text-xs font-bold text-indigo-900">
-                <BookOpen className="h-4 w-4 text-indigo-600" />
-                <span>{t('importModal.passageCardTitle')}</span>
-              </div>
-              <input
-                type="text"
-                value={parsedPassage.title || ''}
-                onChange={(e) => handleUpdatePassage('title', e.target.value)}
-                placeholder={t('importModal.passageTitlePlaceholder')}
-                className="w-full text-xs font-bold text-indigo-950 p-2 rounded border border-indigo-200 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              />
-              <AutoResizeTextarea
-                minRows={2}
-                value={parsedPassage.content || ''}
-                onChange={(e) => handleUpdatePassage('content', e.target.value)}
-                placeholder={t('importModal.passageContentPlaceholder')}
-                className="w-full text-xs text-slate-700 p-2.5 rounded border border-indigo-200 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 leading-relaxed font-mono"
-              />
+          {/* Multi-Passage or Standalone Questions Rendering */}
+          {parsedPassages.length > 0 ? (
+            <div className="space-y-6">
+              {parsedPassages.map((p, pIdx) => {
+                const passageQuestions = parsedQuestions.filter(
+                  (q) => q.passageTempId === p.id || (!q.passageTempId && pIdx === 0 && parsedPassages.length === 1)
+                );
 
-              {/* Passage Audio (cho Listening có passage: Part 3, 4) */}
-              {currentPart.hasAudio && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white rounded border border-indigo-200">
-                  <Volume2 className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
-                  <input
-                    type="text"
-                    value={parsedPassage.audioUrl || ''}
-                    onChange={(e) => handleUpdatePassage('audioUrl', e.target.value)}
-                    placeholder="URL file audio đoạn hội thoại / bài nói..."
-                    className="w-full bg-transparent text-[11px] text-slate-700 focus:outline-none"
-                  />
-                </div>
-              )}
+                return (
+                  <div
+                    key={p.id || pIdx}
+                    className="p-5 rounded border border-indigo-200 bg-indigo-50/30 space-y-4 shadow-2xs"
+                  >
+                    {/* Header of Passage */}
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <BookOpen className="h-4 w-4 text-indigo-600 shrink-0" />
+                        <span className="text-xs font-bold text-indigo-950">
+                          {t('importModal.passageCardTitleNumbered', { index: pIdx + 1 })}
+                        </span>
+                        <span className="text-[11px] font-semibold text-indigo-600 bg-indigo-100/70 px-2 py-0.5 rounded">
+                          {t('importModal.linkedQuestionsCount', { count: passageQuestions.length })}
+                        </span>
+                      </div>
 
-              {/* Passage Image (cho Reading có passage ảnh: Part 6, 7) */}
-              {currentPart.section === 'READING' && currentPart.hasImage && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white rounded border border-indigo-200">
-                  <ImageIcon className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
-                  <input
-                    type="text"
-                    value={parsedPassage.imageUrl || ''}
-                    onChange={(e) => handleUpdatePassage('imageUrl', e.target.value)}
-                    placeholder="URL ảnh chụp bài đọc (nếu dùng hình ảnh scan thay văn bản)..."
-                    className="w-full bg-transparent text-[11px] text-slate-700 focus:outline-none"
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Editable Questions List */}
-          <div className="space-y-4">
-            {parsedQuestions.map((q, idx) => {
-              const showImg = shouldShowQuestionImageInput(currentPart, q);
-              const showAud = shouldShowQuestionAudioInput(currentPart, q);
-
-              return (
-                <div
-                  key={idx}
-                  className="p-5 rounded border border-slate-200 bg-white hover:border-slate-300 transition-colors space-y-3.5 shadow-2xs"
-                >
-                  {/* Header: Question order + delete button */}
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <span className="w-7 h-7 rounded bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs shrink-0">
-                        #{idx + 1}
-                      </span>
-                      <span className="text-xs text-slate-500 font-medium">
-                        {t('importModal.currentCorrectBadge')}{' '}
-                        <strong className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                          {q.correctAnswer || 'A'}
-                        </strong>
-                      </span>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteQuestion(idx)}
-                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors cursor-pointer"
-                      title={t('importModal.deleteQuestionTooltip')}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-
-                  {/* Question Content Input */}
-                  <div>
-                    <AutoResizeTextarea
-                      minRows={1}
-                      value={q.content || ''}
-                      onChange={(e) => handleUpdateQuestion(idx, 'content', e.target.value)}
-                      placeholder={t('importModal.questionContentPlaceholder')}
-                      className="w-full text-xs font-semibold text-slate-800 p-3 rounded border border-slate-200 bg-slate-50/40 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 leading-relaxed"
-                    />
-                  </div>
-
-                  {/* Options: 2 columns, 2 rows */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {q.options?.map((opt) => {
-                      const isCorrect = opt.key === q.correctAnswer;
-                      return (
-                        <div
-                          key={opt.key}
-                          className={`p-1.5 rounded border flex items-center gap-2 transition-all ${
-                            isCorrect
-                              ? 'border-emerald-300 bg-emerald-50/60 shadow-2xs'
-                              : 'border-slate-200 bg-slate-50/30 hover:border-slate-300'
-                          }`}
+                      {parsedPassages.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeletePassage(pIdx)}
+                          className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors cursor-pointer"
+                          title={t('importModal.deletePassageTooltip')}
                         >
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateQuestion(idx, 'correctAnswer', opt.key)}
-                            className={`w-7 h-7 rounded text-xs flex items-center justify-center font-bold shrink-0 cursor-pointer transition-all ${
-                              isCorrect
-                                ? 'bg-emerald-600 text-white shadow-xs scale-105'
-                                : 'bg-white hover:bg-slate-200 text-slate-700 border border-slate-300'
-                            }`}
-                            title={t('importModal.clickToSelectCorrect', { key: opt.key })}
-                          >
-                            {opt.key}
-                          </button>
-
-                          <input
-                            type="text"
-                            value={opt.text}
-                            onChange={(e) => handleUpdateOption(idx, opt.key, e.target.value)}
-                            placeholder={t('importModal.optionPlaceholder', { key: opt.key })}
-                            className={`flex-1 text-xs px-2 py-1 rounded bg-transparent focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                              isCorrect ? 'font-bold text-emerald-950' : 'text-slate-800'
-                            }`}
-                          />
-
-                          {isCorrect && (
-                            <span className="text-[10px] font-bold text-emerald-700 pr-1 shrink-0">
-                              {t('importModal.correctMark')}
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Media URLs (Image / Audio) row - CHỈ hiển thị khi Part hoặc câu hỏi thật sự cần */}
-                  {(showImg || showAud) && (
-                    <div
-                      className={`grid grid-cols-1 ${
-                        showImg && showAud ? 'sm:grid-cols-2' : ''
-                      } gap-2 pt-1 text-[11px]`}
-                    >
-                      {showImg && (
-                        <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 rounded border border-slate-200">
-                          <ImageIcon className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                          <input
-                            type="text"
-                            value={q.imageUrl || ''}
-                            onChange={(e) => handleUpdateQuestion(idx, 'imageUrl', e.target.value)}
-                            placeholder={t('importModal.imageUrlPlaceholder')}
-                            className="w-full bg-transparent text-[11px] text-slate-700 focus:outline-none"
-                          />
-                        </div>
-                      )}
-
-                      {showAud && (
-                        <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 rounded border border-slate-200">
-                          <Volume2 className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                          <input
-                            type="text"
-                            value={q.audioUrl || ''}
-                            onChange={(e) => handleUpdateQuestion(idx, 'audioUrl', e.target.value)}
-                            placeholder={t('importModal.audioUrlPlaceholder')}
-                            className="w-full bg-transparent text-[11px] text-slate-700 focus:outline-none"
-                          />
-                        </div>
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       )}
                     </div>
-                  )}
 
-                  {/* Explanation Input */}
-                  <div className="flex items-center gap-2 pt-1 text-xs">
-                    <span className="text-[11px] font-semibold text-slate-500 shrink-0">
-                      {t('importModal.explanationField')}
-                    </span>
+                    {/* Passage Title Input */}
                     <input
                       type="text"
-                      value={q.explanation || ''}
-                      onChange={(e) => handleUpdateQuestion(idx, 'explanation', e.target.value)}
-                      placeholder={t('importModal.explanationPlaceholder')}
-                      className="flex-1 text-xs px-2.5 py-1.5 rounded border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      value={p.title || ''}
+                      onChange={(e) => handleUpdatePassage(pIdx, 'title', e.target.value)}
+                      placeholder={t('importModal.passageTitlePlaceholder')}
+                      className="w-full text-xs font-bold text-indigo-950 p-2.5 rounded border border-indigo-200 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
                     />
-                  </div>
-                </div>
-              );
-            })}
 
-            {/* Add Question Button */}
-            <button
-              type="button"
-              onClick={handleAddQuestion}
-              className="w-full py-3 border-2 border-dashed border-slate-200 hover:border-blue-400 hover:bg-blue-50/30 text-blue-600 rounded text-xs font-bold inline-flex items-center justify-center gap-2 transition-colors cursor-pointer"
-            >
-              <Plus className="h-4 w-4" />
-              <span>{t('importModal.addNewQuestionBtn')}</span>
-            </button>
-          </div>
+                    {/* Passage Content Auto-resizing */}
+                    <AutoResizeTextarea
+                      minRows={2}
+                      value={p.content || ''}
+                      onChange={(e) => handleUpdatePassage(pIdx, 'content', e.target.value)}
+                      placeholder={t('importModal.passageContentPlaceholder')}
+                      className="w-full text-xs text-slate-700 p-2.5 rounded border border-indigo-200 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 leading-relaxed font-mono"
+                    />
+
+                    {/* Passage Audio (Listening Part 3, 4) */}
+                    {currentPart.hasAudio && (
+                      <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white rounded border border-indigo-200">
+                        <Volume2 className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
+                        <input
+                          type="text"
+                          value={p.audioUrl || ''}
+                          onChange={(e) => handleUpdatePassage(pIdx, 'audioUrl', e.target.value)}
+                          placeholder="URL file audio đoạn hội thoại / bài nói..."
+                          className="w-full bg-transparent text-[11px] text-slate-700 focus:outline-none"
+                        />
+                      </div>
+                    )}
+
+                    {/* Passage Image (Reading Part 6, 7) */}
+                    {currentPart.section === 'READING' && currentPart.hasImage && (
+                      <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white rounded border border-indigo-200">
+                        <ImageIcon className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
+                        <input
+                          type="text"
+                          value={p.imageUrl || ''}
+                          onChange={(e) => handleUpdatePassage(pIdx, 'imageUrl', e.target.value)}
+                          placeholder="URL ảnh chụp bài đọc (nếu dùng hình ảnh scan thay văn bản)..."
+                          className="w-full bg-transparent text-[11px] text-slate-700 focus:outline-none"
+                        />
+                      </div>
+                    )}
+
+                    {/* Questions belonging to this passage */}
+                    <div className="space-y-3.5 pt-2">
+                      {passageQuestions.map((q) => {
+                        const globalIdx = parsedQuestions.indexOf(q);
+                        const showImg = shouldShowQuestionImageInput(currentPart, q);
+                        const showAud = shouldShowQuestionAudioInput(currentPart, q);
+
+                        return (
+                          <div
+                            key={globalIdx}
+                            className="p-4 rounded border border-slate-200 bg-white hover:border-slate-300 transition-colors space-y-3 shadow-2xs"
+                          >
+                            {/* Question Header */}
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-2">
+                                <span className="w-7 h-7 rounded bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs shrink-0">
+                                  #{globalIdx + 1}
+                                </span>
+                                <span className="text-xs text-slate-500 font-medium">
+                                  {t('importModal.currentCorrectBadge')}{' '}
+                                  <strong className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                    {q.correctAnswer || 'A'}
+                                  </strong>
+                                </span>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteQuestion(globalIdx)}
+                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors cursor-pointer"
+                                title={t('importModal.deleteQuestionTooltip')}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+
+                            {/* Question Content Input */}
+                            <div>
+                              <AutoResizeTextarea
+                                minRows={1}
+                                value={q.content || ''}
+                                onChange={(e) => handleUpdateQuestion(globalIdx, 'content', e.target.value)}
+                                placeholder={t('importModal.questionContentPlaceholder')}
+                                className="w-full text-xs font-semibold text-slate-800 p-2.5 rounded border border-slate-200 bg-slate-50/40 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 leading-relaxed"
+                              />
+                            </div>
+
+                            {/* Options 2 cols x 2 rows */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                              {q.options?.map((opt) => {
+                                const isCorrect = opt.key === q.correctAnswer;
+                                return (
+                                  <div
+                                    key={opt.key}
+                                    className={`p-1.5 rounded border flex items-center gap-2 transition-all ${
+                                      isCorrect
+                                        ? 'border-emerald-300 bg-emerald-50/60 shadow-2xs'
+                                        : 'border-slate-200 bg-slate-50/30 hover:border-slate-300'
+                                    }`}
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={() => handleUpdateQuestion(globalIdx, 'correctAnswer', opt.key)}
+                                      className={`w-7 h-7 rounded text-xs flex items-center justify-center font-bold shrink-0 cursor-pointer transition-all ${
+                                        isCorrect
+                                          ? 'bg-emerald-600 text-white shadow-xs scale-105'
+                                          : 'bg-white hover:bg-slate-200 text-slate-700 border border-slate-300'
+                                      }`}
+                                      title={t('importModal.clickToSelectCorrect', { key: opt.key })}
+                                    >
+                                      {opt.key}
+                                    </button>
+
+                                    <input
+                                      type="text"
+                                      value={opt.text}
+                                      onChange={(e) => handleUpdateOption(globalIdx, opt.key, e.target.value)}
+                                      placeholder={t('importModal.optionPlaceholder', { key: opt.key })}
+                                      className={`flex-1 text-xs px-2 py-1 rounded bg-transparent focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                                        isCorrect ? 'font-bold text-emerald-950' : 'text-slate-800'
+                                      }`}
+                                    />
+
+                                    {isCorrect && (
+                                      <span className="text-[10px] font-bold text-emerald-700 pr-1 shrink-0">
+                                        {t('importModal.correctMark')}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            {/* Media URLs (Image / Audio) row */}
+                            {(showImg || showAud) && (
+                              <div
+                                className={`grid grid-cols-1 ${
+                                  showImg && showAud ? 'sm:grid-cols-2' : ''
+                                } gap-2 pt-1 text-[11px]`}
+                              >
+                                {showImg && (
+                                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 rounded border border-slate-200">
+                                    <ImageIcon className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                                    <input
+                                      type="text"
+                                      value={q.imageUrl || ''}
+                                      onChange={(e) => handleUpdateQuestion(globalIdx, 'imageUrl', e.target.value)}
+                                      placeholder={t('importModal.imageUrlPlaceholder')}
+                                      className="w-full bg-transparent text-[11px] text-slate-700 focus:outline-none"
+                                    />
+                                  </div>
+                                )}
+
+                                {showAud && (
+                                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 rounded border border-slate-200">
+                                    <Volume2 className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                                    <input
+                                      type="text"
+                                      value={q.audioUrl || ''}
+                                      onChange={(e) => handleUpdateQuestion(globalIdx, 'audioUrl', e.target.value)}
+                                      placeholder={t('importModal.audioUrlPlaceholder')}
+                                      className="w-full bg-transparent text-[11px] text-slate-700 focus:outline-none"
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Explanation Input */}
+                            <div className="flex items-center gap-2 pt-1 text-xs">
+                              <span className="text-[11px] font-semibold text-slate-500 shrink-0">
+                                {t('importModal.explanationField')}
+                              </span>
+                              <input
+                                type="text"
+                                value={q.explanation || ''}
+                                onChange={(e) => handleUpdateQuestion(globalIdx, 'explanation', e.target.value)}
+                                placeholder={t('importModal.explanationPlaceholder')}
+                                className="flex-1 text-xs px-2.5 py-1.5 rounded border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Add Question to this specific Passage Button */}
+                      <button
+                        type="button"
+                        onClick={() => handleAddQuestion(p.id)}
+                        className="w-full py-2.5 border-2 border-dashed border-indigo-200 hover:border-indigo-400 hover:bg-indigo-50/50 text-indigo-700 rounded text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <Plus className="h-4 w-4" />
+                        <span>{t('importModal.addQuestionToPassageBtn')}</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Add New Passage Button */}
+              <button
+                type="button"
+                onClick={handleAddPassage}
+                className="w-full py-3.5 border-2 border-dashed border-indigo-300 hover:border-indigo-500 hover:bg-indigo-50 text-indigo-700 rounded text-xs font-bold inline-flex items-center justify-center gap-2 transition-colors cursor-pointer"
+              >
+                <Plus className="h-4 w-4" />
+                <span>{t('importModal.addNewPassageBtn')}</span>
+              </button>
+            </div>
+          ) : (
+            /* Standalone Questions List (e.g. Part 5, Part 1, Part 2 without passage) */
+            <div className="space-y-4">
+              {parsedQuestions.map((q, idx) => {
+                const showImg = shouldShowQuestionImageInput(currentPart, q);
+                const showAud = shouldShowQuestionAudioInput(currentPart, q);
+
+                return (
+                  <div
+                    key={idx}
+                    className="p-5 rounded border border-slate-200 bg-white hover:border-slate-300 transition-colors space-y-3.5 shadow-2xs"
+                  >
+                    {/* Header: Question order + delete button */}
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="w-7 h-7 rounded bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs shrink-0">
+                          #{idx + 1}
+                        </span>
+                        <span className="text-xs text-slate-500 font-medium">
+                          {t('importModal.currentCorrectBadge')}{' '}
+                          <strong className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                            {q.correctAnswer || 'A'}
+                          </strong>
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteQuestion(idx)}
+                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors cursor-pointer"
+                        title={t('importModal.deleteQuestionTooltip')}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    {/* Question Content Input */}
+                    <div>
+                      <AutoResizeTextarea
+                        minRows={1}
+                        value={q.content || ''}
+                        onChange={(e) => handleUpdateQuestion(idx, 'content', e.target.value)}
+                        placeholder={t('importModal.questionContentPlaceholder')}
+                        className="w-full text-xs font-semibold text-slate-800 p-3 rounded border border-slate-200 bg-slate-50/40 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 leading-relaxed"
+                      />
+                    </div>
+
+                    {/* Options: 2 columns, 2 rows */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {q.options?.map((opt) => {
+                        const isCorrect = opt.key === q.correctAnswer;
+                        return (
+                          <div
+                            key={opt.key}
+                            className={`p-1.5 rounded border flex items-center gap-2 transition-all ${
+                              isCorrect
+                                ? 'border-emerald-300 bg-emerald-50/60 shadow-2xs'
+                                : 'border-slate-200 bg-slate-50/30 hover:border-slate-300'
+                            }`}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateQuestion(idx, 'correctAnswer', opt.key)}
+                              className={`w-7 h-7 rounded text-xs flex items-center justify-center font-bold shrink-0 cursor-pointer transition-all ${
+                                isCorrect
+                                  ? 'bg-emerald-600 text-white shadow-xs scale-105'
+                                  : 'bg-white hover:bg-slate-200 text-slate-700 border border-slate-300'
+                              }`}
+                              title={t('importModal.clickToSelectCorrect', { key: opt.key })}
+                            >
+                              {opt.key}
+                            </button>
+
+                            <input
+                              type="text"
+                              value={opt.text}
+                              onChange={(e) => handleUpdateOption(idx, opt.key, e.target.value)}
+                              placeholder={t('importModal.optionPlaceholder', { key: opt.key })}
+                              className={`flex-1 text-xs px-2 py-1 rounded bg-transparent focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                                isCorrect ? 'font-bold text-emerald-950' : 'text-slate-800'
+                              }`}
+                            />
+
+                            {isCorrect && (
+                              <span className="text-[10px] font-bold text-emerald-700 pr-1 shrink-0">
+                                {t('importModal.correctMark')}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Media URLs (Image / Audio) row */}
+                    {(showImg || showAud) && (
+                      <div
+                        className={`grid grid-cols-1 ${
+                          showImg && showAud ? 'sm:grid-cols-2' : ''
+                        } gap-2 pt-1 text-[11px]`}
+                      >
+                        {showImg && (
+                          <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 rounded border border-slate-200">
+                            <ImageIcon className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                            <input
+                              type="text"
+                              value={q.imageUrl || ''}
+                              onChange={(e) => handleUpdateQuestion(idx, 'imageUrl', e.target.value)}
+                              placeholder={t('importModal.imageUrlPlaceholder')}
+                              className="w-full bg-transparent text-[11px] text-slate-700 focus:outline-none"
+                            />
+                          </div>
+                        )}
+
+                        {showAud && (
+                          <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 rounded border border-slate-200">
+                            <Volume2 className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                            <input
+                              type="text"
+                              value={q.audioUrl || ''}
+                              onChange={(e) => handleUpdateQuestion(idx, 'audioUrl', e.target.value)}
+                              placeholder={t('importModal.audioUrlPlaceholder')}
+                              className="w-full bg-transparent text-[11px] text-slate-700 focus:outline-none"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Explanation Input */}
+                    <div className="flex items-center gap-2 pt-1 text-xs">
+                      <span className="text-[11px] font-semibold text-slate-500 shrink-0">
+                        {t('importModal.explanationField')}
+                      </span>
+                      <input
+                        type="text"
+                        value={q.explanation || ''}
+                        onChange={(e) => handleUpdateQuestion(idx, 'explanation', e.target.value)}
+                        placeholder={t('importModal.explanationPlaceholder')}
+                        className="flex-1 text-xs px-2.5 py-1.5 rounded border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Add Question Button */}
+              <button
+                type="button"
+                onClick={() => handleAddQuestion()}
+                className="w-full py-3 border-2 border-dashed border-slate-200 hover:border-blue-400 hover:bg-blue-50/30 text-blue-600 rounded text-xs font-bold inline-flex items-center justify-center gap-2 transition-colors cursor-pointer"
+              >
+                <Plus className="h-4 w-4" />
+                <span>{t('importModal.addNewQuestionBtn')}</span>
+              </button>
+            </div>
+          )}
 
           {/* Bottom Confirmation Bar */}
           <div className="pt-4 flex items-center justify-between border-t border-slate-100">
