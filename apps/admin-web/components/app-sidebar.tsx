@@ -15,6 +15,7 @@ import {
   LogOut,
   Globe,
   ChevronRight,
+  ClipboardCheck,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -78,6 +79,9 @@ export function AppSidebar() {
   const isLessonsActive =
     pathname === `/${locale}/lessons` ||
     pathname?.startsWith(`/${locale}/lessons/`);
+  const isAssessmentActive =
+    pathname === `/${locale}/assessment` ||
+    pathname?.startsWith(`/${locale}/assessment/`);
   const isUsersActive =
     pathname === `/${locale}/users` ||
     pathname?.startsWith(`/${locale}/users/`);
@@ -278,6 +282,31 @@ export function AppSidebar() {
                     />
                     <span className="truncate group-data-[collapsible=icon]:hidden">
                       {t('nav.lessons')}
+                    </span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              {/* Assessment */}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isAssessmentActive}
+                  tooltip={t('nav.assessment', locale === 'en' ? 'Assessment' : 'Đánh giá')}
+                  className={cn(
+                    'h-9 px-2 rounded-lg text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition-all font-medium text-sm',
+                    isAssessmentActive && 'bg-blue-50 text-blue-600 font-semibold shadow-xs'
+                  )}
+                >
+                  <Link href={`/${locale}/assessment`} className="flex items-center gap-2.5">
+                    <ClipboardCheck
+                      className={cn(
+                        'h-4.5 w-4.5 shrink-0',
+                        isAssessmentActive ? 'text-blue-600' : 'text-slate-500'
+                      )}
+                    />
+                    <span className="truncate group-data-[collapsible=icon]:hidden">
+                      {t('nav.assessment', locale === 'en' ? 'Assessment' : 'Đánh giá')}
                     </span>
                   </Link>
                 </SidebarMenuButton>

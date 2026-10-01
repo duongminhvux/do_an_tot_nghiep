@@ -40,6 +40,17 @@ export default function DashboardLayout({
     if (pathname?.includes('/lessons')) {
       return t('nav.lessons', isEn ? 'Lessons' : 'Bài học');
     }
+    if (pathname?.includes('/assessment/create')) {
+      const assessTitle = t('nav.assessment', isEn ? 'Assessment' : 'Đánh giá');
+      return `${assessTitle} / ${isEn ? 'Create TOEIC Exam' : 'Tạo đề thi TOEIC'}`;
+    }
+    if (pathname?.match(/\/assessment\/[^/]+$/)) {
+      const assessTitle = t('nav.assessment', isEn ? 'Assessment' : 'Đánh giá');
+      return `${assessTitle} / ${isEn ? 'Exam Details' : 'Chi tiết đề thi'}`;
+    }
+    if (pathname?.includes('/assessment')) {
+      return t('nav.assessment', isEn ? 'Assessment' : 'Đánh giá');
+    }
     if (pathname?.includes('/users')) {
       return t('nav.users', isEn ? 'User Accounts' : 'Người dùng');
     }

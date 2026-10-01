@@ -19,6 +19,7 @@
     "collections": "Collections",
     "words": "Words",
     "lessons": "Lessons",
+    "assessment": "Assessment",
     "users": "User Accounts"
   },
   "nav.dashboard": "Dashboard",
@@ -27,5 +28,6 @@
   "nav.collections": "Collections",
   "nav.words": "Words",
   "nav.lessons": "Lessons",
+  "nav.assessment": "Assessment",
   "nav.users": "User Accounts"
 }

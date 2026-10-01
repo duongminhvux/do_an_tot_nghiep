@@ -19,6 +19,7 @@
     "collections": "Bộ sưu tập",
     "words": "Từ vựng",
     "lessons": "Bài học",
+    "assessment": "Bài tập",
     "users": "Người dùng"
   },
   "nav.dashboard": "Bảng điều khiển",
@@ -27,5 +28,6 @@
   "nav.collections": "Bộ sưu tập",
   "nav.words": "Từ vựng",
   "nav.lessons": "Bài học",
+  "nav.assessment": "Bài tập",
   "nav.users": "Người dùng"
 }
