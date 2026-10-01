@@ -16,6 +16,7 @@ import {
   shouldShowQuestionAudioInput,
   ExamPartConfig,
 } from '@/components/assessment/import-parts-config';
+import { AutoResizeTextarea } from '@/components/assessment/auto-resize-textarea';
 import {
   FileText,
   Upload,
@@ -1048,12 +1049,12 @@ export default function ImportQuestionsPage() {
                 placeholder={t('importModal.passageTitlePlaceholder')}
                 className="w-full text-xs font-bold text-indigo-950 p-2 rounded border border-indigo-200 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
-              <textarea
-                rows={3}
+              <AutoResizeTextarea
+                minRows={2}
                 value={parsedPassage.content || ''}
                 onChange={(e) => handleUpdatePassage('content', e.target.value)}
                 placeholder={t('importModal.passageContentPlaceholder')}
-                className="w-full text-xs text-slate-700 p-2.5 rounded border border-indigo-200 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-y leading-relaxed font-mono"
+                className="w-full text-xs text-slate-700 p-2.5 rounded border border-indigo-200 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 leading-relaxed font-mono"
               />
 
               {/* Passage Audio (cho Listening có passage: Part 3, 4) */}
@@ -1123,12 +1124,12 @@ export default function ImportQuestionsPage() {
 
                   {/* Question Content Input */}
                   <div>
-                    <textarea
-                      rows={2}
+                    <AutoResizeTextarea
+                      minRows={1}
                       value={q.content || ''}
                       onChange={(e) => handleUpdateQuestion(idx, 'content', e.target.value)}
                       placeholder={t('importModal.questionContentPlaceholder')}
-                      className="w-full text-xs font-semibold text-slate-800 p-3 rounded border border-slate-200 bg-slate-50/40 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 resize-y leading-relaxed"
+                      className="w-full text-xs font-semibold text-slate-800 p-3 rounded border border-slate-200 bg-slate-50/40 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 leading-relaxed"
                     />
                   </div>
 
