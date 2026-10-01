@@ -1,4 +1,4 @@
-import { IsEnum, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { QuestionOptionDto } from './create-question.dto.js';
 
@@ -22,6 +22,14 @@ export class ImportPassageDto {
   @IsString()
   @IsOptional()
   imageUrl?: string;
+
+  @IsEnum(['TEXT', 'EMAIL', 'ADVERTISEMENT', 'ARTICLE', 'NOTICE', 'CHAT'])
+  @IsOptional()
+  type?: 'TEXT' | 'EMAIL' | 'ADVERTISEMENT' | 'ARTICLE' | 'NOTICE' | 'CHAT';
+
+  @IsNumber()
+  @IsOptional()
+  order?: number;
 }
 
 export class ImportSingleQuestionDto {
@@ -33,6 +41,7 @@ export class ImportSingleQuestionDto {
   options: QuestionOptionDto[];
 
   @IsEnum(['A', 'B', 'C', 'D'])
+  @IsNotEmpty()
   correctAnswer: 'A' | 'B' | 'C' | 'D';
 
   @IsString()
@@ -50,6 +59,10 @@ export class ImportSingleQuestionDto {
   @IsNumber()
   @IsOptional()
   order?: number;
+
+  @IsString()
+  @IsOptional()
+  passageGroupId?: string;
 
   @IsString()
   @IsOptional()

@@ -7,22 +7,35 @@ export type PassageDocument = HydratedDocument<Passage>;
 export class Passage {
   @Prop({
     type: Types.ObjectId,
-    ref: 'Exam',
+    ref: 'PassageGroup',
     required: true,
     index: true,
   })
-  examId: Types.ObjectId;
+  passageGroupId: Types.ObjectId;
+
+  @Prop({
+    required: true,
+    enum: [
+      'TEXT',
+      'EMAIL',
+      'ADVERTISEMENT',
+      'ARTICLE',
+      'NOTICE',
+      'CHAT',
+    ],
+  })
+  type:
+    | 'TEXT'
+    | 'EMAIL'
+    | 'ADVERTISEMENT'
+    | 'ARTICLE'
+    | 'NOTICE'
+    | 'CHAT';
 
   @Prop({
     trim: true,
   })
   title?: string;
-
-  @Prop({
-    required: true,
-    enum: ['LISTENING', 'READING'],
-  })
-  section: 'LISTENING' | 'READING';
 
   @Prop({
     trim: true,
@@ -33,11 +46,6 @@ export class Passage {
     trim: true,
   })
   audioUrl?: string;
-
-  @Prop({
-    trim: true,
-  })
-  imageUrl?: string;
 
   @Prop({
     default: 0,

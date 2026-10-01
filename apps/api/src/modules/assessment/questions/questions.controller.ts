@@ -15,7 +15,6 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { QuestionsService } from './questions.service.js';
 import { CreateQuestionDto } from './dto/create-question.dto.js';
 import { UpdateQuestionDto } from './dto/update-question.dto.js';
-import { ImportQuestionsDto } from './dto/import-questions.dto.js';
 
 @Controller('admin/questions')
 export class QuestionsController {
@@ -67,9 +66,39 @@ export class QuestionsController {
     return this.questionsService.findPassagesByExam(examId);
   }
 
+  @Get('exam/:examId/passage-groups')
+  findPassageGroupsByExam(@Param('examId') examId: string) {
+    return this.questionsService.findPassagesByExam(examId);
+  }
+
+  @Post('passage-groups')
+  createPassageGroup(@Body() body: any) {
+    return this.questionsService.createPassageGroup(body);
+  }
+
+  @Patch('passage-groups/:id')
+  updatePassageGroup(@Param('id') id: string, @Body() body: any) {
+    return this.questionsService.updatePassageGroup(id, body);
+  }
+
+  @Delete('passage-groups/:id')
+  deletePassageGroup(@Param('id') id: string) {
+    return this.questionsService.removePassageGroup(id);
+  }
+
   @Post('passages')
   createPassage(@Body() body: any) {
     return this.questionsService.createPassage(body);
+  }
+
+  @Patch('passages/:id')
+  updatePassage(@Param('id') id: string, @Body() body: any) {
+    return this.questionsService.updatePassage(id, body);
+  }
+
+  @Delete('passages/:id')
+  deletePassage(@Param('id') id: string) {
+    return this.questionsService.removePassage(id);
   }
 
   @Get(':id')
@@ -90,4 +119,3 @@ export class QuestionsController {
     return this.questionsService.remove(id);
   }
 }
-

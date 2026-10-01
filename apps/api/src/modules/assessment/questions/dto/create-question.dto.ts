@@ -18,6 +18,10 @@ export class CreateQuestionDto {
 
   @IsString()
   @IsOptional()
+  passageGroupId?: string;
+
+  @IsString()
+  @IsOptional()
   passageId?: string;
 
   @IsEnum(['LISTENING', 'READING'])

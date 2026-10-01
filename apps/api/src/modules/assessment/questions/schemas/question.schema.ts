@@ -15,15 +15,14 @@ export class Question {
 
   @Prop({
     type: Types.ObjectId,
-    ref: 'Passage',
+    ref: 'PassageGroup',
     index: true,
   })
-  passageId?: Types.ObjectId;
+  passageGroupId?: Types.ObjectId;
 
   @Prop({
     required: true,
     enum: ['LISTENING', 'READING'],
-    index: true,
   })
   section: 'LISTENING' | 'READING';
 
@@ -31,7 +30,6 @@ export class Question {
     required: true,
     min: 1,
     max: 7,
-    index: true,
   })
   part: number;
 
@@ -75,16 +73,6 @@ export class Question {
   explanation?: string;
 
   @Prop({
-    trim: true,
-  })
-  audioUrl?: string;
-
-  @Prop({
-    trim: true,
-  })
-  imageUrl?: string;
-
-  @Prop({
     default: 0,
     min: 0,
   })
@@ -94,13 +82,6 @@ export class Question {
     default: true,
   })
   isActive: boolean;
-
-  @Prop({
-    type: String,
-    enum: ['ACTIVE', 'INACTIVE'],
-    default: 'ACTIVE',
-  })
-  status: 'ACTIVE' | 'INACTIVE';
 }
 
 export const QuestionSchema = SchemaFactory.createForClass(Question);
