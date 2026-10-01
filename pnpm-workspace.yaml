@@ -4,6 +4,7 @@ packages:
 allowBuilds:
   argon2: false
   bcrypt: true
+  tesseract.js: false
   unrs-resolver: false
 minimumReleaseAgeExclude:
   - '@turbo/darwin-64@2.10.13'

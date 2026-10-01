@@ -12,7 +12,7 @@ export class Collection {
   @Prop({ required: true, trim: true })
   name!: string;
 
-  @Prop({ required: true, trim: true, index: true })
+  @Prop({ required: true, trim: true })
   slug!: string;
 
   @Prop({ trim: true })
