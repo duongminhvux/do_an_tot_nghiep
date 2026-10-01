@@ -1133,8 +1133,8 @@ export default function ImportQuestionsPage() {
                     />
                   </div>
 
-                  {/* Options 4 cols (or 2 cols on mobile) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
+                  {/* Options: 2 columns, 2 rows */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     {q.options?.map((opt) => {
                       const isCorrect = opt.key === q.correctAnswer;
                       return (
