@@ -10,7 +10,12 @@ import { ExamItem, QuestionItem, PassageItem } from '@/types';
 import { EditExamDialog } from '@/components/assessment/edit-exam-dialog';
 import { EditQuestionDialog } from '@/components/assessment/edit-question-dialog';
 import { DeleteQuestionDialog } from '@/components/assessment/delete-question-dialog';
-import { QuestionDetailDialog } from '@/components/assessment/question-detail-dialog';
+import { EditPassageDialog } from '@/components/assessment/edit-passage-dialog';
+import { DeletePassageDialog } from '@/components/assessment/delete-passage-dialog';
+import {
+  QuestionDetailDialog,
+  PassageGroupDetail,
+} from '@/components/assessment/question-detail-dialog';
 import { ImportQuestionsDialog } from '@/components/assessment/import-questions-dialog';
 import { ExamBanner } from '@/components/assessment/exam-banner';
 import { ExamStatsCards } from '@/components/assessment/exam-stats-cards';
@@ -43,6 +48,9 @@ export default function ExamDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [selectedQuestionForDetail, setSelectedQuestionForDetail] = useState<QuestionItem | null>(null);
+  const [selectedPassageGroupForDetail, setSelectedPassageGroupForDetail] = useState<PassageGroupDetail | null>(null);
+  const [selectedPassageGroupForEdit, setSelectedPassageGroupForEdit] = useState<PassageGroupDetail | null>(null);
+  const [selectedPassageGroupForDelete, setSelectedPassageGroupForDelete] = useState<PassageGroupDetail | null>(null);
   const [selectedQuestionForEdit, setSelectedQuestionForEdit] = useState<QuestionItem | null>(null);
   const [selectedQuestionForDelete, setSelectedQuestionForDelete] = useState<QuestionItem | null>(null);
 
@@ -132,6 +140,26 @@ export default function ExamDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-exam-questions', examId] });
       setSelectedQuestionForDelete(null);
+    },
+  });
+
+  // 4b. Mutation to delete a passage group and all its linked questions
+  const deletePassageGroupMutation = useMutation({
+    mutationFn: async (group: PassageGroupDetail) => {
+      const pid = group.passage?._id;
+      if (pid) {
+        await examService.deletePassage(pid);
+      }
+      await Promise.all(
+        group.questions.map((q) =>
+          examService.deleteQuestion(q._id).catch(() => null)
+        )
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-exam-questions', examId] });
+      queryClient.invalidateQueries({ queryKey: ['admin-exam-passages', examId] });
+      setSelectedPassageGroupForDelete(null);
     },
   });
 
@@ -427,6 +455,10 @@ export default function ExamDetailPage() {
               examId={examId}
               getPartColor={getPartColor}
               getPartSubtitle={getPartSubtitle}
+              passagesList={passagesList}
+              onViewPassageGroup={(group) => setSelectedPassageGroupForDetail(group)}
+              onEditPassageGroup={(group) => setSelectedPassageGroupForEdit(group)}
+              onDeletePassageGroup={(group) => setSelectedPassageGroupForDelete(group)}
               onViewQuestion={(q) => setSelectedQuestionForDetail(q)}
               onEditQuestion={(q) => setSelectedQuestionForEdit(q)}
               onDeleteQuestion={(q) => setSelectedQuestionForDelete(q)}
@@ -457,13 +489,19 @@ export default function ExamDetailPage() {
         exam={exam}
       />
 
-      {/* Question Detail Dialog */}
+      {/* Question / Passage Detail Dialog */}
       <QuestionDetailDialog
-        open={!!selectedQuestionForDetail}
+        open={!!selectedQuestionForDetail || !!selectedPassageGroupForDetail}
         onOpenChange={(open) => {
-          if (!open) setSelectedQuestionForDetail(null);
+          if (!open) {
+            setSelectedQuestionForDetail(null);
+            setSelectedPassageGroupForDetail(null);
+          }
         }}
         question={selectedQuestionForDetail}
+        passageGroup={selectedPassageGroupForDetail}
+        passagesList={passagesList}
+        questionsList={questionsList}
         getPartColor={getPartColor}
         getPartSubtitle={getPartSubtitle}
       />
@@ -492,6 +530,31 @@ export default function ExamDetailPage() {
           }
         }}
         isDeleting={deleteQuestionMutation.isPending}
+      />
+
+      {/* Edit Passage Dialog */}
+      <EditPassageDialog
+        open={!!selectedPassageGroupForEdit}
+        onOpenChange={(open) => {
+          if (!open) setSelectedPassageGroupForEdit(null);
+        }}
+        passageGroup={selectedPassageGroupForEdit}
+        examId={examId}
+      />
+
+      {/* Delete Passage Dialog */}
+      <DeletePassageDialog
+        open={!!selectedPassageGroupForDelete}
+        onOpenChange={(open) => {
+          if (!open) setSelectedPassageGroupForDelete(null);
+        }}
+        passageGroup={selectedPassageGroupForDelete}
+        onConfirm={() => {
+          if (selectedPassageGroupForDelete) {
+            deletePassageGroupMutation.mutate(selectedPassageGroupForDelete);
+          }
+        }}
+        isDeleting={deletePassageGroupMutation.isPending}
       />
 
       {/* Import Questions Dialog */}

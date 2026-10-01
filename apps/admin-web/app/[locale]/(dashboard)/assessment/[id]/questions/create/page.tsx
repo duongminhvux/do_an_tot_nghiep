@@ -50,6 +50,16 @@ interface SubQuestion {
   explanation: string;
 }
 
+export interface ReadingPassageInput {
+  id: string;
+  type: 'TEXT' | 'EMAIL' | 'ADVERTISEMENT' | 'ARTICLE' | 'NOTICE' | 'CHAT';
+  title: string;
+  content: string;
+  imageUrl?: string;
+  imageFileName?: string;
+}
+
+
 export default function CreateQuestionPage() {
   const router = useRouter();
   const params = useParams();
@@ -184,10 +194,71 @@ export default function CreateQuestionPage() {
   const [groupAudioUrl, setGroupAudioUrl] = useState('');
   const [groupAudioFileName, setGroupAudioFileName] = useState('');
   const [groupAudioFileSize, setGroupAudioFileSize] = useState('');
-  const [groupContent, setGroupContent] = useState(''); // transcript or reading text
+  const [groupContent, setGroupContent] = useState(''); // transcript or audio text
   const [groupImageUrl, setGroupImageUrl] = useState('');
   const [groupImageFileName, setGroupImageFileName] = useState('');
   const [readingPassageType, setReadingPassageType] = useState<'text' | 'image'>('text');
+
+  // Multi-passage states for Reading groups (Part 6, 7: hỗ trợ Đoạn đơn, Đoạn kép & Đoạn ba)
+  const [readingPassages, setReadingPassages] = useState<ReadingPassageInput[]>([
+    { id: '1', type: 'TEXT', title: 'Đoạn văn 1', content: '' },
+  ]);
+  const [activeReadingPassageIndex, setActiveReadingPassageIndex] = useState<number>(0);
+
+  const handleAddReadingPassage = () => {
+    if (readingPassages.length >= 3) return;
+    const nextIdx = readingPassages.length + 1;
+    const newId = String(Date.now());
+    setReadingPassages((prev) => [
+      ...prev,
+      {
+        id: newId,
+        type: 'TEXT',
+        title: `Đoạn văn ${nextIdx}`,
+        content: '',
+      },
+    ]);
+    setActiveReadingPassageIndex(readingPassages.length);
+  };
+
+  const handlePassageImageUpload = async (file: File) => {
+    if (!file) return;
+    try {
+      setIsUploading(true);
+      setErrorMessage(null);
+      const res = await uploadService.uploadFile(file);
+      if (res?.url) {
+        updateActiveReadingPassage({
+          imageUrl: res.url,
+          imageFileName: file.name,
+        });
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || 'Lỗi tải ảnh lên';
+      setErrorMessage(Array.isArray(msg) ? msg.join(', ') : msg);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleRemoveReadingPassage = (idx: number) => {
+    if (readingPassages.length <= 1) return;
+    const updated = readingPassages.filter((_, i) => i !== idx);
+    setReadingPassages(updated);
+    if (activeReadingPassageIndex >= updated.length) {
+      setActiveReadingPassageIndex(updated.length - 1);
+    }
+  };
+
+  const updateActiveReadingPassage = (fields: Partial<ReadingPassageInput>) => {
+    setReadingPassages((prev) => {
+      const copy = [...prev];
+      const cur = copy[activeReadingPassageIndex];
+      if (!cur) return copy;
+      copy[activeReadingPassageIndex] = { ...cur, ...fields };
+      return copy;
+    });
+  };
 
   const [subQuestions, setSubQuestions] = useState<SubQuestion[]>([
     { id: '1', content: '', options: [{ key: 'A', text: '' }, { key: 'B', text: '' }, { key: 'C', text: '' }, { key: 'D', text: '' }], correctAnswer: 'A', explanation: '' },
@@ -361,6 +432,9 @@ export default function CreateQuestionPage() {
     if (groupAudioInputRef.current) groupAudioInputRef.current.value = '';
     if (groupImageInputRef.current) groupImageInputRef.current.value = '';
 
+    setReadingPassages([{ id: '1', type: 'TEXT', title: 'Passage 1', content: '' }]);
+    setActiveReadingPassageIndex(0);
+
     const defaultSubCount = part === 6 ? 4 : 3;
     const initialSubs: SubQuestion[] = Array.from({ length: defaultSubCount }, (_, idx) => ({
       id: String(idx + 1),
@@ -433,6 +507,7 @@ export default function CreateQuestionPage() {
 
       const payload = {
         examId,
+        passageGroupId: passageId !== 'none' ? passageId : undefined,
         passageId: passageId !== 'none' ? passageId : undefined,
         section,
         part: Number(part),
@@ -472,13 +547,13 @@ export default function CreateQuestionPage() {
       return;
     }
     if (groupType === 'READING') {
-      if (readingPassageType === 'text' && !groupContent.trim()) {
-        setErrorMessage(t('createQuestionPage.msgReadingTextRequired'));
-        return;
-      }
-      if (readingPassageType === 'image' && !groupImageUrl) {
-        setErrorMessage(t('createQuestionPage.msgReadingImageRequired'));
-        return;
+      for (let pIdx = 0; pIdx < readingPassages.length; pIdx++) {
+        const p = readingPassages[pIdx];
+        if (!p || (!p.content.trim() && !p.imageUrl)) {
+          setErrorMessage(`Vui lòng nhập nội dung hoặc tải ảnh cho đoạn văn số ${pIdx + 1}`);
+          setActiveReadingPassageIndex(pIdx);
+          return;
+        }
       }
     }
 
@@ -501,42 +576,64 @@ export default function CreateQuestionPage() {
     try {
       setIsSubmitting(true);
 
-      const activeReadingImage =
-        groupType === 'READING' && (readingPassageType === 'image' || groupImageUrl)
-          ? groupImageUrl
-          : undefined;
+      let createdGroupId: string;
 
-      // 1. Create Passage first
-      const defaultTitle = groupType === 'AUDIO'
-        ? t('createQuestionPage.defaultAudioTitle', { part })
-        : t('createQuestionPage.defaultReadingTitle', { part });
-      const passagePayload = {
-        examId,
-        title: groupTitle.trim() || defaultTitle,
-        section,
-        audioUrl: groupType === 'AUDIO' ? groupAudioUrl : undefined,
-        imageUrl: activeReadingImage,
-        content: readingPassageType === 'text' ? (groupContent.trim() || undefined) : (groupContent.trim() || undefined),
-        order: Number(order) || 1,
-      };
+      if (groupType === 'READING') {
+        const defaultTitle = t('createQuestionPage.defaultReadingTitle', { part });
+        const passagePayload = {
+          examId,
+          title: groupTitle.trim() || defaultTitle,
+          section,
+          part: Number(part),
+          order: Number(order) || 1,
+          passages: readingPassages.map((p, idx) => ({
+            type: p.type || 'TEXT',
+            title: p.title.trim() || `Text ${idx + 1}`,
+            content: p.content.trim() || undefined,
+            imageUrl: p.imageUrl || undefined,
+            order: idx + 1,
+          })),
+        };
 
-      const passageRes = await examService.createPassage(passagePayload);
-      const createdPassageId = (passageRes as any)?.data?._id || (passageRes as any)?._id;
+        const groupRes = await examService.createPassageGroup(passagePayload);
+        createdGroupId = (groupRes as any)?.data?._id || (groupRes as any)?._id;
+      } else {
+        const defaultTitle = t('createQuestionPage.defaultAudioTitle', { part });
+        const passagePayload = {
+          examId,
+          title: groupTitle.trim() || defaultTitle,
+          section,
+          part: Number(part),
+          order: Number(order) || 1,
+          passages: [
+            {
+              type: 'TEXT',
+              title: groupTitle.trim() || defaultTitle,
+              content: groupContent.trim() || undefined,
+              audioUrl: groupAudioUrl || undefined,
+              order: 1,
+            },
+          ],
+        };
 
-      // 2. Create all sub-questions linked to createdPassageId
+        const groupRes = await examService.createPassageGroup(passagePayload);
+        createdGroupId = (groupRes as any)?.data?._id || (groupRes as any)?._id;
+      }
+
+      // 2. Create all sub-questions linked to createdGroupId
       for (let i = 0; i < subQuestions.length; i++) {
         const q = subQuestions[i];
         if (!q) continue;
         const qPayload = {
           examId,
-          passageId: createdPassageId,
+          passageGroupId: createdGroupId,
+          passageId: createdGroupId,
           section,
           part: Number(part),
           content: q.content.trim(),
           options: q.options,
           correctAnswer: q.correctAnswer,
           explanation: q.explanation.trim(),
-          imageUrl: activeReadingImage,
           order: Number(order) + i,
           status: asDraft ? 'INACTIVE' : isActive ? 'ACTIVE' : 'INACTIVE',
           isActive: asDraft ? false : isActive,
@@ -850,161 +947,214 @@ export default function CreateQuestionPage() {
                   </div>
                 )}
 
-                {/* Nếu là Part 6, 7: Soạn thảo Bài đọc (Passage) */}
+                {/* Nếu là Part 6, 7: Soạn thảo Bài đọc (Hỗ trợ Đoạn đơn, Đoạn kép & Đoạn ba) */}
                 {groupType === 'READING' && (
                   <div className="space-y-4 pt-2">
-                    {/* Segment Switcher: Văn bản (Text) hoặc Hình ảnh (Image) */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs font-semibold text-slate-800">
-                          {t('createQuestionPage.readingTypeLabel')}:
-                        </label>
-                        <span className="text-[11px] text-slate-500">
-                          {readingPassageType === 'text'
-                            ? t('createQuestionPage.readingTextDesc')
-                            : t('createQuestionPage.readingImageDesc')}
+                    {/* Header + Thêm đoạn văn (Đoạn kép / Đoạn ba) */}
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-800">
+                          Danh sách đoạn văn ({readingPassages.length} đoạn)
+                        </span>
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-200">
+                          {readingPassages.length === 1
+                            ? 'Đoạn đơn (Single Text)'
+                            : readingPassages.length === 2
+                            ? 'Đoạn kép (Double Texts)'
+                            : 'Đoạn ba (Triple Texts)'}
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 border border-slate-200 rounded">
+                      {readingPassages.length < 3 && (
                         <button
                           type="button"
-                          onClick={() => setReadingPassageType('text')}
-                          className={`flex items-center justify-center gap-2 py-2 px-3 rounded text-xs font-bold transition-all cursor-pointer ${
-                            readingPassageType === 'text'
-                              ? 'bg-white text-teal-700 shadow-xs border border-teal-200'
-                              : 'text-slate-600 hover:text-slate-900 border border-transparent'
-                          }`}
+                          onClick={handleAddReadingPassage}
+                          className="px-3 py-1.5 border rounded border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition-colors"
                         >
-                          <FileText className="h-4 w-4" />
-                          <span>{t('createQuestionPage.readingTypeText')}</span>
+                          <Plus className="h-3.5 w-3.5" />
+                          <span>Thêm đoạn văn ({readingPassages.length === 1 ? 'Đoạn kép' : 'Đoạn ba'})</span>
                         </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setReadingPassageType('image')}
-                          className={`flex items-center justify-center gap-2 py-2 px-3 rounded text-xs font-bold transition-all cursor-pointer ${
-                            readingPassageType === 'image'
-                              ? 'bg-white text-teal-700 shadow-xs border border-teal-200'
-                              : 'text-slate-600 hover:text-slate-900 border border-transparent'
-                          }`}
-                        >
-                          <ImageIcon className="h-4 w-4" />
-                          <span>{t('createQuestionPage.readingTypeImage')}</span>
-                        </button>
-                      </div>
+                      )}
                     </div>
 
-                    {/* Dạng 1: Soạn thảo văn bản */}
-                    {readingPassageType === 'text' && (
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-slate-800">
-                          {t('createQuestionPage.readingTextLabel')} <span className="text-red-500">*</span>
-                        </label>
-                        <textarea
-                          rows={7}
-                          value={groupContent}
-                          onChange={(e) => setGroupContent(e.target.value)}
-                          placeholder={t('createQuestionPage.readingTextPlaceholder')}
-                          className="w-full p-3.5 border rounded border-slate-200 bg-white text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-teal-500 leading-relaxed font-mono"
-                        />
-                      </div>
-                    )}
-
-                    {/* Dạng 2: Tải lên hình ảnh bài đọc */}
-                    {readingPassageType === 'image' && (
-                      <div className="space-y-3">
-                        <input
-                          type="file"
-                          ref={groupImageInputRef}
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) handleFileUpload(file, 'group-image');
-                            e.target.value = '';
-                          }}
-                        />
-
-                        <div
-                          onDragOver={(e) => e.preventDefault()}
-                          onDrop={(e) => {
-                            e.preventDefault();
-                            const file = e.dataTransfer.files?.[0];
-                            if (file && file.type.startsWith('image/')) {
-                              handleFileUpload(file, 'group-image');
-                            }
-                          }}
-                          className="border rounded border-dashed border-teal-300 hover:border-teal-500 p-6 text-center space-y-2 bg-teal-50/20 transition-colors"
+                    {/* Passage Tabs */}
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1">
+                      {readingPassages.map((rp, idx) => (
+                        <button
+                          key={rp.id || idx}
+                          type="button"
+                          onClick={() => setActiveReadingPassageIndex(idx)}
+                          className={`px-3.5 py-1.5 border rounded text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-2 ${
+                            activeReadingPassageIndex === idx
+                              ? 'border-teal-600 bg-teal-600 text-white shadow-xs'
+                              : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
+                          }`}
                         >
-                          <div className="w-10 h-10 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center mx-auto">
-                            {isUploading ? (
-                              <Loader2 className="h-5 w-5 animate-spin text-teal-600" />
-                            ) : (
-                              <ImageIcon className="h-5 w-5" />
-                            )}
-                          </div>
-                          <div className="text-xs font-semibold text-slate-700">
-                            {isUploading ? t('createQuestionPage.uploadingImage') : t('createQuestionPage.dropImageHint')}
-                          </div>
-                          <button
-                            type="button"
-                            disabled={isUploading}
-                            onClick={() => groupImageInputRef.current?.click()}
-                            className="px-4 py-2 border rounded border-slate-300 bg-white text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-2xs transition-colors cursor-pointer disabled:opacity-50"
-                          >
-                            {t('createQuestionPage.chooseImageFromDevice')}
-                          </button>
-                        </div>
+                          <span>{rp.title || `Đoạn ${idx + 1}`}</span>
+                          {rp.content.trim() || rp.imageUrl ? (
+                            <Check className="h-3 w-3 text-emerald-300" />
+                          ) : (
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
 
-                        {/* Điền URL ảnh bài đọc trực tiếp */}
-                        <div className="space-y-1">
-                          <label className="text-[11px] font-semibold text-slate-600">
-                            {t('createQuestionPage.orDirectImageUrl')}
-                          </label>
-                          <input
-                            type="url"
-                            value={groupImageUrl}
-                            onChange={(e) => {
-                              setGroupImageUrl(e.target.value);
-                              if (e.target.value && !groupImageFileName) {
-                                setGroupImageFileName('image-reading-url');
-                              }
-                            }}
-                            placeholder="https://example.com/reading-passage-photo.jpg"
-                            className="w-full h-9 px-3 border rounded border-slate-200 bg-white text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-teal-500"
-                          />
-                        </div>
-
-                        {/* Preview ảnh bài đọc đã chọn */}
-                        {groupImageUrl && (
-                          <div className="p-3 border rounded border-teal-200 bg-teal-50/40 space-y-2">
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="font-semibold text-teal-900 truncate">
-                                {groupImageFileName || t('createQuestionPage.readingImageBadge')}
-                              </span>
+                    {/* Active Passage Editor */}
+                    {readingPassages[activeReadingPassageIndex] && (() => {
+                      const curPassage = readingPassages[activeReadingPassageIndex]!;
+                      return (
+                        <div className="p-4 bg-teal-50/20 border rounded border-teal-200/80 space-y-3.5">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <span className="text-xs font-bold text-teal-900">
+                              Chỉnh sửa Đoạn {activeReadingPassageIndex + 1}
+                            </span>
+                            {readingPassages.length > 1 && (
                               <button
                                 type="button"
-                                onClick={() => {
-                                  setGroupImageUrl('');
-                                  setGroupImageFileName('');
-                                }}
-                                className="text-red-500 hover:text-red-700 text-xs font-semibold cursor-pointer"
+                                onClick={() => handleRemoveReadingPassage(activeReadingPassageIndex)}
+                                className="text-xs text-red-500 hover:text-red-700 font-semibold inline-flex items-center gap-1 cursor-pointer"
                               >
-                                {t('createQuestionPage.deleteBtn')}
+                                <Trash2 className="h-3.5 w-3.5" />
+                                <span>Xóa đoạn này</span>
                               </button>
-                            </div>
-                            <div className="border rounded border-slate-200 overflow-hidden bg-white max-h-64 flex items-center justify-center p-1">
-                              <img
-                                src={groupImageUrl}
-                                alt="Reading Passage Preview"
-                                className="max-h-60 max-w-full object-contain rounded"
-                              />
-                            </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    )}
+
+                          <div className="space-y-1">
+                            <label className="text-[11px] font-semibold text-slate-700">
+                              Tiêu đề đoạn văn (tùy chọn):
+                            </label>
+                            <input
+                              type="text"
+                              value={curPassage.title}
+                              onChange={(e) => updateActiveReadingPassage({ title: e.target.value })}
+                              placeholder={`Ví dụ: Đoạn văn ${activeReadingPassageIndex + 1}`}
+                              className="w-full h-9 px-3 border rounded border-slate-200 bg-white text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                            />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-semibold text-slate-800">
+                              Nội dung văn bản <span className="text-slate-400 font-normal">(nhập chữ hoặc tải ảnh chụp/scan bên dưới)</span>
+                            </label>
+                            <textarea
+                              rows={6}
+                              value={curPassage.content}
+                              onChange={(e) => updateActiveReadingPassage({ content: e.target.value })}
+                              placeholder="Nhập nội dung bài đọc tại đây..."
+                              className="w-full p-3.5 border rounded border-slate-200 bg-white text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-teal-500 leading-relaxed font-mono"
+                            />
+                          </div>
+
+                          {/* Hình ảnh bài đọc (Tùy chọn - Tải file hoặc dán URL) */}
+                          <div className="space-y-2 pt-2 border-t border-teal-100">
+                            <div className="flex items-center justify-between">
+                              <label className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
+                                <ImageIcon className="h-3.5 w-3.5 text-teal-600" />
+                                <span>Hình ảnh bài đọc (nếu bài đọc dạng ảnh scan / bảng biểu / chụp đề):</span>
+                              </label>
+                              {curPassage.imageUrl && (
+                                <button
+                                  type="button"
+                                  onClick={() => updateActiveReadingPassage({ imageUrl: '', imageFileName: '' })}
+                                  className="text-red-500 hover:text-red-700 text-xs font-semibold cursor-pointer"
+                                >
+                                  Xóa ảnh
+                                </button>
+                              )}
+                            </div>
+
+                            {curPassage.imageUrl ? (
+                              <div className="p-3 border rounded border-teal-200 bg-white space-y-2 shadow-xs">
+                                <div className="flex items-center justify-between text-xs">
+                                  <span className="font-semibold text-teal-900 truncate">
+                                    {curPassage.imageFileName || 'Ảnh bài đọc đã chọn'}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => updateActiveReadingPassage({ imageUrl: '', imageFileName: '' })}
+                                    className="text-red-500 hover:text-red-700 text-xs font-semibold cursor-pointer"
+                                  >
+                                    Xóa ảnh
+                                  </button>
+                                </div>
+                                <div className="border rounded border-slate-100 overflow-hidden bg-slate-50 max-h-64 flex items-center justify-center p-1">
+                                  <img
+                                    src={curPassage.imageUrl}
+                                    alt="Passage Preview"
+                                    className="max-h-60 max-w-full object-contain rounded"
+                                  />
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="space-y-3">
+                                <input
+                                  type="file"
+                                  ref={groupImageInputRef}
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) handlePassageImageUpload(file);
+                                    e.target.value = '';
+                                  }}
+                                />
+
+                                <div
+                                  onDragOver={(e) => e.preventDefault()}
+                                  onDrop={(e) => {
+                                    e.preventDefault();
+                                    const file = e.dataTransfer.files?.[0];
+                                    if (file && file.type.startsWith('image/')) {
+                                      handlePassageImageUpload(file);
+                                    }
+                                  }}
+                                  className="border rounded border-dashed border-teal-300 hover:border-teal-500 p-5 text-center space-y-2 bg-teal-50/20 transition-colors"
+                                >
+                                  <div className="w-9 h-9 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center mx-auto">
+                                    {isUploading ? (
+                                      <Loader2 className="h-4 w-4 animate-spin text-teal-600" />
+                                    ) : (
+                                      <Upload className="h-4 w-4" />
+                                    )}
+                                  </div>
+                                  <div className="text-xs font-semibold text-slate-700">
+                                    {isUploading ? 'Đang tải ảnh lên...' : 'Kéo thả ảnh vào đây hoặc'}
+                                  </div>
+                                  <button
+                                    type="button"
+                                    disabled={isUploading}
+                                    onClick={() => groupImageInputRef.current?.click()}
+                                    className="px-3.5 py-1.5 border rounded border-slate-300 bg-white text-slate-700 hover:bg-slate-50 text-xs font-semibold shadow-2xs transition-colors cursor-pointer disabled:opacity-50"
+                                  >
+                                    Chọn ảnh từ thiết bị
+                                  </button>
+                                </div>
+
+                                <div className="space-y-1">
+                                  <label className="text-[11px] font-semibold text-slate-600">
+                                    Hoặc dán link URL ảnh bài đọc trực tiếp:
+                                  </label>
+                                  <input
+                                    type="url"
+                                    value={curPassage.imageUrl || ''}
+                                    onChange={(e) =>
+                                      updateActiveReadingPassage({
+                                        imageUrl: e.target.value,
+                                        imageFileName: e.target.value ? 'Ảnh từ URL' : '',
+                                      })
+                                    }
+                                    placeholder="https://example.com/scanned-passage.jpg"
+                                    className="w-full h-9 px-3 border rounded border-slate-200 bg-white text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </div>

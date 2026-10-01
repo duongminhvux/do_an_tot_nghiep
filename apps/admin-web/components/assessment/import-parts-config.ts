@@ -970,6 +970,7 @@ export function shouldShowQuestionAudioInput(
 
 export interface ParsedPassageItem {
   id: string;
+  type?: 'TEXT' | 'EMAIL' | 'ADVERTISEMENT' | 'ARTICLE' | 'NOTICE' | 'CHAT';
   title?: string;
   content?: string;
   audioUrl?: string;
@@ -1029,9 +1030,9 @@ export function parseQuestionsFromText(
       continue;
     }
 
-    // 1. Passage header: Passage: or Đoạn văn: or [PASSAGE] (e.g. Passage 1:, Passage 2:)
+    // 1. Passage header: [PASSAGE], [EMAIL], [ARTICLE], [NOTICE], [CHAT], [ADVERTISEMENT], or Vietnamese equivalents
     const passageHeaderMatch = line.match(
-      /^(?:Passage|Đoạn văn|Doan van|Đoạn hội thoại|Bài đọc|Bài nói|\[PASSAGE\])(?:\s+\d+)?[:\s\-]*(.*)$/i,
+      /^(?:\[(PASSAGE|TEXT|EMAIL|ADVERTISEMENT|ARTICLE|NOTICE|CHAT)\]|(?:Passage|Đoạn văn|Doan van|Đoạn hội thoại|Bài đọc|Bài nói|Email|Thư|Quảng cáo|Thông báo|Bài báo|Chat))(?:\s+\d+)?[:\s\-]*(.*)$/i,
     );
 
     if (passageHeaderMatch) {
@@ -1039,11 +1040,20 @@ export function parseQuestionsFromText(
       inPassage = true;
       inTranscript = false;
 
-      const inlineTitle = passageHeaderMatch[1]?.trim();
+      const matchedTag = (passageHeaderMatch[1] || passageHeaderMatch[0]).toUpperCase();
+      let pType: 'TEXT' | 'EMAIL' | 'ADVERTISEMENT' | 'ARTICLE' | 'NOTICE' | 'CHAT' = 'TEXT';
+      if (matchedTag.includes('EMAIL') || matchedTag.includes('THƯ')) pType = 'EMAIL';
+      else if (matchedTag.includes('ADVERT') || matchedTag.includes('QUẢNG CÁO')) pType = 'ADVERTISEMENT';
+      else if (matchedTag.includes('ARTICLE') || matchedTag.includes('BÀI BÁO')) pType = 'ARTICLE';
+      else if (matchedTag.includes('NOTICE') || matchedTag.includes('THÔNG BÁO')) pType = 'NOTICE';
+      else if (matchedTag.includes('CHAT') || matchedTag.includes('HỘI THOẠI')) pType = 'CHAT';
+
+      const inlineTitle = passageHeaderMatch[2]?.trim();
       const pIndex = passages.length + 1;
       currentPassage = {
         id: `passage-${pIndex}`,
-        title: inlineTitle || `${currentPart.subtitle || 'Đoạn văn'} #${pIndex}`,
+        type: pType,
+        title: inlineTitle || `${pType} #${pIndex}`,
         content: '',
         audioUrl: undefined,
         imageUrl: undefined,

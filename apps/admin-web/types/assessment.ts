@@ -62,6 +62,7 @@ export interface QuestionOption {
 export interface QuestionItem {
   _id: string;
   examId: string;
+  passageGroupId?: string;
   passageId?: string;
   passageTitle?: string;
   section: 'LISTENING' | 'READING';
@@ -78,15 +79,41 @@ export interface QuestionItem {
   updatedAt?: string;
 }
 
-export interface PassageItem {
+export type PassageType =
+  | 'TEXT'
+  | 'EMAIL'
+  | 'ADVERTISEMENT'
+  | 'ARTICLE'
+  | 'NOTICE'
+  | 'CHAT';
+
+export interface PassageGroupItem {
   _id: string;
   examId: string;
-  title?: string;
   section: 'LISTENING' | 'READING';
+  part: number;
+  title?: string;
+  order: number;
+  passages?: PassageItem[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface PassageItem {
+  _id: string;
+  passageGroupId?: string;
+  examId?: string;
+  type?: PassageType;
+  title?: string;
+  section?: 'LISTENING' | 'READING';
   content?: string;
   audioUrl?: string;
+  imageUrl?: string;
   order: number;
+  passages?: PassageItem[];
   questionCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface AttemptItem {

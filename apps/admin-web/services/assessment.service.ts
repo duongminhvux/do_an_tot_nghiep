@@ -4,6 +4,7 @@ import {
   CreateExamDto,
   ExamItem,
   ExamListResponse,
+  PassageGroupItem,
   PassageItem,
   QueryExamDto,
   QuestionItem,
@@ -73,8 +74,40 @@ export const examService = {
     return res?.data;
   },
 
+  getPassageGroups: async (examId: string) => {
+    const res = await apiClient
+      .get<ApiResponse<PassageGroupItem[]>>(`/admin/questions/exam/${examId}/passage-groups`)
+      .catch(() => null);
+    return res?.data;
+  },
+
+  createPassageGroup: async (data: any) => {
+    const res = await apiClient.post<ApiResponse<PassageGroupItem>>('/admin/questions/passage-groups', data);
+    return res.data;
+  },
+
+  updatePassageGroup: async (id: string, data: any) => {
+    const res = await apiClient.patch<ApiResponse<PassageGroupItem>>(`/admin/questions/passage-groups/${id}`, data);
+    return res.data;
+  },
+
+  deletePassageGroup: async (id: string) => {
+    const res = await apiClient.delete<ApiResponse<{ deleted: boolean; deletedQuestionsCount?: number }>>(`/admin/questions/passage-groups/${id}`);
+    return res.data;
+  },
+
   createPassage: async (data: any) => {
     const res = await apiClient.post<ApiResponse<PassageItem>>('/admin/questions/passages', data);
+    return res.data;
+  },
+
+  updatePassage: async (id: string, data: any) => {
+    const res = await apiClient.patch<ApiResponse<PassageItem>>(`/admin/questions/passages/${id}`, data);
+    return res.data;
+  },
+
+  deletePassage: async (id: string) => {
+    const res = await apiClient.delete<ApiResponse<{ deleted: boolean; deletedQuestionsCount?: number }>>(`/admin/questions/passages/${id}`);
     return res.data;
   },
 
@@ -97,6 +130,7 @@ export const examService = {
     const isFormData = typeof FormData !== 'undefined' && data instanceof FormData;
     const res = await apiClient.post<ApiResponse<{
       passage?: PassageItem;
+      passages?: PassageItem[];
       questions: QuestionItem[];
       total: number;
       rawText?: string;
@@ -110,6 +144,7 @@ export const examService = {
     const isFormData = typeof FormData !== 'undefined' && data instanceof FormData;
     const res = await apiClient.post<ApiResponse<{
       importedCount: number;
+      passageGroupId?: string;
       passageId?: string;
       data: QuestionItem[];
     }>>(`/admin/questions/exam/${examId}/import`, data, {
