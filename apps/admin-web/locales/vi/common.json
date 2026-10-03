@@ -19,14 +19,9 @@
     "collections": "Bộ sưu tập",
     "words": "Từ vựng",
     "lessons": "Bài học",
-<<<<<<< HEAD
-    "assessment": "Bài tập",
+    "assessment": "Đề thi",
     "users": "Người dùng",
     "dictation": "Dictation"
-=======
-    "assessment": "Đề thi",
-    "users": "Người dùng"
->>>>>>> 89ebe67574417175c7d3f64b4d04f863d7ed529d
   },
   "nav.dashboard": "Bảng điều khiển",
   "nav.vocabulary": "Từ vựng",
@@ -34,12 +29,7 @@
   "nav.collections": "Bộ sưu tập",
   "nav.words": "Từ vựng",
   "nav.lessons": "Bài học",
-<<<<<<< HEAD
-  "nav.assessment": "Bài tập",
+  "nav.assessment": "Đề thi",
   "nav.users": "Người dùng",
   "nav.dictation": "Dictation"
-=======
-  "nav.assessment": "Đề thi",
-  "nav.users": "Người dùng"
->>>>>>> 89ebe67574417175c7d3f64b4d04f863d7ed529d
 }

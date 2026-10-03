@@ -19,35 +19,74 @@ export class AdminsService implements OnModuleInit {
     @InjectModel(Admin.name) private readonly adminModel: Model<Admin>,
     private readonly configService: ConfigService,
     private readonly i18n: I18nService,
-  ) { }
+  ) {}
 
   async onModuleInit() {
     await this.seedDefaultAdmin();
   }
 
+  private getDefaultAdminCredentials() {
+    return {
+      email: (
+        this.configService.get<string>('DEFAULT_ADMIN_EMAIL') ||
+        'admin@gmail.com'
+      )
+        .trim()
+        .toLowerCase(),
+      username: (
+        this.configService.get<string>('DEFAULT_ADMIN_USERNAME') || 'admin'
+      ).trim(),
+      // Keep this in sync with src/scripts/seed-admin.mjs.
+      password:
+        this.configService.get<string>('DEFAULT_ADMIN_PASSWORD') || 'admin123',
+    };
+  }
+
   private async seedDefaultAdmin() {
     try {
-      const count = await this.adminModel.countDocuments();
-      if (count === 0) {
-        const defaultEmail =
-          this.configService.get<string>('DEFAULT_ADMIN_EMAIL') || 'admin@gmail.com';
-        const defaultUsername =
-          this.configService.get<string>('DEFAULT_ADMIN_USERNAME') || 'admin';
-        const defaultPassword =
-          this.configService.get<string>('DEFAULT_ADMIN_PASSWORD') || 'Password123@';
+      const { email, username, password } = this.getDefaultAdminCredentials();
+      const existing = await this.adminModel.findOne({
+        $or: [{ email }, { username }],
+      });
 
-        const hashedPassword = await hashPassword(defaultPassword);
-
+      if (!existing) {
+        const hashedPassword = await hashPassword(password);
         await this.adminModel.create({
-          email: defaultEmail.toLowerCase(),
-          username: defaultUsername,
+          email,
+          username,
           password: hashedPassword,
           isDeleted: false,
         });
 
         this.logger.log(
-          `Initialized default administrator account: ${defaultEmail} / ${defaultPassword}`,
+          `Initialized default administrator account: ${email} (${username})`,
         );
+        return;
+      }
+
+      // Do not silently reset an existing admin password on every restart.
+      // When explicitly enabled, this is useful for local Docker recovery.
+      const syncPassword =
+        this.configService.get<string>('DEFAULT_ADMIN_SYNC_PASSWORD') === 'true';
+
+      if (syncPassword) {
+        const passwordMatches = await comparePassword(password, existing.password);
+        const needsMetadataSync =
+          existing.email !== email ||
+          existing.username !== username ||
+          existing.isDeleted;
+
+        if (!passwordMatches || needsMetadataSync) {
+          existing.email = email;
+          existing.username = username;
+          existing.password = await hashPassword(password);
+          existing.isDeleted = false;
+          existing.deletedAt = undefined;
+          await existing.save();
+          this.logger.warn(
+            `Synchronized default administrator credentials for ${email}`,
+          );
+        }
       }
     } catch (err) {
       this.logger.error('Failed to seed default admin', err);
@@ -78,10 +117,7 @@ export class AdminsService implements OnModuleInit {
   ): Promise<AdminDocument> {
     const trimmed = identifier.trim();
     const admin = await this.adminModel.findOne({
-      $or: [
-        { email: trimmed.toLowerCase() },
-        { username: trimmed },
-      ],
+      $or: [{ email: trimmed.toLowerCase() }, { username: trimmed }],
     });
 
     if (!admin) {
@@ -103,7 +139,7 @@ export class AdminsService implements OnModuleInit {
       );
     }
 
-    const { password, ...safeAdmin } = admin.toObject();
+    const { password: _password, ...safeAdmin } = admin.toObject();
     return safeAdmin as AdminDocument;
   }
 }

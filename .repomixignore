@@ -1,0 +1,6 @@
+*.md
+*.json
+*.txt
+*.mjs
+*.config.js
+*.xml

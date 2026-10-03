@@ -295,7 +295,6 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem> */}
 
-<<<<<<< HEAD
               {/* Dictation */}
               <SidebarMenuItem>
                 <SidebarMenuButton
@@ -321,20 +320,6 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
-              {/* Assessment */}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={isAssessmentActive}
-                  tooltip={t('nav.assessment', locale === 'en' ? 'Assessment' : 'Đánh giá')}
-                  className={cn(
-                    'h-9 px-2 rounded-lg text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition-all font-medium text-sm',
-                    isAssessmentActive && 'bg-blue-50 text-blue-600 font-semibold shadow-xs'
-                  )}
-                >
-                  <Link href={`/${locale}/assessment`} className="flex items-center gap-2.5">
-                    <ClipboardCheck
-=======
               {/* Assessment (Collapsible with Exam Groups & Exams) */}
               <Collapsible
                 asChild
@@ -344,9 +329,9 @@ export function AppSidebar() {
                 <SidebarMenuItem>
                   <CollapsibleTrigger asChild>
                     <SidebarMenuButton
-                      tooltip={t('nav.assessment', locale === 'en' ? 'Assessment' : 'Đánh giá')}
+                      tooltip={t('nav.assessment', locale === 'en' ? 'Assessment' : 'Đề thi')}
                       isActive={isAssessmentActive}
->>>>>>> 89ebe67574417175c7d3f64b4d04f863d7ed529d
+
                       className={cn(
                         'h-9 px-2 rounded-lg text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition-all font-medium text-sm cursor-pointer',
                         isAssessmentActive && 'bg-blue-50/70 text-blue-600 font-semibold'

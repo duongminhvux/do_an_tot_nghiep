@@ -197,3 +197,25 @@ POST /api/dictation/:id/progress/reset
 ```
 
 Generated WAV files are uploaded to Cloudinary as `video` resources because Cloudinary groups audio resources under the video resource type. MongoDB stores only metadata and URLs, not audio binary data.
+
+## 9. Admin login / reset seeded admin
+
+The default admin seed and the manual seed script use the same defaults:
+
+```text
+email: admin@gmail.com
+username: admin
+password: admin123
+```
+
+For a fresh Mongo volume, the API creates the default admin automatically when no matching admin exists.
+
+If `mongo_data` already contains an admin created by an older build, its bcrypt hash may have been generated from a different old default password. Reset that existing record once with:
+
+```bash
+docker compose exec api pnpm --filter api seed:admin admin@gmail.com admin admin123
+```
+
+The seed script intentionally preserves the Docker-provided `MONGO_URI`, so the command updates the MongoDB container instead of accidentally trying `localhost` from inside the API container.
+
+You can customize the initial credentials with `DEFAULT_ADMIN_EMAIL`, `DEFAULT_ADMIN_USERNAME`, and `DEFAULT_ADMIN_PASSWORD`. `DEFAULT_ADMIN_SYNC_PASSWORD` stays `false` by default so restarting the API does not silently overwrite a password in an existing database.
