@@ -20,7 +20,8 @@
     "words": "Từ vựng",
     "lessons": "Bài học",
     "assessment": "Bài tập",
-    "users": "Người dùng"
+    "users": "Người dùng",
+    "dictation": "Dictation"
   },
   "nav.dashboard": "Bảng điều khiển",
   "nav.vocabulary": "Từ vựng",
@@ -29,5 +30,6 @@
   "nav.words": "Từ vựng",
   "nav.lessons": "Bài học",
   "nav.assessment": "Bài tập",
-  "nav.users": "Người dùng"
+  "nav.users": "Người dùng",
+  "nav.dictation": "Dictation"
 }

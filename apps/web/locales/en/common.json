@@ -35,6 +35,8 @@
     "profile": "Profile",
     "home": "Home",
     "explore": "Explore",
-    "my_words": "My Words"
+    "my_words": "My Words",
+    "dictation": "Dictation",
+    "dictation_progress": "Dictation Progress"
   }
 }

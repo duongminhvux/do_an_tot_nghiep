@@ -40,6 +40,9 @@ export default function DashboardLayout({
     if (pathname?.includes('/lessons')) {
       return t('nav.lessons', isEn ? 'Lessons' : 'Bài học');
     }
+    if (pathname?.includes('/dictation')) {
+      return t('nav.dictation', 'Dictation');
+    }
     if (pathname?.includes('/assessment/create')) {
       const assessTitle = t('nav.assessment', isEn ? 'Assessment' : 'Đánh giá');
       return `${assessTitle} / ${isEn ? 'Create TOEIC Exam' : 'Tạo đề thi TOEIC'}`;

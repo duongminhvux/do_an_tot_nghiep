@@ -8,6 +8,7 @@ import { authService } from './auth.service';
 import { userService } from './user.service';
 import { collectionService, lessonService, wordService } from './vocabulary.service';
 import { learningService } from './learning.service';
+import { dictationService } from './dictation.service';
 
 export const apiService = {
   auth: authService,
@@ -16,6 +17,8 @@ export const apiService = {
   lessons: lessonService,
   words: wordService,
   learning: learningService,
+  dictation: dictationService,
 };
 
 export default apiService;
+export * from './dictation.service';

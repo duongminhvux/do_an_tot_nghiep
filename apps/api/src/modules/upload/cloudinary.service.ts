@@ -48,6 +48,49 @@ export class CloudinaryService {
     });
   }
 
+
+  async uploadBuffer(
+    buffer: Buffer,
+    options?: {
+      folder?: string;
+      resourceType?: 'auto' | 'image' | 'video' | 'raw';
+      format?: string;
+      publicId?: string;
+    },
+  ): Promise<{ url: string; public_id: string }> {
+    if (!buffer?.length) {
+      throw new BadRequestException('Upload buffer is empty');
+    }
+
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: options?.folder || 'english-platform',
+          resource_type: options?.resourceType || 'auto',
+          ...(options?.format ? { format: options.format } : {}),
+          ...(options?.publicId ? { public_id: options.publicId } : {}),
+        },
+        (error, result) => {
+          if (error) {
+            this.logger.error('Cloudinary buffer upload failed', error);
+            return reject(
+              new BadRequestException(error.message || 'Upload to Cloudinary failed'),
+            );
+          }
+          if (!result) {
+            return reject(new BadRequestException('Cloudinary did not return a result'));
+          }
+          resolve({
+            url: result.secure_url,
+            public_id: result.public_id,
+          });
+        },
+      );
+
+      uploadStream.end(buffer);
+    });
+  }
+
   extractCloudinaryPublicId(url: string): { publicId: string; resourceType: string } | null {
     if (!url || typeof url !== 'string' || !url.includes('res.cloudinary.com')) return null;
 

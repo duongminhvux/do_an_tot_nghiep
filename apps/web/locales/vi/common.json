@@ -35,6 +35,8 @@
     "profile": "Tài khoản",
     "home": "Trang chủ",
     "explore": "Khám phá",
-    "my_words": "Từ vựng của tôi"
+    "my_words": "Từ vựng của tôi",
+    "dictation": "Dictation",
+    "dictation_progress": "Tiến độ Dictation"
   }
 }

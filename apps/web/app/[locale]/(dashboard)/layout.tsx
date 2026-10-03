@@ -28,6 +28,12 @@ export default function DashboardLayout({
     if (pathname?.includes('/vocabulary')) {
       return t('nav.vocabulary', isEn ? 'Vocabulary' : 'Từ vựng');
     }
+    if (pathname?.includes('/dictation/progress')) {
+      return t('nav.dictation_progress', isEn ? 'Dictation Progress' : 'Tiến độ Dictation');
+    }
+    if (pathname?.includes('/dictation')) {
+      return t('nav.dictation', 'Dictation');
+    }
     if (pathname?.includes('/lessons')) {
       return t('nav.lessons', isEn ? 'Lessons' : 'Bài học');
     }

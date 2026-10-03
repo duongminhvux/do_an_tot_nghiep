@@ -20,7 +20,8 @@
     "words": "Words",
     "lessons": "Lessons",
     "assessment": "Assessment",
-    "users": "User Accounts"
+    "users": "User Accounts",
+    "dictation": "Dictation"
   },
   "nav.dashboard": "Dashboard",
   "nav.vocabulary": "Vocabulary",
@@ -29,5 +30,6 @@
   "nav.words": "Words",
   "nav.lessons": "Lessons",
   "nav.assessment": "Assessment",
-  "nav.users": "User Accounts"
+  "nav.users": "User Accounts",
+  "nav.dictation": "Dictation"
 }

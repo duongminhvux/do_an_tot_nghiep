@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import {
   BookOpen,
   LayoutDashboard,
-  GraduationCap,
+  Headphones,
   LogOut,
   Globe,
   Search,
@@ -66,8 +66,9 @@ export function AppSidebar() {
   const isVocabMyWordsActive = pathname === `/${locale}/vocabulary/my-words`;
   const isVocabSectionActive = isVocabExploreActive || isVocabMyWordsActive || pathname?.startsWith(`/${locale}/vocabulary`);
   const isPracticeActive =
-    pathname === `/${locale}/lessons` || pathname?.startsWith(`/${locale}/lessons`) || pathname === `/${locale}/practice`;
-  const isProgressActive = pathname === `/${locale}/progress`;
+    pathname === `/${locale}/dictation` ||
+    (pathname?.startsWith(`/${locale}/dictation/`) && !pathname?.startsWith(`/${locale}/dictation/progress`));
+  const isProgressActive = pathname?.startsWith(`/${locale}/dictation/progress`);
 
   return (
     <Sidebar collapsible="icon" className="border-r border-slate-200 bg-white">
@@ -202,21 +203,21 @@ export function AppSidebar() {
                 <SidebarMenuButton
                   asChild
                   isActive={isPracticeActive}
-                  tooltip={t('nav.practice', 'Luyện tập')}
+                  tooltip={t('nav.dictation', 'Dictation')}
                   className={cn(
                     'h-9 px-2.5 rounded-xl text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-all font-medium text-sm',
                     isPracticeActive && 'bg-blue-50/80 text-blue-600 font-semibold shadow-xs'
                   )}
                 >
-                  <Link href={`/${locale}/lessons`} className="flex items-center gap-2.5">
-                    <GraduationCap
+                  <Link href={`/${locale}/dictation`} className="flex items-center gap-2.5">
+                    <Headphones
                       className={cn(
                         'h-4 w-4 shrink-0',
                         isPracticeActive ? 'text-blue-600' : 'text-slate-500'
                       )}
                     />
                     <span className="truncate group-data-[collapsible=icon]:hidden">
-                      {t('nav.practice', 'Luyện tập')}
+                      {t('nav.dictation', 'Dictation')}
                     </span>
                   </Link>
                 </SidebarMenuButton>
@@ -227,13 +228,13 @@ export function AppSidebar() {
                 <SidebarMenuButton
                   asChild
                   isActive={isProgressActive}
-                  tooltip={t('nav.progress', 'Tiến độ')}
+                  tooltip={t('nav.dictation_progress', 'Tiến độ Dictation')}
                   className={cn(
                     'h-9 px-2.5 rounded-xl text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-all font-medium text-sm',
                     isProgressActive && 'bg-blue-50/80 text-blue-600 font-semibold shadow-xs'
                   )}
                 >
-                  <Link href={`/${locale}/progress`} className="flex items-center gap-2.5">
+                  <Link href={`/${locale}/dictation/progress`} className="flex items-center gap-2.5">
                     <TrendingUp
                       className={cn(
                         'h-4 w-4 shrink-0',
@@ -241,7 +242,7 @@ export function AppSidebar() {
                       )}
                     />
                     <span className="truncate group-data-[collapsible=icon]:hidden">
-                      {t('nav.progress', 'Tiến độ')}
+                      {t('nav.dictation_progress', 'Tiến độ Dictation')}
                     </span>
                   </Link>
                 </SidebarMenuButton>

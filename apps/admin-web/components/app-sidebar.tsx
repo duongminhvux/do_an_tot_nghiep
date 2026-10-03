@@ -16,6 +16,7 @@ import {
   Globe,
   ChevronRight,
   ClipboardCheck,
+  Headphones,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -79,6 +80,8 @@ export function AppSidebar() {
   const isLessonsActive =
     pathname === `/${locale}/lessons` ||
     pathname?.startsWith(`/${locale}/lessons/`);
+  const isDictationActive =
+    pathname === `/${locale}/dictation` || pathname?.startsWith(`/${locale}/dictation/`);
   const isAssessmentActive =
     pathname === `/${locale}/assessment` ||
     pathname?.startsWith(`/${locale}/assessment/`);
@@ -282,6 +285,31 @@ export function AppSidebar() {
                     />
                     <span className="truncate group-data-[collapsible=icon]:hidden">
                       {t('nav.lessons')}
+                    </span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              {/* Dictation */}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isDictationActive}
+                  tooltip={t('nav.dictation', 'Dictation')}
+                  className={cn(
+                    'h-9 px-2 rounded-lg text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition-all font-medium text-sm',
+                    isDictationActive && 'bg-blue-50 text-blue-600 font-semibold shadow-xs'
+                  )}
+                >
+                  <Link href={`/${locale}/dictation`} className="flex items-center gap-2.5">
+                    <Headphones
+                      className={cn(
+                        'h-4.5 w-4.5 shrink-0',
+                        isDictationActive ? 'text-blue-600' : 'text-slate-500'
+                      )}
+                    />
+                    <span className="truncate group-data-[collapsible=icon]:hidden">
+                      {t('nav.dictation', 'Dictation')}
                     </span>
                   </Link>
                 </SidebarMenuButton>
