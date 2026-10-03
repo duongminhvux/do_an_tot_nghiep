@@ -25,12 +25,6 @@ export enum ExamSection {
   FULL_TEST = 'FULL_TEST',
 }
 
-export enum ExamStatus {
-  ACTIVE = 'ACTIVE',
-  INACTIVE = 'INACTIVE',
-  ARCHIVED = 'ARCHIVED',
-}
-
 export class CreateExamDto {
   @IsNotEmpty({ message: i18nValidationMessage('exam.EXAM_NAME_REQUIRED') })
   @IsString({ message: i18nValidationMessage('exam.EXAM_NAME_MUST_BE_STRING') })
@@ -43,14 +37,6 @@ export class CreateExamDto {
   @IsNotEmpty({ message: i18nValidationMessage('exam.EXAM_TYPE_REQUIRED') })
   @IsEnum(ExamType, { message: i18nValidationMessage('exam.EXAM_TYPE_INVALID') })
   type!: ExamType;
-
-  @IsNotEmpty({ message: i18nValidationMessage('exam.EXAM_MODE_REQUIRED') })
-  @IsEnum(ExamMode, { message: i18nValidationMessage('exam.EXAM_MODE_INVALID') })
-  mode!: ExamMode;
-
-  @IsEnum(ExamSection)
-  @IsOptional()
-  section?: ExamSection;
 
   @IsString({ message: i18nValidationMessage('exam.EXAM_DESCRIPTION_MUST_BE_STRING') })
   @IsOptional()
@@ -66,16 +52,17 @@ export class CreateExamDto {
   @IsOptional()
   totalQuestions?: number;
 
-  @IsBoolean({ message: i18nValidationMessage('exam.EXAM_IS_ACTIVE_MUST_BE_BOOLEAN') })
+
+  @IsBoolean()
   @IsOptional()
   isActive?: boolean;
-
-  @IsEnum(ExamStatus)
-  @IsOptional()
-  status?: ExamStatus;
 
   @IsInt({ message: i18nValidationMessage('exam.EXAM_ORDER_MUST_BE_INT') })
   @Min(0, { message: i18nValidationMessage('exam.EXAM_ORDER_MIN') })
   @IsOptional()
   order?: number;
+
+  @IsString()
+  @IsOptional()
+  groupId?: string;
 }

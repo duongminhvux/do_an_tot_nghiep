@@ -49,9 +49,9 @@ export class AdminExamsController {
   @Patch(':id/active')
   toggleActive(
     @Param('id') id: string,
-    @Body('isActive') isActive?: boolean,
+    @Body() body: UpdateExamDto,
   ) {
-    return this.examsService.toggleActive(id, isActive);
+    return this.examsService.toggleActive(id, body.isActive);
   }
 
   @Delete(':id')

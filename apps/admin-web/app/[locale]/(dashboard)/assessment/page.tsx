@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { examService } from '@/services/assessment.service';
-import { ExamItem, ExamMode, ExamSection, ExamStatus } from '@/types';
+import { examService, examGroupService } from '@/services/assessment.service';
+import { ExamGroupItem, ExamItem, ExamStatus } from '@/types';
 import { CreateExamDialog } from '@/components/assessment/create-exam-dialog';
 import { EditExamDialog } from '@/components/assessment/edit-exam-dialog';
 import { DeleteExamDialog } from '@/components/assessment/delete-exam-dialog';
@@ -37,9 +37,7 @@ import {
   XCircle,
   RotateCcw,
   FileText,
-  Play,
-  HelpCircle,
-  Users,
+  Layers,
   ChevronLeft,
   ChevronRight,
   ArrowUpDown,
@@ -54,9 +52,8 @@ export default function AssessmentPage() {
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
-  const [typeFilter, setTypeFilter] = useState<'ALL' | ExamSection>('ALL');
-  const [modeFilter, setModeFilter] = useState<'ALL' | ExamMode>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | ExamStatus>('ALL');
+  const [groupFilter, setGroupFilter] = useState<string>('ALL');
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -77,6 +74,16 @@ export default function AssessmentPage() {
       return res.data;
     },
   });
+
+  // Query groups for filter dropdown
+  const { data: groupsResponse } = useQuery({
+    queryKey: ['admin-exam-groups-filter'],
+    queryFn: async () => {
+      const res = await examGroupService.getAll({ limit: 100 });
+      return res?.data;
+    },
+  });
+  const groups: ExamGroupItem[] = groupsResponse?.data || [];
 
   // Extract real array of exams from API response
   const allExams: ExamItem[] = useMemo(() => {
@@ -102,14 +109,12 @@ export default function AssessmentPage() {
       return examService.create({
         name: newName,
         type: exam.type,
-        mode: exam.mode,
-        section: exam.section,
         description: exam.description,
-        durationMinutes: exam.durationMinutes,
-        totalQuestions: exam.totalQuestions,
+        durationMinutes: exam.durationMinutes || 120,
+        totalQuestions: exam.totalQuestions || 200,
         isActive: false,
-        status: 'INACTIVE',
         order: (exam.order || 0) + 1,
+        groupId: exam.groupId || exam.group?._id,
       });
     },
     onSuccess: () => {
@@ -128,20 +133,26 @@ export default function AssessmentPage() {
         (exam.description && exam.description.toLowerCase().includes(term)) ||
         (exam.slug && exam.slug.toLowerCase().includes(term));
 
-      // Filter by section (LISTENING, READING, FULL_TEST)
-      const sec = exam.section || (exam.mode === 'FULL_TEST' ? 'FULL_TEST' : 'LISTENING');
-      const matchesType = typeFilter === 'ALL' || sec === typeFilter;
-
-      // Filter by mode
-      const matchesMode = modeFilter === 'ALL' || exam.mode === modeFilter;
-
       // Filter by status
-      const examStatus = exam.status || (exam.isActive ? 'ACTIVE' : 'INACTIVE');
+      const examStatus = exam.isActive ? 'ACTIVE' : 'INACTIVE';
       const matchesStatus = statusFilter === 'ALL' || examStatus === statusFilter;
 
-      return matchesSearch && matchesType && matchesMode && matchesStatus;
+      // Filter by group
+      let matchesGroup = true;
+      if (groupFilter !== 'ALL') {
+        if (groupFilter === 'none') {
+          matchesGroup = !exam.groupId && !exam.group;
+        } else {
+          matchesGroup =
+            (exam.groupId as any) === groupFilter ||
+            (exam.groupId as any)?._id === groupFilter ||
+            exam.group?._id === groupFilter;
+        }
+      }
+
+      return matchesSearch && matchesStatus && matchesGroup;
     });
-  }, [allExams, searchTerm, typeFilter, modeFilter, statusFilter]);
+  }, [allExams, searchTerm, statusFilter, groupFilter]);
 
   // Pagination logic
   const totalFiltered = filteredExams.length;
@@ -154,29 +165,22 @@ export default function AssessmentPage() {
   // Real statistics calculated directly from database records
   const stats = useMemo(() => {
     const total = allExams.length;
-    const active = allExams.filter((e) => e.isActive && e.status !== 'ARCHIVED').length;
-    const listening = allExams.filter(
-      (e) => (e.section || 'LISTENING') === 'LISTENING' && e.mode !== 'FULL_TEST',
-    ).length;
-    const reading = allExams.filter((e) => e.section === 'READING').length;
-    const fullTest = allExams.filter(
-      (e) => e.mode === 'FULL_TEST' || e.section === 'FULL_TEST',
-    ).length;
+    const active = allExams.filter((e) => e.isActive).length;
+    const inactive = total - active;
+    const groupsCount = groups.length;
 
     return {
       total,
       active,
-      listening,
-      reading,
-      fullTest,
+      inactive,
+      groupsCount,
     };
-  }, [allExams]);
+  }, [allExams, groups]);
 
   const handleResetFilters = () => {
     setSearchTerm('');
-    setTypeFilter('ALL');
-    setModeFilter('ALL');
     setStatusFilter('ALL');
+    setGroupFilter('ALL');
     setCurrentPage(1);
   };
 
@@ -211,7 +215,7 @@ export default function AssessmentPage() {
 
         <Link
           href={`/${locale}/assessment/create`}
-          className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold rounded-lg shadow-xs transition-colors cursor-pointer shrink-0"
+          className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold rounded shadow-xs transition-colors cursor-pointer shrink-0"
         >
           <Plus className="h-4 w-4" />
           <span>{t('createExam')}</span>
@@ -221,57 +225,57 @@ export default function AssessmentPage() {
       {/* 4 Stat Cards Row - Calculated strictly from DB */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Tổng số đề thi */}
-        <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-xs flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+        <div className="bg-white rounded border border-slate-200/80 p-4 shadow-xs flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
             <FileText className="h-5 w-5" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-xs text-slate-500 font-medium">{t('stats.total')}</p>
             <p className="text-2xl font-bold text-slate-900 mt-0.5">{stats.total}</p>
+            <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+              TOEIC Full Test (200 câu)
+            </p>
+          </div>
+        </div>
+
+        {/* Card 2: Đang hoạt động */}
+        <div className="bg-white rounded border border-slate-200/80 p-4 shadow-xs flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+            <CheckCircle2 className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-slate-500 font-medium">{t('status.active')}</p>
+            <p className="text-2xl font-bold text-slate-900 mt-0.5">{stats.active}</p>
             <p className="text-[11px] text-emerald-600 font-medium mt-0.5">
               {t('stats.subTotal', { active: stats.active })}
             </p>
           </div>
         </div>
 
-        {/* Card 2: Đề thi Listening */}
-        <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-xs flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-            <Play className="h-5 w-5 fill-emerald-600/20" />
+        {/* Card 3: Chưa kích hoạt / Bản nháp */}
+        <div className="bg-white rounded border border-slate-200/80 p-4 shadow-xs flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
+            <XCircle className="h-5 w-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs text-slate-500 font-medium">{t('stats.listening')}</p>
-            <p className="text-2xl font-bold text-slate-900 mt-0.5">{stats.listening}</p>
-            <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-              {t('stats.subListening')}
+            <p className="text-xs text-slate-500 font-medium">{t('status.inactive')}</p>
+            <p className="text-2xl font-bold text-slate-900 mt-0.5">{stats.inactive}</p>
+            <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+              Bản nháp / Chưa kích hoạt
             </p>
           </div>
         </div>
 
-        {/* Card 3: Đề thi Reading */}
-        <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-xs flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-            <HelpCircle className="h-5 w-5" />
+        {/* Card 4: Nhóm đề thi */}
+        <div className="bg-white rounded border border-slate-200/80 p-4 shadow-xs flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+            <Layers className="h-5 w-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs text-slate-500 font-medium">{t('stats.reading')}</p>
-            <p className="text-2xl font-bold text-slate-900 mt-0.5">{stats.reading}</p>
-            <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-              {t('stats.subReading')}
-            </p>
-          </div>
-        </div>
-
-        {/* Card 4: Đề thi Full Test */}
-        <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-xs flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-            <Users className="h-5 w-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs text-slate-500 font-medium">{t('stats.fullTest')}</p>
-            <p className="text-2xl font-bold text-slate-900 mt-0.5">{stats.fullTest}</p>
-            <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-              {t('stats.subFullTest')}
+            <p className="text-xs text-slate-500 font-medium">{t('examGroups.title')}</p>
+            <p className="text-2xl font-bold text-slate-900 mt-0.5">{stats.groupsCount}</p>
+            <p className="text-[11px] text-indigo-600 font-medium mt-0.5">
+              Bộ đề thi phân loại
             </p>
           </div>
         </div>
@@ -290,51 +294,33 @@ export default function AssessmentPage() {
               setCurrentPage(1);
             }}
             placeholder={t('filters.searchPlaceholder')}
-            className="w-full h-9 pl-9 pr-3 rounded-lg border border-slate-200 bg-white text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+            className="w-full h-9 pl-9 pr-3 rounded border border-slate-200 bg-white text-xs placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500/20 focus:border-blue-500"
           />
         </div>
 
         {/* Filter Dropdowns & Reset button */}
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* Loại đề (Section) */}
+          {/* Nhóm đề (Exam Group) */}
           <div className="flex items-center gap-1.5">
-            <span className="text-xs text-slate-500 font-medium hidden sm:inline">{t('table.section')}</span>
+            <span className="text-xs text-slate-500 font-medium hidden sm:inline">{t('filters.group')}</span>
             <Select
-              value={typeFilter}
+              value={groupFilter}
               onValueChange={(val) => {
-                setTypeFilter(val as 'ALL' | ExamSection);
+                setGroupFilter(val);
                 setCurrentPage(1);
               }}
             >
-              <SelectTrigger className="h-9 w-32 text-xs rounded-lg border-slate-200 bg-white">
-                <SelectValue placeholder={t('filters.allSections')} />
+              <SelectTrigger className="h-9 w-36 text-xs rounded border border-slate-200 bg-white">
+                <SelectValue placeholder={t('filters.allGroups')} />
               </SelectTrigger>
-              <SelectContent className="text-xs">
-                <SelectItem value="ALL">{t('filters.allSections')}</SelectItem>
-                <SelectItem value="LISTENING">{t('filters.listening')}</SelectItem>
-                <SelectItem value="READING">{t('filters.reading')}</SelectItem>
-                <SelectItem value="FULL_TEST">{t('filters.fullTestSection')}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Chế độ (Mode) */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-slate-500 font-medium hidden sm:inline">{t('table.mode')}</span>
-            <Select
-              value={modeFilter}
-              onValueChange={(val) => {
-                setModeFilter(val as 'ALL' | ExamMode);
-                setCurrentPage(1);
-              }}
-            >
-              <SelectTrigger className="h-9 w-28 text-xs rounded-lg border-slate-200 bg-white">
-                <SelectValue placeholder={t('filters.allModes')} />
-              </SelectTrigger>
-              <SelectContent className="text-xs">
-                <SelectItem value="ALL">{t('filters.allModes')}</SelectItem>
-                <SelectItem value="PRACTICE">{t('filters.practice')}</SelectItem>
-                <SelectItem value="FULL_TEST">{t('filters.fullTest')}</SelectItem>
+              <SelectContent className="text-xs rounded border border-slate-200 bg-white">
+                <SelectItem value="ALL">{t('filters.allGroups')}</SelectItem>
+                <SelectItem value="none">{t('filters.unassignedGroup')}</SelectItem>
+                {groups.map((g) => (
+                  <SelectItem key={g._id} value={g._id}>
+                    {g.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -349,10 +335,10 @@ export default function AssessmentPage() {
                 setCurrentPage(1);
               }}
             >
-              <SelectTrigger className="h-9 w-32 text-xs rounded-lg border-slate-200 bg-white">
+              <SelectTrigger className="h-9 w-32 text-xs rounded border border-slate-200 bg-white">
                 <SelectValue placeholder={t('filters.allStatuses')} />
               </SelectTrigger>
-              <SelectContent className="text-xs">
+              <SelectContent className="text-xs rounded border border-slate-200 bg-white">
                 <SelectItem value="ALL">{t('filters.allStatuses')}</SelectItem>
                 <SelectItem value="ACTIVE">{t('filters.active')}</SelectItem>
                 <SelectItem value="INACTIVE">{t('filters.inactive')}</SelectItem>
@@ -364,7 +350,7 @@ export default function AssessmentPage() {
           <button
             type="button"
             onClick={handleResetFilters}
-            className="h-9 px-3 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg text-xs font-medium inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap transition-colors"
+            className="h-9 px-3 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded text-xs font-medium inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap transition-colors"
           >
             <RotateCcw className="h-3.5 w-3.5" />
             <span>{t('filters.reset')}</span>
@@ -373,16 +359,16 @@ export default function AssessmentPage() {
       </div>
 
       {/* Main Table Card */}
-      <div className="bg-white border border-slate-200/90 rounded-xl overflow-hidden shadow-xs">
+      <div className="bg-white border border-slate-200/90 rounded overflow-hidden shadow-xs">
         {isLoading ? (
           <div className="py-24 text-center text-slate-400 text-xs font-medium flex flex-col items-center justify-center gap-2">
             <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-            <span>Đang tải dữ liệu từ cơ sở dữ liệu...</span>
+            <span>{t('examGroups.loading')}</span>
           </div>
         ) : allExams.length === 0 ? (
           /* Empty DB state */
           <div className="py-16 px-4 text-center">
-            <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-3">
+            <div className="w-12 h-12 rounded bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-3">
               <FileText className="h-6 w-6" />
             </div>
             <h3 className="text-sm font-bold text-slate-800">
@@ -394,7 +380,7 @@ export default function AssessmentPage() {
             <div className="flex items-center justify-center">
               <Link
                 href={`/${locale}/assessment/create`}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold cursor-pointer inline-flex items-center gap-1.5 shadow-sm"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold cursor-pointer inline-flex items-center gap-1.5 shadow-sm"
               >
                 <Plus className="h-4 w-4" />
                 <span>{t('createExam')}</span>
@@ -404,7 +390,7 @@ export default function AssessmentPage() {
         ) : filteredExams.length === 0 ? (
           /* No filter match state */
           <div className="py-16 px-4 text-center">
-            <div className="w-12 h-12 rounded-xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
+            <div className="w-12 h-12 rounded bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
               <Search className="h-6 w-6" />
             </div>
             <h3 className="text-sm font-bold text-slate-800">
@@ -416,7 +402,7 @@ export default function AssessmentPage() {
             <button
               type="button"
               onClick={handleResetFilters}
-              className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer inline-flex items-center gap-1.5"
+              className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded text-xs font-semibold cursor-pointer inline-flex items-center gap-1.5"
             >
               <RotateCcw className="h-3.5 w-3.5" />
               <span>{t('filters.reset')}</span>
@@ -433,11 +419,8 @@ export default function AssessmentPage() {
                   <th className="py-3 px-3.5">
                     <span className="inline-flex items-center gap-0.5">{t('table.name')} <ArrowUpDown className="h-3 w-3 text-slate-400" /></span>
                   </th>
-                  <th className="py-3 px-3.5 text-center w-28">
-                    <span className="inline-flex items-center gap-0.5">{t('table.type')} <ArrowUpDown className="h-3 w-3 text-slate-400" /></span>
-                  </th>
-                  <th className="py-3 px-3.5 text-center w-28">
-                    <span className="inline-flex items-center gap-0.5">{t('table.mode')} <ArrowUpDown className="h-3 w-3 text-slate-400" /></span>
+                  <th className="py-3 px-3.5 text-center w-32">
+                    <span className="inline-flex items-center gap-0.5">{t('table.totalQuestions')} <ArrowUpDown className="h-3 w-3 text-slate-400" /></span>
                   </th>
                   <th className="py-3 px-3.5 text-center w-28">
                     <span className="inline-flex items-center gap-0.5">{t('table.duration')} <ArrowUpDown className="h-3 w-3 text-slate-400" /></span>
@@ -456,8 +439,7 @@ export default function AssessmentPage() {
               <tbody className="divide-y divide-slate-100 text-xs">
                 {paginatedExams.map((exam, idx) => {
                   const globalIdx = (currentPage - 1) * pageSize + idx + 1;
-                  const sec = exam.section || (exam.mode === 'FULL_TEST' ? 'FULL_TEST' : 'LISTENING');
-                  const examStatus = exam.status || (exam.isActive ? 'ACTIVE' : 'INACTIVE');
+                  const examStatus = exam.isActive ? 'ACTIVE' : 'INACTIVE';
 
                   return (
                     <tr
@@ -472,7 +454,7 @@ export default function AssessmentPage() {
                       {/* Tên đề with File icon */}
                       <td className="py-3 px-3.5">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                          <div className="w-8 h-8 rounded bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
                             <FileText className="h-4 w-4" />
                           </div>
                           <div className="min-w-0">
@@ -482,54 +464,34 @@ export default function AssessmentPage() {
                             >
                               {exam.name}
                             </Link>
-                            <div className="text-slate-400 text-[11px] mt-0.5 truncate">
-                              {exam.description || (
-                                sec === 'LISTENING'
-                                  ? '100 câu hỏi • Part 1–4'
-                                  : sec === 'READING'
-                                  ? '100 câu hỏi • Part 5–7'
-                                  : '200 câu hỏi • Part 1–7'
+                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                              {(exam.group?.name || (exam as any).groupId?.name) && (
+                                <Link
+                                  href={`/${locale}/assessment/groups/${(exam.group?._id || (exam as any).groupId?._id || exam.groupId)}`}
+                                  className="inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.2 rounded hover:bg-indigo-100 transition-colors shrink-0"
+                                >
+                                  <Layers className="h-2.5 w-2.5" />
+                                  <span>{exam.group?.name || (exam as any).groupId?.name}</span>
+                                </Link>
                               )}
+                              <span className="text-slate-400 text-[11px] truncate">
+                                {exam.description || '200 câu hỏi • Part 1–7'}
+                              </span>
                             </div>
                           </div>
                         </div>
                       </td>
 
-                      {/* Type Badge */}
+                      {/* Total Questions */}
                       <td className="py-3 px-3.5 text-center">
-                        {sec === 'LISTENING' && (
-                          <span className="inline-block px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider rounded bg-blue-50 text-blue-600 border border-blue-100">
-                            LISTENING
-                          </span>
-                        )}
-                        {sec === 'READING' && (
-                          <span className="inline-block px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider rounded bg-emerald-50 text-emerald-600 border border-emerald-100">
-                            READING
-                          </span>
-                        )}
-                        {sec === 'FULL_TEST' && (
-                          <span className="inline-block px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider rounded bg-purple-50 text-purple-600 border border-purple-100">
-                            FULL_TEST
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Mode Badge */}
-                      <td className="py-3 px-3.5 text-center">
-                        {exam.mode === 'FULL_TEST' ? (
-                          <span className="inline-block px-2 py-0.5 text-[11px] font-semibold uppercase rounded bg-blue-50 text-blue-700 border border-blue-200">
-                            FULL TEST
-                          </span>
-                        ) : (
-                          <span className="inline-block px-2 py-0.5 text-[11px] font-semibold uppercase rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            PRACTICE
-                          </span>
-                        )}
+                        <span className="inline-block px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider rounded bg-blue-50 text-blue-700 border border-blue-100">
+                          {exam.totalQuestions || 200} câu (Part 1–7)
+                        </span>
                       </td>
 
                       {/* Thời gian */}
                       <td className="py-3 px-3.5 text-center font-medium text-slate-700">
-                        {exam.durationMinutes || (sec === 'FULL_TEST' ? 120 : sec === 'READING' ? 75 : 45)} {t('table.minutes')}
+                        {exam.durationMinutes || 120} {t('table.minutes')}
                       </td>
 
                       {/* Thứ tự */}
@@ -559,13 +521,13 @@ export default function AssessmentPage() {
                           <DropdownMenuTrigger asChild>
                             <button
                               type="button"
-                              className="h-8 w-8 mx-auto rounded-lg border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+                              className="h-8 w-8 mx-auto rounded border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
                               title={t('actions.options')}
                             >
                               <MoreHorizontal className="h-4 w-4" />
                             </button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-lg">
+                          <DropdownMenuContent align="end" className="w-48 rounded shadow-lg border border-slate-200">
                             {/* Xem chi tiết */}
                             <DropdownMenuItem asChild className="cursor-pointer text-xs flex items-center gap-2 py-2">
                               <Link href={`/${locale}/assessment/${exam._id}`}>
@@ -664,7 +626,7 @@ export default function AssessmentPage() {
                 type="button"
                 onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
                 disabled={currentPage === 1}
-                className="w-7 h-7 rounded-lg border border-slate-200 flex items-center justify-center hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                className="w-7 h-7 rounded border border-slate-200 flex items-center justify-center hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 <ChevronLeft className="h-3.5 w-3.5 text-slate-600" />
               </button>
@@ -675,7 +637,7 @@ export default function AssessmentPage() {
                   key={page}
                   type="button"
                   onClick={() => setCurrentPage(page)}
-                  className={`w-7 h-7 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
+                  className={`w-7 h-7 rounded text-xs font-semibold cursor-pointer transition-colors ${
                     currentPage === page
                       ? 'bg-blue-600 text-white'
                       : 'border border-slate-200 hover:bg-slate-50 text-slate-600'
@@ -690,7 +652,7 @@ export default function AssessmentPage() {
                 type="button"
                 onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
                 disabled={currentPage >= totalPages}
-                className="w-7 h-7 rounded-lg border border-slate-200 flex items-center justify-center hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                className="w-7 h-7 rounded border border-slate-200 flex items-center justify-center hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 <ChevronRight className="h-3.5 w-3.5 text-slate-600" />
               </button>
@@ -704,10 +666,10 @@ export default function AssessmentPage() {
                     setCurrentPage(1);
                   }}
                 >
-                  <SelectTrigger className="h-7 text-xs rounded-lg border-slate-200 bg-white">
+                  <SelectTrigger className="h-7 text-xs rounded border border-slate-200 bg-white">
                     <SelectValue placeholder="8 / trang" />
                   </SelectTrigger>
-                  <SelectContent className="text-xs">
+                  <SelectContent className="text-xs rounded border border-slate-200 bg-white">
                     <SelectItem value="8">8 / {t('pagination.page')}</SelectItem>
                     <SelectItem value="10">10 / {t('pagination.page')}</SelectItem>
                     <SelectItem value="20">20 / {t('pagination.page')}</SelectItem>

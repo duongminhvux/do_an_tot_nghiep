@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
+import { HydratedDocument, Types } from 'mongoose';
 
 export type ExamDocument = HydratedDocument<Exam>;
 
@@ -24,18 +24,6 @@ export class Exam {
   type: 'TOEIC' | 'IELTS';
 
   @Prop({
-    required: true,
-    enum: ['PRACTICE', 'FULL_TEST'],
-  })
-  mode: 'PRACTICE' | 'FULL_TEST';
-
-  @Prop({
-    enum: ['LISTENING', 'READING', 'FULL_TEST'],
-    default: 'FULL_TEST',
-  })
-  section?: 'LISTENING' | 'READING' | 'FULL_TEST';
-
-  @Prop({
     default: 0,
     min: 0,
   })
@@ -58,16 +46,17 @@ export class Exam {
   isActive: boolean;
 
   @Prop({
-    enum: ['ACTIVE', 'INACTIVE', 'ARCHIVED'],
-    default: 'ACTIVE',
-  })
-  status?: 'ACTIVE' | 'INACTIVE' | 'ARCHIVED';
-
-  @Prop({
     default: 0,
     min: 0,
   })
   order: number;
+
+  @Prop({
+    type: Types.ObjectId,
+    ref: 'ExamGroup',
+    default: null,
+  })
+  groupId?: Types.ObjectId | null;
 
   @Prop({
     default: false,
@@ -85,3 +74,4 @@ ExamSchema.index(
   { slug: 1 },
   { unique: true, partialFilterExpression: { isDeleted: { $ne: true } } },
 );
+ExamSchema.index({ groupId: 1 });

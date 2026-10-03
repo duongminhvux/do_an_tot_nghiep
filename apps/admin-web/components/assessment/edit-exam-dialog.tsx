@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { examService } from '@/services/assessment.service';
-import { ExamItem, ExamMode, ExamSection, ExamType, UpdateExamDto } from '@/types';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { examService, examGroupService } from '@/services/assessment.service';
+import { ExamGroupItem, ExamItem, ExamType, UpdateExamDto } from '@/types';
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,13 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface EditExamDialogProps {
   open: boolean;
@@ -28,26 +35,37 @@ export function EditExamDialog({
   const queryClient = useQueryClient();
 
   const [name, setName] = useState('');
+  const [groupId, setGroupId] = useState('');
   const [type, setType] = useState<ExamType>('TOEIC');
-  const [section, setSection] = useState<ExamSection>('LISTENING');
-  const [durationMinutes, setDurationMinutes] = useState<number>(45);
-  const [totalQuestions, setTotalQuestions] = useState<number>(100);
+  const [durationMinutes, setDurationMinutes] = useState<number>(120);
+  const [totalQuestions, setTotalQuestions] = useState<number>(200);
   const [description, setDescription] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Query groups for selection
+  const { data: groupsResponse } = useQuery({
+    queryKey: ['admin-exam-groups-select'],
+    queryFn: async () => {
+      const res = await examGroupService.getAll({ limit: 100, isActive: true });
+      return res?.data;
+    },
+    enabled: open,
+  });
+  const groups: ExamGroupItem[] = groupsResponse?.data || [];
+
   useEffect(() => {
     if (exam) {
       setName(exam.name || '');
+      setGroupId((exam.groupId as any) || (exam.group?._id as any) || '');
       setType(exam.type || 'TOEIC');
-      setSection(exam.section || (exam.mode === 'FULL_TEST' ? 'FULL_TEST' : 'LISTENING'));
-      setDurationMinutes(exam.durationMinutes || 0);
-      setTotalQuestions(exam.totalQuestions || (exam.section === 'FULL_TEST' ? 200 : 100));
+      setDurationMinutes(exam.durationMinutes || 120);
+      setTotalQuestions(exam.totalQuestions || 200);
       setDescription(exam.description || '');
-      setIsActive(exam.isActive !== undefined ? exam.isActive : true);
+      setIsActive(exam.isActive ?? true);
       setErrorMessage(null);
     }
-  }, [exam]);
+  }, [exam, open]);
 
   const updateMutation = useMutation({
     mutationFn: async (dto: UpdateExamDto) => {
@@ -57,6 +75,7 @@ export function EditExamDialog({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-exams'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-exam-groups'] });
       onOpenChange(false);
     },
     onError: (err: any) => {
@@ -75,15 +94,12 @@ export function EditExamDialog({
       return;
     }
 
-    const mode: ExamMode = section === 'FULL_TEST' ? 'FULL_TEST' : 'PRACTICE';
-
     updateMutation.mutate({
       name: trimmedName,
+      groupId: groupId ? groupId : null,
       type,
-      mode,
-      section,
-      durationMinutes: Number(durationMinutes) || 0,
-      totalQuestions: Number(totalQuestions) || 0,
+      durationMinutes: Number(durationMinutes) || 120,
+      totalQuestions: Number(totalQuestions) || 200,
       description: description.trim(),
       isActive,
     });
@@ -122,46 +138,29 @@ export function EditExamDialog({
             />
           </div>
 
-          {/* Phân loại đề thi (Pills) */}
+          {/* Nhóm đề thi */}
           <div className="space-y-1">
             <label className="text-xs font-semibold text-slate-700">
-              {t('editDialog.classificationLabel')} <span className="text-red-500">*</span>
+              {t('examGroups.groupSelectLabel')}
             </label>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => setSection('LISTENING')}
-                className={`py-1.5 px-3 text-xs font-semibold rounded border transition-all text-center cursor-pointer ${
-                  section === 'LISTENING'
-                    ? 'bg-blue-50 border-blue-500 text-blue-700'
-                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                {t('editDialog.listening')}
-              </button>
-              <button
-                type="button"
-                onClick={() => setSection('READING')}
-                className={`py-1.5 px-3 text-xs font-semibold rounded border transition-all text-center cursor-pointer ${
-                  section === 'READING'
-                    ? 'bg-emerald-50 border-emerald-500 text-emerald-700'
-                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                {t('editDialog.reading')}
-              </button>
-              <button
-                type="button"
-                onClick={() => setSection('FULL_TEST')}
-                className={`py-1.5 px-3 text-xs font-semibold rounded border transition-all text-center cursor-pointer ${
-                  section === 'FULL_TEST'
-                    ? 'bg-purple-50 border-purple-500 text-purple-700'
-                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                {t('editDialog.fullTest')}
-              </button>
-            </div>
+            <Select
+              value={groupId || 'none'}
+              onValueChange={(val) => setGroupId(val === 'none' ? '' : val)}
+            >
+              <SelectTrigger className="w-full h-8 px-2.5 rounded border border-slate-300 text-xs focus:outline-none focus:border-blue-500 text-slate-900 bg-white">
+                <SelectValue placeholder={t('examGroups.groupSelectPlaceholder')} />
+              </SelectTrigger>
+              <SelectContent className="rounded border border-slate-200 bg-white">
+                <SelectItem value="none" className="text-xs">
+                  {t('examGroups.groupSelectPlaceholder')}
+                </SelectItem>
+                {groups.map((g) => (
+                  <SelectItem key={g._id} value={g._id} className="text-xs">
+                    {g.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Row: Thời gian & Tổng số câu */}

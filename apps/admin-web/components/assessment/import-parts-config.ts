@@ -1,3 +1,4 @@
+import { parseImportText } from '@repo/shared-types/assessment-import';
 import { QuestionItem } from '@/types';
 
 export interface ExamPartConfig {
@@ -27,7 +28,9 @@ export interface ExamPartConfig {
   formatRules: string[];
   formatRulesEn: string[];
   sampleText: string;
+  sampleTextEn?: string;
   blankTemplate: string;
+  blankTemplateEn?: string;
 }
 
 export function getAvailableParts(
@@ -101,15 +104,69 @@ Answer: B
 
 Explanation:
 Các thành viên đang ngồi họp xung quanh bàn làm việc lớn.`,
-        blankTemplate: `[Thứ tự câu]. [Nội dung câu hỏi]
-Image: [Link ảnh nếu có]
-Audio: [Link file nghe audio nếu có]
+        sampleTextEn: `1. Look at the photo and choose the best statement.
+Image: https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80
+Audio: https://example.com/audio/toeic_p1_01.mp3
+A. A man is writing in a notebook.
+B. A man is speaking on the telephone.
+C. A man is adjusting his glasses.
+D. A man is organizing his desk.
+
+Answer: B
+
+Explanation:
+In the photo, the man is holding the telephone receiver and speaking in an office.
+
+2. Look at the photo and choose the best statement.
+Image: https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=800&q=80
+Audio: https://example.com/audio/toeic_p1_02.mp3
+A. Some people are walking down the staircase.
+B. People are seated around a conference table.
+C. A presenter is writing on the whiteboard.
+D. The meeting room is completely empty.
+
+Answer: B
+
+Explanation:
+Team members are seated around a conference table for a meeting.`,
+        blankTemplate: `1. [Nội dung câu hỏi 1]
+Image: [Link ảnh câu 1]
+Audio: [Link audio nếu có]
+A. [Phương án A]
+B. [Phương án B]
+C. [Phương án C]
+D. [Phương án D]
+Answer: [Đáp án đúng A/B/C/D]
+Explanation: [Giải thích chi tiết]
+
+2. [Nội dung câu hỏi 2]
+Image: [Link ảnh câu 2]
+Audio: [Link audio nếu có]
 A. [Phương án A]
 B. [Phương án B]
 C. [Phương án C]
 D. [Phương án D]
 Answer: [Đáp án đúng A/B/C/D]
 Explanation: [Giải thích chi tiết]`,
+        blankTemplateEn: `1. [Question sentence 1]
+Image: [Image URL for question 1]
+Audio: [Audio URL if available]
+A. [Option A]
+B. [Option B]
+C. [Option C]
+D. [Option D]
+Answer: [Correct answer A/B/C/D]
+Explanation: [Detailed explanation]
+
+2. [Question sentence 2]
+Image: [Image URL for question 2]
+Audio: [Audio URL if available]
+A. [Option A]
+B. [Option B]
+C. [Option C]
+D. [Option D]
+Answer: [Correct answer A/B/C/D]
+Explanation: [Detailed explanation]`,
       },
       {
         id: 2,
@@ -170,13 +227,57 @@ Answer: A
 
 Explanation:
 Câu đề nghị lịch sự ("Could you please..."), đáp án A nhận lời phù hợp ("Yes, I will look at it...").`,
-        blankTemplate: `[Thứ tự câu]. [Nội dung câu hỏi/câu phát biểu]
-Audio: [Link audio]
+        sampleTextEn: `7. Where is the quarterly marketing conference being held?
+Audio: https://example.com/audio/toeic_p2_01.mp3
+A. At the Grand Plaza Hotel in Chicago.
+B. No, I haven't submitted the report yet.
+C. Yes, it starts at 9:00 AM tomorrow.
+
+Answer: A
+
+Explanation:
+The question asks about location ("Where"), choice A directly answers with the hotel venue name ("At the Grand Plaza Hotel").
+
+8. Could you please review this draft contract before noon?
+Audio: https://example.com/audio/toeic_p2_02.mp3
+A. Yes, I will look at it right after this meeting.
+B. About fifteen pages long.
+C. In the conference room on the second floor.
+
+Answer: A
+
+Explanation:
+This is a polite request ("Could you please..."), and choice A responds appropriately by accepting the request.`,
+        blankTemplate: `7. [Nội dung câu hỏi hoặc phát biểu 1]
+Audio: [Link audio câu 7]
 A. [Phản hồi A]
 B. [Phản hồi B]
 C. [Phản hồi C]
-Answer: [A, B hoặc C]
+Answer: [Đáp án A, B hoặc C]
+Explanation: [Giải thích]
+
+8. [Nội dung câu hỏi hoặc phát biểu 2]
+Audio: [Link audio câu 8]
+A. [Phản hồi A]
+B. [Phản hồi B]
+C. [Phản hồi C]
+Answer: [Đáp án A, B hoặc C]
 Explanation: [Giải thích]`,
+        blankTemplateEn: `7. [Question or prompt statement 1]
+Audio: [Audio URL for question 7]
+A. [Response A]
+B. [Response B]
+C. [Response C]
+Answer: [Correct answer A, B, or C]
+Explanation: [Explanation]
+
+8. [Question or prompt statement 2]
+Audio: [Audio URL for question 8]
+A. [Response A]
+B. [Response B]
+C. [Response C]
+Answer: [Correct answer A, B, or C]
+Explanation: [Explanation]`,
       },
       {
         id: 3,
@@ -203,18 +304,20 @@ Explanation: [Giải thích]`,
         exerciseTypeDesc: 'Mỗi đoạn hội thoại đi kèm đúng chùm 3 câu hỏi liên tiếp. Có file Audio và Transcript.',
         exerciseTypeDescEn: 'Each dialogue comes with a cluster of 3 questions, an Audio file, and optional Transcript.',
         formatRules: [
-          'Mở đầu bằng Passage: để khai báo đoạn hội thoại chung.',
+          'Mở đầu mỗi bài tập bằng Passage: (hoặc [PASSAGE]).',
           'Dòng Title: [Tiêu đề hoặc ngữ cảnh của đoạn hội thoại].',
           'Dòng Audio: https://... (File nghe chung cho cả 3 câu hỏi).',
           'Dòng Transcript: [Lời thoại giữa các nhân vật Man/Woman].',
           'Ngay bên dưới là chùm 3 câu hỏi liên tiếp (mỗi câu gồm 4 đáp án A, B, C, D, Answer và Explanation).',
+          'Tự động tách thành các bài tập riêng biệt khi có nhiều đoạn hội thoại liên tiếp (có thể dùng thêm --- giữa các bài).',
         ],
         formatRulesEn: [
-          'Start with Passage: to declare the shared conversation.',
+          'Start each exercise with Passage: (or [PASSAGE]).',
           'Title: [Topic / context of conversation].',
           'Audio: https://... (Shared audio file for the 3 questions).',
           'Transcript: [Dialogue script between speakers].',
           'Follow with exactly 3 consecutive questions (each with options A, B, C, D, Answer, and Explanation).',
+          'Automatically splits into distinct exercises for multiple conversations (can use --- as optional separator).',
         ],
         sampleText: `Passage:
 Title: Cuộc đối thoại về đặt vé máy bay công tác
@@ -256,37 +359,256 @@ D. Review the client contract
 Answer: A
 
 Explanation:
-Người phụ nữ nói: "I will book the 2:00 PM flight right away".`,
-        blankTemplate: `Passage:
-Title: [Tiêu đề cuộc hội thoại]
-Audio: [Link audio đoạn hội thoại]
+Người phụ nữ nói: "I will book the 2:00 PM flight right away".
+
+---
+
+Passage:
+Title: Cuộc họp trao đổi tiến độ hoàn thiện văn phòng
+Audio: https://example.com/audio/toeic_p3_02.mp3
 Transcript:
-[Lời thoại nhân vật 1]
-[Lời thoại nhân vật 2]
+Woman: Mark, have you heard back from the contractors regarding the office renovation timeline?
+Man: Yes, they confirmed that the main painting and flooring will wrap up by Wednesday.
+Woman: That sounds great! That gives us plenty of time to set up the computer workstations before Monday.
 
-[Câu 1]. [Nội dung câu hỏi 1]
+35. What project are the speakers discussing?
+A. An office renovation
+B. A software migration
+C. A company merger
+D. A marketing campaign
+
+Answer: A
+
+Explanation:
+Người phụ nữ hỏi: "have you heard back from the contractors regarding the office renovation timeline".
+
+36. When will the main work finish?
+A. On Monday
+B. On Wednesday
+C. On Friday
+D. Next month
+
+Answer: B
+
+Explanation:
+Người đàn ông trả lời: "they confirmed that the main painting and flooring will wrap up by Wednesday".
+
+37. What will the speakers do before Monday?
+A. Hire new contractors
+B. Order office furniture
+C. Set up computer workstations
+D. Send invoices to clients
+
+Answer: C
+
+Explanation:
+Người phụ nữ nói: "That gives us plenty of time to set up the computer workstations before Monday".`,
+        sampleTextEn: `Passage:
+Title: Conversation regarding business flight reservations
+Audio: https://example.com/audio/toeic_p3_01.mp3
+Transcript:
+Man: Hi Sarah, did you manage to book the flights for our business trip to Singapore next Monday?
+Woman: Not yet, David. The morning flights were completely sold out, so I'm looking at afternoon departures.
+Man: That's fine as long as we arrive before the evening dinner with our clients.
+Woman: Perfect, I will book the 2:00 PM flight right away and send you the confirmation email.
+
+32. What are the speakers discussing?
+A. Rescheduling a client dinner
+B. Booking travel arrangements
+C. Applying for a business visa
+D. Preparing a presentation for Singapore
+
+Answer: B
+
+Explanation:
+The man asks "did you manage to book the flights for our business trip", so travel arrangement is the topic.
+
+33. What problem does the woman mention?
+A. The flight prices are too high
+B. The office printer is broken
+C. Morning flights are unavailable
+D. Her passport has expired
+
+Answer: C
+
+Explanation:
+The woman explains: "The morning flights were completely sold out".
+
+34. What will the woman do next?
+A. Book a 2:00 PM flight
+B. Call the hotel receptionist
+C. Cancel the evening meeting
+D. Review the client contract
+
+Answer: A
+
+Explanation:
+The woman states: "I will book the 2:00 PM flight right away".
+
+---
+
+Passage:
+Title: Meeting discussion regarding office renovation timeline
+Audio: https://example.com/audio/toeic_p3_02.mp3
+Transcript:
+Woman: Mark, have you heard back from the contractors regarding the office renovation timeline?
+Man: Yes, they confirmed that the main painting and flooring will wrap up by Wednesday.
+Woman: That sounds great! That gives us plenty of time to set up the computer workstations before Monday.
+
+35. What project are the speakers discussing?
+A. An office renovation
+B. A software migration
+C. A company merger
+D. A marketing campaign
+
+Answer: A
+
+Explanation:
+The woman asks about "the office renovation timeline".
+
+36. When will the main work finish?
+A. On Monday
+B. On Wednesday
+C. On Friday
+D. Next month
+
+Answer: B
+
+Explanation:
+The man confirms: "the main painting and flooring will wrap up by Wednesday".
+
+37. What will the speakers do before Monday?
+A. Hire new contractors
+B. Order office furniture
+C. Set up computer workstations
+D. Send invoices to clients
+
+Answer: C
+
+Explanation:
+The woman says: "That gives us plenty of time to set up the computer workstations before Monday".`,
+        blankTemplate: `Passage:
+Title: [Tiêu đề cuộc hội thoại 1]
+Audio: [Link audio cuộc hội thoại 1]
+Transcript:
+[Lời thoại hội thoại 1]
+
+32. [Nội dung câu hỏi 1]
 A. [Phương án A]
 B. [Phương án B]
 C. [Phương án C]
 D. [Phương án D]
-Answer: [Đáp án]
+Answer: [Đáp án đúng]
 Explanation: [Giải thích]
 
-[Câu 2]. [Nội dung câu hỏi 2]
+33. [Nội dung câu hỏi 2]
 A. [Phương án A]
 B. [Phương án B]
 C. [Phương án C]
 D. [Phương án D]
-Answer: [Đáp án]
+Answer: [Đáp án đúng]
 Explanation: [Giải thích]
 
-[Câu 3]. [Nội dung câu hỏi 3]
+34. [Nội dung câu hỏi 3]
 A. [Phương án A]
 B. [Phương án B]
 C. [Phương án C]
 D. [Phương án D]
-Answer: [Đáp án]
+Answer: [Đáp án đúng]
+Explanation: [Giải thích]
+
+---
+
+Passage:
+Title: [Tiêu đề cuộc hội thoại 2]
+Audio: [Link audio cuộc hội thoại 2]
+Transcript:
+[Lời thoại hội thoại 2]
+
+35. [Nội dung câu hỏi 4]
+A. [Phương án A]
+B. [Phương án B]
+C. [Phương án C]
+D. [Phương án D]
+Answer: [Đáp án đúng]
+Explanation: [Giải thích]
+
+36. [Nội dung câu hỏi 5]
+A. [Phương án A]
+B. [Phương án B]
+C. [Phương án C]
+D. [Phương án D]
+Answer: [Đáp án đúng]
+Explanation: [Giải thích]
+
+37. [Nội dung câu hỏi 6]
+A. [Phương án A]
+B. [Phương án B]
+C. [Phương án C]
+D. [Phương án D]
+Answer: [Đáp án đúng]
 Explanation: [Giải thích]`,
+        blankTemplateEn: `Passage:
+Title: [Conversation 1 Title / Topic]
+Audio: [Audio URL for conversation 1]
+Transcript:
+[Dialogue script 1]
+
+32. [Question 1 content]
+A. [Option A]
+B. [Option B]
+C. [Option C]
+D. [Option D]
+Answer: [Correct answer]
+Explanation: [Explanation]
+
+33. [Question 2 content]
+A. [Option A]
+B. [Option B]
+C. [Option C]
+D. [Option D]
+Answer: [Correct answer]
+Explanation: [Explanation]
+
+34. [Question 3 content]
+A. [Option A]
+B. [Option B]
+C. [Option C]
+D. [Option D]
+Answer: [Correct answer]
+Explanation: [Explanation]
+
+---
+
+Passage:
+Title: [Conversation 2 Title / Topic]
+Audio: [Audio URL for conversation 2]
+Transcript:
+[Dialogue script 2]
+
+35. [Question 4 content]
+A. [Option A]
+B. [Option B]
+C. [Option C]
+D. [Option D]
+Answer: [Correct answer]
+Explanation: [Explanation]
+
+36. [Question 5 content]
+A. [Option A]
+B. [Option B]
+C. [Option C]
+D. [Option D]
+Answer: [Correct answer]
+Explanation: [Explanation]
+
+37. [Question 6 content]
+A. [Option A]
+B. [Option B]
+C. [Option C]
+D. [Option D]
+Answer: [Correct answer]
+Explanation: [Explanation]`,
       },
       {
         id: 4,
@@ -313,18 +635,20 @@ Explanation: [Giải thích]`,
         exerciseTypeDesc: 'Mỗi bài nói độc thoại đi kèm chùm 3 câu hỏi liên tiếp. Có file Audio và Transcript.',
         exerciseTypeDescEn: 'Each monologue comes with a cluster of 3 questions, an Audio file, and Transcript.',
         formatRules: [
-          'Mở đầu bằng Passage: để khai báo bài nói chung.',
+          'Mở đầu mỗi bài tập bằng Passage: (hoặc [PASSAGE]).',
           'Dòng Title: [Tiêu đề bài nói (Thông báo, tin tức, tin nhắn thoại...)].',
           'Dòng Audio: https://... (File nghe chung cho cả 3 câu hỏi).',
           'Dòng Transcript: [Nội dung bài nói độc thoại].',
           'Kèm theo chùm 3 câu hỏi liên tiếp (mỗi câu gồm 4 đáp án A, B, C, D, Answer và Explanation).',
+          'Tự động tách thành các bài tập riêng biệt khi có nhiều bài nói liên tiếp (có thể dùng thêm --- giữa các bài).',
         ],
         formatRulesEn: [
-          'Start with Passage: to declare the monologue talk.',
+          'Start each exercise with Passage: (or [PASSAGE]).',
           'Title: [Topic of talk (Announcement, news, voicemail...)].',
           'Audio: https://... (Shared audio file).',
           'Transcript: [Script of monologue].',
           'Follow with a cluster of 3 consecutive questions with options A, B, C, D, Answer, and Explanation.',
+          'Automatically splits into distinct exercises for multiple talks (can use --- as optional separator).',
         ],
         sampleText: `Passage:
 Title: Thông báo bảo trì hệ thống mạng nội bộ
@@ -363,36 +687,249 @@ D. Turn off the office lights
 Answer: C
 
 Explanation:
-Người nói nhắc nhở: "Please make sure to save all in-progress files locally before leaving on Friday afternoon".`,
-        blankTemplate: `Passage:
-Title: [Tiêu đề bài nói]
-Audio: [Link audio bài nói]
+Người nói nhắc nhở: "Please make sure to save all in-progress files locally before leaving on Friday afternoon".
+
+---
+
+Passage:
+Title: Thông báo giới thiệu diễn giả hội thảo năng lượng sạch
+Audio: https://example.com/audio/toeic_p4_02.mp3
 Transcript:
-[Nội dung bài nói độc thoại]
+Welcome everyone to the annual Green Energy Symposium. It is my great honor to introduce our keynote speaker, Dr. Elena Rostova. Dr. Rostova has spent the past fifteen years researching solar panel efficiency and has published numerous books on sustainable urban architecture. Today, she will discuss affordable clean power solutions for municipal buildings. Please silence your mobile phones and join me in welcoming Dr. Rostova.
 
-[Câu 1]. [Nội dung câu hỏi 1]
+74. Where is the announcement most likely taking place?
+A. At a green energy symposium
+B. At a library book signing
+C. At a construction jobsite
+D. In a city council election hall
+
+Answer: A
+
+Explanation:
+Người nói chào mừng: "Welcome everyone to the annual Green Energy Symposium".
+
+75. What field has Dr. Rostova researched for 15 years?
+A. High-speed rail transport
+B. Solar panel efficiency
+C. Waste management recycling
+D. Water purification systems
+
+Answer: B
+
+Explanation:
+Đoạn băng nêu rõ: "Dr. Rostova has spent the past fifteen years researching solar panel efficiency".
+
+76. What are attendees asked to do?
+A. Fill out an evaluation form
+B. Purchase a signed book
+C. Silence their mobile phones
+D. Relocate to the main auditorium
+
+Answer: C
+
+Explanation:
+Người nói nhắc nhở: "Please silence your mobile phones".`,
+        sampleTextEn: `Passage:
+Title: Announcement regarding internal network server maintenance
+Audio: https://example.com/audio/toeic_p4_01.mp3
+Transcript:
+Attention all staff members. This is an announcement from the IT Department. Our internal server network will undergo scheduled maintenance this Saturday from 8:00 AM to 4:00 PM. During this period, remote access to email and shared company folders will be temporarily suspended. Please make sure to save all in-progress files locally before leaving on Friday afternoon. If you experience any persistent issues on Monday morning, please contact the IT Helpdesk at extension 404.
+
+71. Who most likely is making the announcement?
+A. An IT department staff member
+B. The human resources director
+C. A building security officer
+D. A customer service representative
+
+Answer: A
+
+Explanation:
+The speaker introduces: "This is an announcement from the IT Department".
+
+72. What will happen on Saturday?
+A. The office will host a client orientation
+B. Scheduled network maintenance will take place
+C. A fire drill will be conducted
+D. New computers will be delivered
+
+Answer: B
+
+Explanation:
+The speaker states: "Our internal server network will undergo scheduled maintenance this Saturday".
+
+73. What are listeners instructed to do before Friday afternoon?
+A. Change their computer passwords
+B. Submit their weekly timesheets
+C. Save important files locally
+D. Turn off the office lights
+
+Answer: C
+
+Explanation:
+The speaker advises: "Please make sure to save all in-progress files locally before leaving on Friday afternoon".
+
+---
+
+Passage:
+Title: Introduction of keynote speaker at Clean Energy Symposium
+Audio: https://example.com/audio/toeic_p4_02.mp3
+Transcript:
+Welcome everyone to the annual Green Energy Symposium. It is my great honor to introduce our keynote speaker, Dr. Elena Rostova. Dr. Rostova has spent the past fifteen years researching solar panel efficiency and has published numerous books on sustainable urban architecture. Today, she will discuss affordable clean power solutions for municipal buildings. Please silence your mobile phones and join me in welcoming Dr. Rostova.
+
+74. Where is the announcement most likely taking place?
+A. At a green energy symposium
+B. At a library book signing
+C. At a construction jobsite
+D. In a city council election hall
+
+Answer: A
+
+Explanation:
+The speaker welcomes attendees to the "annual Green Energy Symposium".
+
+75. What field has Dr. Rostova researched for 15 years?
+A. High-speed rail transport
+B. Solar panel efficiency
+C. Waste management recycling
+D. Water purification systems
+
+Answer: B
+
+Explanation:
+The script indicates: "Dr. Rostova has spent the past fifteen years researching solar panel efficiency".
+
+76. What are attendees asked to do?
+A. Fill out an evaluation form
+B. Purchase a signed book
+C. Silence their mobile phones
+D. Relocate to the main auditorium
+
+Answer: C
+
+Explanation:
+The speaker requests: "Please silence your mobile phones".`,
+        blankTemplate: `Passage:
+Title: [Tiêu đề bài nói 1]
+Audio: [Link audio bài nói 1]
+Transcript:
+[Nội dung bài nói độc thoại 1]
+
+71. [Nội dung câu hỏi 1]
 A. [Phương án A]
 B. [Phương án B]
 C. [Phương án C]
 D. [Phương án D]
-Answer: [Đáp án]
+Answer: [Đáp án đúng]
 Explanation: [Giải thích]
 
-[Câu 2]. [Nội dung câu hỏi 2]
+72. [Nội dung câu hỏi 2]
 A. [Phương án A]
 B. [Phương án B]
 C. [Phương án C]
 D. [Phương án D]
-Answer: [Đáp án]
+Answer: [Đáp án đúng]
 Explanation: [Giải thích]
 
-[Câu 3]. [Nội dung câu hỏi 3]
+73. [Nội dung câu hỏi 3]
 A. [Phương án A]
 B. [Phương án B]
 C. [Phương án C]
 D. [Phương án D]
-Answer: [Đáp án]
+Answer: [Đáp án đúng]
+Explanation: [Giải thích]
+
+---
+
+Passage:
+Title: [Tiêu đề bài nói 2]
+Audio: [Link audio bài nói 2]
+Transcript:
+[Nội dung bài nói độc thoại 2]
+
+74. [Nội dung câu hỏi 4]
+A. [Phương án A]
+B. [Phương án B]
+C. [Phương án C]
+D. [Phương án D]
+Answer: [Đáp án đúng]
+Explanation: [Giải thích]
+
+75. [Nội dung câu hỏi 5]
+A. [Phương án A]
+B. [Phương án B]
+C. [Phương án C]
+D. [Phương án D]
+Answer: [Đáp án đúng]
+Explanation: [Giải thích]
+
+76. [Nội dung câu hỏi 6]
+A. [Phương án A]
+B. [Phương án B]
+C. [Phương án C]
+D. [Phương án D]
+Answer: [Đáp án đúng]
 Explanation: [Giải thích]`,
+        blankTemplateEn: `Passage:
+Title: [Talk 1 Title]
+Audio: [Audio URL for talk 1]
+Transcript:
+[Monologue script 1]
+
+71. [Question 1 content]
+A. [Option A]
+B. [Option B]
+C. [Option C]
+D. [Option D]
+Answer: [Correct answer]
+Explanation: [Explanation]
+
+72. [Question 2 content]
+A. [Option A]
+B. [Option B]
+C. [Option C]
+D. [Option D]
+Answer: [Correct answer]
+Explanation: [Explanation]
+
+73. [Question 3 content]
+A. [Option A]
+B. [Option B]
+C. [Option C]
+D. [Option D]
+Answer: [Correct answer]
+Explanation: [Explanation]
+
+---
+
+Passage:
+Title: [Talk 2 Title]
+Audio: [Audio URL for talk 2]
+Transcript:
+[Monologue script 2]
+
+74. [Question 4 content]
+A. [Option A]
+B. [Option B]
+C. [Option C]
+D. [Option D]
+Answer: [Correct answer]
+Explanation: [Explanation]
+
+75. [Question 5 content]
+A. [Option A]
+B. [Option B]
+C. [Option C]
+D. [Option D]
+Answer: [Correct answer]
+Explanation: [Explanation]
+
+76. [Question 6 content]
+A. [Option A]
+B. [Option B]
+C. [Option C]
+D. [Option D]
+Answer: [Correct answer]
+Explanation: [Explanation]`,
       },
       {
         id: 5,
@@ -467,17 +1004,87 @@ Answer: A
 
 Explanation:
 "before Friday at 5:00 PM" chỉ mốc thời gian trước thời hạn quy định.`,
-        blankTemplate: `[Thứ tự câu]. [Câu văn chứa chỗ trống ______]
+        sampleTextEn: `101. The manager ______ the report yesterday.
+
+A. review
+B. reviewed
+C. reviewing
+D. reviews
+
+Answer: B
+
+Explanation:
+"Yesterday" indicates that the action happened in the past, so the simple past form "reviewed" is correct.
+
+102. Mr. Henderson was _______ promoted to Senior Marketing Director after the successful launch of the campaign.
+
+A. prompt
+B. promptly
+C. promptness
+D. prompted
+
+Answer: B
+
+Explanation:
+An adverb ("promptly") is required to modify the passive verb form "was promoted".
+
+103. All department managers must submit their annual budget proposals _______ Friday at 5:00 PM.
+
+A. before
+B. during
+C. among
+D. between
+
+Answer: A
+
+Explanation:
+"before Friday at 5:00 PM" specifies the deadline preceding the designated time.`,
+        blankTemplate: `101. [Nội dung câu văn có chỗ trống ______]
 
 A. [Phương án A]
 B. [Phương án B]
 C. [Phương án C]
 D. [Phương án D]
 
-Answer: [Đáp án]
+Answer: [Đáp án đúng A/B/C/D]
+
+Explanation:
+[Giải thích ngữ pháp/từ vựng]
+
+102. [Nội dung câu văn có chỗ trống ______]
+
+A. [Phương án A]
+B. [Phương án B]
+C. [Phương án C]
+D. [Phương án D]
+
+Answer: [Đáp án đúng A/B/C/D]
 
 Explanation:
 [Giải thích ngữ pháp/từ vựng]`,
+        blankTemplateEn: `101. [Sentence containing blank ______]
+
+A. [Option A]
+B. [Option B]
+C. [Option C]
+D. [Option D]
+
+Answer: [Correct answer A/B/C/D]
+
+Explanation:
+[Grammar or vocabulary explanation]
+
+102. [Sentence containing blank ______]
+
+A. [Option A]
+B. [Option B]
+C. [Option C]
+D. [Option D]
+
+Answer: [Correct answer A/B/C/D]
+
+Explanation:
+[Grammar or vocabulary explanation]`,
       },
       {
         id: 6,
@@ -504,23 +1111,22 @@ Explanation:
         exerciseTypeDesc: 'Mỗi bài đọc Part 6 có đúng 4 chỗ trống liên tiếp. Có thể dùng dạng văn bản hoặc ảnh chụp bài đọc.',
         exerciseTypeDescEn: 'Each Part 6 passage contains exactly 4 blanks. Can be text or scanned image.',
         formatRules: [
-          'Mở đầu bằng Passage: để khai báo bài đọc.',
-          'Dòng Title: [Tiêu đề bài viết, email, thư từ, thông báo nội bộ].',
-          'Dòng Content: [Nội dung đoạn văn chứa các chỗ trống [1], [2], [3], [4] hoặc [131], [132]...] (Hoặc Image: https://... nếu là ảnh bài đọc).',
-          'Ngay sau đó là đúng chùm 4 câu hỏi liên tiếp tương ứng với 4 chỗ trống.',
-          'Mỗi câu hỏi có 4 phương án A, B, C, D, Answer và Explanation.',
-          'Có thể nhập nhiều đoạn văn liên tiếp cùng lúc (Đoạn văn 1 kèm chùm 4 câu hỏi, Đoạn văn 2 kèm chùm 4 câu hỏi...).',
+          'Mỗi bài tập gồm 1 đoạn văn và chùm 4 câu hỏi đi kèm (phân cách giữa các bài tập bằng --- hoặc [BÀI TẬP]).',
+          'Mở đầu bài đọc bằng: Passage: (hoặc [PASSAGE]).',
+          'Tiêu đề bài đọc sẽ tự động sinh chuẩn theo dải câu hỏi (ví dụ: Questions 131-134 (Part 6 Text Completion)), không cần khai báo dòng Title.',
+          'Dòng Content: [Nội dung đoạn văn chứa các chỗ trống [1], [2]...] (Hoặc Image: https://... nếu là ảnh bài đọc).',
+          'Ngay sau đó là 4 câu hỏi thuộc bài tập đó (mỗi câu có A, B, C, D, Answer và Explanation).',
+          'Hệ thống tự động tách mỗi đoạn thành 1 bài tập riêng biệt khi nhập nhiều đoạn liên tiếp.',
         ],
         formatRulesEn: [
-          'Start with Passage: to declare the reading text.',
-          'Title: [Passage title: Email, Memo, Letter...].',
-          'Content: [Passage content with blanks [1], [2], [3], [4]] (or Image: https://...).',
-          'Follow with exactly 4 consecutive questions for the 4 blanks.',
-          'Each question has choices A, B, C, D, Answer, and Explanation.',
-          'Supports multiple consecutive passages in a single import (Passage 1 with 4 questions, Passage 2 with 4 questions...).',
+          'Each exercise consists of 1 passage and its 4 linked questions (use --- or [BÀI TẬP] to separate exercises).',
+          'Start with Passage: (or [PASSAGE]) to declare the reading text.',
+          'Passage title is automatically generated based on question numbers (e.g. Questions 131-134 (Part 6 Text Completion)). Title line is not required.',
+          'Content: [Passage content with blanks [1], [2]...] (or Image: https://...).',
+          'Follow with 4 questions belonging to this passage (A, B, C, D, Answer, Explanation).',
+          'Automatically splits into distinct exercises when importing multiple consecutive passages.',
         ],
         sampleText: `Passage:
-Title: Thông báo nội bộ về vị trí kỹ sư phần mềm
 Content:
 To: All Team Members
 From: HR Department
@@ -574,8 +1180,9 @@ Answer: A
 Explanation:
 Cần trạng từ bổ nghĩa cho động từ "building" -> chọn "effectively".
 
-Passage 2:
-Title: Thông báo bảo trì hệ thống dịch vụ đám mây
+---
+
+Passage:
 Content:
 Dear Valued Customers,
 Please be informed that our cloud services will undergo scheduled system maintenance on Sunday between 1:00 AM and 5:00 AM. During this period, our web portal will be [1] _______ unavailable.
@@ -624,42 +1231,183 @@ Answer: A
 
 Explanation:
 Cụm từ "as soon as possible" (càng sớm càng tốt) phù hợp ngữ cảnh liên hệ hỗ trợ.`,
+        sampleTextEn: `Passage:
+Content:
+To: All Team Members
+From: HR Department
+Subject: New Software Engineer Position
+
+We are excited to announce an opening for a Senior Software Engineer within our Mobile Development team. The ideal candidate will have at least five years of experience with React Native and modern cloud infrastructure. [1] _______.
+
+Employees who refer qualified candidates will be eligible for our internal referral bonus program. [2] _______ you know someone who would be an excellent fit, please submit their resume to hr@company.com by October 15. [3] _______ interviews will begin the following week. We appreciate your continuous support in building our team [4] _______.
+
+131. Which choice best fits blank [1]?
+A. The project was unfortunately cancelled last week.
+B. Detailed job requirements can be found on our intranet portal.
+C. Please turn off your monitors before leaving.
+D. The cafeteria will be closed for renovation.
+
+Answer: B
+
+Explanation:
+Directs candidates and employees to review the comprehensive job description on the company intranet portal.
+
+132. Which word best fits blank [2]?
+A. Although
+B. Because
+C. If
+D. Unless
+
+Answer: C
+
+Explanation:
+Conditional clause expressing a possibility: "If you know someone...".
+
+133. Which word best fits blank [3]?
+A. Preliminary
+B. Preliminarily
+C. Preliminaries
+D. Prelim
+
+Answer: A
+
+Explanation:
+An adjective is required before the noun "interviews" -> "Preliminary" (initial/introductory interviews).
+
+134. Which word best fits blank [4]?
+A. effectively
+B. effectiveness
+C. effect
+D. effective
+
+Answer: A
+
+Explanation:
+An adverb modifying the verb "building" -> "effectively".
+
+---
+
+Passage:
+Content:
+Dear Valued Customers,
+Please be informed that our cloud services will undergo scheduled system maintenance on Sunday between 1:00 AM and 5:00 AM. During this period, our web portal will be [1] _______ unavailable.
+We apologize for any inconvenience this may cause and appreciate your [2] _______. Our technical team is working hard to ensure that all systems are upgraded [3] _______. If you experience any persistent issues following the maintenance, please contact our support desk [4] _______.
+
+135. Which word best fits blank [1]?
+A. temporary
+B. temporarily
+C. temporariness
+D. temporal
+
+Answer: B
+
+Explanation:
+Adverb "temporarily" modifies the adjective "unavailable".
+
+136. Which word best fits blank [2]?
+A. understanding
+B. understand
+C. understandably
+D. understood
+
+Answer: A
+
+Explanation:
+A noun is needed following the possessive adjective "your" -> "understanding".
+
+137. Which word best fits blank [3]?
+A. smoothly
+B. smoothness
+C. smooth
+D. smoothen
+
+Answer: A
+
+Explanation:
+Adverb "smoothly" modifies the passive verb "are upgraded".
+
+138. Which phrase best fits blank [4]?
+A. as soon as possible
+B. much more slow
+C. before next year
+D. without any delay
+
+Answer: A
+
+Explanation:
+The idiomatic phrase "as soon as possible" fits the context of contacting support promptly.`,
         blankTemplate: `Passage:
-Title: [Tiêu đề đoạn văn]
 Content:
 [Nội dung đoạn văn có các chỗ trống [1] _______, [2] _______, [3] _______, [4] _______]
+(Tiêu đề sẽ tự động sinh là: Questions 131-134 (Part 6 Text Completion))
 
-[Câu 1]. Which choice best fits blank [1]?
+131. Which choice best fits blank [1]?
 A. [Phương án A]
 B. [Phương án B]
 C. [Phương án C]
 D. [Phương án D]
-Answer: [Đáp án]
-Explanation: [Giải thích]
+Answer: [Đáp án đúng A/B/C/D]
+Explanation: [Giải thích chi tiết]
 
-[Câu 2]. Which choice best fits blank [2]?
+132. Which choice best fits blank [2]?
 A. [Phương án A]
 B. [Phương án B]
 C. [Phương án C]
 D. [Phương án D]
-Answer: [Đáp án]
-Explanation: [Giải thích]
+Answer: [Đáp án đúng A/B/C/D]
+Explanation: [Giải thích chi tiết]
 
-[Câu 3]. Which choice best fits blank [3]?
+133. Which choice best fits blank [3]?
 A. [Phương án A]
 B. [Phương án B]
 C. [Phương án C]
 D. [Phương án D]
-Answer: [Đáp án]
-Explanation: [Giải thích]
+Answer: [Đáp án đúng A/B/C/D]
+Explanation: [Giải thích chi tiết]
 
-[Câu 4]. Which choice best fits blank [4]?
+134. Which choice best fits blank [4]?
 A. [Phương án A]
 B. [Phương án B]
 C. [Phương án C]
 D. [Phương án D]
-Answer: [Đáp án]
-Explanation: [Giải thích]`,
+Answer: [Đáp án đúng A/B/C/D]
+Explanation: [Giải thích chi tiết]`,
+        blankTemplateEn: `Passage:
+Content:
+[Passage content containing blanks [1] _______, [2] _______, [3] _______, [4] _______]
+(Title will automatically be generated: Questions 131-134 (Part 6 Text Completion))
+
+131. Which choice best fits blank [1]?
+A. [Option A]
+B. [Option B]
+C. [Option C]
+D. [Option D]
+Answer: [Correct answer A/B/C/D]
+Explanation: [Detailed explanation]
+
+132. Which choice best fits blank [2]?
+A. [Option A]
+B. [Option B]
+C. [Option C]
+D. [Option D]
+Answer: [Correct answer A/B/C/D]
+Explanation: [Detailed explanation]
+
+133. Which choice best fits blank [3]?
+A. [Option A]
+B. [Option B]
+C. [Option C]
+D. [Option D]
+Answer: [Correct answer A/B/C/D]
+Explanation: [Detailed explanation]
+
+134. Which choice best fits blank [4]?
+A. [Option A]
+B. [Option B]
+C. [Option C]
+D. [Option D]
+Answer: [Correct answer A/B/C/D]
+Explanation: [Detailed explanation]`,
       },
       {
         id: 7,
@@ -686,21 +1434,23 @@ Explanation: [Giải thích]`,
         exerciseTypeDesc: 'Gồm các bài đọc đơn lẻ hoặc đa đoạn văn kèm chùm từ 2 đến 5 câu hỏi đọc hiểu.',
         exerciseTypeDescEn: 'Consists of single or multi-passages followed by clusters of 2 to 5 comprehension questions.',
         formatRules: [
-          'Mở đầu bằng Passage: để khai báo bài đọc.',
-          'Dòng Title: [Tiêu đề bài đọc (Thư tín, thông báo, hóa đơn, bài báo...)].',
-          'Dòng Content: [Nội dung bài đọc chi tiết] (hoặc Image: https://... nếu là bài đọc dạng hình ảnh/hóa đơn scan).',
-          'Theo sau là chùm câu hỏi liên quan (từ 2 đến 5 câu hỏi).',
-          'Mỗi câu hỏi có 4 phương án A, B, C, D, Answer và Explanation.',
+          'Mở đầu mỗi bài tập bằng Passage: (hoặc [PASSAGE]).',
+          'Tiêu đề bài tập sẽ tự động sinh chuẩn theo dải câu hỏi (ví dụ: Questions 147-148 (Part 7 Reading Passage)), không cần khai báo dòng Title.',
+          'Dòng Content: [Nội dung bài đọc chi tiết] (hoặc Image: https://... nếu là bài đọc dạng hình ảnh scan/ảnh chụp).',
+          'ĐOẠN KÉP / BA ĐOẠN (Double / Triple Passage): Khai báo 2 hoặc 3 khối Passage: liên tiếp trước khi đặt câu hỏi để gom chung vào 1 bài tập.',
+          'Phân cách giữa các bài tập bằng --- hoặc dòng [BÀI TẬP]. Hệ thống cũng tự động tách bài mới khi phát hiện Passage: sau chùm câu hỏi.',
+          'Chùm câu hỏi đi kèm (từ 2 đến 5 câu), mỗi câu gồm 4 đáp án A, B, C, D, Answer và Explanation.',
         ],
         formatRulesEn: [
-          'Start with Passage: to declare the reading material.',
-          'Title: [Passage title: Letter, memo, invoice, article...].',
+          'Start each exercise with Passage: (or [PASSAGE]).',
+          'Exercise title is automatically generated based on question numbers (e.g. Questions 147-148 (Part 7 Reading Passage)). Title line is not required.',
           'Content: [Full reading content] (or Image: https://... if scanned image/table).',
-          'Follow with a cluster of 2 to 5 questions related to the passage.',
-          'Each question has choices A, B, C, D, Answer, and Explanation.',
+          'DOUBLE / TRIPLE PASSAGE: Declare 2 or 3 consecutive Passage: blocks before questions to group them in the same exercise.',
+          'Separate exercises using --- or [EXERCISE]. The system also auto-splits into a new exercise when Passage: appears after questions.',
+          'Follow with a cluster of 2 to 5 questions with options A, B, C, D, Answer, and Explanation.',
         ],
-        sampleText: `Passage:
-Title: Thư xác nhận giao hàng thiết bị văn phòng
+        sampleText: `[BÀI TẬP 1] - Đoạn văn đơn (Single Passage)
+Passage:
 Content:
 Apex Office Supplies Ltd.
 120 Business Park Blvd, Suite 400
@@ -735,40 +1485,314 @@ D. October 15
 Answer: C
 
 Explanation:
-Đoạn 2 nêu rõ thời gian giao: "Your items are scheduled to arrive at your downtown facility on Thursday, October 3".`,
-        blankTemplate: `Passage:
-Title: [Tiêu đề bài đọc]
-Content:
-[Nội dung bài đọc]
+Đoạn 2 nêu rõ thời gian giao: "Your items are scheduled to arrive at your downtown facility on Thursday, October 3".
 
-[Câu 1]. [Nội dung câu hỏi 1]
+---
+
+[BÀI TẬP 2] - Đoạn văn kép (Double Passage)
+Passage:
+Content:
+Grand Harbor Seafood Restaurant
+Job Opening: General Restaurant Manager
+Location: Seattle, WA
+We are currently seeking an experienced General Restaurant Manager to oversee day-to-day operations, lead our service staff of 35 employees, and ensure an exceptional culinary dining experience for our guests.
+Qualifications:
+- At least 4 years of managerial experience in high-volume dining establishments.
+- Proven leadership skills and culinary inventory management.
+- Availability to work evening shifts and weekends.
+Interested applicants should email their resume and professional references to jobs@grandharbor.com by November 10.
+
+Passage:
+Content:
+To: jobs@grandharbor.com
+From: rachel.miller@seattlemail.com
+Date: November 5, 2026
+Subject: General Restaurant Manager Application - Rachel Miller
+
+Dear Hiring Committee,
+I am writing to express my enthusiasm for the General Restaurant Manager position advertised on your website. Over the past five years, I have served as Assistant General Manager at The Waterfront Grill, where I successfully managed a front-of-house team of 40 staff and improved customer satisfaction scores by 18%.
+I am accustomed to high-volume weekend operations and have extensive experience in supplier contract negotiations and inventory software. I have attached my resume and two recommendation letters from previous restaurant owners.
+I look forward to discussing how my experience aligns with Grand Harbor's standards of excellence.
+
+Sincerely,
+Rachel Miller
+
+149. What is the main purpose of the first notice?
+A. To advertise a newly opened restaurant
+B. To announce a management job opening
+C. To introduce changes in employee benefits
+D. To publish customer service guidelines
+
+Answer: B
+
+Explanation:
+Thông báo đầu tiên có tiêu đề "Job Opening: General Restaurant Manager", mục đích là thông báo tuyển dụng quản lý.
+
+150. What qualification requirement does Ms. Miller meet?
+A. She holds a master's degree in hospitality
+B. She has managed a large team in high-volume dining
+C. She has owned a private seafood restaurant
+D. She is fluent in three languages
+
+Answer: B
+
+Explanation:
+Bài 1 yêu cầu "managerial experience in high-volume dining establishments", bài 2 cô Miller nêu rõ đã quản lý 40 nhân viên tại "The Waterfront Grill".
+
+151. Why did Ms. Miller write the email on November 5?
+A. To inquire about table reservation policies
+B. To submit her application before the deadline
+C. To accept an existing job offer
+D. To reschedule an interview appointment
+
+Answer: B
+
+Explanation:
+Hạn chót nộp hồ sơ ở bài 1 là "by November 10", cô Miller gửi hồ sơ xin việc vào ngày 5 tháng 11.`,
+        sampleTextEn: `[EXERCISE 1] - Single Passage
+Passage:
+Content:
+Apex Office Supplies Ltd.
+120 Business Park Blvd, Suite 400
+Date: October 1, 2026
+
+Dear Ms. Anderson,
+Thank you for your recent order #A-8942 placed on September 29. We are pleased to inform you that all requested ergonomic office chairs and adjustable standing desks have been packed and handed over to FastTrack Logistics for standard delivery.
+
+Your items are scheduled to arrive at your downtown facility on Thursday, October 3. Please ensure an authorized representative is available to inspect the cargo and sign the receipt. Should you have any questions regarding your shipment, feel free to call our customer support desk.
+
+Sincerely,
+Mark Roberts
+Logistics Coordinator
+
+147. What is the primary purpose of this letter?
+A. To advertise a seasonal furniture sale
+B. To confirm shipment details of an order
+C. To request payment for an overdue invoice
+D. To apologize for a shipping delay
+
+Answer: B
+
+Explanation:
+The letter confirms order processing details and the expected delivery date.
+
+148. When is the order expected to be delivered?
+A. September 29
+B. October 1
+C. October 3
+D. October 15
+
+Answer: C
+
+Explanation:
+Paragraph 2 states: "Your items are scheduled to arrive at your downtown facility on Thursday, October 3".
+
+---
+
+[EXERCISE 2] - Double Passage
+Passage:
+Content:
+Grand Harbor Seafood Restaurant
+Job Opening: General Restaurant Manager
+Location: Seattle, WA
+We are currently seeking an experienced General Restaurant Manager to oversee day-to-day operations, lead our service staff of 35 employees, and ensure an exceptional culinary dining experience for our guests.
+Qualifications:
+- At least 4 years of managerial experience in high-volume dining establishments.
+- Proven leadership skills and culinary inventory management.
+- Availability to work evening shifts and weekends.
+Interested applicants should email their resume and professional references to jobs@grandharbor.com by November 10.
+
+Passage:
+Content:
+To: jobs@grandharbor.com
+From: rachel.miller@seattlemail.com
+Date: November 5, 2026
+Subject: General Restaurant Manager Application - Rachel Miller
+
+Dear Hiring Committee,
+I am writing to express my enthusiasm for the General Restaurant Manager position advertised on your website. Over the past five years, I have served as Assistant General Manager at The Waterfront Grill, where I successfully managed a front-of-house team of 40 staff and improved customer satisfaction scores by 18%.
+I am accustomed to high-volume weekend operations and have extensive experience in supplier contract negotiations and inventory software. I have attached my resume and two recommendation letters from previous restaurant owners.
+I look forward to discussing how my experience aligns with Grand Harbor's standards of excellence.
+
+Sincerely,
+Rachel Miller
+
+149. What is the main purpose of the first notice?
+A. To advertise a newly opened restaurant
+B. To announce a management job opening
+C. To introduce changes in employee benefits
+D. To publish customer service guidelines
+
+Answer: B
+
+Explanation:
+The headline states "Job Opening: General Restaurant Manager", advertising a management vacancy.
+
+150. What qualification requirement does Ms. Miller meet?
+A. She holds a master's degree in hospitality
+B. She has managed a large team in high-volume dining
+C. She has owned a private seafood restaurant
+D. She is fluent in three languages
+
+Answer: B
+
+Explanation:
+The notice requires "managerial experience in high-volume dining", which Ms. Miller fulfills having managed 40 staff members at The Waterfront Grill.
+
+151. Why did Ms. Miller write the email on November 5?
+A. To inquire about table reservation policies
+B. To submit her application before the deadline
+C. To accept an existing job offer
+D. To reschedule an interview appointment
+
+Answer: B
+
+Explanation:
+The deadline in notice 1 is "by November 10", and Ms. Miller sent her application on November 5.`,
+        blankTemplate: `# =======================================================
+# CẤU TRÚC 1: ĐOẠN VĂN ĐƠN (SINGLE PASSAGE)
+# (Tiêu đề tự động sinh: Questions 147-148 (Part 7 Reading Passage))
+# =======================================================
+Passage:
+Content:
+[Nội dung chi tiết bài đọc đơn]
+
+147. [Nội dung câu hỏi 1]
 A. [Phương án A]
 B. [Phương án B]
 C. [Phương án C]
 D. [Phương án D]
-Answer: [Đáp án]
+Answer: [Đáp án đúng A/B/C/D]
+Explanation: [Giải thích chi tiết]
+
+148. [Nội dung câu hỏi 2]
+A. [Phương án A]
+B. [Phương án B]
+C. [Phương án C]
+D. [Phương án D]
+Answer: [Đáp án đúng A/B/C/D]
+Explanation: [Giải thích chi tiết]
+
+---
+
+# =======================================================
+# CẤU TRÚC 2: ĐOẠN VĂN KÉP / BA ĐOẠN (DOUBLE / TRIPLE PASSAGE)
+# (Khai báo 2 hoặc 3 thẻ Passage liên tiếp trước các câu hỏi)
+# =======================================================
+Passage:
+Content:
+[Nội dung đoạn văn 1 - Ví dụ: Email hoặc Thông báo tuyển dụng]
+
+Passage:
+Content:
+[Nội dung đoạn văn 2 - Ví dụ: Thư phản hồi / Hóa đơn / Lịch trình]
+
+149. [Nội dung câu hỏi liên quan đến đoạn 1]
+A. [Phương án A]
+B. [Phương án B]
+C. [Phương án C]
+D. [Phương án D]
+Answer: [Đáp án đúng]
 Explanation: [Giải thích]
 
-[Câu 2]. [Nội dung câu hỏi 2]
+150. [Nội dung câu hỏi đối chiếu thông tin giữa cả 2 đoạn văn]
 A. [Phương án A]
 B. [Phương án B]
 C. [Phương án C]
 D. [Phương án D]
-Answer: [Đáp án]
+Answer: [Đáp án đúng]
+Explanation: [Giải thích]
+
+151. [Nội dung câu hỏi chi tiết về đoạn 2]
+A. [Phương án A]
+B. [Phương án B]
+C. [Phương án C]
+D. [Phương án D]
+Answer: [Đáp án đúng]
 Explanation: [Giải thích]`,
+        blankTemplateEn: `# =======================================================
+# STRUCTURE 1: SINGLE PASSAGE
+# (Auto-generated title: Questions 147-148 (Part 7 Reading Passage))
+# =======================================================
+Passage:
+Content:
+[Full passage reading content]
+
+147. [Question 1 content]
+A. [Option A]
+B. [Option B]
+C. [Option C]
+D. [Option D]
+Answer: [Correct answer A/B/C/D]
+Explanation: [Detailed explanation]
+
+148. [Question 2 content]
+A. [Option A]
+B. [Option B]
+C. [Option C]
+D. [Option D]
+Answer: [Correct answer A/B/C/D]
+Explanation: [Detailed explanation]
+
+---
+
+# =======================================================
+# STRUCTURE 2: DOUBLE / TRIPLE PASSAGE
+# (Declare 2 or 3 consecutive Passage blocks before questions)
+# =======================================================
+Passage:
+Content:
+[Passage 1 reading content - e.g. Job Advertisement or Email]
+
+Passage:
+Content:
+[Passage 2 reading content - e.g. Order Form or Application Letter]
+
+149. [Question relating to Passage 1]
+A. [Option A]
+B. [Option B]
+C. [Option C]
+D. [Option D]
+Answer: [Correct answer]
+Explanation: [Explanation]
+
+150. [Cross-referencing question between both passages]
+A. [Option A]
+B. [Option B]
+C. [Option C]
+D. [Option D]
+Answer: [Correct answer]
+Explanation: [Explanation]
+
+151. [Detail question relating to Passage 2]
+A. [Option A]
+B. [Option B]
+C. [Option C]
+D. [Option D]
+Answer: [Correct answer]
+Explanation: [Explanation]`,
       },
     ];
 
-    if (exam.section === 'LISTENING') {
-      return parts.filter((p) => p.section === 'LISTENING');
-    }
-    if (exam.section === 'READING') {
-      return parts.filter((p) => p.section === 'READING');
-    }
-    return parts;
+    const isEn = locale === 'en';
+    const localizePart = (p: ExamPartConfig): ExamPartConfig => ({
+      ...p,
+      title: isEn ? p.titleEn : p.title,
+      subtitle: isEn ? p.subtitleEn : p.subtitle,
+      desc: isEn ? p.descEn : p.desc,
+      badge: isEn ? p.badgeEn : p.badge,
+      exerciseTypeName: isEn ? p.exerciseTypeNameEn : p.exerciseTypeName,
+      exerciseTypeDesc: isEn ? p.exerciseTypeDescEn : p.exerciseTypeDesc,
+      formatRules: isEn ? p.formatRulesEn : p.formatRules,
+      sampleText: isEn && p.sampleTextEn ? p.sampleTextEn : p.sampleText,
+      blankTemplate: isEn && p.blankTemplateEn ? p.blankTemplateEn : p.blankTemplate,
+    });
+
+    return parts.map(localizePart);
   } else {
     // Non-TOEIC (IELTS / General / Custom exams)
-    return [
+    const isEn = locale === 'en';
+    const nonToeicParts: ExamPartConfig[] = [
       {
         id: 1,
         section: 'LISTENING',
@@ -850,6 +1874,19 @@ C. [Lựa chọn C]
 D. [Lựa chọn D]
 Answer: [Đáp án]
 Explanation: [Giải thích]`,
+        blankTemplateEn: `Passage:
+Title: [Listening section title]
+Audio: [Audio URL]
+Transcript:
+[Dialogue script]
+
+1. [Question 1 content]
+A. [Option A]
+B. [Option B]
+C. [Option C]
+D. [Option D]
+Answer: [Correct answer]
+Explanation: [Explanation]`,
       },
       {
         id: 2,
@@ -927,8 +1964,35 @@ C. [Lựa chọn C]
 D. [Lựa chọn D]
 Answer: [Đáp án]
 Explanation: [Giải thích]`,
+        blankTemplateEn: `Passage:
+Title: [Academic reading title]
+Content:
+[Full reading text]
+
+1. [Question 1 content]
+A. [Option A]
+B. [Option B]
+C. [Option C]
+D. [Option D]
+Answer: [Correct answer]
+Explanation: [Explanation]`,
       },
     ];
+
+    const localizePart = (p: ExamPartConfig): ExamPartConfig => ({
+      ...p,
+      title: isEn ? p.titleEn : p.title,
+      subtitle: isEn ? p.subtitleEn : p.subtitle,
+      desc: isEn ? p.descEn : p.desc,
+      badge: isEn ? p.badgeEn : p.badge,
+      exerciseTypeName: isEn ? p.exerciseTypeNameEn : p.exerciseTypeName,
+      exerciseTypeDesc: isEn ? p.exerciseTypeDescEn : p.exerciseTypeDesc,
+      formatRules: isEn ? p.formatRulesEn : p.formatRules,
+      sampleText: isEn && p.sampleTextEn ? p.sampleTextEn : p.sampleText,
+      blankTemplate: isEn && p.blankTemplateEn ? p.blankTemplateEn : p.blankTemplate,
+    });
+
+    return nonToeicParts.map(localizePart);
   }
 }
 
@@ -970,6 +2034,8 @@ export function shouldShowQuestionAudioInput(
 
 export interface ParsedPassageItem {
   id: string;
+  inputMode?: 'TEXT' | 'IMAGE';
+  groupTempId?: string;
   type?: 'TEXT' | 'EMAIL' | 'ADVERTISEMENT' | 'ARTICLE' | 'NOTICE' | 'CHAT';
   title?: string;
   content?: string;
@@ -977,224 +2043,74 @@ export interface ParsedPassageItem {
   imageUrl?: string;
 }
 
+export interface ParsedPassageGroup {
+  id: string;
+  title: string;
+  order: number;
+  passages: ParsedPassageItem[];
+  hasCustomTitle?: boolean;
+}
+
 /**
- * Enhanced Natural Parser that handles standard numbering, tags, and cluster passages (supports multiple passages)
+ * Auto-generates standard question range titles like:
+ * "Questions 81-83 (Part 7 Reading Passage)"
+ * "Question 81 (Part 7 Reading Passage)"
+ */
+export function getAutoGeneratedPassageTitle(
+  part: ExamPartConfig | null | undefined,
+  questions: { order?: number; questionNum?: number }[],
+  fallbackIndex: number = 1,
+): string {
+  const nums = questions
+    .map((q) => (q as any).order ?? (q as any).questionNum)
+    .filter((n): n is number => typeof n === 'number' && !isNaN(n) && n > 0);
+
+  let qRange = '';
+  if (nums.length > 0) {
+    const min = Math.min(...nums);
+    const max = Math.max(...nums);
+    qRange = min === max ? `Question ${min}` : `Questions ${min}-${max}`;
+  } else {
+    qRange = `Questions #${fallbackIndex}`;
+  }
+
+  let partSuffix = 'Passage';
+  if (part) {
+    if (part.id === 7) partSuffix = 'Part 7 Reading Passage';
+    else if (part.id === 6) partSuffix = 'Part 6 Text Completion';
+    else if (part.id === 4) partSuffix = 'Part 4 Short Talk';
+    else if (part.id === 3) partSuffix = 'Part 3 Conversation';
+    else if (part.id === 1) partSuffix = 'Part 1 Photographs';
+    else if (part.id === 2) partSuffix = 'Part 2 Question-Response';
+    else if (part.id === 5) partSuffix = 'Part 5 Incomplete Sentences';
+    else if (part.exerciseTypeNameEn) partSuffix = `Part ${part.id} ${part.exerciseTypeNameEn}`;
+    else if (part.subtitleEn) partSuffix = `Part ${part.id} ${part.subtitleEn}`;
+    else partSuffix = `Part ${part.id}`;
+  }
+
+  return `${qRange} (${partSuffix})`;
+}
+
+/**
+ * Enhanced Natural Parser that handles standard numbering, tags, and cluster passages (supports multiple exercises/groups)
  */
 export function parseQuestionsFromText(
   rawText: string,
-  currentPart: ExamPartConfig,
+  currentPart?: ExamPartConfig | null,
 ): {
+  groups: ParsedPassageGroup[];
   passages: ParsedPassageItem[];
   passage: ParsedPassageItem | null;
-  questions: (Partial<QuestionItem> & { passageTempId?: string })[];
+  questions: (Partial<QuestionItem> & { passageTempId?: string; passageGroupTempId?: string })[];
 } {
-  const lines = rawText.split(/\r?\n/);
-  const passages: ParsedPassageItem[] = [];
-  const questions: (Partial<QuestionItem> & { passageTempId?: string })[] = [];
-
-  let currentPassage: ParsedPassageItem | null = null;
-  let inPassage = false;
-  let inTranscript = false;
-
-  let currentQ: (Partial<QuestionItem> & { passageTempId?: string }) | null = null;
-  let currentOptions: { key: 'A' | 'B' | 'C' | 'D'; text: string }[] = [];
-  let inExplanation = false;
-
-  const finalizeCurrentQuestion = () => {
-    if (currentQ && currentQ.content) {
-      if (currentOptions.length > 0) {
-        currentQ.options = [...currentOptions];
-        if (!currentQ.correctAnswer) {
-          const firstOpt = currentOptions[0];
-          if (firstOpt) {
-            currentQ.correctAnswer = firstOpt.key;
-          }
-        }
-      }
-      questions.push({ ...currentQ });
-    }
-    currentQ = null;
-    currentOptions = [];
-    inExplanation = false;
-  };
-
-  for (let i = 0; i < lines.length; i++) {
-    const rawLine = lines[i];
-    if (rawLine === undefined) continue;
-    const line = rawLine.trim();
-
-    if (!line) {
-      if (inPassage && currentPassage && currentPassage.content) {
-        currentPassage.content += '\n';
-      }
-      continue;
-    }
-
-    // 1. Passage header: [PASSAGE], [EMAIL], [ARTICLE], [NOTICE], [CHAT], [ADVERTISEMENT], or Vietnamese equivalents
-    const passageHeaderMatch = line.match(
-      /^(?:\[(PASSAGE|TEXT|EMAIL|ADVERTISEMENT|ARTICLE|NOTICE|CHAT)\]|(?:Passage|Đoạn văn|Doan van|Đoạn hội thoại|Bài đọc|Bài nói|Email|Thư|Quảng cáo|Thông báo|Bài báo|Chat))(?:\s+\d+)?[:\s\-]*(.*)$/i,
-    );
-
-    if (passageHeaderMatch) {
-      finalizeCurrentQuestion();
-      inPassage = true;
-      inTranscript = false;
-
-      const matchedTag = (passageHeaderMatch[1] || passageHeaderMatch[0]).toUpperCase();
-      let pType: 'TEXT' | 'EMAIL' | 'ADVERTISEMENT' | 'ARTICLE' | 'NOTICE' | 'CHAT' = 'TEXT';
-      if (matchedTag.includes('EMAIL') || matchedTag.includes('THƯ')) pType = 'EMAIL';
-      else if (matchedTag.includes('ADVERT') || matchedTag.includes('QUẢNG CÁO')) pType = 'ADVERTISEMENT';
-      else if (matchedTag.includes('ARTICLE') || matchedTag.includes('BÀI BÁO')) pType = 'ARTICLE';
-      else if (matchedTag.includes('NOTICE') || matchedTag.includes('THÔNG BÁO')) pType = 'NOTICE';
-      else if (matchedTag.includes('CHAT') || matchedTag.includes('HỘI THOẠI')) pType = 'CHAT';
-
-      const inlineTitle = passageHeaderMatch[2]?.trim();
-      const pIndex = passages.length + 1;
-      currentPassage = {
-        id: `passage-${pIndex}`,
-        type: pType,
-        title: inlineTitle || `${pType} #${pIndex}`,
-        content: '',
-        audioUrl: undefined,
-        imageUrl: undefined,
-      };
-      passages.push(currentPassage);
-      continue;
-    }
-
-    if (inPassage && currentPassage) {
-      const titleMatch = line.match(/^(?:Title|Tiêu đề|Tieu de)[:\s]*(.*)$/i);
-      if (titleMatch) {
-        currentPassage.title = (titleMatch[1] || '').trim();
-        continue;
-      }
-
-      const pAudioMatch = line.match(/^(?:Audio|Âm thanh|Am thanh|\[AUDIO\])[:\s]+(.*)$/i);
-      if (pAudioMatch && pAudioMatch[1]) {
-        currentPassage.audioUrl = pAudioMatch[1].trim();
-        continue;
-      }
-
-      const pImgMatch = line.match(/^(?:Image|Ảnh|Hình ảnh|\[IMAGE\])[:\s]+(.*)$/i);
-      if (pImgMatch && pImgMatch[1]) {
-        currentPassage.imageUrl = pImgMatch[1].trim();
-        continue;
-      }
-
-      if (line.match(/^(?:Transcript|Lời thoại|Content|Nội dung)[:\s]*/i)) {
-        inTranscript = true;
-        const textMatch = line.match(
-          /^(?:Transcript|Lời thoại|Content|Nội dung)[:\s]*(.*)$/i,
-        );
-        if (textMatch && textMatch[1] && textMatch[1].trim()) {
-          currentPassage.content = (currentPassage.content ? currentPassage.content + '\n' : '') + textMatch[1].trim();
-        }
-        continue;
-      }
-    }
-
-    // 2. Check for question start: 101. or 1. or Câu 101: or [QUESTION]
-    const questionMatch = line.match(
-      /^(?:(?:Câu|Cau|Question)\s*(\d+)[:\.]?|(\d+)[\.\)]|\[QUESTION\])\s*(.*)$/i,
-    );
-
-    if (questionMatch) {
-      finalizeCurrentQuestion();
-      inPassage = false;
-      inTranscript = false;
-
-      const qContent = (questionMatch[3] || '').trim();
-      currentQ = {
-        content: qContent,
-        options: [],
-        correctAnswer: 'A',
-        explanation: '',
-        passageTempId: currentPassage ? currentPassage.id : undefined,
-        passageTitle: currentPassage ? currentPassage.title : undefined,
-      };
-      continue;
-    }
-
-    // If still in passage block and haven't hit question
-    if (inPassage && currentPassage) {
-      currentPassage.content = (currentPassage.content ? currentPassage.content + '\n' : '') + line;
-      continue;
-    }
-
-    // If no active question, continue
-    if (!currentQ) {
-      continue;
-    }
-
-    // 3. Check Image / Audio
-    const imgMatch = line.match(/^(?:Image|Ảnh|Hình ảnh|\[IMAGE\])[:\s]+(.*)$/i);
-    if (imgMatch && imgMatch[1]) {
-      currentQ.imageUrl = imgMatch[1].trim();
-      continue;
-    }
-
-    const audioMatch = line.match(/^(?:Audio|Âm thanh|Am thanh|\[AUDIO\])[:\s]+(.*)$/i);
-    if (audioMatch && audioMatch[1]) {
-      currentQ.audioUrl = audioMatch[1].trim();
-      continue;
-    }
-
-    // 4. Check Options: A. / B. / C. / D. or A) or (A)
-    const optMatch = line.match(/^(?:([A-D])[\.\)]|\(([A-D])\))\s+(.*)$/i);
-    if (optMatch) {
-      const key = ((optMatch[1] || optMatch[2]) as string).toUpperCase() as
-        | 'A'
-        | 'B'
-        | 'C'
-        | 'D';
-      const text = (optMatch[3] || '').trim();
-      currentOptions.push({ key, text });
-      inExplanation = false;
-      continue;
-    }
-
-    // 5. Check Answer: Answer: B, Đáp án: B, Key: B, [ANSWER]: B
-    const ansMatch = line.match(
-      /^(?:answer|đáp án|dap an|key|\[ANSWER\])[:\s\-]+(?:\()?([A-D])(?:\))?/i,
-    );
-    if (ansMatch && ansMatch[1]) {
-      currentQ.correctAnswer = ansMatch[1].toUpperCase() as 'A' | 'B' | 'C' | 'D';
-      inExplanation = false;
-      continue;
-    }
-
-    // 6. Check Explanation: Explanation: ... or Giải thích: ... or [EXPLANATION]:
-    const expMatch = line.match(
-      /^(?:explanation|giải thích|giai thich|lời giải|loi giai|\[EXPLANATION\])[:\s\-]*(.*)$/i,
-    );
-    if (expMatch) {
-      inExplanation = true;
-      if (expMatch[1] && expMatch[1].trim()) {
-        currentQ.explanation = expMatch[1].trim();
-      }
-      continue;
-    }
-
-    // 7. Multiline continuation
-    if (inExplanation) {
-      currentQ.explanation = (currentQ.explanation ? currentQ.explanation + '\n' : '') + line;
-    } else if (currentOptions.length === 0) {
-      currentQ.content += ' ' + line;
-    }
-  }
-
-  finalizeCurrentQuestion();
-
-  const validPassages = currentPart.hasPassage
-    ? passages.filter((p) => p.title || p.content || p.audioUrl || p.imageUrl)
-    : [];
-
-  return {
-    passages: validPassages,
-    passage: validPassages[0] || null,
-    questions,
+  return parseImportText(rawText, currentPart?.id) as unknown as {
+    groups: ParsedPassageGroup[];
+    passages: ParsedPassageItem[];
+    passage: ParsedPassageItem | null;
+    questions: (Partial<QuestionItem> & { passageTempId?: string; passageGroupTempId?: string })[];
   };
 }
+
 
 /**
  * Generates tailored Word HTML document based on Exam, Part, and specific Exercise Type
@@ -1254,13 +2170,13 @@ export function generateWordTemplateHtml(
       <p style="font-size: 10pt; color: #64748b; margin-bottom: 8px;">
         ${isEn ? 'You can copy the format below into your questions:' : 'Bạn có thể tham khảo hoặc copy cấu trúc mẫu bên dưới:'}
       </p>
-      <pre>${part.sampleText}</pre>
+      <pre>${isEn ? (part.sampleTextEn || part.sampleText) : part.sampleText}</pre>
 
       <h3 class="section-title">PHẦN 2: KHUNG ĐIỀN ĐỀ THI TRỐNG (${isEn ? 'BLANK FILL-IN TEMPLATE' : 'ĐIỀN CÂU HỎI CỦA BẠN VÀO ĐÂY'})</h3>
       <p style="font-size: 10pt; color: #64748b; margin-bottom: 8px;">
         ${isEn ? 'Copy this template and replace the bracketed placeholders with your actual exam content:' : 'Chép khung này và điền trực tiếp nội dung đề thi của bạn vào các vị trí trong ngoặc vuông:'}
       </p>
-      <div class="blank-box">${part.blankTemplate}</div>
+      <div class="blank-box">${isEn ? (part.blankTemplateEn || part.blankTemplate) : part.blankTemplate}</div>
 
       <div class="footer-note">
         ${isEn ? 'Generated automatically by Assessment Question Import System' : 'Được tạo tự động bởi Hệ thống Quản trị Khảo thí & Soạn thảo Đề thi'}
@@ -1297,12 +2213,12 @@ ${rules.map((r) => `# - ${r}`).join('\n')}
 # PHẦN 1: NỘI DUNG MẪU CHUẨN (${isEn ? 'SAMPLE QUESTIONS' : 'VÍ DỤ MẪU HOÀN CHỈNH'}):
 # ====================================================================
 
-${part.sampleText}
+${isEn ? (part.sampleTextEn || part.sampleText) : part.sampleText}
 
 # ====================================================================
 # PHẦN 2: KHUNG ĐIỀN ĐỀ THI TRỐNG (${isEn ? 'BLANK TEMPLATE' : 'KHUNG MẪU TRỐNG'}):
 # ====================================================================
 
-${part.blankTemplate}
+${isEn ? (part.blankTemplateEn || part.blankTemplate) : part.blankTemplate}
 `;
 }

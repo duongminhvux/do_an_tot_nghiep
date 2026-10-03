@@ -1,15 +1,23 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { parseOffice } from 'officeparser';
+import { createHash } from 'node:crypto';
+import { parseImportText, validateImportDraft } from '@repo/shared-types/assessment-import';
+import { Exam, ExamDocument } from '../exams/schemas/exam.schema.js';
 import { Question, QuestionDocument } from './schemas/question.schema.js';
 import { PassageGroup, PassageGroupDocument } from './schemas/passage-group.schema.js';
 import { Passage, PassageDocument } from './schemas/passage.schema.js';
 import { CreateQuestionDto } from './dto/create-question.dto.js';
 import { UpdateQuestionDto } from './dto/update-question.dto.js';
+import { CloudinaryService } from '../../upload/cloudinary.service.js';
 
 @Injectable()
 export class QuestionsService {
+  private readonly logger = new Logger(QuestionsService.name);
+  private readonly inFlightCreates = new Set<string>();
+  private readonly inFlightImports = new Set<string>();
+
   constructor(
     @InjectModel(Question.name)
     private readonly questionModel: Model<QuestionDocument>,
@@ -17,10 +25,26 @@ export class QuestionsService {
     private readonly passageGroupModel: Model<PassageGroupDocument>,
     @InjectModel(Passage.name)
     private readonly passageModel: Model<PassageDocument>,
+    private readonly cloudinaryService: CloudinaryService,
+    @InjectModel(Exam.name)
+    private readonly examModel?: Model<ExamDocument>,
   ) {}
 
+  private async deleteUnusedImage(url?: string) {
+    if (!url || !this.cloudinaryService.extractCloudinaryPublicId(url)) return;
+    try {
+      const [question, passage] = await Promise.all([
+        this.questionModel.exists({ imageUrl: url }),
+        this.passageModel.exists({ imageUrl: url }),
+      ]);
+      if (!question && !passage) await this.cloudinaryService.deleteFile(url);
+    } catch (error) {
+      this.logger.warn('Could not clean up replaced passage image', error);
+    }
+  }
+
   async create(createQuestionDto: CreateQuestionDto): Promise<Question> {
-    const { examId, passageGroupId, passageId, order, status, ...rest } = createQuestionDto;
+    const { examId, passageGroupId, passageId, order, ...rest } = createQuestionDto;
     const effectivePassageGroupId = passageGroupId || passageId;
 
     let targetOrder = order;
@@ -34,16 +58,27 @@ export class QuestionsService {
       targetOrder = highest ? (highest.order || 0) + 1 : 1;
     }
 
-    const resolvedStatus = status || 'ACTIVE';
-    const created = new this.questionModel({
-      ...rest,
-      examId: new Types.ObjectId(examId),
-      passageGroupId: effectivePassageGroupId ? new Types.ObjectId(effectivePassageGroupId) : undefined,
-      order: targetOrder,
-      isActive: resolvedStatus === 'ACTIVE',
-    });
+    const dedupeKey = `${examId}:${createQuestionDto.part}:${(createQuestionDto.content || '').trim()}:${targetOrder}`;
+    if (this.inFlightCreates.has(dedupeKey)) {
+      throw new BadRequestException('Yêu cầu tạo câu hỏi này đang được xử lý, vui lòng không gửi lặp lại.');
+    }
+    this.inFlightCreates.add(dedupeKey);
 
-    return created.save();
+    try {
+      const created = new this.questionModel({
+        ...rest,
+        examId: new Types.ObjectId(examId),
+        passageGroupId: effectivePassageGroupId ? new Types.ObjectId(effectivePassageGroupId) : undefined,
+        order: targetOrder,
+        isActive: createQuestionDto.isActive ?? true,
+      });
+
+      return await created.save();
+    } finally {
+      setTimeout(() => {
+        this.inFlightCreates.delete(dedupeKey);
+      }, 1500);
+    }
   }
 
   async findByExam(examId: string, part?: number): Promise<Question[]> {
@@ -63,10 +98,8 @@ export class QuestionsService {
 
     return questions.map((q: any) => ({
       ...q,
-      status: q.status || (q.isActive !== false ? 'ACTIVE' : 'INACTIVE'),
-      isActive: q.status ? q.status === 'ACTIVE' : q.isActive !== false,
+      isActive: q.isActive ?? (q.status ? q.status === 'ACTIVE' : true),
       passageId: q.passageGroupId,
-      passageTitle: q.passageTitle || q.passageGroupId?.title || undefined,
     })) as Question[];
   }
 
@@ -94,11 +127,24 @@ export class QuestionsService {
         passages: childPassages,
         content: childPassages.map((cp) => cp.content).filter(Boolean).join('\n\n'),
         audioUrl: childPassages.find((cp) => cp.audioUrl)?.audioUrl,
+        imageUrl: childPassages.find((cp) => cp.imageUrl)?.imageUrl,
       };
     });
   }
 
+  private validateReadingPassage(part: unknown, passage: any): void {
+    if (![6, 7].includes(Number(part))) return;
+    const hasText = Boolean(passage.content?.trim());
+    const hasImage = Boolean(passage.imageUrl?.trim());
+    if (hasText === hasImage) {
+      throw new BadRequestException('Each Part 6 or 7 passage must contain either text or an image.');
+    }
+  }
+
   async createPassageGroup(data: any): Promise<PassageGroup> {
+    for (const p of Array.isArray(data.passages) && data.passages.length ? data.passages : [data]) {
+      this.validateReadingPassage(data.part, p);
+    }
     const created = new this.passageGroupModel({
       ...data,
       examId: new Types.ObjectId(data.examId),
@@ -111,19 +157,19 @@ export class QuestionsService {
         await this.passageModel.create({
           passageGroupId: savedGroup._id,
           type: p.type || 'TEXT',
-          title: p.title,
           content: p.content,
           audioUrl: p.audioUrl,
+          imageUrl: p.imageUrl,
           order: p.order !== undefined ? p.order : i + 1,
         });
       }
-    } else if (data.content || data.audioUrl) {
+    } else if (data.content || data.audioUrl || data.imageUrl) {
       await this.passageModel.create({
         passageGroupId: savedGroup._id,
         type: data.type || 'TEXT',
-        title: data.title,
         content: data.content,
         audioUrl: data.audioUrl,
+        imageUrl: data.imageUrl,
         order: 1,
       });
     }
@@ -135,13 +181,64 @@ export class QuestionsService {
     if (!Types.ObjectId.isValid(id)) {
       throw new NotFoundException('PassageGroup not found');
     }
+    const { content, audioUrl, imageUrl, passages, ...groupFields } = data;
+    const existingGroup = await this.passageGroupModel.findById(id).exec();
+    if (!existingGroup) throw new NotFoundException('PassageGroup not found');
+    const previousPassages = await this.passageModel.find({ passageGroupId: new Types.ObjectId(id) }).lean().exec();
+    const nextPart = data.part ?? existingGroup.part;
+    if (Array.isArray(passages) && passages.length > 0) {
+      for (const patch of passages) {
+        const existing = previousPassages.find((p) => String(p._id) === String(patch._id));
+        if (!existing) throw new NotFoundException('Passage not found in this group');
+      }
+    } else if (previousPassages.length === 0 && (content !== undefined || imageUrl !== undefined || audioUrl !== undefined)) {
+      this.validateReadingPassage(nextPart, { content, imageUrl });
+    }
+    for (const p of previousPassages) {
+      const hasPassagePatches = Array.isArray(passages) && passages.length > 0;
+      const patch = hasPassagePatches ? passages.find((item: any) => String(item._id) === String(p._id)) : undefined;
+      this.validateReadingPassage(nextPart, { ...p, ...patch,
+        ...(!hasPassagePatches && p === previousPassages[0] ? {
+          content: content ?? p.content, imageUrl: imageUrl ?? p.imageUrl,
+        } : {}),
+      });
+    }
     const updated = await this.passageGroupModel
-      .findByIdAndUpdate(id, { $set: data }, { new: true })
+      .findByIdAndUpdate(id, { $set: groupFields }, { returnDocument: 'after' })
       .lean()
       .exec();
     if (!updated) {
       throw new NotFoundException('PassageGroup not found');
     }
+
+    const groupId = new Types.ObjectId(id);
+
+    if (Array.isArray(passages) && passages.length > 0) {
+      for (const p of passages) {
+        if (p._id && Types.ObjectId.isValid(p._id)) {
+          await this.passageModel.findByIdAndUpdate(p._id, { $set: p }, { returnDocument: 'after' }).exec();
+        }
+      }
+    } else if (content !== undefined || audioUrl !== undefined || imageUrl !== undefined) {
+      const existingChild = await this.passageModel.findOne({ passageGroupId: groupId }).sort({ order: 1 }).exec();
+      if (existingChild) {
+        if (content !== undefined) existingChild.content = content;
+        if (audioUrl !== undefined) existingChild.audioUrl = audioUrl;
+        if (imageUrl !== undefined) existingChild.imageUrl = imageUrl;
+        await existingChild.save();
+      } else {
+        await this.passageModel.create({
+          passageGroupId: groupId,
+          type: data.type || 'TEXT',
+          content: content || '',
+          audioUrl,
+          imageUrl,
+          order: 1,
+        });
+      }
+    }
+
+    for (const passage of previousPassages) await this.deleteUnusedImage(passage.imageUrl);
     return updated as PassageGroup;
   }
 
@@ -162,6 +259,9 @@ export class QuestionsService {
 
   async createPassage(data: any): Promise<any> {
     if (data.passageGroupId) {
+      const group = await this.passageGroupModel.findById(data.passageGroupId).exec();
+      if (!group) throw new NotFoundException('PassageGroup not found');
+      this.validateReadingPassage(group.part, data);
       const created = new this.passageModel({
         ...data,
         passageGroupId: new Types.ObjectId(data.passageGroupId),
@@ -177,10 +277,24 @@ export class QuestionsService {
     }
     const isPassage = await this.passageModel.findById(id).exec();
     if (isPassage) {
-      return this.passageModel
-        .findByIdAndUpdate(id, { $set: data }, { new: true })
+      const group = await this.passageGroupModel.findById(isPassage.passageGroupId).exec();
+      this.validateReadingPassage(group?.part, { ...isPassage.toObject(), ...data });
+      const { title, ...passageFields } = data;
+      const updated = await this.passageModel
+        .findByIdAndUpdate(id, { $set: passageFields }, { returnDocument: 'after', runValidators: true })
         .lean()
         .exec();
+      if (title && isPassage.passageGroupId) {
+        await this.passageGroupModel.findByIdAndUpdate(
+          isPassage.passageGroupId,
+          { $set: { title } },
+          { returnDocument: 'after' }
+        ).exec();
+      }
+      if (updated && data.imageUrl !== undefined && data.imageUrl !== isPassage.imageUrl) {
+        await this.deleteUnusedImage(isPassage.imageUrl);
+      }
+      return updated;
     }
     return this.updatePassageGroup(id, data);
   }
@@ -211,6 +325,7 @@ export class QuestionsService {
     }
     return {
       ...question,
+      isActive: question.isActive ?? ((question as any).status ? (question as any).status === 'ACTIVE' : true),
       passageId: question.passageGroupId,
     } as any;
   }
@@ -220,23 +335,23 @@ export class QuestionsService {
       throw new NotFoundException('Question not found');
     }
 
-    if (updateQuestionDto.status) {
-      (updateQuestionDto as any).isActive = updateQuestionDto.status === 'ACTIVE';
-    } else if (updateQuestionDto.isActive !== undefined) {
-      (updateQuestionDto as any).status = updateQuestionDto.isActive ? 'ACTIVE' : 'INACTIVE';
-    }
 
     if ((updateQuestionDto as any).passageId && !(updateQuestionDto as any).passageGroupId) {
       (updateQuestionDto as any).passageGroupId = (updateQuestionDto as any).passageId;
     }
 
+    const previous = await this.questionModel.findById(id).lean().exec();
     const updated = await this.questionModel
-      .findByIdAndUpdate(id, { $set: updateQuestionDto }, { new: true })
+      .findByIdAndUpdate(id, { $set: updateQuestionDto }, { returnDocument: 'after', runValidators: true })
       .lean()
       .exec();
 
     if (!updated) {
       throw new NotFoundException('Question not found');
+    }
+
+    if (updateQuestionDto.imageUrl !== undefined && previous?.imageUrl !== updateQuestionDto.imageUrl) {
+      await this.deleteUnusedImage(previous?.imageUrl);
     }
 
     return updated as Question;
@@ -250,375 +365,163 @@ export class QuestionsService {
     return { deleted: true };
   }
 
-  parseQuestionText(rawText: string, defaultPart?: number, defaultSection?: 'LISTENING' | 'READING') {
-    const lines = rawText.split(/\r?\n/);
-    const passages: Array<{
-      tempId: string;
-      type: 'TEXT' | 'EMAIL' | 'ADVERTISEMENT' | 'ARTICLE' | 'NOTICE' | 'CHAT';
-      title?: string;
-      content?: string;
-      audioUrl?: string;
-      order: number;
-    }> = [];
-    const questions: any[] = [];
+  parseQuestionText(rawText: string, defaultPart = 1, defaultSection?: 'LISTENING' | 'READING') {
+    return parseImportText(rawText, defaultPart, defaultSection);
+  }
 
-    let currentPassage: {
-      tempId: string;
-      type: 'TEXT' | 'EMAIL' | 'ADVERTISEMENT' | 'ARTICLE' | 'NOTICE' | 'CHAT';
-      title?: string;
-      content?: string;
-      audioUrl?: string;
-      order: number;
-    } | null = null;
-    let inPassage = false;
-
-    let currentQ: any = null;
-    let currentOptions: { key: 'A' | 'B' | 'C' | 'D'; text: string }[] = [];
-    let inExplanation = false;
-
-    const finalizeCurrent = () => {
-      if (currentQ && currentQ.content && currentOptions.length >= 2) {
-        currentQ.options = [...currentOptions];
-        if (!currentQ.correctAnswer) currentQ.correctAnswer = 'A';
-        questions.push(currentQ);
-      }
-      currentQ = null;
-      currentOptions = [];
-      inExplanation = false;
-    };
-
-    const detectPassageType = (rawTag: string): 'TEXT' | 'EMAIL' | 'ADVERTISEMENT' | 'ARTICLE' | 'NOTICE' | 'CHAT' => {
-      const tag = rawTag.toUpperCase();
-      if (tag.includes('EMAIL') || tag.includes('THƯ')) return 'EMAIL';
-      if (tag.includes('ADVERT') || tag.includes('QUẢNG CÁO') || tag.includes('ADS')) return 'ADVERTISEMENT';
-      if (tag.includes('ARTICLE') || tag.includes('BÀI BÁO')) return 'ARTICLE';
-      if (tag.includes('NOTICE') || tag.includes('THÔNG BÁO')) return 'NOTICE';
-      if (tag.includes('CHAT') || tag.includes('HỘI THOẠI')) return 'CHAT';
-      return 'TEXT';
-    };
-
-    for (let i = 0; i < lines.length; i++) {
-      const raw = lines[i];
-      if (!raw) continue;
-      const line = raw.trim();
-      if (!line) continue;
-
-      // 1. Check Passage start: [PASSAGE], [EMAIL], [ARTICLE], [NOTICE], [CHAT], [ADVERTISEMENT], or Vietnamese equivalents
-      const passageMatch = line.match(
-        /^(?:\[(PASSAGE|TEXT|EMAIL|ADVERTISEMENT|ARTICLE|NOTICE|CHAT)\]|(?:passage|đoạn văn|doan van|đoạn hội thoại|bài đọc|bài nghe|bài nói|email|thư|quảng cáo|thông báo|bài báo|chat))(?:\s+\d+)?[:\s\-]*(.*)$/i,
-      );
-      if (passageMatch) {
-        finalizeCurrent();
-        inPassage = true;
-        inExplanation = false;
-        const matchedTag = passageMatch[1] || passageMatch[0];
-        const passageType = detectPassageType(matchedTag);
-        const inlineTitle = passageMatch[2]?.trim();
-        const passageIndex = passages.length + 1;
-        currentPassage = {
-          tempId: `passage-${passageIndex}`,
-          type: passageType,
-          title: inlineTitle || `${passageType} ${passageIndex}`,
-          content: '',
-          audioUrl: undefined,
-          order: passageIndex,
-        };
-        passages.push(currentPassage);
-        continue;
-      }
-
-      if (inPassage && currentPassage) {
-        const isQ = line.match(
-          /^(?:(?:\d+)[\.\/\:\)]\s*|(?:câu|question)\s+\d+[:.]\s*|\[QUESTION[^\]]*\]\s*)(.+)$/i,
-        );
-        if (isQ) {
-          inPassage = false;
-          // fall through to process question
-        } else {
-          if (/^(?:type|loại):/i.test(line)) {
-            const rawType = line.replace(/^(?:type|loại):\s*/i, '').trim();
-            currentPassage.type = detectPassageType(rawType);
-          } else if (/^(?:title|tiêu đề|tieu de):/i.test(line)) {
-            currentPassage.title = line.replace(/^(?:title|tiêu đề|tieu de):\s*/i, '').trim();
-          } else if (/^(?:audio|âm thanh|am thanh|\[audio\]):/i.test(line)) {
-            currentPassage.audioUrl = line.replace(/^(?:audio|âm thanh|am thanh|\[audio\]):\s*/i, '').trim();
-          } else if (/^(?:transcript|content|nội dung|noi dung|lời thoại):/i.test(line)) {
-            const extra = line.replace(/^(?:transcript|content|nội dung|noi dung|lời thoại):\s*/i, '').trim();
-            if (extra) {
-              currentPassage.content = (currentPassage.content ? currentPassage.content + '\n' : '') + extra;
-            }
-          } else {
-            currentPassage.content = (currentPassage.content ? currentPassage.content + '\n' : '') + line;
-          }
-          continue;
-        }
-      }
-
-      // 2. Check Question start: 101. The manager... or 1. Look at... or Câu 101: or [QUESTION]
-      const qMatch = line.match(
-        /^(?:(?:\d+)[\.\/\:\)]\s*|(?:câu|question)\s+\d+[:.]\s*|\[QUESTION[^\]]*\]\s*)(.+)$/i,
-      );
-      if (qMatch && qMatch[1]) {
-        finalizeCurrent();
-        currentQ = {
-          content: qMatch[1].trim(),
-          part: defaultPart || 1,
-          section: defaultSection || 'LISTENING',
-          options: [],
-          correctAnswer: 'A',
-          explanation: '',
-          passageTempId: currentPassage ? currentPassage.tempId : undefined,
-          passageTitle: currentPassage ? currentPassage.title : undefined,
-        };
-        continue;
-      }
-
-      if (!currentQ) continue;
-
-      // 3. Check Options: A. / B. / C. / D. or A) or (A)
-      const optMatch = line.match(/^(?:([A-D])[\.\)]|\(([A-D])\))\s+(.*)$/i);
-      if (optMatch) {
-        const key = ((optMatch[1] || optMatch[2]) as string).toUpperCase() as
-          | 'A'
-          | 'B'
-          | 'C'
-          | 'D';
-        const text = (optMatch[3] || '').trim();
-        currentOptions.push({ key, text });
-        inExplanation = false;
-        continue;
-      }
-
-      // 4. Check Answer: Answer: B, Đáp án: B, Key: B, [ANSWER]: B
-      const ansMatch = line.match(
-        /^(?:answer|đáp án|dap an|key|\[ANSWER\])[:\s\-]+(?:\()?([A-D])(?:\))?/i,
-      );
-      if (ansMatch && ansMatch[1]) {
-        currentQ.correctAnswer = ansMatch[1].toUpperCase() as 'A' | 'B' | 'C' | 'D';
-        inExplanation = false;
-        continue;
-      }
-
-      // 5. Check Explanation: Explanation: ... or Giải thích: ...
-      const expMatch = line.match(
-        /^(?:explanation|giải thích|giai thich|lời giải|loi giai|\[EXPLANATION\])[:\s\-]*(.*)$/i,
-      );
-      if (expMatch) {
-        inExplanation = true;
-        if (expMatch[1] && expMatch[1].trim()) {
-          currentQ.explanation = expMatch[1].trim();
-        }
-        continue;
-      }
-
-      // 6. Multi-line continuation
-      if (inExplanation) {
-        currentQ.explanation += (currentQ.explanation ? ' ' : '') + line;
-      } else if (currentOptions.length === 0) {
-        currentQ.content += ' ' + line;
-      }
+  private async validateImportContext(examId: string, part: number, section?: string) {
+    if (!Types.ObjectId.isValid(examId)) throw new NotFoundException('Exam not found');
+    if (!Number.isInteger(part) || part < 1 || part > 7) throw new BadRequestException('Part phải từ 1 đến 7.');
+    const expectedSection = part >= 5 ? 'READING' : 'LISTENING';
+    if (section && section !== expectedSection) throw new BadRequestException('Part không khớp với kỹ năng đã chọn.');
+    if (this.examModel) {
+      const exam = await this.examModel.findById(examId).lean().exec();
+      if (!exam) throw new NotFoundException('Exam not found');
+      if (exam.type !== 'TOEIC') throw new BadRequestException('Import hiện hỗ trợ đề TOEIC.');
     }
-
-    finalizeCurrent();
-
-    return {
-      passages,
-      passage: passages[0] || null,
-      questions,
-    };
+    return expectedSection;
   }
 
   async extractTextFromFile(file: Express.Multer.File): Promise<string> {
     const ext = file.originalname.split('.').pop()?.toLowerCase();
+    if (!['txt', 'docx', 'pdf'].includes(ext || '')) throw new BadRequestException('Chỉ hỗ trợ .docx, .pdf và .txt. Hãy chuyển .doc sang .docx.');
+    if (!file.buffer?.length || file.buffer.length > 25 * 1024 * 1024) throw new BadRequestException('File phải có nội dung và không vượt quá 25 MB.');
     if (ext === 'txt') {
       return file.buffer.toString('utf-8');
     }
     try {
       const officeFileType = ext === 'pdf' ? 'pdf' : 'docx';
       const parsedText = await parseOffice(file.buffer, { fileType: officeFileType as any });
-      return typeof parsedText === 'string' ? parsedText : String(parsedText || '');
+      return typeof parsedText === 'string' ? parsedText : String((await parsedText.to('text', { includeImages: false, textConfig: { preserveLayout: false } })).value || '');
     } catch (e: any) {
-      const fallbackStr = file.buffer.toString('utf-8');
-      if (fallbackStr.includes('[QUESTION') || fallbackStr.includes('Câu ')) {
-        return fallbackStr;
-      }
       throw new BadRequestException(`Không thể đọc nội dung file ${file.originalname}: ${e.message}`);
     }
   }
 
   async parseQuestions(examId: string, body: any, file?: Express.Multer.File) {
-    let rawText = body.rawText;
-    if (file) {
-      const extracted = await this.extractTextFromFile(file);
-      if (extracted) {
-        rawText = extracted;
-      }
-    }
-
-    if (!rawText) {
-      throw new BadRequestException('Vui lòng cung cấp file hoặc nội dung văn bản để phân tích.');
-    }
-
-    const part = body.part ? Number(body.part) : 1;
-    const section = body.section || (part >= 5 ? 'READING' : 'LISTENING');
+    const part = Number(body.part || 1);
+    const section = await this.validateImportContext(examId, part, body.section);
+    const rawText = file ? await this.extractTextFromFile(file) : body.rawText;
+    if (typeof rawText !== 'string' || !rawText.trim()) throw new BadRequestException('Không có văn bản để phân tích. PDF dạng ảnh cần chuyển thành văn bản trước.');
+    if (rawText.length > 1_000_000) throw new BadRequestException('Nội dung đề quá dài (tối đa 1 triệu ký tự).');
     const result = this.parseQuestionText(rawText, part, section);
-
-    return {
-      success: true,
-      passages: result.passages,
-      passage: result.passage,
-      questions: result.questions,
-      total: result.questions.length,
-      rawText,
-    };
+    return { ...result, total: result.questions.length, rawText, issues: validateImportDraft(result, part) };
   }
 
   async importQuestions(examId: string, body: any, file?: Express.Multer.File) {
-    if (!Types.ObjectId.isValid(examId)) {
-      throw new NotFoundException('Exam not found');
-    }
-
-    let rawText = body.rawText;
-    if (file) {
-      const extracted = await this.extractTextFromFile(file);
-      if (extracted) {
-        rawText = extracted;
-      }
-    }
-
-    let parsedQuestions = body.questions;
-    if (typeof parsedQuestions === 'string') {
-      try {
-        parsedQuestions = JSON.parse(parsedQuestions);
-      } catch {
-        parsedQuestions = undefined;
-      }
-    }
-
-    let parsedPassages = body.passages;
-    if (typeof parsedPassages === 'string') {
-      try {
-        parsedPassages = JSON.parse(parsedPassages);
-      } catch {
-        parsedPassages = undefined;
-      }
-    }
-
-    let parsedPassage = body.passage;
-    if (typeof parsedPassage === 'string') {
-      try {
-        parsedPassage = JSON.parse(parsedPassage);
-      } catch {
-        parsedPassage = undefined;
-      }
-    }
-
-    if ((!parsedPassages || parsedPassages.length === 0) && parsedPassage) {
-      parsedPassages = [parsedPassage];
-    }
-
-    const part = body.part ? Number(body.part) : 1;
-    const section = body.section || (part >= 5 ? 'READING' : 'LISTENING');
-
-    if ((!parsedQuestions || !Array.isArray(parsedQuestions) || parsedQuestions.length === 0) && rawText) {
-      const result = this.parseQuestionText(rawText, part, section);
-      parsedQuestions = result.questions;
-      if (!parsedPassages || parsedPassages.length === 0) {
-        parsedPassages = result.passages;
-      }
-    }
-
-    if (!parsedQuestions || !Array.isArray(parsedQuestions) || parsedQuestions.length === 0) {
-      throw new BadRequestException('Không tìm thấy câu hỏi hợp lệ trong dữ liệu để import.');
-    }
-
-    let createdPassageGroupId: Types.ObjectId | undefined = undefined;
-
-    // Create PassageGroup and child Passages if passages exist
-    if (Array.isArray(parsedPassages) && parsedPassages.length > 0) {
-      const validPassages = parsedPassages.filter(
-        (p: any) => p && (p.title || p.content || p.audioUrl),
-      );
-
-      if (validPassages.length > 0) {
-        const highestGroup = await this.passageGroupModel
-          .findOne({ examId: new Types.ObjectId(examId) })
-          .sort({ order: -1 })
-          .select('order')
-          .lean()
-          .exec();
-        const nextGroupOrder = highestGroup ? (highestGroup.order || 0) + 1 : 1;
-
-        const groupTitle =
-          body.passageGroupTitle ||
-          validPassages[0]?.title ||
-          `Passage Group Part ${part} #${nextGroupOrder}`;
-
-        const passageGroup = await this.passageGroupModel.create({
-          examId: new Types.ObjectId(examId),
-          section,
-          part,
-          title: groupTitle,
-          order: nextGroupOrder,
-        });
-        createdPassageGroupId = passageGroup._id;
-
-        for (let pIdx = 0; pIdx < validPassages.length; pIdx++) {
-          const p = validPassages[pIdx];
-          await this.passageModel.create({
-            passageGroupId: passageGroup._id,
-            type: p.type || 'TEXT',
-            title: p.title || `Text ${pIdx + 1}`,
-            content: p.content || '',
-            audioUrl: p.audioUrl,
-            order: p.order !== undefined ? p.order : pIdx + 1,
-          });
-        }
-      }
-    }
-
-    const highest = await this.questionModel
-      .findOne({ examId: new Types.ObjectId(examId) })
-      .sort({ order: -1 })
-      .select('order')
-      .lean()
-      .exec();
-    let currentOrder = highest ? (highest.order || 0) : 0;
-
-    const docsToInsert = parsedQuestions.map((q: any) => {
-      currentOrder += 1;
-      let matchedGroupId: Types.ObjectId | undefined = undefined;
-
-      if (q.passageGroupId && Types.ObjectId.isValid(q.passageGroupId)) {
-        matchedGroupId = new Types.ObjectId(q.passageGroupId);
-      } else if (q.passageId && Types.ObjectId.isValid(q.passageId)) {
-        matchedGroupId = new Types.ObjectId(q.passageId);
-      } else if (createdPassageGroupId) {
-        matchedGroupId = createdPassageGroupId;
-      }
-
-      return {
-        examId: new Types.ObjectId(examId),
-        passageGroupId: matchedGroupId,
-        section: q.section || section,
-        part: q.part ? Number(q.part) : part,
-        content: q.content,
-        options: q.options,
-        correctAnswer: q.correctAnswer || 'A',
-        explanation: q.explanation || '',
-        order: q.order || currentOrder,
-        isActive: true,
-      };
-    });
-
-    const inserted = await this.questionModel.insertMany(docsToInsert);
-
-    return {
-      success: true,
-      message: `Đã import thành công ${inserted.length} câu hỏi vào đề thi!`,
-      importedCount: inserted.length,
-      passageGroupId: createdPassageGroupId,
-      data: inserted,
+    const part = Number(body.part || 1);
+    const section = await this.validateImportContext(examId, part, body.section);
+    const json = (value: any, name: string) => {
+      if (typeof value !== 'string') return value;
+      try { return JSON.parse(value); } catch { throw new BadRequestException(`${name} không phải JSON hợp lệ.`); }
     };
+    let questions = json(body.questions, 'questions');
+    let groups = json(body.passageGroups, 'passageGroups');
+    let passages = json(body.passages, 'passages');
+    const rawText = file ? await this.extractTextFromFile(file) : body.rawText;
+    if (!questions && rawText) {
+      if (typeof rawText !== 'string' || rawText.length > 1_000_000) throw new BadRequestException('Nội dung đề không hợp lệ.');
+      const result = this.parseQuestionText(rawText, part, section);
+      questions = result.questions; groups ??= result.groups; passages ??= result.passages;
+    }
+    if (!Array.isArray(questions) || !questions.length || questions.length > 500) throw new BadRequestException('Mỗi lần import cần từ 1 đến 500 câu hỏi.');
+    if (groups !== undefined && !Array.isArray(groups)) throw new BadRequestException('passageGroups phải là danh sách.');
+    if (!groups?.length && (passages || body.passage)) {
+      passages = passages || [json(body.passage, 'passage')];
+      if (!Array.isArray(passages)) throw new BadRequestException('passages phải là danh sách.');
+      const map = new Map<string, any>();
+      for (const [i, p] of passages.entries()) {
+        if (!p || typeof p !== 'object') throw new BadRequestException('Đoạn văn không hợp lệ.');
+        const id = p.groupTempId || p.tempId || p.id || `group-${i + 1}`;
+        if (!map.has(id)) map.set(id, { tempId: id, title: p.title, passages: [] });
+        map.get(id).passages.push(p);
+      }
+      groups = [...map.values()];
+    }
+    groups = (groups || []).map((g: any, i: number) => {
+      if (!g || !Array.isArray(g.passages)) throw new BadRequestException('Nhóm bài tập phải có danh sách passages.');
+      const id = g.tempId || g.id || `group-${i + 1}`;
+      return { ...g, id, tempId: id, passages: g.passages.map((p: any, pi: number) => {
+        if (!p || typeof p !== 'object') throw new BadRequestException('Đoạn văn không hợp lệ.');
+        const pid = p.tempId || p.id || `${id}-passage-${pi + 1}`;
+        return { ...p, id: pid, tempId: pid, type: p.type || 'TEXT', content: p.content || '' };
+      }) };
+    });
+    questions = questions.map((q: any, i: number) => {
+      if (!q || typeof q !== 'object') throw new BadRequestException('Câu hỏi không hợp lệ.');
+      if (q.passageGroupId || q.passageId) throw new BadRequestException('Import sử dụng liên kết nhóm trong bản soạn, không sử dụng ID bài đọc đã lưu.');
+      return { ...q, order: q.order ?? i + 1 };
+    });
+    const errors = validateImportDraft({ groups, questions }, part).filter((issue) => issue.severity === 'error');
+    if (errors.length) throw new BadRequestException(errors.map((issue) => issue.message));
+    const batchId = body.batchId;
+    if (batchId !== undefined && (typeof batchId !== 'string' || !/^[a-zA-Z0-9-]{16,80}$/.test(batchId))) throw new BadRequestException('Mã lượt import không hợp lệ.');
+    const fingerprint = createHash('sha256').update(JSON.stringify({ part, groups, questions })).digest('hex');
+    const importLockKey = batchId ? `${examId}:${batchId}` : `${examId}:${fingerprint}`;
+    if (this.inFlightImports.has(importLockKey)) {
+      throw new BadRequestException('Lượt import này đang được xử lý, vui lòng đợi trong giây lát và không bấm gửi lại.');
+    }
+    this.inFlightImports.add(importLockKey);
+    try {
+      const findSavedBatch = async () => {
+        if (!batchId) return null;
+        const saved = await this.questionModel.find({ examId: new Types.ObjectId(examId), importBatchId: batchId }).sort({ importIndex: 1 }).lean().exec();
+        if (!saved.length) return null;
+        if (saved.length !== questions.length || saved.some((q) => q.importFingerprint !== fingerprint)) throw new BadRequestException('Lượt import đã tồn tại với dữ liệu khác hoặc chưa hoàn tất. Hãy tải lại đề để kiểm tra.');
+        return { importedCount: saved.length, passageGroupsCount: new Set(saved.map((q) => q.passageGroupId?.toString()).filter(Boolean)).size, data: saved };
+      };
+      const savedBatch = await findSavedBatch();
+      if (savedBatch) return savedBatch;
+      // Validate every document before writing groups, including Mongoose field constraints.
+      for (const q of questions) {
+        await new this.questionModel({ ...q, examId: new Types.ObjectId(examId), section, part }).validate();
+      }
+      const highest = await this.questionModel.findOne({ examId: new Types.ObjectId(examId) }).sort({ order: -1 }).select('order').lean().exec();
+      const highestGroup = groups.length ? await this.passageGroupModel.findOne({ examId: new Types.ObjectId(examId) }).sort({ order: -1 }).select('order').lean().exec() : null;
+      const groupMap = new Map<string, Types.ObjectId>();
+      const passageMap = new Map<string, Types.ObjectId>();
+      const createdGroupIds: Types.ObjectId[] = [];
+      const questionIds = questions.map(() => new Types.ObjectId());
+      try {
+        for (const [gi, g] of groups.entries()) {
+          const groupId = new Types.ObjectId();
+          createdGroupIds.push(groupId);
+          await this.passageGroupModel.create({ _id: groupId, examId: new Types.ObjectId(examId), part, section, title: g.title || `Part ${part} - Bài tập ${gi + 1}`, order: (highestGroup?.order || 0) + gi + 1 });
+          groupMap.set(g.id, groupId);
+          for (const [pi, p] of g.passages.entries()) {
+            await this.passageModel.create({ passageGroupId: groupId, type: p.type, content: p.content.trim(), audioUrl: p.audioUrl?.trim(), imageUrl: p.imageUrl?.trim(), order: pi + 1 });
+            passageMap.set(p.id, groupId);
+          }
+        }
+        const docs = questions.map((q: any, i: number) => ({
+          _id: questionIds[i], examId: new Types.ObjectId(examId), section, part,
+          passageGroupId: groupMap.get(q.passageGroupTempId) || passageMap.get(q.passageTempId),
+          content: q.content.trim(), options: q.options.map((o: any) => ({ key: o.key, text: o.text.trim() })), correctAnswer: q.correctAnswer,
+          explanation: q.explanation?.trim() || '', imageUrl: q.imageUrl?.trim(), audioUrl: q.audioUrl?.trim(),
+          order: (highest?.order || 0) + i + 1, isActive: q.isActive ?? true,
+          ...(batchId ? { importBatchId: batchId, importIndex: i, importFingerprint: fingerprint } : {}),
+        }));
+        const inserted = await this.questionModel.insertMany(docs, { ordered: true });
+        return { importedCount: inserted.length, passageGroupsCount: createdGroupIds.length, data: inserted };
+      } catch (error) {
+        // Remove only IDs allocated by this request; no existing exam data is touched.
+        try {
+          await this.questionModel.deleteMany({ _id: { $in: questionIds } }).exec();
+          if (createdGroupIds.length) {
+            await this.passageModel.deleteMany({ passageGroupId: { $in: createdGroupIds } }).exec();
+            await this.passageGroupModel.deleteMany({ _id: { $in: createdGroupIds } }).exec();
+          }
+        } catch (cleanupError) {
+          this.logger.error('Import cleanup failed', cleanupError);
+          throw new BadRequestException('Lưu đề bị gián đoạn và chưa dọn sạch dữ liệu. Hãy tải lại đề để kiểm tra trước khi import lại.');
+        }
+        // A concurrent retry may have completed the same batch while this request was writing.
+        const completedBatch = await findSavedBatch();
+        if (completedBatch) return completedBatch;
+        throw error;
+      }
+    } finally {
+      this.inFlightImports.delete(importLockKey);
+    }
   }
 }

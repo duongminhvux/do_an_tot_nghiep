@@ -51,7 +51,7 @@ export class SavedWordsService {
         $setOnInsert: { savedAt: new Date() },
         ...(dto.note !== undefined ? { $set: { note: dto.note } } : {}),
       },
-      { upsert: true, new: true },
+      { upsert: true, returnDocument: 'after' },
     );
 
     return saved;
@@ -122,7 +122,7 @@ export class SavedWordsService {
         wordId: new Types.ObjectId(wordId),
       },
       { $set: { note: dto.note ?? '' } },
-      { new: true },
+      { returnDocument: 'after' },
     );
 
     if (!saved) {

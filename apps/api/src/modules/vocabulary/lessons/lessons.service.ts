@@ -192,7 +192,7 @@ export class LessonsService {
     }
 
     const updatedLesson = await this.lessonModel
-      .findOneAndUpdate({ _id: id, isDeleted: { $ne: true } }, updateData, { new: true })
+      .findOneAndUpdate({ _id: id, isDeleted: { $ne: true } }, updateData, { returnDocument: 'after' })
       .exec();
     if (!updatedLesson) {
       throw new NotFoundException(
@@ -210,7 +210,7 @@ export class LessonsService {
       .findOneAndUpdate(
         { _id: id, isDeleted: { $ne: true } },
         { isActive: nextActive },
-        { new: true },
+        { returnDocument: 'after' },
       )
       .exec();
     if (!updated) {
@@ -224,7 +224,7 @@ export class LessonsService {
   async removeLesson(id: string): Promise<Lesson> {
     const lang = this.getLang();
     const deletedLesson = await this.lessonModel
-      .findOneAndUpdate({ _id: id, isDeleted: { $ne: true } }, { isDeleted: true }, { new: true })
+      .findOneAndUpdate({ _id: id, isDeleted: { $ne: true } }, { isDeleted: true }, { returnDocument: 'after' })
       .exec();
     if (!deletedLesson) {
       throw new NotFoundException(
@@ -237,7 +237,7 @@ export class LessonsService {
   async restore(id: string): Promise<Lesson> {
     const lang = this.getLang();
     const restored = await this.lessonModel
-      .findOneAndUpdate({ _id: id }, { isDeleted: false }, { new: true })
+      .findOneAndUpdate({ _id: id }, { isDeleted: false }, { returnDocument: 'after' })
       .exec();
     if (!restored) {
       throw new NotFoundException(
@@ -364,7 +364,7 @@ export class LessonsService {
     }
 
     const updated = await this.sectionModel
-      .findByIdAndUpdate(sectionId, updateData, { new: true })
+      .findByIdAndUpdate(sectionId, updateData, { returnDocument: 'after' })
       .exec();
     if (!updated) {
       throw new NotFoundException(
@@ -501,7 +501,7 @@ export class LessonsService {
     if (Object.keys(updateUnset).length > 0) updatePayload.$unset = updateUnset;
 
     const updated = await this.lessonWordModel
-      .findOneAndUpdate(query, updatePayload, { new: true })
+      .findOneAndUpdate(query, updatePayload, { returnDocument: 'after' })
       .populate('wordId')
       .populate('sectionId')
       .exec();

@@ -168,7 +168,7 @@ export class WordsService {
     }
 
     const updatedWord = await this.wordModel
-      .findOneAndUpdate({ _id: id, isDeleted: { $ne: true } }, updatePayload, { new: true })
+      .findOneAndUpdate({ _id: id, isDeleted: { $ne: true } }, updatePayload, { returnDocument: 'after' })
       .exec();
 
     if (!updatedWord) {
@@ -186,7 +186,7 @@ export class WordsService {
   async remove(id: string) {
     const lang = this.getLang();
     const deletedWord = await this.wordModel
-      .findOneAndUpdate({ _id: id, isDeleted: { $ne: true } }, { isDeleted: true }, { new: true })
+      .findOneAndUpdate({ _id: id, isDeleted: { $ne: true } }, { isDeleted: true }, { returnDocument: 'after' })
       .exec();
 
     if (!deletedWord) {
@@ -204,7 +204,7 @@ export class WordsService {
   async restore(id: string) {
     const lang = this.getLang();
     const restoredWord = await this.wordModel
-      .findOneAndUpdate({ _id: id, isDeleted: true }, { isDeleted: false }, { new: true })
+      .findOneAndUpdate({ _id: id, isDeleted: true }, { isDeleted: false }, { returnDocument: 'after' })
       .exec();
 
     if (!restoredWord) {
@@ -236,7 +236,7 @@ export class WordsService {
       .findOneAndUpdate(
         { _id: id, isDeleted: { $ne: true } },
         { isActive: nextState },
-        { new: true },
+        { returnDocument: 'after' },
       )
       .exec();
 

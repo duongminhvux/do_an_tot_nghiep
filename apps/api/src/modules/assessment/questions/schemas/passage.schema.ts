@@ -32,10 +32,6 @@ export class Passage {
     | 'NOTICE'
     | 'CHAT';
 
-  @Prop({
-    trim: true,
-  })
-  title?: string;
 
   @Prop({
     trim: true,
@@ -46,6 +42,11 @@ export class Passage {
     trim: true,
   })
   audioUrl?: string;
+
+  @Prop({
+    trim: true,
+  })
+  imageUrl?: string;
 
   @Prop({
     default: 0,

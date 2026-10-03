@@ -35,7 +35,7 @@ export function ExamOverviewTab({ exam, questionsCount }: ExamOverviewTabProps) 
             {t('detailPage.overviewTypeMode')}
           </span>
           <div className="font-bold text-slate-800 mt-1">
-            {exam.type} - {exam.mode}
+            {exam.type} (Full Test)
           </div>
         </div>
         <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/60">
@@ -43,7 +43,7 @@ export function ExamOverviewTab({ exam, questionsCount }: ExamOverviewTabProps) 
             {t('detailPage.overviewDuration')}
           </span>
           <div className="font-bold text-slate-800 mt-1">
-            {exam.durationMinutes} {t('table.minutes')}
+            {exam.durationMinutes || 120} {t('table.minutes')}
           </div>
         </div>
         <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/60">
@@ -53,7 +53,7 @@ export function ExamOverviewTab({ exam, questionsCount }: ExamOverviewTabProps) 
           <div className="font-bold text-slate-800 mt-1">
             {questionsCount} {t('table.questionsCount', { count: '' }).trim()} (
             {t('detailPage.targetQuestions', {
-              target: exam.totalQuestions || 100,
+              target: exam.totalQuestions || 200,
             })}
             )
           </div>

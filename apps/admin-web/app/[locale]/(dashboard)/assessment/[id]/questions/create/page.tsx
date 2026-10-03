@@ -7,6 +7,8 @@ import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { examService } from '@/services/assessment.service';
 import { uploadService } from '@/services/upload.service';
+import { useDraftUploads } from '@/hooks/use-draft-uploads';
+import { QuestionSavingStatus } from '@/components/assessment/question-saving-status';
 import { ExamItem } from '@/types';
 import {
   FileText,
@@ -53,10 +55,10 @@ interface SubQuestion {
 export interface ReadingPassageInput {
   id: string;
   type: 'TEXT' | 'EMAIL' | 'ADVERTISEMENT' | 'ARTICLE' | 'NOTICE' | 'CHAT';
-  title: string;
   content: string;
   imageUrl?: string;
   imageFileName?: string;
+  inputMode?: 'TEXT' | 'IMAGE';
 }
 
 
@@ -93,10 +95,9 @@ export default function CreateQuestionPage() {
       type: 'TOEIC',
       mode: 'PRACTICE',
       section: 'LISTENING',
-      status: 'ACTIVE',
+      isActive: true,
       durationMinutes: 45,
       totalQuestions: 100,
-      isActive: true,
       order: 1,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -150,17 +151,7 @@ export default function CreateQuestionPage() {
     }
   }, [existingQuestions.length]);
 
-  // Sync section based on Exam's real section & mode
-  useEffect(() => {
-    if (!exam?._id || !exam?.name) return;
-    if (exam.section === 'READING') {
-      setSection('READING');
-      setPart((p) => (p < 5 ? 5 : p));
-    } else if (exam.section === 'LISTENING') {
-      setSection('LISTENING');
-      setPart((p) => (p > 4 ? 1 : p));
-    }
-  }, [exam?.section, exam?._id, exam?.name]);
+
 
   // Is Group Mode (Part 3, 4, 6, 7 have shared audio/passage for multiple questions)
   const isGroupPart = useMemo(() => {
@@ -191,52 +182,66 @@ export default function CreateQuestionPage() {
 
   // === GROUP QUESTION FORM STATES (Part 3, 4, 6, 7) ===
   const [groupTitle, setGroupTitle] = useState('');
+  const [isTitleCustom, setIsTitleCustom] = useState(false);
   const [groupAudioUrl, setGroupAudioUrl] = useState('');
   const [groupAudioFileName, setGroupAudioFileName] = useState('');
   const [groupAudioFileSize, setGroupAudioFileSize] = useState('');
   const [groupContent, setGroupContent] = useState(''); // transcript or audio text
   const [groupImageUrl, setGroupImageUrl] = useState('');
   const [groupImageFileName, setGroupImageFileName] = useState('');
-  const [readingPassageType, setReadingPassageType] = useState<'text' | 'image'>('text');
 
   // Multi-passage states for Reading groups (Part 6, 7: hỗ trợ Đoạn đơn, Đoạn kép & Đoạn ba)
   const [readingPassages, setReadingPassages] = useState<ReadingPassageInput[]>([
-    { id: '1', type: 'TEXT', title: 'Đoạn văn 1', content: '' },
+    { id: '1', type: 'TEXT', content: '' },
   ]);
   const [activeReadingPassageIndex, setActiveReadingPassageIndex] = useState<number>(0);
 
   const handleAddReadingPassage = () => {
     if (readingPassages.length >= 3) return;
-    const nextIdx = readingPassages.length + 1;
     const newId = String(Date.now());
     setReadingPassages((prev) => [
       ...prev,
       {
         id: newId,
         type: 'TEXT',
-        title: `Đoạn văn ${nextIdx}`,
         content: '',
       },
     ]);
     setActiveReadingPassageIndex(readingPassages.length);
   };
 
+  const readingPassagesRef = useRef(readingPassages);
+  readingPassagesRef.current = readingPassages;
+  const uploadInProgress = useRef(false);
+  const draftUploads = useDraftUploads([
+    imageUrl, audioUrl, groupAudioUrl, groupImageUrl,
+    ...readingPassages.map((p) => p.imageUrl),
+  ]);
+
   const handlePassageImageUpload = async (file: File) => {
-    if (!file) return;
+    if (!file || uploadInProgress.current || isSubmitting) return;
+    const targetId = readingPassages[activeReadingPassageIndex]?.id;
+    const previousUrl = readingPassages[activeReadingPassageIndex]?.imageUrl;
+    uploadInProgress.current = true;
     try {
       setIsUploading(true);
       setErrorMessage(null);
       const res = await uploadService.uploadFile(file);
       if (res?.url) {
-        updateActiveReadingPassage({
-          imageUrl: res.url,
-          imageFileName: file.name,
-        });
+        const target = readingPassagesRef.current.find((p) => p.id === targetId);
+        if (!target || target.inputMode !== 'IMAGE' || target.imageUrl !== previousUrl) {
+          await uploadService.deleteFile(res.url);
+          return;
+        }
+        if (!draftUploads.track(res.url)) return;
+        setReadingPassages((prev) => prev.map((p) => p.id === targetId
+          ? { ...p, content: '', imageUrl: res.url, imageFileName: file.name } : p));
       }
     } catch (err: any) {
       const msg = err.response?.data?.message || err.message || 'Lỗi tải ảnh lên';
       setErrorMessage(Array.isArray(msg) ? msg.join(', ') : msg);
     } finally {
+      uploadInProgress.current = false;
       setIsUploading(false);
     }
   };
@@ -267,54 +272,78 @@ export default function CreateQuestionPage() {
   ]);
   const [activeSubIndex, setActiveSubIndex] = useState<number>(0);
 
-  // Initialize group defaults when part changes
+  // Helper: auto compute standard group title based on part, starting order, and question count
+  const computeAutoGroupTitle = (partNum: number, startOrder: number, count: number): string => {
+    const min = Math.max(1, Number(startOrder) || 1);
+    const total = Math.max(1, count);
+    const max = min + total - 1;
+    const rangeStr = total === 1 ? `Question ${min}` : `Questions ${min}-${max}`;
+    let partSuffix = 'Passage';
+    if (partNum === 3) partSuffix = 'Part 3 Conversation';
+    else if (partNum === 4) partSuffix = 'Part 4 Talk';
+    else if (partNum === 6) partSuffix = 'Part 6 Text Completion';
+    else if (partNum === 7) partSuffix = 'Part 7 Reading Passage';
+    else partSuffix = `Part ${partNum}`;
+    return `${rangeStr} (${partSuffix})`;
+  };
+
+  // Helper: detect if a title string follows standard auto-generated pattern
+  const isAutoGeneratedTitle = (title: string): boolean => {
+    if (!title || !title.trim()) return true;
+    return /^Questions?\s+\d+(?:-\d+)?\s+\(Part\s+\d+[^)]*\)$/i.test(title.trim());
+  };
+
+  // Initialize group subQuestions default count when part changes
   useEffect(() => {
-    if (part === 3) {
-      setGroupTitle(`Questions ${order}-${order + 2} (Part 3 Conversation)`);
-      if (subQuestions.length !== 3) {
-        setSubQuestions([
-          { id: '1', content: '', options: [{ key: 'A', text: '' }, { key: 'B', text: '' }, { key: 'C', text: '' }, { key: 'D', text: '' }], correctAnswer: 'A', explanation: '' },
-          { id: '2', content: '', options: [{ key: 'A', text: '' }, { key: 'B', text: '' }, { key: 'C', text: '' }, { key: 'D', text: '' }], correctAnswer: 'A', explanation: '' },
-          { id: '3', content: '', options: [{ key: 'A', text: '' }, { key: 'B', text: '' }, { key: 'C', text: '' }, { key: 'D', text: '' }], correctAnswer: 'A', explanation: '' },
-        ]);
-      }
-    } else if (part === 4) {
-      setGroupTitle(`Questions ${order}-${order + 2} (Part 4 Talk)`);
-      if (subQuestions.length !== 3) {
-        setSubQuestions([
-          { id: '1', content: '', options: [{ key: 'A', text: '' }, { key: 'B', text: '' }, { key: 'C', text: '' }, { key: 'D', text: '' }], correctAnswer: 'A', explanation: '' },
-          { id: '2', content: '', options: [{ key: 'A', text: '' }, { key: 'B', text: '' }, { key: 'C', text: '' }, { key: 'D', text: '' }], correctAnswer: 'A', explanation: '' },
-          { id: '3', content: '', options: [{ key: 'A', text: '' }, { key: 'B', text: '' }, { key: 'C', text: '' }, { key: 'D', text: '' }], correctAnswer: 'A', explanation: '' },
-        ]);
-      }
-    } else if (part === 6) {
-      setGroupTitle(`Questions ${order}-${order + 3} (Part 6 Text Completion)`);
-      if (subQuestions.length < 4) {
-        setSubQuestions([
-          { id: '1', content: '', options: [{ key: 'A', text: '' }, { key: 'B', text: '' }, { key: 'C', text: '' }, { key: 'D', text: '' }], correctAnswer: 'A', explanation: '' },
-          { id: '2', content: '', options: [{ key: 'A', text: '' }, { key: 'B', text: '' }, { key: 'C', text: '' }, { key: 'D', text: '' }], correctAnswer: 'A', explanation: '' },
-          { id: '3', content: '', options: [{ key: 'A', text: '' }, { key: 'B', text: '' }, { key: 'C', text: '' }, { key: 'D', text: '' }], correctAnswer: 'A', explanation: '' },
-          { id: '4', content: '', options: [{ key: 'A', text: '' }, { key: 'B', text: '' }, { key: 'C', text: '' }, { key: 'D', text: '' }], correctAnswer: 'A', explanation: '' },
-        ]);
-      }
-    } else if (part === 7) {
-      setGroupTitle(`Questions ${order}-${order + 2} (Part 7 Reading Passage)`);
+    if (!isGroupPart) return;
+    const defaultSubCount = part === 6 ? 4 : 3;
+    setSubQuestions((prev) => {
+      if (prev.length === defaultSubCount) return prev;
+      return Array.from({ length: defaultSubCount }, (_, idx) => {
+        if (prev[idx]) return prev[idx];
+        return {
+          id: String(idx + 1),
+          content: '',
+          options: [
+            { key: 'A', text: '' },
+            { key: 'B', text: '' },
+            { key: 'C', text: '' },
+            { key: 'D', text: '' },
+          ],
+          correctAnswer: 'A',
+          explanation: '',
+        };
+      });
+    });
+    setIsTitleCustom(false);
+    setGroupTitle(computeAutoGroupTitle(part, order, defaultSubCount));
+  }, [part]);
+
+  // Auto-sync group title with order, part, and number of questions (unless user customized it)
+  useEffect(() => {
+    if (!isGroupPart) return;
+    if (!isTitleCustom || isAutoGeneratedTitle(groupTitle) || !groupTitle.trim()) {
+      setGroupTitle(computeAutoGroupTitle(part, order, subQuestions.length));
     }
-  }, [part, order]);
+  }, [part, order, subQuestions.length, isGroupPart]);
 
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [submittingType, setSubmittingType] = useState<'create' | 'draft' | null>(null);
+  const submitInProgress = useRef(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // File upload handler
   const handleFileUpload = async (file: File, target: 'single-image' | 'single-audio' | 'group-audio' | 'group-image') => {
-    if (!file) return;
+    if (!file || uploadInProgress.current || isSubmitting) return;
+    uploadInProgress.current = true;
     try {
       setIsUploading(true);
       setErrorMessage(null);
       const res = await uploadService.uploadFile(file);
       if (res?.url) {
+        if (!draftUploads.track(res.url)) return;
         const sizeFormatted = `${(file.size / 1024).toFixed(1)} KB`;
         if (target === 'single-image') {
           setImageUrl(res.url);
@@ -337,6 +366,7 @@ export default function CreateQuestionPage() {
       const msg = err.response?.data?.message || err.message || t('createQuestionPage.msgUploadError');
       setErrorMessage(Array.isArray(msg) ? msg.join(', ') : msg);
     } finally {
+      uploadInProgress.current = false;
       setIsUploading(false);
     }
   };
@@ -344,6 +374,7 @@ export default function CreateQuestionPage() {
   // Add / Remove sub questions for group parts
   const handleAddSubQuestion = () => {
     const newId = String(Date.now());
+    const nextCount = subQuestions.length + 1;
     setSubQuestions((prev) => [
       ...prev,
       {
@@ -360,14 +391,21 @@ export default function CreateQuestionPage() {
       },
     ]);
     setActiveSubIndex(subQuestions.length);
+    if (!isTitleCustom || isAutoGeneratedTitle(groupTitle) || !groupTitle.trim()) {
+      setGroupTitle(computeAutoGroupTitle(part, order, nextCount));
+    }
   };
 
   const handleRemoveSubQuestion = (idx: number) => {
     if (subQuestions.length <= 1) return;
+    const nextCount = subQuestions.length - 1;
     const updated = subQuestions.filter((_, i) => i !== idx);
     setSubQuestions(updated);
     if (activeSubIndex >= updated.length) {
       setActiveSubIndex(updated.length - 1);
+    }
+    if (!isTitleCustom || isAutoGeneratedTitle(groupTitle) || !groupTitle.trim()) {
+      setGroupTitle(computeAutoGroupTitle(part, order, nextCount));
     }
   };
 
@@ -428,11 +466,10 @@ export default function CreateQuestionPage() {
     setGroupContent('');
     setGroupImageUrl('');
     setGroupImageFileName('');
-    setReadingPassageType('text');
     if (groupAudioInputRef.current) groupAudioInputRef.current.value = '';
     if (groupImageInputRef.current) groupImageInputRef.current.value = '';
 
-    setReadingPassages([{ id: '1', type: 'TEXT', title: 'Passage 1', content: '' }]);
+    setReadingPassages([{ id: '1', type: 'TEXT', content: '' }]);
     setActiveReadingPassageIndex(0);
 
     const defaultSubCount = part === 6 ? 4 : 3;
@@ -450,21 +487,17 @@ export default function CreateQuestionPage() {
     }));
     setSubQuestions(initialSubs);
     setActiveSubIndex(0);
+    setIsTitleCustom(false);
 
-    if (part === 3) {
-      setGroupTitle(`Questions ${targetOrder}-${targetOrder + 2} (Part 3 Conversation)`);
-    } else if (part === 4) {
-      setGroupTitle(`Questions ${targetOrder}-${targetOrder + 2} (Part 4 Talk)`);
-    } else if (part === 6) {
-      setGroupTitle(`Questions ${targetOrder}-${targetOrder + 3} (Part 6 Text Completion)`);
-    } else if (part === 7) {
-      setGroupTitle(`Questions ${targetOrder}-${targetOrder + 2} (Part 7 Reading Passage)`);
+    if (isGroupPart) {
+      setGroupTitle(computeAutoGroupTitle(part, targetOrder, defaultSubCount));
     } else {
       setGroupTitle('');
     }
   };
 
   const handleManualReset = () => {
+    if (isSubmitting || uploadInProgress.current) return;
     if (isGroupPart) {
       resetGroupForm();
     } else {
@@ -477,6 +510,7 @@ export default function CreateQuestionPage() {
 
   // Submit Single Question
   const handleSingleSubmit = async (asDraft: boolean = false) => {
+    if (uploadInProgress.current || submitInProgress.current || isSubmitting) return;
     setErrorMessage(null);
     if (!content.trim()) {
       setErrorMessage(t('createQuestionPage.msgInputQuestionContent'));
@@ -494,8 +528,12 @@ export default function CreateQuestionPage() {
       }
     }
 
+    submitInProgress.current = true;
+    setIsSubmitting(true);
+    setSubmittingType(asDraft ? 'draft' : 'create');
+    setSuccessMessage(null);
     try {
-      setIsSubmitting(true);
+      draftUploads.startSaving();
       const optionsPayload = [
         { key: 'A', text: optionA.trim() },
         { key: 'B', text: optionB.trim() },
@@ -518,11 +556,12 @@ export default function CreateQuestionPage() {
         imageUrl: imageUrl || undefined,
         audioUrl: audioUrl || undefined,
         order: Number(order) || 1,
-        status: asDraft ? 'INACTIVE' : isActive ? 'ACTIVE' : 'INACTIVE',
+
         isActive: asDraft ? false : isActive,
       };
 
       await examService.createQuestion(payload);
+      draftUploads.commit([payload.imageUrl, payload.audioUrl]);
       queryClient.invalidateQueries({ queryKey: ['admin-exam-questions', examId] });
       setSuccessMessage(t('createQuestionPage.msgQuestionCreated'));
 
@@ -533,12 +572,17 @@ export default function CreateQuestionPage() {
       const msg = err.response?.data?.message || err.message || t('createQuestionPage.msgCreateQuestionError');
       setErrorMessage(Array.isArray(msg) ? msg.join(', ') : msg);
     } finally {
+      draftUploads.finishSaving();
+      submitInProgress.current = false;
       setIsSubmitting(false);
+      setSubmittingType(null);
     }
   };
 
   // Submit Group Questions
   const handleGroupSubmit = async (asDraft: boolean = false) => {
+    let createdGroupId: string | undefined;
+    if (uploadInProgress.current || submitInProgress.current || isSubmitting) return;
     setErrorMessage(null);
 
     // Validation
@@ -549,8 +593,8 @@ export default function CreateQuestionPage() {
     if (groupType === 'READING') {
       for (let pIdx = 0; pIdx < readingPassages.length; pIdx++) {
         const p = readingPassages[pIdx];
-        if (!p || (!p.content.trim() && !p.imageUrl)) {
-          setErrorMessage(`Vui lòng nhập nội dung hoặc tải ảnh cho đoạn văn số ${pIdx + 1}`);
+        if (!p || Boolean(p.content.trim()) === Boolean(p.imageUrl?.trim())) {
+          setErrorMessage(`Vui lòng chỉ nhập văn bản hoặc ảnh cho đoạn văn số ${pIdx + 1}`);
           setActiveReadingPassageIndex(pIdx);
           return;
         }
@@ -573,22 +617,23 @@ export default function CreateQuestionPage() {
       }
     }
 
+    submitInProgress.current = true;
+    setIsSubmitting(true);
+    setSubmittingType(asDraft ? 'draft' : 'create');
+    setSuccessMessage(null);
     try {
-      setIsSubmitting(true);
-
-      let createdGroupId: string;
+      draftUploads.startSaving();
 
       if (groupType === 'READING') {
-        const defaultTitle = t('createQuestionPage.defaultReadingTitle', { part });
+        const autoTitle = computeAutoGroupTitle(part, order, subQuestions.length);
         const passagePayload = {
           examId,
-          title: groupTitle.trim() || defaultTitle,
+          title: groupTitle.trim() || autoTitle,
           section,
           part: Number(part),
           order: Number(order) || 1,
           passages: readingPassages.map((p, idx) => ({
             type: p.type || 'TEXT',
-            title: p.title.trim() || `Text ${idx + 1}`,
             content: p.content.trim() || undefined,
             imageUrl: p.imageUrl || undefined,
             order: idx + 1,
@@ -598,19 +643,19 @@ export default function CreateQuestionPage() {
         const groupRes = await examService.createPassageGroup(passagePayload);
         createdGroupId = (groupRes as any)?.data?._id || (groupRes as any)?._id;
       } else {
-        const defaultTitle = t('createQuestionPage.defaultAudioTitle', { part });
+        const autoTitle = computeAutoGroupTitle(part, order, subQuestions.length);
         const passagePayload = {
           examId,
-          title: groupTitle.trim() || defaultTitle,
+          title: groupTitle.trim() || autoTitle,
           section,
           part: Number(part),
           order: Number(order) || 1,
           passages: [
             {
               type: 'TEXT',
-              title: groupTitle.trim() || defaultTitle,
               content: groupContent.trim() || undefined,
               audioUrl: groupAudioUrl || undefined,
+              imageUrl: groupImageUrl || undefined,
               order: 1,
             },
           ],
@@ -619,6 +664,8 @@ export default function CreateQuestionPage() {
         const groupRes = await examService.createPassageGroup(passagePayload);
         createdGroupId = (groupRes as any)?.data?._id || (groupRes as any)?._id;
       }
+
+      if (!createdGroupId) throw new Error('Không nhận được ID nhóm câu hỏi.');
 
       // 2. Create all sub-questions linked to createdGroupId
       for (let i = 0; i < subQuestions.length; i++) {
@@ -635,7 +682,7 @@ export default function CreateQuestionPage() {
           correctAnswer: q.correctAnswer,
           explanation: q.explanation.trim(),
           order: Number(order) + i,
-          status: asDraft ? 'INACTIVE' : isActive ? 'ACTIVE' : 'INACTIVE',
+
           isActive: asDraft ? false : isActive,
         };
         await examService.createQuestion(qPayload);
@@ -643,6 +690,8 @@ export default function CreateQuestionPage() {
 
       queryClient.invalidateQueries({ queryKey: ['admin-exam-questions', examId] });
       queryClient.invalidateQueries({ queryKey: ['admin-exam-passages', examId] });
+      draftUploads.commit(groupType === 'READING'
+        ? readingPassages.map((p) => p.imageUrl) : [groupAudioUrl, groupImageUrl]);
       setSuccessMessage(t('createQuestionPage.msgGroupCreated', {
         count: subQuestions.length,
         type: groupType === 'AUDIO' ? t('createQuestionPage.typeAudio') : t('createQuestionPage.typeReading')
@@ -653,15 +702,43 @@ export default function CreateQuestionPage() {
       resetGroupForm(nextOrder);
       setTimeout(() => setSuccessMessage(null), 3500);
     } catch (err: any) {
+      if (createdGroupId) {
+        try {
+          await examService.deletePassageGroup(createdGroupId);
+        } catch {
+          // If rollback fails, preserve assets still referenced by persisted passages.
+          draftUploads.commit(groupType === 'READING'
+            ? readingPassages.map((p) => p.imageUrl) : [groupAudioUrl, groupImageUrl]);
+        }
+      }
       const msg = err.response?.data?.message || err.message || t('createQuestionPage.msgSaveGroupError');
       setErrorMessage(Array.isArray(msg) ? msg.join(', ') : msg);
     } finally {
+      draftUploads.finishSaving();
+      submitInProgress.current = false;
       setIsSubmitting(false);
+      setSubmittingType(null);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/50 p-6 md:p-8 space-y-6 w-full">
+    <>
+    {isSubmitting && (
+      <QuestionSavingStatus
+        locale={locale}
+        title={
+          submittingType === 'draft'
+            ? (locale === 'en' ? 'Saving draft…' : 'Đang lưu nháp câu hỏi…')
+            : (locale === 'en' ? 'Creating questions…' : (isGroupPart ? `Đang tạo cụm ${subQuestions.length} câu hỏi…` : 'Đang tạo câu hỏi…'))
+        }
+        description={
+          locale === 'en'
+            ? 'Please wait until the operation completes, do not click again.'
+            : 'Đang lưu dữ liệu vào hệ thống, vui lòng đợi và không thao tác liên tiếp.'
+        }
+      />
+    )}
+    <div aria-busy={isSubmitting} className={`min-h-screen bg-slate-50/50 p-6 md:p-8 space-y-6 w-full ${isSubmitting ? 'pointer-events-none select-none' : ''}`}>
       {/* 1. Breadcrumbs */}
       <div className="flex items-center gap-1.5 text-xs text-slate-500 flex-wrap">
         <Link href={`/${locale}/assessment`} className="hover:text-blue-600 transition-colors flex items-center gap-1">
@@ -759,21 +836,13 @@ export default function CreateQuestionPage() {
                     <SelectValue placeholder={t('createQuestionPage.selectPartPlaceholder')} />
                   </SelectTrigger>
                   <SelectContent className="text-xs border rounded border-slate-200">
-                    {exam.section !== 'READING' && (
-                      <>
-                        <SelectItem value="1">{t('createQuestionPage.part1Option')}</SelectItem>
-                        <SelectItem value="2">{t('createQuestionPage.part2Option')}</SelectItem>
-                        <SelectItem value="3">{t('createQuestionPage.part3Option')}</SelectItem>
-                        <SelectItem value="4">{t('createQuestionPage.part4Option')}</SelectItem>
-                      </>
-                    )}
-                    {exam.section !== 'LISTENING' && (
-                      <>
-                        <SelectItem value="5">{t('createQuestionPage.part5Option')}</SelectItem>
-                        <SelectItem value="6">{t('createQuestionPage.part6Option')}</SelectItem>
-                        <SelectItem value="7">{t('createQuestionPage.part7Option')}</SelectItem>
-                      </>
-                    )}
+                    <SelectItem value="1">{t('createQuestionPage.part1Option')}</SelectItem>
+                    <SelectItem value="2">{t('createQuestionPage.part2Option')}</SelectItem>
+                    <SelectItem value="3">{t('createQuestionPage.part3Option')}</SelectItem>
+                    <SelectItem value="4">{t('createQuestionPage.part4Option')}</SelectItem>
+                    <SelectItem value="5">{t('createQuestionPage.part5Option')}</SelectItem>
+                    <SelectItem value="6">{t('createQuestionPage.part6Option')}</SelectItem>
+                    <SelectItem value="7">{t('createQuestionPage.part7Option')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -787,7 +856,13 @@ export default function CreateQuestionPage() {
                   type="number"
                   min={1}
                   value={order}
-                  onChange={(e) => setOrder(Number(e.target.value))}
+                  onChange={(e) => {
+                    const newOrder = Number(e.target.value);
+                    setOrder(newOrder);
+                    if (isGroupPart && (!isTitleCustom || isAutoGeneratedTitle(groupTitle) || !groupTitle.trim())) {
+                      setGroupTitle(computeAutoGroupTitle(part, newOrder, subQuestions.length));
+                    }
+                  }}
                   className="w-full h-10 px-3 border rounded border-slate-200 bg-white text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
@@ -828,13 +903,41 @@ export default function CreateQuestionPage() {
 
                 {/* Tiêu đề đoạn */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-800">
-                    {t('createQuestionPage.groupTitleLabel')} <span className="text-red-500">*</span>
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate-800">
+                      {t('createQuestionPage.groupTitleLabel')} <span className="text-red-500">*</span>
+                    </label>
+                    {isTitleCustom ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsTitleCustom(false);
+                          setGroupTitle(computeAutoGroupTitle(part, order, subQuestions.length));
+                        }}
+                        className="text-[11px] text-blue-600 hover:text-blue-700 hover:underline font-medium"
+                      >
+                        {locale === 'en' ? 'Reset to auto title' : 'Tự động tạo theo dải câu'}
+                      </button>
+                    ) : (
+                      <span className="text-[11px] text-slate-400 italic">
+                        {locale === 'en' ? 'Auto-syncs with questions' : 'Tự động theo dải câu hỏi'}
+                      </span>
+                    )}
+                  </div>
                   <input
                     type="text"
                     value={groupTitle}
-                    onChange={(e) => setGroupTitle(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setGroupTitle(val);
+                      if (!val.trim()) {
+                        setIsTitleCustom(false);
+                      } else if (isAutoGeneratedTitle(val)) {
+                        setIsTitleCustom(false);
+                      } else {
+                        setIsTitleCustom(true);
+                      }
+                    }}
                     placeholder={groupType === 'AUDIO' ? t('createQuestionPage.groupAudioPlaceholder') : t('createQuestionPage.groupReadingPlaceholder')}
                     className="w-full h-10 px-3.5 border rounded border-slate-200 bg-white text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
@@ -990,7 +1093,7 @@ export default function CreateQuestionPage() {
                               : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
                           }`}
                         >
-                          <span>{rp.title || `Đoạn ${idx + 1}`}</span>
+                          <span>{`Đoạn ${idx + 1}`}</span>
                           {rp.content.trim() || rp.imageUrl ? (
                             <Check className="h-3 w-3 text-emerald-300" />
                           ) : (
@@ -1021,22 +1124,19 @@ export default function CreateQuestionPage() {
                             )}
                           </div>
 
-                          <div className="space-y-1">
-                            <label className="text-[11px] font-semibold text-slate-700">
-                              Tiêu đề đoạn văn (tùy chọn):
-                            </label>
-                            <input
-                              type="text"
-                              value={curPassage.title}
-                              onChange={(e) => updateActiveReadingPassage({ title: e.target.value })}
-                              placeholder={`Ví dụ: Đoạn văn ${activeReadingPassageIndex + 1}`}
-                              className="w-full h-9 px-3 border rounded border-slate-200 bg-white text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-teal-500"
-                            />
-                          </div>
-
-                          <div className="space-y-1.5">
+                          <label className="block space-y-1.5 text-xs font-semibold text-slate-800">
+                            Loại nội dung
+                            <select value={curPassage.inputMode || 'TEXT'} disabled={isUploading || isSubmitting}
+                              onChange={(e) => updateActiveReadingPassage({ inputMode: e.target.value as 'TEXT' | 'IMAGE', content: '', imageUrl: '', imageFileName: '' })}
+                              className="block h-9 w-full rounded border border-slate-200 bg-white px-3 text-xs">
+                              <option value="TEXT">Text — Văn bản</option>
+                              <option value="IMAGE">Image — Hình ảnh</option>
+                            </select>
+                            <span className="block font-normal text-slate-500">Mỗi đoạn chỉ dùng văn bản hoặc ảnh. Đổi loại sẽ xóa nội dung hiện tại.</span>
+                          </label>
+                          {curPassage.inputMode !== 'IMAGE' && (<div className="space-y-1.5">
                             <label className="text-xs font-semibold text-slate-800">
-                              Nội dung văn bản <span className="text-slate-400 font-normal">(nhập chữ hoặc tải ảnh chụp/scan bên dưới)</span>
+                              Nội dung văn bản
                             </label>
                             <textarea
                               rows={6}
@@ -1045,10 +1145,10 @@ export default function CreateQuestionPage() {
                               placeholder="Nhập nội dung bài đọc tại đây..."
                               className="w-full p-3.5 border rounded border-slate-200 bg-white text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-teal-500 leading-relaxed font-mono"
                             />
-                          </div>
+                          </div>)}
 
-                          {/* Hình ảnh bài đọc (Tùy chọn - Tải file hoặc dán URL) */}
-                          <div className="space-y-2 pt-2 border-t border-teal-100">
+                          {/* Hình ảnh bài đọc */}
+                          {curPassage.inputMode === 'IMAGE' && (<div className="space-y-2 pt-2 border-t border-teal-100">
                             <div className="flex items-center justify-between">
                               <label className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
                                 <ImageIcon className="h-3.5 w-3.5 text-teal-600" />
@@ -1151,7 +1251,7 @@ export default function CreateQuestionPage() {
                                 </div>
                               </div>
                             )}
-                          </div>
+                          </div>)}
                         </div>
                       );
                     })()}
@@ -1746,7 +1846,7 @@ export default function CreateQuestionPage() {
                   <div className="p-3 bg-slate-50 border rounded border-slate-200 space-y-2">
                     <div className="font-bold text-slate-800 flex items-center justify-between">
                       <div className="flex items-center gap-1.5 truncate">
-                        {readingPassageType === 'image' ? (
+                        {readingPassages.some((p) => p.imageUrl) ? (
                           <ImageIcon className="h-4 w-4 text-teal-600 shrink-0" />
                         ) : (
                           <FileText className="h-4 w-4 text-teal-600 shrink-0" />
@@ -1754,29 +1854,20 @@ export default function CreateQuestionPage() {
                         <span className="truncate">{groupTitle || t('createQuestionPage.previewSharedReading')}</span>
                       </div>
                       <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-teal-100 text-teal-800 shrink-0">
-                        {readingPassageType === 'image' ? t('createQuestionPage.readingTypeImage') : t('createQuestionPage.readingTypeText')}
+                        {readingPassages.some((p) => p.imageUrl) ? t('createQuestionPage.readingTypeImage') : t('createQuestionPage.readingTypeText')}
                       </span>
                     </div>
 
-                    {readingPassageType === 'image' ? (
-                      groupImageUrl ? (
-                        <div className="border rounded border-slate-200 overflow-hidden bg-white p-1">
-                          <img
-                            src={groupImageUrl}
-                            alt="Reading Preview"
-                            className="w-full max-h-48 object-contain bg-slate-50 rounded"
-                          />
-                        </div>
-                      ) : (
-                        <p className="text-slate-400 italic text-[11px]">{t('createQuestionPage.previewNoReadingImage')}</p>
-                      )
-                    ) : groupContent ? (
-                      <p className="text-slate-600 text-[11px] line-clamp-4 italic bg-white p-2 border rounded border-slate-200 whitespace-pre-line">
-                        {groupContent}
-                      </p>
-                    ) : (
-                      <p className="text-slate-400 italic text-[11px]">{t('createQuestionPage.previewNoReading')}</p>
-                    )}
+                    {readingPassages.map((p, index) => (
+                      <div key={p.id} className="space-y-1 rounded border border-slate-200 bg-white p-2">
+                        <span className="text-[11px] font-semibold text-slate-700">
+                          {p.imageUrl ? 'Hình ảnh' : 'Văn bản'} #{index + 1}
+                        </span>
+                        {p.imageUrl && <img src={p.imageUrl} alt={`Đoạn ${index + 1}`} className="max-h-48 w-full object-contain" />}
+                        {p.content && <p className="whitespace-pre-line text-[11px] text-slate-600 line-clamp-4">{p.content}</p>}
+                        {!p.imageUrl && !p.content && <p className="text-[11px] italic text-slate-400">{t('createQuestionPage.previewNoReading')}</p>}
+                      </div>
+                    ))}
                   </div>
                 )}
 
@@ -1855,7 +1946,9 @@ export default function CreateQuestionPage() {
             <div className="flex items-center gap-2">
               <Link
                 href={`/${locale}/assessment/${examId}`}
-                className="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors"
+                className={`px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors ${
+                  isSubmitting ? 'pointer-events-none opacity-50' : ''
+                }`}
               >
                 {t('createPage.cancel')}
               </Link>
@@ -1863,8 +1956,9 @@ export default function CreateQuestionPage() {
               <button
                 type="button"
                 onClick={handleManualReset}
+                disabled={isSubmitting || isUploading}
                 title={t('createQuestionPage.resetFormBtn')}
-                className="px-3 py-2 border rounded border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+                className="px-3 py-2 border rounded border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none cursor-pointer"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 <span>{t('createQuestionPage.resetFormBtn')}</span>
@@ -1874,23 +1968,30 @@ export default function CreateQuestionPage() {
             <div className="flex items-center gap-2.5">
               <button
                 type="button"
-                disabled={isSubmitting}
+                disabled={isSubmitting || isUploading}
                 onClick={() => (isGroupPart ? handleGroupSubmit(true) : handleSingleSubmit(true))}
-                className="px-4 py-2 border rounded border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold cursor-pointer transition-colors disabled:opacity-50"
+                className="px-4 py-2 border rounded border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none inline-flex items-center gap-1.5 cursor-pointer"
               >
-                {t('createPage.saveDraft')}
+                {isSubmitting && submittingType === 'draft' ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>{locale === 'en' ? 'Saving draft…' : 'Đang lưu nháp…'}</span>
+                  </>
+                ) : (
+                  <span>{t('createPage.saveDraft')}</span>
+                )}
               </button>
 
               <button
                 type="button"
-                disabled={isSubmitting}
+                disabled={isSubmitting || isUploading}
                 onClick={() => (isGroupPart ? handleGroupSubmit(false) : handleSingleSubmit(false))}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white border border-blue-600 rounded text-xs font-semibold inline-flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer disabled:opacity-50"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white border border-blue-600 rounded text-xs font-semibold inline-flex items-center gap-1.5 transition-colors shadow-xs disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none cursor-pointer"
               >
-                {isSubmitting ? (
+                {isSubmitting && submittingType === 'create' ? (
                   <>
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    <span>{t('createQuestionPage.savingBtn')}</span>
+                    <span>{t('createQuestionPage.savingBtn', 'Đang tạo câu hỏi...')}</span>
                   </>
                 ) : (
                   <span>{isGroupPart ? t('createQuestionPage.saveGroupBtn', { count: subQuestions.length }) : t('createQuestionPage.saveSingleBtn')}</span>
@@ -1901,5 +2002,6 @@ export default function CreateQuestionPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

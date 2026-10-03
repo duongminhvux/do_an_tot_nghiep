@@ -56,15 +56,11 @@ export class CreateQuestionDto {
   @IsOptional()
   imageUrl?: string;
 
-  @IsNumber()
-  @IsOptional()
-  order?: number;
-
-  @IsEnum(['ACTIVE', 'INACTIVE'])
-  @IsOptional()
-  status?: 'ACTIVE' | 'INACTIVE';
-
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
+
+  @IsNumber()
+  @IsOptional()
+  order?: number;
 }

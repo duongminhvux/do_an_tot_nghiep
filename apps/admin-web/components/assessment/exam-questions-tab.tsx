@@ -18,8 +18,6 @@ import {
   Plus,
   Pencil,
   BookOpen,
-  Layers,
-  List,
 } from 'lucide-react';
 import {
   Select,
@@ -48,7 +46,7 @@ export type DisplayItem =
       questions: QuestionItem[];
       orderMin: number;
       orderMax: number;
-      status: 'ACTIVE' | 'INACTIVE';
+      isActive: boolean;
     }
   | {
       type: 'single';
@@ -131,8 +129,6 @@ export function ExamQuestionsTab({
 }: ExamQuestionsTabProps) {
   const { t } = useTranslation('assessment');
 
-  // Mode: 'grouped' (show passage title for multi-question passages) vs 'flat'
-  const [viewMode, setViewMode] = React.useState<'grouped' | 'flat'>('grouped');
   const [expandedPassageIds, setExpandedPassageIds] = React.useState<Set<string>>(new Set());
 
   const toggleExpand = (id: string) => {
@@ -144,16 +140,8 @@ export function ExamQuestionsTab({
     });
   };
 
-  // Build display items (grouped by passage if in grouped mode)
+  // Group questions that share a passage; keep standalone questions as single rows.
   const displayItems = React.useMemo<DisplayItem[]>(() => {
-    if (viewMode === 'flat') {
-      return filteredQuestions.map((q) => ({
-        type: 'single',
-        id: q._id,
-        question: q,
-      }));
-    }
-
     const items: DisplayItem[] = [];
     const visitedPassageKeys = new Set<string>();
 
@@ -217,8 +205,7 @@ export function ExamQuestionsTab({
           .filter(Boolean)
           .sort((a, b) => a - b);
         const allActive = groupQuestions.every(
-          (item) =>
-            item.status === 'ACTIVE' || (item as any).isActive !== false
+          (item) => item.isActive
         );
 
         items.push({
@@ -231,7 +218,7 @@ export function ExamQuestionsTab({
           questions: groupQuestions,
           orderMin: orders[0] ?? q.order,
           orderMax: orders[orders.length - 1] ?? q.order,
-          status: allActive ? 'ACTIVE' : 'INACTIVE',
+          isActive: allActive,
         });
       } else {
         items.push({
@@ -243,7 +230,7 @@ export function ExamQuestionsTab({
     }
 
     return items;
-  }, [filteredQuestions, passagesList, viewMode]);
+  }, [filteredQuestions, passagesList]);
 
   // Pagination calculation based on displayItems
   const totalDisplayItems = displayItems.length;
@@ -325,44 +312,8 @@ export function ExamQuestionsTab({
             />
           </div>
 
-          {/* Controls: Mode Switcher + Dropdown Filters */}
+          {/* Dropdown Filters */}
           <div className="flex items-center gap-2 flex-wrap">
-            {/* View Mode Switcher (Grouped vs Flat) */}
-            <div className="inline-flex items-center p-0.5 rounded border border-slate-200 bg-slate-50">
-              <button
-                type="button"
-                onClick={() => {
-                  setViewMode('grouped');
-                  setCurrentPage(1);
-                }}
-                className={`px-2.5 py-1 rounded text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer ${
-                  viewMode === 'grouped'
-                    ? 'bg-white text-blue-600 shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-                title={t('detailPage.groupByPassage')}
-              >
-                <Layers className="h-3 w-3" />
-                <span>{t('detailPage.groupByPassage')}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setViewMode('flat');
-                  setCurrentPage(1);
-                }}
-                className={`px-2.5 py-1 rounded text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer ${
-                  viewMode === 'flat'
-                    ? 'bg-white text-blue-600 shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-                title={t('detailPage.flatList')}
-              >
-                <List className="h-3 w-3" />
-                <span>{t('detailPage.flatList')}</span>
-              </button>
-            </div>
-
             {/* Filter by Part */}
             <div className="w-28">
               <Select
@@ -490,7 +441,7 @@ export function ExamQuestionsTab({
                   <th className="py-2.5 px-3 w-10 text-center">#</th>
                   <th className="py-2.5 px-3 w-14 text-center">Part</th>
                   <th className="py-2.5 px-3 min-w-[220px]">
-                    {viewMode === 'grouped' ? 'Bài đọc / Nội dung câu hỏi' : t('detailPage.tableContent')}
+                    Bài đọc / Nội dung câu hỏi
                   </th>
                   <th className="py-2.5 px-3 min-w-[180px] max-w-[260px] text-center">
                     {t('detailPage.tablePassage')}
@@ -620,7 +571,7 @@ export function ExamQuestionsTab({
 
                           {/* Status */}
                           <td className="py-3 px-3 text-center whitespace-nowrap">
-                            {item.status === 'ACTIVE' ? (
+                            {item.isActive ? (
                               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">
                                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
                                 <span>{t('status.active')}</span>
@@ -746,9 +697,7 @@ export function ExamQuestionsTab({
                                 {q.order}
                               </td>
                               <td className="py-2.5 px-3 text-center">
-                                {q.status === 'ACTIVE' ||
-                                (q.status !== 'INACTIVE' &&
-                                  (q as any).isActive !== false) ? (
+                                {q.isActive ? (
                                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
                                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
                                     <span>{t('status.active')}</span>
@@ -887,9 +836,7 @@ export function ExamQuestionsTab({
 
                       {/* Status */}
                       <td className="py-3 px-3 text-center whitespace-nowrap">
-                        {q.status === 'ACTIVE' ||
-                        (q.status !== 'INACTIVE' &&
-                          (q as any).isActive !== false) ? (
+                        {q.isActive ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap shrink-0">
                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0"></span>
                             <span>{t('status.active')}</span>
