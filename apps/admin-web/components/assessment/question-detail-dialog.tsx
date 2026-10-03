@@ -3,7 +3,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { QuestionItem, PassageItem } from '@/types';
-import { Volume2, CheckCircle2, FileText, BookOpen } from 'lucide-react';
+import { Volume2, CheckCircle2, FileText, BookOpen, ImageIcon } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -123,8 +123,11 @@ export function QuestionDetailDialog({
         ? `Câu ${sortedOrders[0]} - ${sortedOrders[sortedOrders.length - 1]}`
         : `${questions.length} câu hỏi`;
 
-    const audioUrl = passage?.audioUrl || questions.find((q) => q.audioUrl)?.audioUrl;
-    const imageUrl = (passage as any)?.imageUrl || questions.find((q) => q.imageUrl)?.imageUrl;
+    const audioUrl = passage?.audioUrl || passage?.passages?.find((cp) => cp.audioUrl)?.audioUrl || questions.find((q) => q.audioUrl)?.audioUrl;
+    const imageUrl =
+      (passage as any)?.imageUrl ||
+      passage?.passages?.find((cp) => cp.imageUrl)?.imageUrl ||
+      questions.find((q) => q.imageUrl)?.imageUrl;
 
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -165,7 +168,7 @@ export function QuestionDetailDialog({
                   {section === 'LISTENING' ? (
                     <Volume2 className="h-4 w-4 text-blue-600" />
                   ) : (
-                    <FileText className="h-4 w-4 text-blue-600" />
+                    <>{imageUrl ? <ImageIcon className="h-4 w-4 text-blue-600" /> : <FileText className="h-4 w-4 text-blue-600" />}</>
                   )}
                   <span>
                     {section === 'LISTENING'
@@ -187,16 +190,7 @@ export function QuestionDetailDialog({
                 </div>
               )}
 
-              {/* Image if available */}
-              {imageUrl && (
-                <div className="border rounded border-slate-200 p-2 bg-white flex justify-center">
-                  <img
-                    src={imageUrl}
-                    alt="Passage visual"
-                    className="max-h-96 rounded object-contain"
-                  />
-                </div>
-              )}
+
 
               {/* Passage text content: supports multi-passage groups and single passage */}
               {passage?.passages && passage.passages.length > 0 ? (
@@ -209,24 +203,54 @@ export function QuestionDetailDialog({
                       <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
                         <span className="font-bold text-xs text-slate-800 flex items-center gap-1.5">
                           <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-200">
-                            {cp.type || 'TEXT'}
+                            {cp.imageUrl ? 'IMAGE' : cp.type || 'TEXT'}
                           </span>
-                          <span>{cp.title || `Văn bản ${idx + 1}`}</span>
+                          <span>{`${cp.imageUrl ? 'Hình ảnh' : 'Văn bản'} #${idx + 1}`}</span>
                         </span>
                       </div>
-                      {cp.content && (
+                      {cp.imageUrl && (
+                        <div className="border rounded border-slate-200 p-2 bg-white flex justify-center max-h-80 overflow-hidden">
+                          <img
+                            src={cp.imageUrl}
+                            alt={`Passage image ${idx + 1}`}
+                            className="max-h-72 rounded object-contain"
+                          />
+                        </div>
+                      )}
+                      {cp.content && !cp.imageUrl && (
                         <div className="text-xs sm:text-sm font-sans text-slate-800 leading-relaxed whitespace-pre-wrap select-text">
+                          {cp.content}
+                        </div>
+                      )}
+                      {cp.content && cp.imageUrl && (
+                        <div className="text-xs sm:text-sm font-sans text-slate-600 leading-relaxed whitespace-pre-wrap select-text border-t border-slate-100 pt-2">
                           {cp.content}
                         </div>
                       )}
                     </div>
                   ))}
                 </div>
+              ) : imageUrl ? (
+                /* Single passage — image takes priority, show content below if exists */
+                <div className="space-y-2">
+                  <div className="border rounded border-slate-200 p-2 bg-white flex justify-center">
+                    <img
+                      src={imageUrl}
+                      alt="Passage visual"
+                      className="max-h-96 rounded object-contain"
+                    />
+                  </div>
+                  {passage?.content && (
+                    <div className="p-3.5 bg-white border rounded border-slate-200 text-xs sm:text-sm font-sans text-slate-600 leading-relaxed whitespace-pre-wrap select-text">
+                      {passage.content}
+                    </div>
+                  )}
+                </div>
               ) : passage?.content ? (
                 <div className="p-3.5 bg-white border rounded border-slate-200 text-xs sm:text-sm font-sans text-slate-800 leading-relaxed whitespace-pre-wrap select-text">
                   {passage.content}
                 </div>
-              ) : !imageUrl && !audioUrl ? (
+              ) : !audioUrl ? (
                 <div className="p-3.5 bg-white border rounded border-slate-200 text-xs sm:text-sm font-sans text-slate-400 italic">
                   {t('detailPage.noPassagesDesc')}
                 </div>
@@ -346,9 +370,7 @@ export function QuestionDetailDialog({
 
   // Case 2: Standalone Question View (e.g. Part 5 single sentence question)
   if (!question) return null;
-  const isActive =
-    question.status === 'ACTIVE' ||
-    (question.status !== 'INACTIVE' && (question as any).isActive !== false);
+  const isActive = question.isActive;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

@@ -3,7 +3,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { PassageItem } from '@/types';
-import { BookOpen, FileText, Layers, Mail, Volume2, Megaphone, Newspaper, Bell, MessageSquare } from 'lucide-react';
+import { BookOpen, FileText, Layers, Mail, Volume2, Megaphone, Newspaper, Bell, MessageSquare, Image as ImageIcon } from 'lucide-react';
 
 interface ExamPassagesTabProps {
   passagesList: PassageItem[];
@@ -14,6 +14,8 @@ export function ExamPassagesTab({ passagesList }: ExamPassagesTabProps) {
 
   const getPassageTypeIcon = (type?: string) => {
     switch (type) {
+      case 'IMAGE':
+        return <ImageIcon className="h-3.5 w-3.5 text-emerald-600" />;
       case 'EMAIL':
         return <Mail className="h-3.5 w-3.5 text-blue-600" />;
       case 'ADVERTISEMENT':
@@ -76,6 +78,8 @@ export function ExamPassagesTab({ passagesList }: ExamPassagesTabProps) {
                 ? 'Đoạn kép (2 văn bản)'
                 : `Đoạn ba (${passageCount} văn bản)`;
 
+            const hasPassageImage = Boolean(p.imageUrl || childPassages?.some((cp) => cp.imageUrl));
+
             return (
               <div
                 key={p._id}
@@ -97,6 +101,11 @@ export function ExamPassagesTab({ passagesList }: ExamPassagesTabProps) {
                         <Volume2 className="h-3 w-3" /> Audio
                       </span>
                     )}
+                    {hasPassageImage && (
+                      <span className="inline-flex items-center gap-1 text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded text-[11px] border border-emerald-200">
+                        <ImageIcon className="h-3 w-3" /> Có ảnh bài đọc
+                      </span>
+                    )}
                     <span>{p.section}</span>
                   </div>
                 </div>
@@ -107,23 +116,32 @@ export function ExamPassagesTab({ passagesList }: ExamPassagesTabProps) {
                     {childPassages.map((cp, idx) => (
                       <div
                         key={cp._id || idx}
-                        className="p-3.5 bg-white rounded-lg border border-slate-200/90 space-y-1.5"
+                        className="p-3.5 bg-white rounded-lg border border-slate-200/90 space-y-2"
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2 font-bold text-slate-800 text-xs">
                             <span
                               className={`px-2 py-0.5 rounded border text-[10px] font-bold flex items-center gap-1 ${getPassageTypeBadge(
-                                cp.type
+                                cp.imageUrl ? 'IMAGE' : cp.type
                               )}`}
                             >
-                              {getPassageTypeIcon(cp.type)}
-                              {cp.type || 'TEXT'}
+                              {getPassageTypeIcon(cp.imageUrl ? 'IMAGE' : cp.type)}
+                              {cp.imageUrl ? 'IMAGE' : cp.type || 'TEXT'}
                             </span>
-                            <span>{cp.title || `Văn bản ${idx + 1}`}</span>
+                            <span>{`${cp.imageUrl ? 'Hình ảnh' : 'Văn bản'} #${idx + 1}`}</span>
                           </div>
                         </div>
+                        {cp.imageUrl && (
+                          <div className="p-2 border rounded border-slate-200 bg-slate-50/50 flex justify-center max-h-80 overflow-hidden">
+                            <img
+                              src={cp.imageUrl}
+                              alt={`Passage image ${idx + 1}`}
+                              className="max-h-72 rounded object-contain"
+                            />
+                          </div>
+                        )}
                         {cp.content && (
-                          <p className="text-slate-600 text-xs line-clamp-3 leading-relaxed">
+                          <p className="text-slate-600 text-xs line-clamp-3 leading-relaxed whitespace-pre-wrap">
                             {cp.content}
                           </p>
                         )}
@@ -131,11 +149,22 @@ export function ExamPassagesTab({ passagesList }: ExamPassagesTabProps) {
                     ))}
                   </div>
                 ) : (
-                  p.content && (
-                    <p className="text-slate-600 text-xs bg-white p-3.5 rounded-lg border border-slate-200/90 leading-relaxed line-clamp-4">
-                      {p.content}
-                    </p>
-                  )
+                  <div className="space-y-2">
+                    {p.imageUrl && (
+                      <div className="p-2 border rounded border-slate-200 bg-white flex justify-center max-h-80 overflow-hidden">
+                        <img
+                          src={p.imageUrl}
+                          alt={p.title || 'Passage image'}
+                          className="max-h-72 rounded object-contain"
+                        />
+                      </div>
+                    )}
+                    {p.content && (
+                      <p className="text-slate-600 text-xs bg-white p-3.5 rounded-lg border border-slate-200/90 leading-relaxed line-clamp-4 whitespace-pre-wrap">
+                        {p.content}
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             );

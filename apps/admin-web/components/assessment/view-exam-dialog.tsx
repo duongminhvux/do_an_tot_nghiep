@@ -25,8 +25,6 @@ export function ViewExamDialog({
 }: ViewExamDialogProps) {
   if (!exam) return null;
 
-  const section = exam.section || (exam.mode === 'FULL_TEST' ? 'FULL_TEST' : 'LISTENING');
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden bg-white border border-slate-200 rounded shadow-lg">
@@ -43,23 +41,11 @@ export function ViewExamDialog({
           {/* Header Title & Badges */}
           <div>
             <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
-              {section === 'LISTENING' && (
-                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 uppercase tracking-wider">
-                  LISTENING
-                </span>
-              )}
-              {section === 'READING' && (
-                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase tracking-wider">
-                  READING
-                </span>
-              )}
-              {section === 'FULL_TEST' && (
-                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200 uppercase tracking-wider">
-                  FULL_TEST
-                </span>
-              )}
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
-                {exam.type}
+              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200 uppercase tracking-wider">
+                FULL TEST
+              </span>
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                {exam.type || 'TOEIC'}
               </span>
             </div>
             <h3 className="text-sm font-bold text-slate-900">{exam.name}</h3>
@@ -75,14 +61,14 @@ export function ViewExamDialog({
             <div>
               <p className="text-[11px] text-slate-500">Thời gian làm bài</p>
               <p className="text-xs font-bold text-slate-900 mt-0.5">
-                {exam.durationMinutes ? `${exam.durationMinutes} phút` : 'Không giới hạn'}
+                {exam.durationMinutes || 120} phút
               </p>
             </div>
 
             <div>
               <p className="text-[11px] text-slate-500">Tổng số câu hỏi</p>
               <p className="text-xs font-bold text-slate-900 mt-0.5">
-                {exam.totalQuestions || (section === 'FULL_TEST' ? 200 : 100)} câu
+                {exam.totalQuestions || 200} câu (Part 1–7)
               </p>
             </div>
 

@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { examService } from '@/services/assessment.service';
+import { useDraftUploads } from '@/hooks/use-draft-uploads';
+import { ImageUploadField } from './image-upload-field';
 import { QuestionItem, PassageItem } from '@/types';
 import {
   Dialog,
@@ -42,8 +44,10 @@ export function EditQuestionDialog({
   const [imageUrl, setImageUrl] = useState('');
   const [audioUrl, setAudioUrl] = useState('');
   const [order, setOrder] = useState<number>(1);
-  const [isActive, setIsActive] = useState<boolean>(true);
+  const [isActive, setIsActive] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const draftUploads = useDraftUploads([imageUrl], open);
 
   const part = Number(question?.part) || 1;
   const section = question?.section || (part >= 5 ? 'READING' : 'LISTENING');
@@ -64,19 +68,23 @@ export function EditQuestionDialog({
       setImageUrl(question.imageUrl || '');
       setAudioUrl(question.audioUrl || '');
       setOrder(Number(question.order) || 1);
-      const activeState =
-        question.status === 'ACTIVE' ||
-        (question.status !== 'INACTIVE' && (question as any).isActive !== false);
+      const activeState = question.isActive ?? true;
       setIsActive(activeState);
       setErrorMessage(null);
     }
-  }, [question]);
+  }, [question, open]);
 
   const updateMutation = useMutation({
     mutationFn: async (payload: any) => {
       if (!question?._id) return;
-      const res = await examService.updateQuestion(question._id, payload);
-      return res;
+      draftUploads.startSaving();
+      try {
+        const res = await examService.updateQuestion(question._id, payload);
+        draftUploads.commit([payload.imageUrl]);
+        return res;
+      } finally {
+        draftUploads.finishSaving();
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-exam-questions', examId] });
@@ -111,6 +119,7 @@ export function EditQuestionDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isUploading || updateMutation.isPending) return;
     setErrorMessage(null);
 
     if (!content.trim()) {
@@ -145,17 +154,16 @@ export function EditQuestionDialog({
       options: optionsPayload,
       correctAnswer,
       explanation: explanation.trim(),
-      status: isActive ? 'ACTIVE' : 'INACTIVE',
       isActive,
     };
 
     // Only update media links if relevant to the Part
     if (part === 1) {
-      payload.imageUrl = imageUrl.trim() || undefined;
-      payload.audioUrl = audioUrl.trim() || undefined;
+      payload.imageUrl = imageUrl.trim();
+      payload.audioUrl = audioUrl.trim();
     } else if (part === 2) {
-      payload.audioUrl = audioUrl.trim() || undefined;
-    } else if (part === 7 && imageUrl.trim()) {
+      payload.audioUrl = audioUrl.trim();
+    } else if (part === 7) {
       payload.imageUrl = imageUrl.trim();
     }
 
@@ -359,7 +367,7 @@ export function EditQuestionDialog({
           </div>
 
           {/* Media Links (Image / Audio) - STRICTLY CONDITIONAL: Part 5 NEVER renders this! */}
-          {part !== 5 && (part === 1 || part === 2 || (part === 7 && imageUrl)) && (
+          {part !== 5 && (part === 1 || part === 2 || part === 7) && (
             <div className="space-y-2 pt-1 border-t border-slate-100">
               <label className="text-xs font-semibold text-slate-700">
                 {t('createQuestionPage.questionResourcesCardTitle')}
@@ -368,30 +376,9 @@ export function EditQuestionDialog({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 {/* Image URL only for Part 1 or Part 7 */}
                 {(part === 1 || part === 7) && (
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-medium text-slate-600">
-                      Link ảnh câu hỏi (Image URL)
-                    </label>
-                    <input
-                      type="url"
-                      value={imageUrl}
-                      onChange={(e) => setImageUrl(e.target.value)}
-                      placeholder="https://example.com/photo.jpg"
-                      className="w-full h-8 px-2.5 rounded border border-slate-200 bg-white text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                    {imageUrl && (
-                      <div className="p-1.5 border rounded border-slate-200 bg-slate-50 flex items-center justify-between">
-                        <img src={imageUrl} alt="Preview" className="h-10 w-14 object-cover rounded" />
-                        <button
-                          type="button"
-                          onClick={() => setImageUrl('')}
-                          className="text-[11px] text-red-500 hover:text-red-700 font-semibold cursor-pointer"
-                        >
-                          {t('createQuestionPage.deleteBtn')}
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  <ImageUploadField value={imageUrl} onChange={setImageUrl}
+                    onUploaded={draftUploads.track} onBusyChange={setIsUploading}
+                    onError={setErrorMessage} disabled={updateMutation.isPending || isUploading} />
                 )}
 
                 {/* Audio URL only for Listening parts (Part 1, 2) */}
@@ -432,14 +419,14 @@ export function EditQuestionDialog({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              disabled={updateMutation.isPending}
+              disabled={updateMutation.isPending || isUploading}
               className="px-3.5 py-1.5 rounded border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
             >
               {t('editDialog.cancel')}
             </button>
             <button
               type="submit"
-              disabled={updateMutation.isPending}
+              disabled={updateMutation.isPending || isUploading}
               className="px-4 py-1.5 rounded bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 inline-flex items-center gap-1.5 cursor-pointer"
             >
               {updateMutation.isPending ? (

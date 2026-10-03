@@ -4,6 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { examService } from '@/services/assessment.service';
+import { useDraftUploads } from '@/hooks/use-draft-uploads';
+import { ImageUploadField } from './image-upload-field';
+import { PassageItem } from '@/types';
 import {
   Dialog,
   DialogContent,
@@ -11,7 +14,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Loader2, BookOpen, CheckCircle2, HelpCircle, ImageIcon, Volume2 } from 'lucide-react';
+import { Loader2, BookOpen, CheckCircle2, HelpCircle, Volume2 } from 'lucide-react';
 import { PassageGroupDetail } from './question-detail-dialog';
 import { AutoResizeTextarea } from './auto-resize-textarea';
 
@@ -45,23 +48,27 @@ export function EditPassageDialog({
     (passageGroup?.part ? passageGroup.part <= 4 : false);
 
   const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [audioUrl, setAudioUrl] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
+  const [editablePassages, setEditablePassages] = useState<(PassageItem & { inputMode?: 'TEXT' | 'IMAGE' })[]>([]);
+  const [uploadingPassages, setUploadingPassages] = useState<Record<string, boolean>>({});
+  const isUploading = Object.values(uploadingPassages).some(Boolean);
+  const draftUploads = useDraftUploads(editablePassages.map((p) => p.imageUrl), open);
+  const updatePassage = (index: number, fields: Partial<PassageItem> & { inputMode?: 'TEXT' | 'IMAGE' }) => {
+    setEditablePassages((prev) => prev.map((p, i) => i === index ? { ...p, ...fields } : p));
+  };
   const [questions, setQuestions] = useState<EditableQuestion[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (passageGroup) {
       setTitle(passageGroup.title || passageGroup.passage?.title || '');
-      setContent(passageGroup.passage?.content || '');
-      setAudioUrl(passageGroup.passage?.audioUrl || '');
-      setImageUrl(
-        passageGroup.passage?.imageUrl ||
-        (passageGroup.passage as any)?.imageUrl ||
-        passageGroup.questions.find((q) => q.imageUrl)?.imageUrl ||
-        ''
-      );
+      const passage = passageGroup.passage;
+      const children = passage?.passages;
+      setEditablePassages(children?.length ? children.map((p) => ({ ...p, inputMode: p.imageUrl ? 'IMAGE' as const : 'TEXT' as const })) : [{
+        inputMode: passage?.imageUrl || passageGroup.questions.some((q) => q.imageUrl) ? 'IMAGE' : 'TEXT',
+        _id: '', type: passage?.type || 'TEXT', order: 1,
+        content: passage?.content || '', audioUrl: passage?.audioUrl || '',
+        imageUrl: passage?.imageUrl || passageGroup.questions.find((q) => q.imageUrl)?.imageUrl || '',
+      }]);
       setErrorMessage(null);
 
       const initialQs: EditableQuestion[] = (passageGroup.questions || []).map((q) => {
@@ -86,7 +93,7 @@ export function EditPassageDialog({
       });
       setQuestions(initialQs);
     }
-  }, [passageGroup]);
+  }, [passageGroup, open]);
 
   const handleQuestionContentChange = (index: number, newContent: string) => {
     setQuestions((prev) => {
@@ -142,44 +149,55 @@ export function EditPassageDialog({
   const updateMutation = useMutation({
     mutationFn: async () => {
       if (!passageGroup) return;
-      const pid = passageGroup.passage?._id;
-      let finalPassageId = pid;
 
-      const passagePayload = {
-        title,
-        content: content.trim() || undefined,
-        audioUrl: isListening ? (audioUrl.trim() || undefined) : undefined,
-        imageUrl: imageUrl.trim() || undefined,
-      };
-
-      // 1. Update or create the passage document
-      if (pid) {
-        await examService.updatePassage(pid, passagePayload);
-      } else {
-        const created = await examService.createPassage({
-          examId,
-          ...passagePayload,
-          section: passageGroup.section,
-          part: passageGroup.part,
-          order: questions[0]?.order || 1,
-        });
-        finalPassageId = (created as any)?.data?._id || (created as any)?._id;
+      if (isUploading) throw new Error('Vui lòng chờ tải ảnh hoàn tất.');
+      draftUploads.startSaving();
+      try {
+        let groupId = passageGroup.passage?._id;
+        if (groupId) {
+          await examService.updatePassageGroup(groupId, { title: title.trim() });
+          for (let index = 0; index < editablePassages.length; index++) {
+            const p = editablePassages[index]!;
+            const payload = {
+              type: p.type || 'TEXT', content: p.content?.trim() || '',
+              audioUrl: p.audioUrl?.trim() || '', imageUrl: p.imageUrl?.trim() || '',
+            };
+            await examService.updatePassage(p._id || groupId, payload);
+            // Preserve this image even if a subsequent question update fails.
+            draftUploads.commit([payload.imageUrl]);
+          }
+        } else {
+          const created = await examService.createPassageGroup({
+            examId, section: passageGroup.section, part: passageGroup.part,
+            title: title.trim(), order: 1,
+            passages: editablePassages.map((p, index) => ({
+              type: p.type || 'TEXT', content: p.content?.trim() || '',
+              audioUrl: p.audioUrl?.trim() || '', imageUrl: p.imageUrl?.trim() || '', order: index + 1,
+            })),
+          });
+          groupId = (created as any)?.data?._id || (created as any)?._id;
+          draftUploads.commit(editablePassages.map((p) => p.imageUrl));
+        }
+        if (!groupId) throw new Error('Không nhận được ID nhóm câu hỏi.');
+        const originalImageUrls = new Set([
+          passageGroup.passage?.imageUrl,
+          ...(passageGroup.passage?.passages || []).map((p) => p.imageUrl),
+          ...(!passageGroup.passage?.passages?.length
+            ? passageGroup.questions.map((q) => q.imageUrl) : []),
+        ].filter(Boolean));
+        await Promise.all(questions.map((q) => {
+          const original = passageGroup.questions.find((item) => item._id === q._id);
+          return examService.updateQuestion(q._id, {
+            content: q.content.trim(), options: q.options, correctAnswer: q.correctAnswer,
+            explanation: q.explanation.trim(), passageGroupId: groupId,
+            ...(original?.imageUrl && originalImageUrls.has(original.imageUrl) ? { imageUrl: '' } : {}),
+          });
+        }));
+      } finally {
+        draftUploads.finishSaving();
+        queryClient.invalidateQueries({ queryKey: ['admin-exam-passages', examId] });
+        queryClient.invalidateQueries({ queryKey: ['admin-exam-questions', examId] });
       }
-
-      // 2. Update all questions and their answer choices
-      await Promise.all(
-        questions.map((q) =>
-          examService.updateQuestion(q._id, {
-            content: q.content,
-            options: q.options,
-            correctAnswer: q.correctAnswer,
-            explanation: q.explanation || undefined,
-            passageId: finalPassageId || undefined,
-            passageTitle: title,
-            imageUrl: imageUrl.trim() || undefined,
-          })
-        )
-      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-exam-passages', examId] });
@@ -195,9 +213,11 @@ export function EditPassageDialog({
   if (!passageGroup) return null;
 
   const isSaveDisabled =
-    updateMutation.isPending ||
+    updateMutation.isPending || isUploading ||
     !title.trim() ||
-    (!content.trim() && !imageUrl.trim() && !audioUrl.trim());
+    editablePassages.some((p) => isListening
+      ? !p.content?.trim() && !p.imageUrl?.trim() && !p.audioUrl?.trim()
+      : Boolean(p.content?.trim()) === Boolean(p.imageUrl?.trim()));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -205,7 +225,7 @@ export function EditPassageDialog({
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            updateMutation.mutate();
+            if (!isSaveDisabled) updateMutation.mutate();
           }}
           className="space-y-5"
         >
@@ -269,70 +289,47 @@ export function EditPassageDialog({
               />
             </div>
 
-            {/* If Listening: Audio URL */}
-            {isListening ? (
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                  <Volume2 className="h-3.5 w-3.5 text-blue-600" />
-                  <span>Audio URL (Link âm thanh MP3/WAV)</span>
-                </label>
-                <input
-                  type="url"
-                  value={audioUrl}
-                  onChange={(e) => setAudioUrl(e.target.value)}
-                  placeholder="https://... / audio.mp3"
-                  className="w-full h-8.5 px-3 rounded border border-slate-200 bg-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-            ) : (
-              /* If Reading: Image URL (thay thế cho text bài đọc) */
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                  <ImageIcon className="h-3.5 w-3.5 text-blue-600" />
-                  <span>Hình ảnh bài đọc (URL ảnh văn bản/đoạn văn thay thế cho text)</span>
-                </label>
-                <input
-                  type="url"
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="https://... / image.jpg / .png"
-                  className="w-full h-8.5 px-3 rounded border border-slate-200 bg-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-                {imageUrl && (
-                  <div className="p-2 border rounded border-slate-200 bg-white flex justify-center max-h-60 overflow-hidden">
-                    <img
-                      src={imageUrl}
-                      alt="Passage preview"
-                      className="max-h-56 rounded object-contain"
-                    />
-                  </div>
+            {editablePassages.map((p, index) => (
+              <div key={p._id || index} className="space-y-3 rounded border border-slate-200 bg-white p-3">
+                <div className="text-xs font-bold text-slate-800">
+                  {p.imageUrl ? 'Hình ảnh' : 'Đoạn văn'} #{index + 1}
+                </div>
+                {!isListening && (
+                  <label className="block space-y-1 text-xs font-semibold text-slate-700">
+                    Loại nội dung
+                    <select value={p.inputMode || 'TEXT'} disabled={isUploading || updateMutation.isPending}
+                      onChange={(e) => updatePassage(index, { inputMode: e.target.value as 'TEXT' | 'IMAGE', content: '', imageUrl: '' })}
+                      className="block h-9 w-full rounded border border-slate-200 px-3 text-xs">
+                      <option value="TEXT">Text — Văn bản</option>
+                      <option value="IMAGE">Image — Hình ảnh</option>
+                    </select>
+                    <span className="block font-normal text-slate-500">Đổi loại sẽ xóa nội dung hiện tại.</span>
+                  </label>
                 )}
-              </div>
-            )}
-
-            {/* Passage text content */}
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-700">
-                Nội dung đoạn văn dạng văn bản{' '}
-                {imageUrl.trim() ? (
-                  <span className="text-slate-400 font-normal">
-                    (Tùy chọn khi bài đọc là dạng hình ảnh)
-                  </span>
-                ) : (
-                  <span className="text-red-500">*</span>
+                {(isListening || p.inputMode === 'IMAGE') && (<ImageUploadField value={p.imageUrl || ''}
+                  onChange={(url) => updatePassage(index, { imageUrl: url, ...(!isListening ? { content: '' } : {}) })}
+                  onUploaded={draftUploads.track}
+                  onBusyChange={(busy) => setUploadingPassages((prev) => ({ ...prev, [p._id || index]: busy }))}
+                  onError={setErrorMessage} disabled={updateMutation.isPending} />)}
+                {isListening && (
+                  <label className="block space-y-1 text-xs font-semibold text-slate-700">
+                    Audio URL
+                    <input type="url" value={p.audioUrl || ''} disabled={updateMutation.isPending}
+                      onChange={(e) => updatePassage(index, { audioUrl: e.target.value })}
+                      className="h-9 w-full rounded border border-slate-200 px-3 text-xs" />
+                    {p.audioUrl && <audio controls src={p.audioUrl} className="w-full h-8" />}
+                  </label>
                 )}
-              </label>
-              <AutoResizeTextarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder={
-                  imageUrl.trim()
-                    ? 'Có thể để trống nếu bài đọc đã dùng hình ảnh ở trên...'
-                    : 'Nhập nội dung đầy đủ của bài đọc...'
-                }
-                className="w-full p-3 rounded border border-slate-200 bg-white text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-blue-500 font-sans min-h-[120px]"
-              />
-            </div>
+                {(isListening || p.inputMode !== 'IMAGE') && (<label className="block space-y-1 text-xs font-semibold text-slate-700">
+                  {isListening ? 'Transcript' : 'Nội dung văn bản'}
+                  {p.imageUrl && <span className="ml-1 font-normal text-slate-400">(tuỳ chọn khi dùng ảnh)</span>}
+                  <AutoResizeTextarea value={p.content || ''} disabled={updateMutation.isPending}
+                    onChange={(e) => updatePassage(index, { content: e.target.value })}
+                    placeholder={p.imageUrl ? 'Có thể để trống khi bài đọc dùng ảnh.' : 'Nhập nội dung…'}
+                    className="min-h-[120px] w-full rounded border border-slate-200 bg-white p-3 text-xs leading-relaxed" />
+                </label>)}
+              </div>
+            ))}
           </div>
 
           {/* CARD 2: DANH SÁCH CÂU HỎI & CÁC CÂU TRẢ LỜI */}
