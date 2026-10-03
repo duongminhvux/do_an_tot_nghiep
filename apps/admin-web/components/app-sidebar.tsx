@@ -82,6 +82,11 @@ export function AppSidebar() {
   const isAssessmentActive =
     pathname === `/${locale}/assessment` ||
     pathname?.startsWith(`/${locale}/assessment/`);
+  const isExamGroupsActive =
+    pathname === `/${locale}/assessment/groups` ||
+    pathname?.startsWith(`/${locale}/assessment/groups/`);
+  const isExamsListActive =
+    isAssessmentActive && !isExamGroupsActive;
   const isUsersActive =
     pathname === `/${locale}/users` ||
     pathname?.startsWith(`/${locale}/users/`);
@@ -263,7 +268,7 @@ export function AppSidebar() {
               </Collapsible>
 
               {/* Lessons */}
-              <SidebarMenuItem>
+              {/* <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
                   isActive={isLessonsActive}
@@ -285,32 +290,81 @@ export function AppSidebar() {
                     </span>
                   </Link>
                 </SidebarMenuButton>
-              </SidebarMenuItem>
+              </SidebarMenuItem> */}
 
-              {/* Assessment */}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={isAssessmentActive}
-                  tooltip={t('nav.assessment', locale === 'en' ? 'Assessment' : 'Đánh giá')}
-                  className={cn(
-                    'h-9 px-2 rounded-lg text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition-all font-medium text-sm',
-                    isAssessmentActive && 'bg-blue-50 text-blue-600 font-semibold shadow-xs'
-                  )}
-                >
-                  <Link href={`/${locale}/assessment`} className="flex items-center gap-2.5">
-                    <ClipboardCheck
+              {/* Assessment (Collapsible with Exam Groups & Exams) */}
+              <Collapsible
+                asChild
+                defaultOpen={true}
+                className="group/collapsible"
+              >
+                <SidebarMenuItem>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton
+                      tooltip={t('nav.assessment', locale === 'en' ? 'Assessment' : 'Đánh giá')}
+                      isActive={isAssessmentActive}
                       className={cn(
-                        'h-4.5 w-4.5 shrink-0',
-                        isAssessmentActive ? 'text-blue-600' : 'text-slate-500'
+                        'h-9 px-2 rounded-lg text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition-all font-medium text-sm cursor-pointer',
+                        isAssessmentActive && 'bg-blue-50/70 text-blue-600 font-semibold'
                       )}
-                    />
-                    <span className="truncate group-data-[collapsible=icon]:hidden">
-                      {t('nav.assessment', locale === 'en' ? 'Assessment' : 'Đánh giá')}
-                    </span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+                    >
+                      <ClipboardCheck
+                        className={cn(
+                          'h-4.5 w-4.5 shrink-0',
+                          isAssessmentActive ? 'text-blue-600' : 'text-slate-500'
+                        )}
+                      />
+                      <span className="truncate group-data-[collapsible=icon]:hidden">
+                        {t('nav.assessment', locale === 'en' ? 'Assessment' : 'Đánh giá')}
+                      </span>
+                      <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90 group-data-[collapsible=icon]:hidden text-slate-400" />
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub className="pl-4 ml-3.5 border-l border-slate-200 space-y-1 mt-1">
+                      {/* Sub-item: Exam Groups */}
+                      <SidebarMenuSubItem>
+                        <SidebarMenuSubButton
+                          asChild
+                          isActive={isExamGroupsActive}
+                          className={cn(
+                            'h-8 px-2 rounded-md text-xs font-medium transition-all text-slate-600 hover:text-blue-600 hover:bg-blue-50',
+                            isExamGroupsActive && 'bg-blue-50 text-blue-600 font-semibold'
+                          )}
+                        >
+                          <Link
+                            href={`/${locale}/assessment/groups`}
+                            className="flex items-center gap-2"
+                          >
+                            <Layers className="h-3.5 w-3.5 shrink-0" />
+                            <span>{locale === 'en' ? 'Exam Groups' : 'Nhóm đề thi'}</span>
+                          </Link>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+
+                      {/* Sub-item: Exams */}
+                      <SidebarMenuSubItem>
+                        <SidebarMenuSubButton
+                          asChild
+                          isActive={isExamsListActive}
+                          className={cn(
+                            'h-8 px-2 rounded-md text-xs font-medium transition-all text-slate-600 hover:text-blue-600 hover:bg-blue-50',
+                            isExamsListActive && 'bg-blue-50 text-blue-600 font-semibold'
+                          )}
+                        >
+                          <Link
+                            href={`/${locale}/assessment`}
+                            className="flex items-center gap-2"
+                          >
+                            <FileText className="h-3.5 w-3.5 shrink-0" />
+                            <span>{locale === 'en' ? 'Exams' : 'Đề thi'}</span>
+                          </Link>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </SidebarMenuItem>
+              </Collapsible>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
