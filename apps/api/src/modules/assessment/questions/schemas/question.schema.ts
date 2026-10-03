@@ -72,6 +72,21 @@ export class Question {
   })
   explanation?: string;
 
+  @Prop({ trim: true })
+  imageUrl?: string;
+
+  @Prop({ trim: true })
+  audioUrl?: string;
+
+  @Prop({ trim: true })
+  importBatchId?: string;
+
+  @Prop()
+  importIndex?: number;
+
+  @Prop()
+  importFingerprint?: string;
+
   @Prop({
     default: 0,
     min: 0,
@@ -85,3 +100,7 @@ export class Question {
 }
 
 export const QuestionSchema = SchemaFactory.createForClass(Question);
+QuestionSchema.index(
+  { examId: 1, importBatchId: 1, importIndex: 1 },
+  { unique: true, partialFilterExpression: { importBatchId: { $type: 'string' } } },
+);

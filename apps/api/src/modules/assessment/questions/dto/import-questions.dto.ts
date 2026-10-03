@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { QuestionOptionDto } from './create-question.dto.js';
 
@@ -9,7 +9,8 @@ export class ImportPassageDto {
 
   @IsString()
   @IsOptional()
-  title?: string;
+  groupTempId?: string;
+
 
   @IsString()
   @IsOptional()
@@ -32,7 +33,30 @@ export class ImportPassageDto {
   order?: number;
 }
 
+export class ImportPassageGroupDto {
+  @IsString()
+  @IsOptional()
+  tempId?: string;
+
+  @IsString()
+  @IsOptional()
+  title?: string;
+
+  @IsNumber()
+  @IsOptional()
+  order?: number;
+
+  @ValidateNested({ each: true })
+  @Type(() => ImportPassageDto)
+  @IsOptional()
+  passages?: ImportPassageDto[];
+}
+
 export class ImportSingleQuestionDto {
+  @IsBoolean()
+  @IsOptional()
+  isActive?: boolean;
+
   @IsString()
   content: string;
 
@@ -66,15 +90,15 @@ export class ImportSingleQuestionDto {
 
   @IsString()
   @IsOptional()
+  passageGroupTempId?: string;
+
+  @IsString()
+  @IsOptional()
   passageId?: string;
 
   @IsString()
   @IsOptional()
   passageTempId?: string;
-
-  @IsString()
-  @IsOptional()
-  passageTitle?: string;
 }
 
 export class ImportQuestionsDto {
@@ -95,6 +119,11 @@ export class ImportQuestionsDto {
   @Type(() => ImportPassageDto)
   @IsOptional()
   passages?: ImportPassageDto[];
+
+  @ValidateNested({ each: true })
+  @Type(() => ImportPassageGroupDto)
+  @IsOptional()
+  passageGroups?: ImportPassageGroupDto[];
 
   @ValidateNested({ each: true })
   @Type(() => ImportSingleQuestionDto)
