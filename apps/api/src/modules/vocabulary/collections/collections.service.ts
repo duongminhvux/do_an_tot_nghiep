@@ -273,7 +273,7 @@ export class CollectionsService implements OnModuleInit {
     }
 
     const updatedCollection = await this.collectionModel
-      .findOneAndUpdate({ _id: id, isDeleted: { $ne: true } }, updateData, { new: true })
+      .findOneAndUpdate({ _id: id, isDeleted: { $ne: true } }, updateData, { returnDocument: 'after' })
       .exec();
     if (!updatedCollection) {
       throw new NotFoundException(
@@ -291,7 +291,7 @@ export class CollectionsService implements OnModuleInit {
       .findOneAndUpdate(
         { _id: id, isDeleted: { $ne: true } },
         { isActive: nextActive },
-        { new: true },
+        { returnDocument: 'after' },
       )
       .exec();
     if (!updated) {
@@ -323,7 +323,7 @@ export class CollectionsService implements OnModuleInit {
           name: deletedName,
           slug: deletedSlug,
         },
-        { new: true },
+        { returnDocument: 'after' },
       )
       .exec();
 
@@ -333,7 +333,7 @@ export class CollectionsService implements OnModuleInit {
   async restore(id: string): Promise<Collection> {
     const lang = this.getLang();
     const restored = await this.collectionModel
-      .findOneAndUpdate({ _id: id }, { isDeleted: false }, { new: true })
+      .findOneAndUpdate({ _id: id }, { isDeleted: false }, { returnDocument: 'after' })
       .exec();
     if (!restored) {
       throw new NotFoundException(

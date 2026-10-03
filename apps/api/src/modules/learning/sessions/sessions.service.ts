@@ -211,7 +211,7 @@ export class SessionsService {
             $setOnInsert: { learnedAt: now },
             ...(isMasteredRating ? { $set: { completedAt: now } } : {}),
           },
-          { upsert: true, new: true },
+          { upsert: true, returnDocument: 'after' },
         );
       }
 
@@ -323,7 +323,7 @@ export class SessionsService {
               startedAt: session.startedAt || now,
             },
           },
-          { upsert: true, new: true },
+          { upsert: true, returnDocument: 'after' },
         );
       }
     } else {
@@ -435,7 +435,7 @@ export class SessionsService {
       await this.dailyActivityModel.findOneAndUpdate(
         { userId, date: dayStart },
         { $inc: incFields },
-        { upsert: true, new: true },
+        { upsert: true, returnDocument: 'after' },
       );
     } catch {
       // Ignored to prevent breaking session operations

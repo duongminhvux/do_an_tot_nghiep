@@ -302,7 +302,7 @@ export class VocabularyGroupsService implements OnModuleInit {
     }
 
     const updatedGroup = await this.vocabularyGroupModel
-      .findOneAndUpdate({ _id: id, isDeleted: { $ne: true } }, updateData, { new: true })
+      .findOneAndUpdate({ _id: id, isDeleted: { $ne: true } }, updateData, { returnDocument: 'after' })
       .exec();
 
     if (!updatedGroup) {
@@ -321,7 +321,7 @@ export class VocabularyGroupsService implements OnModuleInit {
       .findOneAndUpdate(
         { _id: id, isDeleted: { $ne: true } },
         { isActive: nextActive },
-        { new: true },
+        { returnDocument: 'after' },
       )
       .exec();
 
@@ -354,7 +354,7 @@ export class VocabularyGroupsService implements OnModuleInit {
           name: deletedName,
           slug: deletedSlug,
         },
-        { new: true },
+        { returnDocument: 'after' },
       )
       .exec();
 
@@ -369,7 +369,7 @@ export class VocabularyGroupsService implements OnModuleInit {
   async restore(id: string): Promise<VocabularyGroup> {
     const lang = this.getLang();
     const restored = await this.vocabularyGroupModel
-      .findOneAndUpdate({ _id: id }, { isDeleted: false }, { new: true })
+      .findOneAndUpdate({ _id: id }, { isDeleted: false }, { returnDocument: 'after' })
       .exec();
 
     if (!restored) {

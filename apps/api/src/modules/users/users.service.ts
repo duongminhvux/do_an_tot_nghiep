@@ -169,7 +169,7 @@ export class UsersService {
   }
 
   async update(id: string, data: UpdateQuery<User>): Promise<UserDocument | null> {
-    return await this.userModel.findByIdAndUpdate(id, data, { new: true });
+    return await this.userModel.findByIdAndUpdate(id, data, { returnDocument: 'after' });
   }
 
   async updateProfile(id: string, updateProfileDto: UpdateProfileDto) {
@@ -181,7 +181,7 @@ export class UsersService {
           profileUpdatedAt: new Date(),
         },
       },
-      { new: true, select: '-password -code -codeExpiresAt -__v' }
+      { returnDocument: 'after', select: '-password -code -codeExpiresAt -__v' }
     );
 
     if (!updatedUser) {
