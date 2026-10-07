@@ -218,14 +218,28 @@ export function QuestionDetailDialog({
                         </div>
                       )}
                       {cp.content && !cp.imageUrl && (
-                        <div className="text-xs sm:text-sm font-sans text-slate-800 leading-relaxed whitespace-pre-wrap select-text">
-                          {cp.content}
-                        </div>
+                        cp.content.includes('<') ? (
+                          <div
+                            className="text-xs sm:text-sm font-sans text-slate-800 leading-relaxed select-text tiptap-content"
+                            dangerouslySetInnerHTML={{ __html: cp.content }}
+                          />
+                        ) : (
+                          <div className="text-xs sm:text-sm font-sans text-slate-800 leading-relaxed whitespace-pre-wrap select-text">
+                            {cp.content}
+                          </div>
+                        )
                       )}
                       {cp.content && cp.imageUrl && (
-                        <div className="text-xs sm:text-sm font-sans text-slate-600 leading-relaxed whitespace-pre-wrap select-text border-t border-slate-100 pt-2">
-                          {cp.content}
-                        </div>
+                        cp.content.includes('<') ? (
+                          <div
+                            className="text-xs sm:text-sm font-sans text-slate-600 leading-relaxed select-text border-t border-slate-100 pt-2 tiptap-content"
+                            dangerouslySetInnerHTML={{ __html: cp.content }}
+                          />
+                        ) : (
+                          <div className="text-xs sm:text-sm font-sans text-slate-600 leading-relaxed whitespace-pre-wrap select-text border-t border-slate-100 pt-2">
+                            {cp.content}
+                          </div>
+                        )
                       )}
                     </div>
                   ))}
@@ -241,15 +255,29 @@ export function QuestionDetailDialog({
                     />
                   </div>
                   {passage?.content && (
-                    <div className="p-3.5 bg-white border rounded border-slate-200 text-xs sm:text-sm font-sans text-slate-600 leading-relaxed whitespace-pre-wrap select-text">
-                      {passage.content}
-                    </div>
+                    passage.content.includes('<') ? (
+                      <div
+                        className="p-3.5 bg-white border rounded border-slate-200 text-xs sm:text-sm font-sans text-slate-600 leading-relaxed select-text tiptap-content"
+                        dangerouslySetInnerHTML={{ __html: passage.content }}
+                      />
+                    ) : (
+                      <div className="p-3.5 bg-white border rounded border-slate-200 text-xs sm:text-sm font-sans text-slate-600 leading-relaxed whitespace-pre-wrap select-text">
+                        {passage.content}
+                      </div>
+                    )
                   )}
                 </div>
               ) : passage?.content ? (
-                <div className="p-3.5 bg-white border rounded border-slate-200 text-xs sm:text-sm font-sans text-slate-800 leading-relaxed whitespace-pre-wrap select-text">
-                  {passage.content}
-                </div>
+                passage.content.includes('<') ? (
+                  <div
+                    className="p-3.5 bg-white border rounded border-slate-200 text-xs sm:text-sm font-sans text-slate-800 leading-relaxed select-text tiptap-content"
+                    dangerouslySetInnerHTML={{ __html: passage.content }}
+                  />
+                ) : (
+                  <div className="p-3.5 bg-white border rounded border-slate-200 text-xs sm:text-sm font-sans text-slate-800 leading-relaxed whitespace-pre-wrap select-text">
+                    {passage.content}
+                  </div>
+                )
               ) : !audioUrl ? (
                 <div className="p-3.5 bg-white border rounded border-slate-200 text-xs sm:text-sm font-sans text-slate-400 italic">
                   {t('detailPage.noPassagesDesc')}
@@ -283,7 +311,11 @@ export function QuestionDetailDialog({
                           Câu {q.order}
                         </span>
                         <span className="text-xs sm:text-sm font-semibold text-slate-900 leading-snug">
-                          {q.content}
+                          {q.content && q.content.includes('<') ? (
+                            <span dangerouslySetInnerHTML={{ __html: q.content }} />
+                          ) : (
+                            q.content
+                          )}
                         </span>
                       </div>
                       <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded shrink-0">
@@ -438,7 +470,11 @@ export function QuestionDetailDialog({
               {t('detailPage.questionContentTitle')}
             </div>
             <div className="p-3 bg-slate-50 border rounded border-slate-200 text-xs sm:text-sm font-semibold text-slate-800 leading-relaxed whitespace-pre-wrap">
-              {question.content || '—'}
+              {question.content && question.content.includes('<') ? (
+                <div dangerouslySetInnerHTML={{ __html: question.content }} />
+              ) : (
+                question.content || '—'
+              )}
             </div>
           </div>
 

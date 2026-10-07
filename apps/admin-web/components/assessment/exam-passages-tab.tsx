@@ -141,9 +141,16 @@ export function ExamPassagesTab({ passagesList }: ExamPassagesTabProps) {
                           </div>
                         )}
                         {cp.content && (
-                          <p className="text-slate-600 text-xs line-clamp-3 leading-relaxed whitespace-pre-wrap">
-                            {cp.content}
-                          </p>
+                          cp.content.includes('<') ? (
+                            <div
+                              className="text-slate-600 text-xs line-clamp-4 leading-relaxed tiptap-content"
+                              dangerouslySetInnerHTML={{ __html: cp.content }}
+                            />
+                          ) : (
+                            <p className="text-slate-600 text-xs line-clamp-4 leading-relaxed whitespace-pre-wrap">
+                              {cp.content}
+                            </p>
+                          )
                         )}
                       </div>
                     ))}
@@ -160,9 +167,16 @@ export function ExamPassagesTab({ passagesList }: ExamPassagesTabProps) {
                       </div>
                     )}
                     {p.content && (
-                      <p className="text-slate-600 text-xs bg-white p-3.5 rounded-lg border border-slate-200/90 leading-relaxed line-clamp-4 whitespace-pre-wrap">
-                        {p.content}
-                      </p>
+                      p.content.includes('<') ? (
+                        <div
+                          className="text-slate-600 text-xs bg-white p-3.5 rounded-lg border border-slate-200/90 leading-relaxed line-clamp-6 tiptap-content"
+                          dangerouslySetInnerHTML={{ __html: p.content }}
+                        />
+                      ) : (
+                        <p className="text-slate-600 text-xs bg-white p-3.5 rounded-lg border border-slate-200/90 leading-relaxed line-clamp-6 whitespace-pre-wrap">
+                          {p.content}
+                        </p>
+                      )
                     )}
                   </div>
                 )}

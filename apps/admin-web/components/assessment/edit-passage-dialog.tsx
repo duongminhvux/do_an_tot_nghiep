@@ -17,6 +17,7 @@ import {
 import { Loader2, BookOpen, CheckCircle2, HelpCircle, Volume2 } from 'lucide-react';
 import { PassageGroupDetail } from './question-detail-dialog';
 import { AutoResizeTextarea } from './auto-resize-textarea';
+import { TiptapEditor } from './tiptap-editor';
 
 interface EditableQuestion {
   _id: string;
@@ -70,8 +71,11 @@ export function EditPassageDialog({
       setTitle(passageGroup.title || passageGroup.passage?.title || '');
       const passage = passageGroup.passage;
       const children = passage?.passages;
-      setEditablePassages(children?.length ? children.map((p) => ({ ...p, inputMode: p.imageUrl ? 'IMAGE' as const : 'TEXT' as const })) : [{
-        inputMode: passage?.imageUrl || passageGroup.questions.some((q) => q.imageUrl) ? 'IMAGE' : 'TEXT',
+      setEditablePassages(children?.length ? children.map((p) => ({
+        ...p,
+        inputMode: p.content?.trim() ? 'TEXT' as const : (p.imageUrl ? 'IMAGE' as const : 'TEXT' as const),
+      })) : [{
+        inputMode: passage?.content?.trim() ? 'TEXT' : (passage?.imageUrl || passageGroup.questions.some((q) => q.imageUrl) ? 'IMAGE' : 'TEXT'),
         _id: '', type: passage?.type || 'TEXT', order: 1,
         content: passage?.content || '', audioUrl: passage?.audioUrl || '',
         imageUrl: passage?.imageUrl || passageGroup.questions.find((q) => q.imageUrl)?.imageUrl || '',
@@ -157,7 +161,7 @@ export function EditPassageDialog({
     mutationFn: async () => {
       if (!passageGroup) return;
 
-      if (isUploading) throw new Error('Vui lòng chờ tải ảnh hoàn tất.');
+      if (isUploading) throw new Error(t('editPassageDialog.uploadWaitingError'));
       draftUploads.startSaving();
       try {
         let groupId = passageGroup.passage?._id;
@@ -185,7 +189,7 @@ export function EditPassageDialog({
           groupId = (created as any)?.data?._id || (created as any)?._id;
           draftUploads.commit(editablePassages.map((p) => p.imageUrl));
         }
-        if (!groupId) throw new Error('Không nhận được ID nhóm câu hỏi.');
+        if (!groupId) throw new Error(t('editPassageDialog.missingGroupIdError'));
         const originalImageUrls = new Set([
           passageGroup.passage?.imageUrl,
           ...(passageGroup.passage?.passages || []).map((p) => p.imageUrl),
@@ -212,19 +216,12 @@ export function EditPassageDialog({
       onOpenChange(false);
     },
     onError: (err: any) => {
-      const msg = err.response?.data?.message || err.message || 'Lỗi khi cập nhật bài đọc và câu hỏi';
+      const msg = err.response?.data?.message || err.message || t('editPassageDialog.updateError');
       showError(Array.isArray(msg) ? msg.join(', ') : msg);
     },
   });
 
   if (!passageGroup) return null;
-
-  const isSaveDisabled =
-    updateMutation.isPending || isUploading ||
-    !title.trim() ||
-    editablePassages.some((p) => isListening
-      ? !p.audioUrl?.trim()
-      : (!p.content?.trim() && !p.imageUrl?.trim()) || (Boolean(p.content?.trim()) && Boolean(p.imageUrl?.trim())));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -236,14 +233,14 @@ export function EditPassageDialog({
             setErrorMessage(null);
 
             if (!title.trim()) {
-              showError('Vui lòng nhập tiêu đề cho cụm câu hỏi / bài đọc.');
+              showError(t('editPassageDialog.titleRequired'));
               return;
             }
 
             if (isListening) {
               const missingAudio = editablePassages.some((p) => !p.audioUrl?.trim());
               if (missingAudio) {
-                showError('Vui lòng cung cấp đầy đủ file audio cho bài nghe.');
+                showError(t('editPassageDialog.missingAudioError'));
                 return;
               }
             } else {
@@ -252,11 +249,11 @@ export function EditPassageDialog({
                 const hasText = Boolean(p.content?.trim());
                 const hasImg = Boolean(p.imageUrl?.trim());
                 if (!hasText && !hasImg) {
-                  showError(`Đoạn văn / Đề bài số ${i + 1} không được để trống (cần có nội dung văn bản hoặc hình ảnh).`);
+                  showError(t('editPassageDialog.passageEmptyError', { index: i + 1 }));
                   return;
                 }
                 if (hasText && hasImg) {
-                  showError(`Đoạn văn số ${i + 1} chỉ được chọn một trong hai: văn bản hoặc hình ảnh.`);
+                  showError(t('editPassageDialog.passageExclusiveError', { index: i + 1 }));
                   return;
                 }
               }
@@ -275,17 +272,17 @@ export function EditPassageDialog({
                 • {passageGroup.section}
               </span>
               <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                {questions.length} câu hỏi liên kết
+                {t('editPassageDialog.linkedQuestionsCount', { count: questions.length })}
               </span>
             </div>
             <DialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
               <BookOpen className="h-4 w-4 text-blue-600 shrink-0" />
-              <span>Chỉnh sửa bài đọc & các câu trả lời</span>
+              <span>{t('editPassageDialog.title')}</span>
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
               {isListening
-                ? 'Chỉnh sửa audio bài nghe, transcript và các câu hỏi, câu trả lời.'
-                : 'Chỉnh sửa hình ảnh/văn bản bài đọc và các câu hỏi, câu trả lời.'}
+                ? t('editPassageDialog.descriptionListening')
+                : t('editPassageDialog.descriptionReading')}
             </DialogDescription>
           </DialogHeader>
 
@@ -309,7 +306,7 @@ export function EditPassageDialog({
                 ) : (
                   <BookOpen className="h-3.5 w-3.5 text-blue-600" />
                 )}
-                <span>1. Đề bài / Nội dung đoạn văn</span>
+                <span>{t('editPassageDialog.section1Title')}</span>
               </span>
               <span className="text-[11px] font-semibold text-blue-700">
                 Part {passageGroup.part} ({passageGroup.section})
@@ -319,14 +316,14 @@ export function EditPassageDialog({
             {/* Title */}
             <div className="space-y-1">
               <label className="text-xs font-semibold text-slate-700">
-                Tiêu đề bài đọc / đoạn hội thoại <span className="text-red-500">*</span>
+                {t('editPassageDialog.titleLabel')} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="VD: The Expansion of the Town Market"
+                placeholder={t('editPassageDialog.titlePlaceholder')}
                 className="w-full h-8.5 px-3 rounded border border-slate-200 bg-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
@@ -334,18 +331,18 @@ export function EditPassageDialog({
             {editablePassages.map((p, index) => (
               <div key={p._id || index} className="space-y-3 rounded border border-slate-200 bg-white p-3">
                 <div className="text-xs font-bold text-slate-800">
-                  {p.imageUrl ? 'Hình ảnh' : 'Đoạn văn'} #{index + 1}
+                  {p.imageUrl ? t('editPassageDialog.passageItemImage') : t('editPassageDialog.passageItemText')} #{index + 1}
                 </div>
                 {!isListening && (
                   <label className="block space-y-1 text-xs font-semibold text-slate-700">
-                    Loại nội dung
+                    {t('editPassageDialog.contentTypeLabel')}
                     <select value={p.inputMode || 'TEXT'} disabled={isUploading || updateMutation.isPending}
                       onChange={(e) => updatePassage(index, { inputMode: e.target.value as 'TEXT' | 'IMAGE', content: '', imageUrl: '' })}
                       className="block h-9 w-full rounded border border-slate-200 px-3 text-xs">
-                      <option value="TEXT">Text — Văn bản</option>
-                      <option value="IMAGE">Image — Hình ảnh</option>
+                      <option value="TEXT">{t('editPassageDialog.contentTypeText')}</option>
+                      <option value="IMAGE">{t('editPassageDialog.contentTypeImage')}</option>
                     </select>
-                    <span className="block font-normal text-slate-500">Đổi loại sẽ xóa nội dung hiện tại.</span>
+                    <span className="block font-normal text-slate-500">{t('editPassageDialog.contentTypeHint')}</span>
                   </label>
                 )}
                 {(isListening || p.inputMode === 'IMAGE') && (<ImageUploadField value={p.imageUrl || ''}
@@ -355,21 +352,41 @@ export function EditPassageDialog({
                   onError={setErrorMessage} disabled={updateMutation.isPending} />)}
                 {isListening && (
                   <label className="block space-y-1 text-xs font-semibold text-slate-700">
-                    Audio URL
+                    {t('editPassageDialog.audioUrlLabel')}
                     <input type="url" value={p.audioUrl || ''} disabled={updateMutation.isPending}
                       onChange={(e) => updatePassage(index, { audioUrl: e.target.value })}
                       className="h-9 w-full rounded border border-slate-200 px-3 text-xs" />
                     {p.audioUrl && <audio controls src={p.audioUrl} className="w-full h-8" />}
                   </label>
                 )}
-                {(isListening || p.inputMode !== 'IMAGE') && (<label className="block space-y-1 text-xs font-semibold text-slate-700">
-                  {isListening ? 'Transcript' : 'Nội dung văn bản'}
-                  {p.imageUrl && <span className="ml-1 font-normal text-slate-400">(tuỳ chọn khi dùng ảnh)</span>}
-                  <AutoResizeTextarea value={p.content || ''} disabled={updateMutation.isPending}
-                    onChange={(e) => updatePassage(index, { content: e.target.value })}
-                    placeholder={p.imageUrl ? 'Có thể để trống khi bài đọc dùng ảnh.' : 'Nhập nội dung…'}
-                    className="min-h-[120px] w-full rounded border border-slate-200 bg-white p-3 text-xs leading-relaxed" />
-                </label>)}
+                {!isListening && p.inputMode !== 'IMAGE' ? (
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
+                      <span>{t('editPassageDialog.tiptapContentLabel')}</span>
+                      <span className="text-[11px] font-normal text-teal-700 bg-teal-50 px-1.5 py-0.2 rounded border border-teal-200">
+                        Part {passageGroup?.part}
+                      </span>
+                    </label>
+                    <TiptapEditor
+                      value={p.content || ''}
+                      onChange={(content) => updatePassage(index, { content })}
+                      disabled={updateMutation.isPending}
+                      showToeicBlankHelper={passageGroup?.part === 6}
+                      minHeight="140px"
+                    />
+                  </div>
+                ) : (
+                  (isListening || p.inputMode !== 'IMAGE') && (
+                    <label className="block space-y-1 text-xs font-semibold text-slate-700">
+                      {isListening ? t('editPassageDialog.transcriptLabel') : t('editPassageDialog.textContentLabel')}
+                      {p.imageUrl && <span className="ml-1 font-normal text-slate-400">{t('editPassageDialog.optionalWithImage')}</span>}
+                      <AutoResizeTextarea value={p.content || ''} disabled={updateMutation.isPending}
+                        onChange={(e) => updatePassage(index, { content: e.target.value })}
+                        placeholder={p.imageUrl ? t('editPassageDialog.imageContentPlaceholder') : t('editPassageDialog.textContentPlaceholder')}
+                        className="min-h-[120px] w-full rounded border border-slate-200 bg-white p-3 text-xs leading-relaxed" />
+                    </label>
+                  )
+                )}
               </div>
             ))}
           </div>
@@ -379,10 +396,10 @@ export function EditPassageDialog({
             <div className="flex items-center justify-between border-b border-slate-200 pb-2">
               <span className="text-xs font-bold text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
                 <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                <span>2. Danh sách câu hỏi & các câu trả lời ({questions.length} câu)</span>
+                <span>{t('editPassageDialog.section2Title', { count: questions.length })}</span>
               </span>
               <span className="text-[11px] text-slate-500">
-                Chọn chữ cái tương ứng để đặt đáp án đúng (tô xanh)
+                {t('editPassageDialog.section2Hint')}
               </span>
             </div>
 
@@ -396,10 +413,10 @@ export function EditPassageDialog({
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <span className="px-2 py-0.5 rounded font-bold text-xs bg-blue-100 text-blue-800">
-                        Câu {q.order}
+                        {t('editPassageDialog.questionLabel', { order: q.order })}
                       </span>
                       <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                        Đáp án đúng: <strong>{q.correctAnswer}</strong>
+                        {t('editPassageDialog.correctAnswerBadge')} <strong>{q.correctAnswer}</strong>
                       </span>
                     </div>
 
@@ -409,7 +426,7 @@ export function EditPassageDialog({
                       onChange={(e) =>
                         handleQuestionContentChange(qIdx, e.target.value)
                       }
-                      placeholder={`Nội dung câu hỏi ${q.order}...`}
+                      placeholder={t('editPassageDialog.questionContentPlaceholder', { order: q.order })}
                       className="w-full p-2.5 rounded border border-slate-200 bg-white text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500 min-h-[44px]"
                     />
                   </div>
@@ -417,7 +434,7 @@ export function EditPassageDialog({
                   {/* 2x2 Grid of Answer Options */}
                   <div className="space-y-1">
                     <div className="text-[11px] font-semibold text-slate-600">
-                      Các lựa chọn trả lời:
+                      {t('editPassageDialog.optionsLabel')}
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                       {q.options.map((opt) => {
@@ -436,7 +453,7 @@ export function EditPassageDialog({
                               onClick={() =>
                                 handleCorrectAnswerChange(qIdx, opt.key)
                               }
-                              title={`Chọn ${opt.key} làm đáp án đúng`}
+                              title={t('editPassageDialog.selectCorrectOption', { key: opt.key })}
                               className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shrink-0 cursor-pointer transition-colors ${
                                 isCorrect
                                   ? 'bg-emerald-600 text-white shadow-2xs'
@@ -452,12 +469,12 @@ export function EditPassageDialog({
                               onChange={(e) =>
                                 handleOptionChange(qIdx, opt.key, e.target.value)
                               }
-                              placeholder={`Đáp án ${opt.key}...`}
+                              placeholder={t('editPassageDialog.optionPlaceholder', { key: opt.key })}
                               className="flex-1 h-7 text-xs bg-transparent focus:outline-none text-slate-800"
                             />
                             {isCorrect && (
                               <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/90 px-1.5 py-0.5 rounded shrink-0">
-                                ✓ Đúng
+                                {t('editPassageDialog.correctBadge')}
                               </span>
                             )}
                           </div>
@@ -470,7 +487,7 @@ export function EditPassageDialog({
                   <div className="space-y-1 pt-0.5">
                     <label className="text-[11px] font-medium text-slate-500 flex items-center gap-1">
                       <HelpCircle className="h-3 w-3 text-slate-400" />
-                      <span>Lời giải thích (tùy chọn):</span>
+                      <span>{t('editPassageDialog.explanationLabel')}</span>
                     </label>
                     <input
                       type="text"
@@ -478,7 +495,7 @@ export function EditPassageDialog({
                       onChange={(e) =>
                         handleExplanationChange(qIdx, e.target.value)
                       }
-                      placeholder={`Giải thích đáp án câu ${q.order}...`}
+                      placeholder={t('editPassageDialog.explanationPlaceholder', { order: q.order })}
                       className="w-full h-7.5 px-2.5 rounded border border-slate-200 bg-white text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
@@ -488,13 +505,13 @@ export function EditPassageDialog({
           </div>
 
           {/* Footer Actions */}
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 sticky bottom-0 bg-white/95 backdrop-blur-xs py-2">
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 sticky bottom-0 translate-y-5 bg-white/95 backdrop-blur-xs py-2">
             <button
               type="button"
               onClick={() => onOpenChange(false)}
               className="px-4 py-2 border rounded border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
             >
-              Hủy bỏ
+              {t('editPassageDialog.cancelBtn')}
             </button>
             <button
               type="submit"
@@ -506,8 +523,8 @@ export function EditPassageDialog({
               )}
               <span>
                 {updateMutation.isPending
-                  ? 'Đang lưu bài đọc & câu hỏi...'
-                  : 'Lưu thay đổi bài đọc & câu hỏi'}
+                  ? t('editPassageDialog.savingBtn')
+                  : t('editPassageDialog.saveBtn')}
               </span>
             </button>
           </div>

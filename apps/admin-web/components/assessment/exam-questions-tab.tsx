@@ -683,7 +683,9 @@ export function ExamQuestionsTab({
                                     Câu {q.order}:
                                   </span>
                                   <span className="text-slate-700 truncate max-w-sm sm:max-w-md">
-                                    {q.content}
+                                    {q.content?.includes('<')
+                                      ? q.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+                                      : q.content}
                                   </span>
                                 </div>
                               </td>
@@ -804,7 +806,9 @@ export function ExamQuestionsTab({
                               {getPartSubtitle(q)}
                             </div>
                             <div className="text-xs text-slate-600 truncate max-w-sm sm:max-w-md">
-                              {q.content}
+                              {q.content?.includes('<')
+                                ? q.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+                                : q.content}
                             </div>
                           </div>
                         </div>
