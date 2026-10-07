@@ -597,7 +597,7 @@ export default function CreateExamPage() {
               <ul className="text-slate-600 text-[11px] space-y-1 pl-6 list-disc leading-relaxed">
                 <li>{t('createPage.structureFullTest')}</li>
                 <li>Listening: 100 câu (Part 1 – Part 4) ~ 45 phút</li>
-                <li>Reading: 100 câu (Part 5 – Part 7) ~ 75 phút</li>
+                <li>Reading: 100 câu (Part 5 – Part 7) ~ 75 phút (Tích hợp Tiptap Editor cho Part 6 & 7)</li>
               </ul>
             </div>
           </div>
