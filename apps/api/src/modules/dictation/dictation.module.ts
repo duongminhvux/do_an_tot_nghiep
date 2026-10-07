@@ -17,7 +17,7 @@ import {
 } from './schemas/dictation-progress.schema.js';
 import { TtsModule } from '../tts/tts.module.js';
 import { UploadModule } from '../upload/upload.module.js';
-import { ActivityLogsModule } from '../activity-logs/activity-logs.module.js';
+import { AsrModule } from '../asr/asr.module.js';
 
 @Module({
   imports: [
@@ -28,7 +28,7 @@ import { ActivityLogsModule } from '../activity-logs/activity-logs.module.js';
     ]),
     TtsModule,
     UploadModule,
-    ActivityLogsModule,
+    AsrModule,
   ],
   controllers: [DictationController, AdminDictationController],
   providers: [DictationService],
