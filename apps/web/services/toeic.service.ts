@@ -20,11 +20,21 @@ export interface ToeicExamSummary {
   description?: string;
   totalQuestions?: number;
   durationMinutes?: number;
+  totalAttempts?: number;
   groupId?: string | { _id: string; name: string; slug: string };
   isActive?: boolean;
   order?: number;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface ToeicExamPart {
+  _id: string;
+  section: 'LISTENING' | 'READING';
+  part: number;
+  type: string;
+  totalQuestions: number;
+  order?: number;
 }
 
 export interface ToeicAttemptSummary {
@@ -61,6 +71,15 @@ export const toeicService = {
   getExamById: async (id: string) => {
     const res = await apiClient.get<ApiResponse<ToeicExamSummary>>(`/exams/${id}`);
     return res.data;
+  },
+
+  getExamParts: async (examId: string) => {
+    try {
+      const res = await apiClient.get<ApiResponse<ToeicExamPart[]>>(`/exams/${examId}/parts`);
+      return res.data;
+    } catch {
+      return { data: [] } as any;
+    }
   },
 
   getAttempts: async (params?: Record<string, any>) => {

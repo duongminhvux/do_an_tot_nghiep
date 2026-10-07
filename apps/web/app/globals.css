@@ -95,3 +95,84 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 }
+
+/* Tiptap Content & Reading Passages */
+.tiptap-content p {
+  margin-bottom: 0.5rem;
+}
+.tiptap-content p:last-child {
+  margin-bottom: 0;
+}
+.tiptap-content h2 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-top: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+.tiptap-content h3 {
+  font-size: 0.925rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-top: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+.tiptap-content ul {
+  list-style-type: disc;
+  padding-left: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+.tiptap-content ol {
+  list-style-type: decimal;
+  padding-left: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+.tiptap-content li {
+  margin-bottom: 0.15rem;
+}
+.tiptap-content blockquote {
+  border-left: 3px solid #0d9488;
+  padding-left: 0.75rem;
+  margin: 0.5rem 0;
+  font-style: italic;
+  color: #475569;
+  background-color: #f0fdfa;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+.tiptap-content hr {
+  border: none;
+  border-top: 1px dashed #cbd5e1;
+  margin: 0.75rem 0;
+}
+.tiptap-content table,
+.tiptap-table {
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+  table-layout: auto;
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  background-color: #ffffff;
+}
+.tiptap-content table td,
+.tiptap-content table th,
+.tiptap-table td,
+.tiptap-table th {
+  border: 1px solid #cbd5e1;
+  box-sizing: border-box;
+  min-width: 2rem;
+  padding: 0.5rem 0.75rem;
+  position: relative;
+  vertical-align: top;
+  text-align: left;
+  font-size: 0.85rem;
+}
+.tiptap-content table th,
+.tiptap-table th {
+  font-weight: 700;
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+.tiptap-content table tr:nth-child(even) td {
+  background-color: #f8fafc;
+}

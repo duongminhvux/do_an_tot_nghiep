@@ -287,9 +287,8 @@ export default function ToeicGroupDetailPage() {
                 const answeredQ = attempt?.totalQuestions || 0;
                 const score = attempt?.score ?? null;
 
-                const href = isCompleted
-                  ? `/${locale}/toeic/history/${attempt?._id || ''}`
-                  : `/${locale}/toeic/${exam._id}`;
+                const examSlug = exam.slug || exam._id;
+                const href = `/${locale}/toeic/${slug}/${examSlug}`;
 
                 // Circular progress ring
                 const R = 18;
