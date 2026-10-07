@@ -10,6 +10,7 @@ import { GoogleStrategy } from './strategy/google.strategy.js';
 import { UsersModule } from '../users/users.module.js';
 import { AdminsModule } from '../admins/admins.module.js';
 import { GmailModule } from '../gmail/gmail.module.js';
+import { ActivityLogsModule } from '../activity-logs/activity-logs.module.js';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 
@@ -19,6 +20,7 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
     UsersModule,
     AdminsModule,
     GmailModule,
+    ActivityLogsModule,
     JwtModule.register({}),
     PassportModule.register({
       defaultStrategy: 'jwt',

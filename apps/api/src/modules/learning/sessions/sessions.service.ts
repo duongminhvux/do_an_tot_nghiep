@@ -40,6 +40,8 @@ import {
 import { CreateSessionDto } from './dto/create-session.dto.js';
 import { RecordActionDto } from './dto/record-action.dto.js';
 import { I18nService } from 'nestjs-i18n';
+import { ActivityLogsService } from '../../activity-logs/activity-logs.service.js';
+import { ActivityAction, ActivityCategory } from '../../activity-logs/schemas/activity-log.schema.js';
 
 @Injectable()
 export class SessionsService {
@@ -61,6 +63,7 @@ export class SessionsService {
     @InjectModel(UserDailyActivity.name)
     private dailyActivityModel: Model<UserDailyActivityDocument>,
     private readonly i18n: I18nService,
+    private readonly activityLogsService: ActivityLogsService,
   ) {}
 
   /**
@@ -385,6 +388,22 @@ export class SessionsService {
     await this.incrementDailyActivity(session.userId, session.endedAt, {
       sessionCount: 1,
       studyMinutes,
+    });
+
+    this.activityLogsService.log({
+      userId: String(session.userId),
+      action: ActivityAction.VOCABULARY_LEARN,
+      category: ActivityCategory.VOCABULARY,
+      description: `Hoàn thành phiên học từ vựng (${session.completedWords}/${session.totalWords} từ - ${studyMinutes} phút)`,
+      durationMs: durationSeconds * 1000,
+      metadata: {
+        sessionId: String(session._id),
+        type: session.type,
+        lessonId: session.lessonId ? String(session.lessonId) : null,
+        totalWords: session.totalWords,
+        completedWords: session.completedWords,
+        durationSeconds,
+      },
     });
 
     return session;

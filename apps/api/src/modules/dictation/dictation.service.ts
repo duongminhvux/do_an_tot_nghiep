@@ -24,6 +24,8 @@ import {
   DictationProgress,
   DictationProgressDocument,
 } from './schemas/dictation-progress.schema.js';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service.js';
+import { ActivityAction, ActivityCategory } from '../activity-logs/schemas/activity-log.schema.js';
 
 @Injectable()
 export class DictationService {
@@ -36,6 +38,7 @@ export class DictationService {
     private readonly progressModel: Model<DictationProgressDocument>,
     private readonly ttsService: TtsService,
     private readonly cloudinaryService: CloudinaryService,
+    private readonly activityLogsService: ActivityLogsService,
   ) {}
 
   splitIntoSentences(sourceText: string): string[] {
@@ -470,7 +473,26 @@ export class DictationService {
 
     progress.completed = progress.completedSegments.length >= lesson.sentenceCount;
     progress.lastPracticedAt = new Date();
-    return progress.save();
+    const saved = await progress.save();
+
+    if (progress.completed) {
+      this.activityLogsService.log({
+        userId,
+        action: ActivityAction.DICTATION_SUBMIT,
+        category: ActivityCategory.DICTATION,
+        description: `Hoàn thành bài luyện nghe chép chính tả: "${lesson.title}" (${progress.completedSegments.length}/${lesson.sentenceCount} câu)`,
+        metadata: {
+          lessonId: String(lesson._id),
+          lessonTitle: lesson.title,
+          sentenceCount: lesson.sentenceCount,
+          correctCount: progress.correctCount,
+          wrongCount: progress.wrongCount,
+          attempts: progress.attempts,
+        },
+      });
+    }
+
+    return saved;
   }
 
   async resetProgress(userId: string, lessonId: string) {
