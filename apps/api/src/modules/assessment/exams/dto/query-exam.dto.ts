@@ -7,6 +7,10 @@ export class QueryExamDto {
   @IsOptional()
   search?: string;
 
+  @IsString()
+  @IsOptional()
+  q?: string;
+
   @IsEnum(ExamType)
   @IsOptional()
   type?: ExamType;

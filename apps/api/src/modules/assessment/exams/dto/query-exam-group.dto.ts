@@ -6,6 +6,10 @@ export class QueryExamGroupDto {
   @IsOptional()
   search?: string;
 
+  @IsString()
+  @IsOptional()
+  q?: string;
+
   @Transform(({ value }) => value === 'true' ? true : value === 'false' ? false : value)
   @IsBoolean()
   @IsOptional()

@@ -95,14 +95,15 @@ export class ExamsService {
   }
 
   async findAll(query: QueryExamDto): Promise<{ data: Exam[]; total: number; page: number; limit: number }> {
-    const { search, type, isActive, groupId, page = 1, limit = 10 } = query;
+    const { search, q, type, isActive, groupId, page = 1, limit = 10 } = query;
     const filter: Record<string, any> = { isDeleted: { $ne: true } };
 
-    if (search) {
+    const searchTerm = q || search;
+    if (searchTerm) {
       filter.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { slug: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
+        { name: { $regex: searchTerm, $options: 'i' } },
+        { slug: { $regex: searchTerm, $options: 'i' } },
+        { description: { $regex: searchTerm, $options: 'i' } },
       ];
     }
 

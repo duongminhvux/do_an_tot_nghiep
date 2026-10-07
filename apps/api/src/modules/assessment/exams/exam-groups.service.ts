@@ -73,14 +73,15 @@ export class ExamGroupsService {
   }
 
   async findAll(query: QueryExamGroupDto): Promise<{ data: any[]; total: number; page: number; limit: number }> {
-    const { search, isActive, page = 1, limit = 20 } = query;
+    const { search, q, isActive, page = 1, limit = 20 } = query;
     const matchStage: Record<string, any> = { isDeleted: { $ne: true } };
 
-    if (search) {
+    const searchTerm = q || search;
+    if (searchTerm) {
       matchStage.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { slug: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
+        { name: { $regex: searchTerm, $options: 'i' } },
+        { slug: { $regex: searchTerm, $options: 'i' } },
+        { description: { $regex: searchTerm, $options: 'i' } },
       ];
     }
 
@@ -163,32 +164,55 @@ export class ExamGroupsService {
       throw new NotFoundException('Exam group not found');
     }
 
-    const updateData: Partial<ExamGroup> = { ...dto };
+    const currentGroup = await this.examGroupModel.findOne({
+      _id: new Types.ObjectId(id),
+      isDeleted: { $ne: true },
+    });
 
-    if (dto.name) {
-      const trimmedName = dto.name.trim();
-      const escapedName = trimmedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const existing = await this.examGroupModel.findOne({
-        _id: { $ne: id },
-        name: { $regex: new RegExp(`^${escapedName}$`, 'i') },
-        isDeleted: { $ne: true },
-      });
-
-      if (existing) {
-        throw new ConflictException('Exam group with this name already exists');
-      }
-      updateData.name = trimmedName;
+    if (!currentGroup) {
+      throw new NotFoundException('Exam group not found');
     }
 
-    if (dto.slug || dto.name) {
-      const rawSlug = dto.slug?.trim() || dto.name;
-      if (rawSlug) {
+    const updateData: Partial<ExamGroup> = {};
+
+    if (dto.name !== undefined) {
+      const trimmedName = dto.name.trim();
+      if (trimmedName.toLowerCase() !== currentGroup.name.toLowerCase()) {
+        const escapedName = trimmedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const existing = await this.examGroupModel.findOne({
+          _id: { $ne: new Types.ObjectId(id) },
+          name: { $regex: new RegExp(`^${escapedName}$`, 'i') },
+          isDeleted: { $ne: true },
+        });
+
+        if (existing) {
+          throw new ConflictException('Exam group with this name already exists');
+        }
+      }
+      updateData.name = trimmedName;
+
+      if (dto.slug) {
+        const rawSlug = dto.slug.trim();
         const baseSlug = this.generateSlug(rawSlug) || 'exam-group';
         let slug = baseSlug;
         let counter = 1;
         while (
           await this.examGroupModel.exists({
-            _id: { $ne: id },
+            _id: { $ne: new Types.ObjectId(id) },
+            slug,
+            isDeleted: { $ne: true },
+          })
+        ) {
+          slug = `${baseSlug}-${counter++}`;
+        }
+        updateData.slug = slug;
+      } else if (trimmedName.toLowerCase() !== currentGroup.name.toLowerCase()) {
+        const baseSlug = this.generateSlug(trimmedName) || 'exam-group';
+        let slug = baseSlug;
+        let counter = 1;
+        while (
+          await this.examGroupModel.exists({
+            _id: { $ne: new Types.ObjectId(id) },
             slug,
             isDeleted: { $ne: true },
           })
@@ -197,10 +221,41 @@ export class ExamGroupsService {
         }
         updateData.slug = slug;
       }
+    } else if (dto.slug !== undefined) {
+      const rawSlug = dto.slug.trim();
+      const baseSlug = this.generateSlug(rawSlug) || 'exam-group';
+      let slug = baseSlug;
+      let counter = 1;
+      while (
+        await this.examGroupModel.exists({
+          _id: { $ne: new Types.ObjectId(id) },
+          slug,
+          isDeleted: { $ne: true },
+        })
+      ) {
+        slug = `${baseSlug}-${counter++}`;
+      }
+      updateData.slug = slug;
+    }
+
+    if (dto.description !== undefined) {
+      updateData.description = dto.description ? dto.description.trim() : '';
+    }
+
+    if (dto.order !== undefined) {
+      updateData.order = dto.order;
+    }
+
+    if (dto.isActive !== undefined) {
+      updateData.isActive = dto.isActive;
     }
 
     const updated = await this.examGroupModel
-      .findOneAndUpdate({ _id: id, isDeleted: { $ne: true } }, updateData, { returnDocument: 'after' })
+      .findOneAndUpdate(
+        { _id: new Types.ObjectId(id), isDeleted: { $ne: true } },
+        { $set: updateData },
+        { returnDocument: 'after' },
+      )
       .exec();
 
     if (!updated) {
@@ -251,14 +306,24 @@ export class ExamGroupsService {
     return group;
   }
 
-  async getExams(groupId: string, query?: any): Promise<any[]> {
-    if (!Types.ObjectId.isValid(groupId)) {
-      throw new NotFoundException('Exam group not found');
+  async getExams(groupIdOrSlug: string, query?: any): Promise<any[]> {
+    let groupObjectId: Types.ObjectId;
+    if (Types.ObjectId.isValid(groupIdOrSlug)) {
+      groupObjectId = new Types.ObjectId(groupIdOrSlug);
+    } else {
+      const group = await this.examGroupModel
+        .findOne({ slug: groupIdOrSlug, isDeleted: { $ne: true } })
+        .lean()
+        .exec();
+      if (!group) {
+        throw new NotFoundException('Exam group not found');
+      }
+      groupObjectId = group._id as Types.ObjectId;
     }
 
     return this.examModel
       .find({
-        groupId: new Types.ObjectId(groupId),
+        groupId: groupObjectId,
         isDeleted: { $ne: true },
       })
       .sort({ order: 1, createdAt: -1 })
