@@ -21,7 +21,8 @@
     "lessons": "Lessons",
     "assessment": "Assessment",
     "users": "User Accounts",
-    "dictation": "Dictation"
+    "dictation": "Dictation",
+    "activity_logs": "Activity Logs"
   },
   "nav.dashboard": "Dashboard",
   "nav.vocabulary": "Vocabulary",
@@ -31,5 +32,6 @@
   "nav.lessons": "Lessons",
   "nav.assessment": "Assessment",
   "nav.users": "User Accounts",
-  "nav.dictation": "Dictation"
+  "nav.dictation": "Dictation",
+  "nav.activity_logs": "Activity Logs"
 }

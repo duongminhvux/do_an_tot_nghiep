@@ -7,6 +7,7 @@ import viDashboard from '../locales/vi/dashboard.json';
 import viVocabulary from '../locales/vi/vocabulary.json';
 import viUsers from '../locales/vi/users.json';
 import viAssessment from '../locales/vi/assessment.json';
+import viActivityLog from '../locales/vi/activity-log.json';
 
 import enCommon from '../locales/en/common.json';
 import enAuth from '../locales/en/auth.json';
@@ -14,6 +15,7 @@ import enDashboard from '../locales/en/dashboard.json';
 import enVocabulary from '../locales/en/vocabulary.json';
 import enUsers from '../locales/en/users.json';
 import enAssessment from '../locales/en/assessment.json';
+import enActivityLog from '../locales/en/activity-log.json';
 
 const resources = {
   vi: {
@@ -23,6 +25,7 @@ const resources = {
     vocabulary: viVocabulary,
     users: viUsers,
     assessment: viAssessment,
+    activityLog: viActivityLog,
   },
   en: {
     common: enCommon,
@@ -31,6 +34,7 @@ const resources = {
     vocabulary: enVocabulary,
     users: enUsers,
     assessment: enAssessment,
+    activityLog: enActivityLog,
   },
 };
 

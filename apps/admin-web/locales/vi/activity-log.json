@@ -1,0 +1,63 @@
+{
+  "title": "Nhật ký hoạt động",
+  "subtitle": "Theo dõi và phân tích mọi hoạt động của người dùng trên hệ thống",
+  "filters": {
+    "all_categories": "Tất cả danh mục",
+    "all_actions": "Tất cả hành động",
+    "all_statuses": "Tất cả trạng thái",
+    "search_placeholder": "Tìm kiếm theo email, tên hoặc nội dung...",
+    "start_date": "Từ ngày",
+    "end_date": "Đến ngày",
+    "reset": "Đặt lại bộ lọc"
+  },
+  "columns": {
+    "user": "Người dùng",
+    "action": "Hành động",
+    "category": "Danh mục",
+    "description": "Chi tiết",
+    "status": "Trạng thái",
+    "duration": "Thời lượng",
+    "ip": "Địa chỉ IP",
+    "time": "Thời gian"
+  },
+  "actions": {
+    "AUTH_LOGIN": "Đăng nhập",
+    "AUTH_LOGOUT": "Đăng xuất",
+    "AUTH_REGISTER": "Đăng ký tài khoản",
+    "SESSION_START": "Bắt đầu phiên truy cập",
+    "SESSION_END": "Kết thúc phiên / Thoát web",
+    "HEARTBEAT": "Duy trì hoạt động",
+    "PAGE_VIEW": "Xem trang",
+    "VOCABULARY_LEARN": "Học từ vựng",
+    "VOCABULARY_TEST": "Kiểm tra từ vựng",
+    "VOCABULARY_SAVE": "Lưu từ vựng",
+    "DICTATION_START": "Bắt đầu bài chép chính tả",
+    "DICTATION_SUBMIT": "Nộp bài chép chính tả",
+    "TOEIC_START": "Bắt đầu làm đề TOEIC",
+    "TOEIC_SUBMIT": "Nộp bài thi TOEIC",
+    "CUSTOM": "Hoạt động tùy chỉnh"
+  },
+  "categories": {
+    "AUTH": "Xác thực & Tài khoản",
+    "SESSION": "Phiên làm việc & Truy cập",
+    "VOCABULARY": "Học từ vựng",
+    "DICTATION": "Nghe chép chính tả",
+    "ASSESSMENT": "Luyện thi TOEIC",
+    "GENERAL": "Chung"
+  },
+  "status": {
+    "SUCCESS": "Thành công",
+    "FAILED": "Thất bại",
+    "INFO": "Thông tin",
+    "WARNING": "Cảnh báo"
+  },
+  "stats": {
+    "total_activities": "Tổng lượt hoạt động",
+    "activities_today": "Hoạt động hôm nay",
+    "unique_users": "Người dùng hoạt động",
+    "top_actions": "Hành động phổ biến",
+    "category_distribution": "Phân bố theo phân hệ",
+    "activity_timeline": "Biểu đồ tần suất hoạt động",
+    "most_active_users": "Người dùng tích cực nhất"
+  }
+}
