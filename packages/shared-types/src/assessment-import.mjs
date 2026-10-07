@@ -30,11 +30,20 @@ export function parseImportText(text, part = 1, section) {
     passages = [],
     questions = [],
     warnings = [];
+  const partStartOffsets = {
+    1: 0,
+    2: 6,
+    3: 31,
+    4: 70,
+    5: 100,
+    6: 130,
+    7: 146,
+  };
   let group,
     passage,
     question,
     state = "",
-    lastNumber = 0;
+    lastNumber = partStartOffsets[part] ?? 0;
   const lines = String(text)
     .replace(/^\uFEFF/, "")
     .replace(/\r\n?/g, "\n")
@@ -369,17 +378,17 @@ export function validateImportDraft(
       add("liên kết đoạn văn không hợp lệ.", "invalid passage link.");
     if (part === 1 && !hasText(q?.imageUrl))
       issue(
-        `${label}: chưa có ảnh.`,
-        `${label}: image is missing.`,
+        `${label}: chưa có ảnh (Part 1 bắt buộc phải có hình ảnh).`,
+        `${label}: image is missing (Part 1 requires an image).`,
         target,
-        "warning",
+        "error",
       );
     if ([1, 2].includes(part) && !hasText(q?.audioUrl))
       issue(
-        `${label}: chưa có audio.`,
-        `${label}: audio is missing.`,
+        `${label}: chưa có audio (Part ${part} bắt buộc phải có audio).`,
+        `${label}: audio is missing (Part ${part} requires an audio file).`,
         target,
-        "warning",
+        "error",
       );
   });
   const groupIds = new Set(),
@@ -445,24 +454,36 @@ export function validateImportDraft(
       passageIds.add(pid);
       if (p.type && !passageTypes.includes(p.type))
         issue("Loại đoạn văn không hợp lệ.", "Invalid passage type.", pt);
-      if ([6, 7].includes(part) && hasText(p.content) === hasText(p.imageUrl))
-        issue(
-          "Mỗi đoạn phải có văn bản hoặc ảnh, không dùng cả hai.",
-          "Each passage must contain either text or an image.",
-          pt,
-        );
+      if ([6, 7].includes(part)) {
+        if (!hasText(p.content) && !hasText(p.imageUrl)) {
+          issue(
+            "Đoạn văn / đề bài chưa có nội dung (bắt buộc phải có văn bản hoặc hình ảnh).",
+            "Passage / exercise is missing content (requires text or image).",
+            pt,
+            "error",
+          );
+        } else if (hasText(p.content) && hasText(p.imageUrl)) {
+          issue(
+            "Mỗi đoạn chỉ dùng văn bản hoặc ảnh, không dùng cả hai.",
+            "Each passage must contain either text or an image, not both.",
+            pt,
+            "error",
+          );
+        }
+      }
       if ([3, 4].includes(part) && !hasText(p.audioUrl))
         issue(
-          "Bài nghe chưa có audio.",
-          "Listening exercise has no audio.",
+          "Bài nghe chưa có audio (Part 3 & 4 bắt buộc phải có audio).",
+          "Listening exercise has no audio (Part 3 & 4 require an audio file).",
           pt,
-          "warning",
+          "error",
         );
       if ([3, 4].includes(part) && !hasText(p.audioUrl) && !hasText(p.content))
         issue(
           "Bài nghe cần audio hoặc transcript.",
           "Listening exercise needs audio or a transcript.",
           pt,
+          "error",
         );
       for (const field of ["imageUrl", "audioUrl"])
         if (hasText(p[field]) && !validUrl(p[field]))
