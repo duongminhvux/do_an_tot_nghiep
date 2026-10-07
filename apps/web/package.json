@@ -4,9 +4,9 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "next dev --port 3000",
-    "build": "next build",
-    "start": "next start",
+    "dev": "node --env-file-if-exists=../../.env ./node_modules/next/dist/bin/next dev --port 3000",
+    "build": "node --env-file-if-exists=../../.env ./node_modules/next/dist/bin/next build",
+    "start": "node --env-file-if-exists=../../.env ./node_modules/next/dist/bin/next start --port 3000",
     "lint": "eslint --max-warnings 0",
     "check-types": "next typegen && tsc --noEmit"
   },
