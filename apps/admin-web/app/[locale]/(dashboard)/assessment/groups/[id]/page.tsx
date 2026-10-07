@@ -75,6 +75,7 @@ export default function ExamGroupDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['admin-exam-group', groupId] });
       queryClient.invalidateQueries({ queryKey: ['admin-exam-groups'] });
       queryClient.invalidateQueries({ queryKey: ['admin-exams'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-exams-unassigned'] });
       setExamToRemove(null);
     },
   });

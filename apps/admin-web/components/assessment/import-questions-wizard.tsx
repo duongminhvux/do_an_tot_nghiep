@@ -218,7 +218,27 @@ export function ImportQuestionsWizard({
   };
 
   const save = async () => {
-    if (!part || busyRef.current || locked || errors.length) return;
+    if (!part || busyRef.current || locked) return;
+    if (errors.length > 0) {
+      setError(
+        tr(
+          `Còn ${errors.length} lỗi cần sửa trước khi có thể lưu. Vui lòng kiểm tra danh sách lỗi bên trên.`,
+          `There are ${errors.length} errors that must be fixed before saving. Please review the errors above.`,
+        ),
+      );
+      if (typeof window !== "undefined") {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        setTimeout(() => {
+          const errEl =
+            document.getElementById("step3-error-box") ||
+            document.getElementById("import-wizard-error-alert");
+          if (errEl) {
+            errEl.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }, 50);
+      }
+      return;
+    }
     busyRef.current = true;
     setBusy(true);
     setError("");
@@ -279,6 +299,15 @@ export function ImportQuestionsWizard({
             "Saving failed. Your preview has been kept for review.",
           ),
       );
+      if (typeof window !== "undefined") {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        setTimeout(() => {
+          const errEl = document.getElementById("import-wizard-error-alert");
+          if (errEl) {
+            errEl.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }, 50);
+      }
     } finally {
       busyRef.current = false;
       setBusy(false);
@@ -368,7 +397,18 @@ export function ImportQuestionsWizard({
     }));
   };
   const addQuestion = (group?: ImportGroup) => {
-    const number = Math.max(0, ...draft.questions.map((q) => q.order || 0)) + 1;
+    const partStartOffsets: Record<number, number> = {
+      1: 1,
+      2: 7,
+      3: 32,
+      4: 71,
+      5: 101,
+      6: 131,
+      7: 147,
+    };
+    const baseStart = partStartOffsets[part?.id || 1] || 1;
+    const existingOrders = draft.questions.map((q) => q.order || 0).filter((n) => n > 0);
+    const number = existingOrders.length === 0 ? baseStart : Math.max(...existingOrders) + 1;
     setDraft((prev) => ({
       ...prev,
       questions: [
@@ -639,11 +679,16 @@ export function ImportQuestionsWizard({
       </ol>
       {error && (
         <div
+          id="import-wizard-error-alert"
+          tabIndex={-1}
           role="alert"
-          className="flex items-start gap-2 whitespace-pre-line rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+          className="flex items-start gap-2 whitespace-pre-line rounded border-2 border-red-300 bg-red-50 p-3.5 text-sm text-red-700 font-medium shadow-xs"
         >
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-          {error}
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+          <div className="flex-1">
+            <span className="font-bold text-red-900 block mb-0.5">{tr("Có lỗi xảy ra:", "Error:")}</span>
+            <span>{error}</span>
+          </div>
         </div>
       )}
       {notice && (
@@ -987,11 +1032,11 @@ export function ImportQuestionsWizard({
                   </span>
                 </div>
                 {errors.length > 0 && (
-                  <div role="alert" className="rounded bg-red-50 p-3">
-                    <p className="text-sm font-semibold text-red-700">
+                  <div id="step3-error-box" tabIndex={-1} role="alert" className="rounded-lg border-2 border-red-300 bg-red-50 p-4 shadow-xs">
+                    <p className="text-sm font-bold text-red-800">
                       {tr(
-                        "Sửa các lỗi sau để mở nút lưu:",
-                        "Fix these errors to enable saving:",
+                        "Sửa các lỗi sau để có thể lưu đề thi:",
+                        "Fix these errors to save questions:",
                       )}
                     </p>
                     <ul className="mt-2 max-h-48 overflow-auto space-y-1">
@@ -1311,9 +1356,9 @@ export function ImportQuestionsWizard({
                 </button>
                 <button
                   type="button"
-                  disabled={locked || errors.length > 0}
+                  disabled={locked || busy}
                   onClick={() => void save()}
-                  className={`${buttonClass} !bg-emerald-600 !text-white`}
+                  className={`${buttonClass} !bg-emerald-600 !text-white ${errors.length > 0 ? 'opacity-90 ring-2 ring-red-400' : ''}`}
                 >
                   {busy ? (
                     <Loader2 className="h-4 w-4 animate-spin" />

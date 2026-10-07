@@ -27,6 +27,7 @@ export interface UpdateExamGroupDto extends Partial<CreateExamGroupDto> {}
 
 export interface QueryExamGroupDto {
   search?: string;
+  q?: string;
   isActive?: boolean;
   page?: number;
   limit?: number;
@@ -71,6 +72,7 @@ export interface UpdateExamDto extends Partial<CreateExamDto> {}
 
 export interface QueryExamDto {
   search?: string;
+  q?: string;
   type?: ExamType;
   isActive?: boolean;
   groupId?: string;

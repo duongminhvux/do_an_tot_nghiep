@@ -9,7 +9,7 @@ import { examService } from '@/services/assessment.service';
 import { uploadService } from '@/services/upload.service';
 import { useDraftUploads } from '@/hooks/use-draft-uploads';
 import { QuestionSavingStatus } from '@/components/assessment/question-saving-status';
-import { ExamItem } from '@/types';
+import { ExamItem, QuestionItem } from '@/types';
 import {
   FileText,
   Image as ImageIcon,
@@ -52,7 +52,7 @@ interface SubQuestion {
   explanation: string;
 }
 
-export interface ReadingPassageInput {
+interface ReadingPassageInput {
   id: string;
   type: 'TEXT' | 'EMAIL' | 'ADVERTISEMENT' | 'ARTICLE' | 'NOTICE' | 'CHAT';
   content: string;
@@ -61,6 +61,70 @@ export interface ReadingPassageInput {
   inputMode?: 'TEXT' | 'IMAGE';
 }
 
+const TOEIC_PART_RANGES: Record<number, { start: number; end: number; count: number }> = {
+  1: { start: 1, end: 6, count: 6 },
+  2: { start: 7, end: 31, count: 25 },
+  3: { start: 32, end: 70, count: 39 },
+  4: { start: 71, end: 100, count: 30 },
+  5: { start: 101, end: 130, count: 30 },
+  6: { start: 131, end: 146, count: 16 },
+  7: { start: 147, end: 200, count: 54 },
+};
+
+function computeNextOrderForPart(partNum: number, questions: QuestionItem[]): number {
+  const range = TOEIC_PART_RANGES[partNum] || { start: 1, end: 200, count: 200 };
+  const questionsInPart = questions.filter((q) => Number(q.part) === Number(partNum));
+  if (questionsInPart.length === 0) {
+    return range.start;
+  }
+  const maxOrderInPart = Math.max(...questionsInPart.map((q) => Number(q.order) || 0));
+  return Math.max(range.start + questionsInPart.length, maxOrderInPart + 1);
+}
+
+const ALLOWED_IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+const MAX_IMAGE_SIZE = 15 * 1024 * 1024; // 15MB
+
+const ALLOWED_AUDIO_EXTS = ['.mp3', '.wav', '.ogg', '.aac', '.m4a', '.webm'];
+const MAX_AUDIO_SIZE = 50 * 1024 * 1024; // 50MB
+
+function validateUploadFile(file: File, isImage: boolean): string | null {
+  if (!file) return 'Không tìm thấy file để tải lên.';
+  if (file.size === 0) return 'File trống không có dữ liệu (0 bytes).';
+
+  const fileNameLower = file.name.toLowerCase();
+
+  if (isImage) {
+    const hasValidExt = ALLOWED_IMAGE_EXTS.some((ext) => fileNameLower.endsWith(ext));
+    const hasValidType = file.type ? file.type.startsWith('image/') : hasValidExt;
+    if (!hasValidExt && !hasValidType) {
+      return 'Định dạng ảnh không hợp lệ. Vui lòng chọn file JPG, PNG, WebP hoặc GIF.';
+    }
+    if (file.size > MAX_IMAGE_SIZE) {
+      return 'Dung lượng file ảnh quá lớn (tối đa 15MB).';
+    }
+  } else {
+    const hasValidExt = ALLOWED_AUDIO_EXTS.some((ext) => fileNameLower.endsWith(ext));
+    const hasValidType = file.type ? file.type.startsWith('audio/') : hasValidExt;
+    if (!hasValidExt && !hasValidType) {
+      return 'Định dạng âm thanh không hợp lệ. Vui lòng chọn file MP3, WAV, AAC, M4A hoặc OGG.';
+    }
+    if (file.size > MAX_AUDIO_SIZE) {
+      return 'Dung lượng file âm thanh quá lớn (tối đa 50MB).';
+    }
+  }
+
+  return null;
+}
+
+function isValidHttpUrl(str?: string): boolean {
+  if (!str || !str.trim()) return true;
+  try {
+    const url = new URL(str);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch (_) {
+    return false;
+  }
+}
 
 export default function CreateQuestionPage() {
   const router = useRouter();
@@ -144,12 +208,16 @@ export default function CreateQuestionPage() {
   const [order, setOrder] = useState<number>(1);
   const [isActive, setIsActive] = useState<boolean>(true);
 
-  // Sync order when questions load
+  // Sync order when questions load or when part changes
   useEffect(() => {
-    if (existingQuestions.length > 0) {
-      setOrder(existingQuestions.length + 1);
-    }
-  }, [existingQuestions.length]);
+    const nextOrder = computeNextOrderForPart(part, existingQuestions);
+    setOrder(nextOrder);
+  }, [part, existingQuestions.length]);
+
+  const currentPartRange = TOEIC_PART_RANGES[part];
+  const existingCountInPart = useMemo(() => {
+    return existingQuestions.filter((q: QuestionItem) => Number(q.part) === Number(part)).length;
+  }, [existingQuestions, part]);
 
 
 
@@ -210,6 +278,26 @@ export default function CreateQuestionPage() {
     setActiveReadingPassageIndex(readingPassages.length);
   };
 
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [submittingType, setSubmittingType] = useState<'create' | 'draft' | null>(null);
+  const submitInProgress = useRef(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const showError = (msg: string) => {
+    setErrorMessage(msg);
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setTimeout(() => {
+        const errorEl = document.getElementById('form-error-alert');
+        if (errorEl) {
+          errorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 50);
+    }
+  };
+
   const readingPassagesRef = useRef(readingPassages);
   readingPassagesRef.current = readingPassages;
   const uploadInProgress = useRef(false);
@@ -220,6 +308,13 @@ export default function CreateQuestionPage() {
 
   const handlePassageImageUpload = async (file: File) => {
     if (!file || uploadInProgress.current || isSubmitting) return;
+
+    const fileError = validateUploadFile(file, true);
+    if (fileError) {
+      showError(fileError);
+      return;
+    }
+
     const targetId = readingPassages[activeReadingPassageIndex]?.id;
     const previousUrl = readingPassages[activeReadingPassageIndex]?.imageUrl;
     uploadInProgress.current = true;
@@ -239,7 +334,7 @@ export default function CreateQuestionPage() {
       }
     } catch (err: any) {
       const msg = err.response?.data?.message || err.message || 'Lỗi tải ảnh lên';
-      setErrorMessage(Array.isArray(msg) ? msg.join(', ') : msg);
+      showError(Array.isArray(msg) ? msg.join(', ') : msg);
     } finally {
       uploadInProgress.current = false;
       setIsUploading(false);
@@ -327,16 +422,17 @@ export default function CreateQuestionPage() {
     }
   }, [part, order, subQuestions.length, isGroupPart]);
 
-  const [isUploading, setIsUploading] = useState<boolean>(false);
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [submittingType, setSubmittingType] = useState<'create' | 'draft' | null>(null);
-  const submitInProgress = useRef(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
   // File upload handler
   const handleFileUpload = async (file: File, target: 'single-image' | 'single-audio' | 'group-audio' | 'group-image') => {
     if (!file || uploadInProgress.current || isSubmitting) return;
+
+    const isImage = target === 'single-image' || target === 'group-image';
+    const fileError = validateUploadFile(file, isImage);
+    if (fileError) {
+      showError(fileError);
+      return;
+    }
+
     uploadInProgress.current = true;
     try {
       setIsUploading(true);
@@ -364,7 +460,7 @@ export default function CreateQuestionPage() {
       }
     } catch (err: any) {
       const msg = err.response?.data?.message || err.message || t('createQuestionPage.msgUploadError');
-      setErrorMessage(Array.isArray(msg) ? msg.join(', ') : msg);
+      showError(Array.isArray(msg) ? msg.join(', ') : msg);
     } finally {
       uploadInProgress.current = false;
       setIsUploading(false);
@@ -513,19 +609,49 @@ export default function CreateQuestionPage() {
     if (uploadInProgress.current || submitInProgress.current || isSubmitting) return;
     setErrorMessage(null);
     if (!content.trim()) {
-      setErrorMessage(t('createQuestionPage.msgInputQuestionContent'));
+      showError(t('createQuestionPage.msgInputQuestionContent'));
       return;
     }
+
+    // Part 1: Bắt buộc phải có cả hình ảnh và file audio
+    if (part === 1) {
+      if (!imageUrl || !imageUrl.trim()) {
+        showError(t('createQuestionPage.msgPart1ImageRequired'));
+        setAttachmentTab('image');
+        return;
+      }
+      if (!audioUrl || !audioUrl.trim()) {
+        showError(t('createQuestionPage.msgPart1AudioRequired'));
+        setAttachmentTab('audio');
+        return;
+      }
+    }
+
+    // Part 2: Bắt buộc phải có file audio
     if (part === 2) {
+      if (!audioUrl || !audioUrl.trim()) {
+        showError(t('createQuestionPage.msgPart2AudioRequired'));
+        setAttachmentTab('audio');
+        return;
+      }
       if (!optionA.trim() || !optionB.trim() || !optionC.trim()) {
-        setErrorMessage(t('createQuestionPage.msgPart2OptionsRequired'));
+        showError(t('createQuestionPage.msgPart2OptionsRequired'));
         return;
       }
     } else {
       if (!optionA.trim() || !optionB.trim() || !optionC.trim() || !optionD.trim()) {
-        setErrorMessage(t('createQuestionPage.msgOptionsRequired'));
+        showError(t('createQuestionPage.msgOptionsRequired'));
         return;
       }
+    }
+
+    if (imageUrl && !isValidHttpUrl(imageUrl)) {
+      showError('Đường dẫn ảnh không hợp lệ (URL phải bắt đầu bằng http:// hoặc https://).');
+      return;
+    }
+    if (audioUrl && !isValidHttpUrl(audioUrl)) {
+      showError('Đường dẫn âm thanh không hợp lệ (URL phải bắt đầu bằng http:// hoặc https://).');
+      return;
     }
 
     submitInProgress.current = true;
@@ -570,7 +696,7 @@ export default function CreateQuestionPage() {
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       const msg = err.response?.data?.message || err.message || t('createQuestionPage.msgCreateQuestionError');
-      setErrorMessage(Array.isArray(msg) ? msg.join(', ') : msg);
+      showError(Array.isArray(msg) ? msg.join(', ') : msg);
     } finally {
       draftUploads.finishSaving();
       submitInProgress.current = false;
@@ -585,16 +711,39 @@ export default function CreateQuestionPage() {
     if (uploadInProgress.current || submitInProgress.current || isSubmitting) return;
     setErrorMessage(null);
 
-    // Validation
-    if (groupType === 'AUDIO' && !groupAudioUrl) {
-      setErrorMessage(t('createQuestionPage.msgAudioRequired'));
+    if (!groupTitle.trim()) {
+      showError('Vui lòng nhập tiêu đề cho cụm câu hỏi.');
       return;
     }
+
+    // Validation Part 3 & 4: Audio bắt buộc
+    if (groupType === 'AUDIO') {
+      if (!groupAudioUrl || !groupAudioUrl.trim()) {
+        showError(t('createQuestionPage.msgAudioRequired'));
+        return;
+      }
+      if (!isValidHttpUrl(groupAudioUrl)) {
+        showError('Đường dẫn âm thanh không hợp lệ (URL phải bắt đầu bằng http:// hoặc https://).');
+        return;
+      }
+    }
+
+    // Validation Part 6 & 7: Đề bài (văn bản hoặc hình ảnh) bắt buộc
     if (groupType === 'READING') {
       for (let pIdx = 0; pIdx < readingPassages.length; pIdx++) {
         const p = readingPassages[pIdx];
-        if (!p || Boolean(p.content.trim()) === Boolean(p.imageUrl?.trim())) {
-          setErrorMessage(`Vui lòng chỉ nhập văn bản hoặc ảnh cho đoạn văn số ${pIdx + 1}`);
+        if (!p || (!p.content.trim() && !p.imageUrl?.trim())) {
+          showError(t('createQuestionPage.msgPassageContentRequired') || `Đoạn văn / Đề bài số ${pIdx + 1} không được để trống (cần có nội dung văn bản hoặc hình ảnh).`);
+          setActiveReadingPassageIndex(pIdx);
+          return;
+        }
+        if (p.content.trim() && p.imageUrl?.trim()) {
+          showError(`Vui lòng chỉ chọn văn bản hoặc hình ảnh cho đoạn văn số ${pIdx + 1}, không dùng cả hai.`);
+          setActiveReadingPassageIndex(pIdx);
+          return;
+        }
+        if (p.imageUrl && !isValidHttpUrl(p.imageUrl)) {
+          showError(`Đường dẫn ảnh của đoạn văn số ${pIdx + 1} không hợp lệ (URL phải bắt đầu bằng http:// hoặc https://).`);
           setActiveReadingPassageIndex(pIdx);
           return;
         }
@@ -605,13 +754,13 @@ export default function CreateQuestionPage() {
       const q = subQuestions[i];
       if (!q) continue;
       if (!q.content.trim()) {
-        setErrorMessage(t('createQuestionPage.msgSubQuestionContentRequired', { index: i + 1 }));
+        showError(t('createQuestionPage.msgSubQuestionContentRequired', { index: i + 1 }));
         setActiveSubIndex(i);
         return;
       }
       const emptyOpt = q.options.find((o) => !o.text.trim());
       if (emptyOpt) {
-        setErrorMessage(t('createQuestionPage.msgSubQuestionOptionsRequired', { index: i + 1 }));
+        showError(t('createQuestionPage.msgSubQuestionOptionsRequired', { index: i + 1 }));
         setActiveSubIndex(i);
         return;
       }
@@ -712,7 +861,7 @@ export default function CreateQuestionPage() {
         }
       }
       const msg = err.response?.data?.message || err.message || t('createQuestionPage.msgSaveGroupError');
-      setErrorMessage(Array.isArray(msg) ? msg.join(', ') : msg);
+      showError(Array.isArray(msg) ? msg.join(', ') : msg);
     } finally {
       draftUploads.finishSaving();
       submitInProgress.current = false;
@@ -782,9 +931,19 @@ export default function CreateQuestionPage() {
 
       {/* Alerts */}
       {errorMessage && (
-        <div className="p-3.5 bg-red-50 border border-red-200 rounded flex items-center gap-2.5 text-xs text-red-600">
-          <AlertTriangle className="h-4 w-4 shrink-0 text-red-500" />
-          <span>{errorMessage}</span>
+        <div
+          id="form-error-alert"
+          tabIndex={-1}
+          role="alert"
+          className="p-4 bg-red-50 border-2 border-red-400 rounded-lg flex items-start gap-3 text-sm text-red-700 shadow-sm animate-in fade-in duration-200"
+        >
+          <AlertTriangle className="h-5 w-5 shrink-0 text-red-600 mt-0.5" />
+          <div className="flex-1">
+            <p className="font-bold text-red-900 mb-0.5">
+              {locale === 'en' ? 'Validation Error / Save Failed:' : 'Có lỗi xảy ra:'}
+            </p>
+            <p className="font-medium text-red-700 whitespace-pre-line">{errorMessage}</p>
+          </div>
         </div>
       )}
       {successMessage && (
@@ -830,6 +989,8 @@ export default function CreateQuestionPage() {
                     setPart(p);
                     if (p <= 4) setSection('LISTENING');
                     else setSection('READING');
+                    const nextOrder = computeNextOrderForPart(p, existingQuestions);
+                    setOrder(nextOrder);
                   }}
                 >
                   <SelectTrigger className="w-full h-10 text-xs border rounded border-slate-200 bg-white font-medium">
@@ -865,6 +1026,28 @@ export default function CreateQuestionPage() {
                   }}
                   className="w-full h-10 px-3 border rounded border-slate-200 bg-white text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
+              </div>
+
+              {/* Thống kê thứ tự câu hỏi Part theo chuẩn TOEIC */}
+              <div className="sm:col-span-3 bg-blue-50/60 border border-blue-200/80 rounded-md p-3 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-bold text-blue-900">
+                    Part {part}:
+                  </span>
+                  <span className="text-slate-700">
+                    {currentPartRange ? `Câu ${currentPartRange.start} – ${currentPartRange.end} (gồm ${currentPartRange.count} câu)` : ''}
+                  </span>
+                  <span className="text-slate-300">•</span>
+                  <span className="text-slate-600">
+                    Đã có: <strong className={existingCountInPart >= (currentPartRange?.count || 0) ? 'text-emerald-600 font-bold' : 'text-blue-700 font-bold'}>{existingCountInPart}</strong>/{currentPartRange?.count || 0} câu
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 text-slate-600">
+                  <span>Số thứ tự câu tiếp theo:</span>
+                  <span className="px-2 py-0.5 rounded bg-blue-600 text-white font-bold text-xs shadow-2xs">
+                    #{order}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -1519,6 +1702,8 @@ export default function CreateQuestionPage() {
                           >
                             <ImageIcon className="h-3.5 w-3.5 text-blue-600" />
                             <span>{t('createQuestionPage.tabImagePart1')}</span>
+                            <span className="text-red-500">*</span>
+                            {imageUrl && <Check className="h-3 w-3 text-emerald-600 ml-0.5" />}
                           </button>
                         )}
 
@@ -1533,6 +1718,8 @@ export default function CreateQuestionPage() {
                         >
                           <Volume2 className="h-3.5 w-3.5 text-blue-600" />
                           <span>{t('createQuestionPage.tabAudioQuestion')}</span>
+                          {(part === 1 || part === 2) && <span className="text-red-500">*</span>}
+                          {audioUrl && <Check className="h-3 w-3 text-emerald-600 ml-0.5" />}
                         </button>
                       </div>
 

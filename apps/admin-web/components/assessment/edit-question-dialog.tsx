@@ -49,6 +49,13 @@ export function EditQuestionDialog({
   const [isUploading, setIsUploading] = useState(false);
   const draftUploads = useDraftUploads([imageUrl], open);
 
+  const showError = (msg: string) => {
+    setErrorMessage(msg);
+    setTimeout(() => {
+      document.getElementById('edit-question-error-alert')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 50);
+  };
+
   const part = Number(question?.part) || 1;
   const section = question?.section || (part >= 5 ? 'READING' : 'LISTENING');
 
@@ -92,7 +99,7 @@ export function EditQuestionDialog({
     },
     onError: (err: any) => {
       const msg = err.response?.data?.message || err.message || t('detailPage.errorUpdateQuestion');
-      setErrorMessage(Array.isArray(msg) ? msg.join(', ') : msg);
+      showError(Array.isArray(msg) ? msg.join(', ') : msg);
     },
   });
 
@@ -123,18 +130,18 @@ export function EditQuestionDialog({
     setErrorMessage(null);
 
     if (!content.trim()) {
-      setErrorMessage(t('createQuestionPage.msgInputQuestionContent'));
+      showError(t('createQuestionPage.msgInputQuestionContent'));
       return;
     }
 
     if (part === 2) {
       if (!optionA.trim() || !optionB.trim() || !optionC.trim()) {
-        setErrorMessage(t('createQuestionPage.msgPart2OptionsRequired'));
+        showError(t('createQuestionPage.msgPart2OptionsRequired'));
         return;
       }
     } else {
       if (!optionA.trim() || !optionB.trim() || !optionC.trim() || !optionD.trim()) {
-        setErrorMessage(t('createQuestionPage.msgOptionsRequired'));
+        showError(t('createQuestionPage.msgOptionsRequired'));
         return;
       }
     }
@@ -159,9 +166,21 @@ export function EditQuestionDialog({
 
     // Only update media links if relevant to the Part
     if (part === 1) {
+      if (!imageUrl.trim()) {
+        setErrorMessage(t('createQuestionPage.msgPart1ImageRequired'));
+        return;
+      }
+      if (!audioUrl.trim()) {
+        setErrorMessage(t('createQuestionPage.msgPart1AudioRequired'));
+        return;
+      }
       payload.imageUrl = imageUrl.trim();
       payload.audioUrl = audioUrl.trim();
     } else if (part === 2) {
+      if (!audioUrl.trim()) {
+        setErrorMessage(t('createQuestionPage.msgPart2AudioRequired'));
+        return;
+      }
       payload.audioUrl = audioUrl.trim();
     } else if (part === 7) {
       payload.imageUrl = imageUrl.trim();
@@ -191,7 +210,12 @@ export function EditQuestionDialog({
 
         <form onSubmit={handleSubmit} className="p-4 space-y-3.5">
           {errorMessage && (
-            <div className="p-2.5 bg-red-50 border border-red-200 rounded text-xs text-red-600">
+            <div
+              id="edit-question-error-alert"
+              tabIndex={-1}
+              role="alert"
+              className="p-3 bg-red-50 border-2 border-red-300 rounded text-xs text-red-700 font-medium"
+            >
               {errorMessage}
             </div>
           )}

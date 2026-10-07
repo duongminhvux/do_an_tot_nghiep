@@ -76,6 +76,8 @@ export function EditExamDialog({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-exams'] });
       queryClient.invalidateQueries({ queryKey: ['admin-exam-groups'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-exam-group-exams'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-exams-unassigned'] });
       onOpenChange(false);
     },
     onError: (err: any) => {

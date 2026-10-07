@@ -62,6 +62,8 @@ export function CreateExamDialog({
     onSuccess: (newExam) => {
       queryClient.invalidateQueries({ queryKey: ['admin-exams'] });
       queryClient.invalidateQueries({ queryKey: ['admin-exam-groups'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-exam-group-exams'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-exams-unassigned'] });
       resetForm();
       onOpenChange(false);
       if (newExam?._id) {

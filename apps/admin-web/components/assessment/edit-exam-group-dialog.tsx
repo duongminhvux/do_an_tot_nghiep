@@ -49,7 +49,7 @@ export function EditExamGroupDialog({
       if (!group?._id) return;
       const res = await examGroupService.update(group._id, {
         name: name.trim(),
-        description: description.trim() || undefined,
+        description: description.trim(),
         order: Number(order) || 1,
         isActive,
       });

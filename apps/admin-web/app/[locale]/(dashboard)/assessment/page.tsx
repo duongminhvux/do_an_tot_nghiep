@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
+import { useDebounce } from '@/hooks/use-debounce';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { examService, examGroupService } from '@/services/assessment.service';
 import { ExamGroupItem, ExamItem, ExamStatus } from '@/types';
@@ -46,18 +47,57 @@ import {
 
 export default function AssessmentPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const locale = (params?.locale as string) || 'vi';
   const { t } = useTranslation('assessment');
   const queryClient = useQueryClient();
 
+  const initialQ = searchParams?.get('q') || searchParams?.get('search') || '';
+  const initialPage = Number(searchParams?.get('page')) || 1;
+  const initialLimit = Number(searchParams?.get('limit')) || 8;
+
   // Filter states
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(initialQ);
   const [statusFilter, setStatusFilter] = useState<'ALL' | ExamStatus>('ALL');
   const [groupFilter, setGroupFilter] = useState<string>('ALL');
 
   // Pagination states
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState<number>(8);
+  const [currentPage, setCurrentPage] = useState(initialPage);
+  const [pageSize, setPageSize] = useState<number>(initialLimit);
+
+  // Debounced search term for 'q' param
+  const debouncedQ = useDebounce(searchTerm, 400);
+
+  // Reset page when debounced search term changes
+  const prevDebouncedQ = useRef(debouncedQ);
+  useEffect(() => {
+    if (prevDebouncedQ.current !== debouncedQ) {
+      prevDebouncedQ.current = debouncedQ;
+      setCurrentPage(1);
+    }
+  }, [debouncedQ]);
+
+  // Sync q and page into URL query string
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (debouncedQ.trim()) {
+      url.searchParams.set('q', debouncedQ.trim());
+    } else {
+      url.searchParams.delete('q');
+    }
+    if (currentPage > 1) {
+      url.searchParams.set('page', String(currentPage));
+    } else {
+      url.searchParams.delete('page');
+    }
+    if (pageSize !== 8) {
+      url.searchParams.set('limit', String(pageSize));
+    } else {
+      url.searchParams.delete('limit');
+    }
+    window.history.replaceState(null, '', url.pathname + url.search);
+  }, [debouncedQ, currentPage, pageSize]);
 
   // Dialog states
   const [createOpen, setCreateOpen] = useState(false);
@@ -66,11 +106,18 @@ export default function AssessmentPage() {
   const [viewOpen, setViewOpen] = useState(false);
   const [selectedExam, setSelectedExam] = useState<ExamItem | null>(null);
 
-  // Fetch real exams from MongoDB via NestJS API
-  const { data: response, isLoading } = useQuery({
-    queryKey: ['admin-exams'],
+  // Fetch paginated exams with debounced q param
+  const { data: response, isLoading, isFetching } = useQuery({
+    queryKey: ['admin-exams', debouncedQ, statusFilter, groupFilter, currentPage, pageSize],
     queryFn: async () => {
-      const res = await examService.getAll({ limit: 100 });
+      const res = await examService.getAll({
+        q: debouncedQ.trim() || undefined,
+        search: debouncedQ.trim() || undefined,
+        isActive: statusFilter === 'ALL' ? undefined : statusFilter === 'ACTIVE',
+        groupId: groupFilter === 'ALL' ? undefined : groupFilter,
+        page: currentPage,
+        limit: pageSize,
+      });
       return res.data;
     },
   });
@@ -85,14 +132,43 @@ export default function AssessmentPage() {
   });
   const groups: ExamGroupItem[] = groupsResponse?.data || [];
 
-  // Extract real array of exams from API response
-  const allExams: ExamItem[] = useMemo(() => {
+  // Summary stats query to keep the 4 overview cards accurate across all exams
+  const { data: summaryResponse } = useQuery({
+    queryKey: ['admin-exams-summary-stats'],
+    queryFn: async () => {
+      const res = await examService.getAll({ limit: 1000 });
+      return res.data;
+    },
+  });
+
+  // Extract exams list from paginated API response
+  const exams: ExamItem[] = useMemo(() => {
     const payload = response?.data;
     if (Array.isArray(payload)) return payload;
     if (Array.isArray((payload as any)?.data)) return (payload as any).data;
     if (Array.isArray((response as any)?.items)) return (response as any).items;
     return [];
   }, [response]);
+
+  const totalFiltered = response?.total ?? exams.length;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
+
+  // Smart pagination pages window
+  const paginationPages = useMemo(() => {
+    const pages: (number | string)[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (currentPage > 3) pages.push('...');
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (currentPage < totalPages - 2) pages.push('...');
+      pages.push(totalPages);
+    }
+    return pages;
+  }, [currentPage, totalPages]);
 
   // Mutations
   const toggleActiveMutation = useMutation({
@@ -122,50 +198,11 @@ export default function AssessmentPage() {
     },
   });
 
-  // Filtered exams computed from DB data
-  const filteredExams = useMemo(() => {
-    return allExams.filter((exam) => {
-      // Search by name, slug, or description
-      const term = searchTerm.toLowerCase().trim();
-      const matchesSearch =
-        !term ||
-        exam.name.toLowerCase().includes(term) ||
-        (exam.description && exam.description.toLowerCase().includes(term)) ||
-        (exam.slug && exam.slug.toLowerCase().includes(term));
-
-      // Filter by status
-      const examStatus = exam.isActive ? 'ACTIVE' : 'INACTIVE';
-      const matchesStatus = statusFilter === 'ALL' || examStatus === statusFilter;
-
-      // Filter by group
-      let matchesGroup = true;
-      if (groupFilter !== 'ALL') {
-        if (groupFilter === 'none') {
-          matchesGroup = !exam.groupId && !exam.group;
-        } else {
-          matchesGroup =
-            (exam.groupId as any) === groupFilter ||
-            (exam.groupId as any)?._id === groupFilter ||
-            exam.group?._id === groupFilter;
-        }
-      }
-
-      return matchesSearch && matchesStatus && matchesGroup;
-    });
-  }, [allExams, searchTerm, statusFilter, groupFilter]);
-
-  // Pagination logic
-  const totalFiltered = filteredExams.length;
-  const totalPages = Math.ceil(totalFiltered / pageSize) || 1;
-  const paginatedExams = useMemo(() => {
-    const startIndex = (currentPage - 1) * pageSize;
-    return filteredExams.slice(startIndex, startIndex + pageSize);
-  }, [filteredExams, currentPage, pageSize]);
-
-  // Real statistics calculated directly from database records
+  // Real statistics calculated directly from summary records
   const stats = useMemo(() => {
-    const total = allExams.length;
-    const active = allExams.filter((e) => e.isActive).length;
+    const list: ExamItem[] = Array.isArray(summaryResponse?.data) ? summaryResponse.data : [];
+    const total = summaryResponse?.total ?? list.length;
+    const active = list.filter((e) => e.isActive).length;
     const inactive = total - active;
     const groupsCount = groups.length;
 
@@ -175,7 +212,7 @@ export default function AssessmentPage() {
       inactive,
       groupsCount,
     };
-  }, [allExams, groups]);
+  }, [summaryResponse, groups]);
 
   const handleResetFilters = () => {
     setSearchTerm('');
@@ -291,11 +328,13 @@ export default function AssessmentPage() {
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
-              setCurrentPage(1);
             }}
             placeholder={t('filters.searchPlaceholder')}
-            className="w-full h-9 pl-9 pr-3 rounded border border-slate-200 bg-white text-xs placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500/20 focus:border-blue-500"
+            className="w-full h-9 pl-9 pr-8 rounded border border-slate-200 bg-white text-xs placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500/20 focus:border-blue-500"
           />
+          {isFetching && (
+            <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-500 animate-spin" />
+          )}
         </div>
 
         {/* Filter Dropdowns & Reset button */}
@@ -365,7 +404,7 @@ export default function AssessmentPage() {
             <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
             <span>{t('examGroups.loading')}</span>
           </div>
-        ) : allExams.length === 0 ? (
+        ) : stats.total === 0 && !debouncedQ && statusFilter === 'ALL' && groupFilter === 'ALL' ? (
           /* Empty DB state */
           <div className="py-16 px-4 text-center">
             <div className="w-12 h-12 rounded bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-3">
@@ -387,7 +426,7 @@ export default function AssessmentPage() {
               </Link>
             </div>
           </div>
-        ) : filteredExams.length === 0 ? (
+        ) : exams.length === 0 ? (
           /* No filter match state */
           <div className="py-16 px-4 text-center">
             <div className="w-12 h-12 rounded bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
@@ -437,7 +476,7 @@ export default function AssessmentPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
-                {paginatedExams.map((exam, idx) => {
+                {exams.map((exam, idx) => {
                   const globalIdx = (currentPage - 1) * pageSize + idx + 1;
                   const examStatus = exam.isActive ? 'ACTIVE' : 'INACTIVE';
 
@@ -608,7 +647,7 @@ export default function AssessmentPage() {
         )}
 
         {/* Pagination Footer */}
-        {filteredExams.length > 0 && (
+        {exams.length > 0 && (
           <div className="py-3 px-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-500">
             <div>
               {t('pagination.showing')}{' '}
@@ -626,33 +665,39 @@ export default function AssessmentPage() {
                 type="button"
                 onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
                 disabled={currentPage === 1}
-                className="w-7 h-7 rounded border border-slate-200 flex items-center justify-center hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                className="w-7 h-7 rounded border border-slate-200 flex items-center justify-center hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
               >
                 <ChevronLeft className="h-3.5 w-3.5 text-slate-600" />
               </button>
 
-              {/* Page numbers */}
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <button
-                  key={page}
-                  type="button"
-                  onClick={() => setCurrentPage(page)}
-                  className={`w-7 h-7 rounded text-xs font-semibold cursor-pointer transition-colors ${
-                    currentPage === page
-                      ? 'bg-blue-600 text-white'
-                      : 'border border-slate-200 hover:bg-slate-50 text-slate-600'
-                  }`}
-                >
-                  {page}
-                </button>
-              ))}
+              {/* Page numbers with ellipsis */}
+              {paginationPages.map((page, idx) =>
+                typeof page === 'number' ? (
+                  <button
+                    key={page}
+                    type="button"
+                    onClick={() => setCurrentPage(page)}
+                    className={`w-7 h-7 rounded text-xs font-semibold cursor-pointer transition-colors ${
+                      currentPage === page
+                        ? 'bg-blue-600 text-white'
+                        : 'border border-slate-200 hover:bg-slate-50 text-slate-600'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ) : (
+                  <span key={`ellipsis-${idx}`} className="px-1 text-slate-400 font-bold">
+                    ...
+                  </span>
+                )
+              )}
 
               {/* Next */}
               <button
                 type="button"
                 onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
                 disabled={currentPage >= totalPages}
-                className="w-7 h-7 rounded border border-slate-200 flex items-center justify-center hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                className="w-7 h-7 rounded border border-slate-200 flex items-center justify-center hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
               >
                 <ChevronRight className="h-3.5 w-3.5 text-slate-600" />
               </button>

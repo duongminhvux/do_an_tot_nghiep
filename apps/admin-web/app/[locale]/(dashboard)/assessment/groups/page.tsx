@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
+import { useDebounce } from '@/hooks/use-debounce';
 import { useQuery } from '@tanstack/react-query';
 import { examGroupService } from '@/services/assessment.service';
 import { ExamGroupItem } from '@/types';
@@ -22,44 +23,120 @@ import {
   Plus,
   Search,
   ChevronRight,
+  ChevronLeft,
   Edit2,
   Trash2,
   FileText,
   Loader2,
   CheckCircle2,
   FolderKanban,
+  RotateCcw,
 } from 'lucide-react';
 
 export default function ExamGroupsPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const locale = (params?.locale as string) || 'vi';
   const { t } = useTranslation('assessment');
 
-  const [searchTerm, setSearchTerm] = useState('');
+  const initialQ = searchParams?.get('q') || searchParams?.get('search') || '';
+  const initialPage = Number(searchParams?.get('page')) || 1;
+  const initialLimit = Number(searchParams?.get('limit')) || 10;
+
+  const [searchTerm, setSearchTerm] = useState(initialQ);
   const [filterActive, setFilterActive] = useState<string>('ALL');
+  const [currentPage, setCurrentPage] = useState(initialPage);
+  const [pageSize, setPageSize] = useState<number>(initialLimit);
+
+  // Debounced search term for 'q' param
+  const debouncedQ = useDebounce(searchTerm, 400);
+
+  // Reset page when debounced search term changes
+  const prevDebouncedQ = useRef(debouncedQ);
+  useEffect(() => {
+    if (prevDebouncedQ.current !== debouncedQ) {
+      prevDebouncedQ.current = debouncedQ;
+      setCurrentPage(1);
+    }
+  }, [debouncedQ]);
+
+  // Sync q and page into URL query string
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (debouncedQ.trim()) {
+      url.searchParams.set('q', debouncedQ.trim());
+    } else {
+      url.searchParams.delete('q');
+    }
+    if (currentPage > 1) {
+      url.searchParams.set('page', String(currentPage));
+    } else {
+      url.searchParams.delete('page');
+    }
+    if (pageSize !== 10) {
+      url.searchParams.set('limit', String(pageSize));
+    } else {
+      url.searchParams.delete('limit');
+    }
+    window.history.replaceState(null, '', url.pathname + url.search);
+  }, [debouncedQ, currentPage, pageSize]);
 
   // Dialog states
   const [createOpen, setCreateOpen] = useState(false);
   const [editGroup, setEditGroup] = useState<ExamGroupItem | null>(null);
   const [deleteGroup, setDeleteGroup] = useState<ExamGroupItem | null>(null);
 
-  // Query Exam Groups
-  const { data: groupsResponse, isLoading } = useQuery({
-    queryKey: ['admin-exam-groups', searchTerm, filterActive],
+  // Query Exam Groups with pagination and debounced q param
+  const { data: groupsResponse, isLoading, isFetching } = useQuery({
+    queryKey: ['admin-exam-groups', debouncedQ, filterActive, currentPage, pageSize],
     queryFn: async () => {
       const res = await examGroupService.getAll({
-        search: searchTerm.trim() || undefined,
+        q: debouncedQ.trim() || undefined,
+        search: debouncedQ.trim() || undefined,
         isActive: filterActive === 'ALL' ? undefined : filterActive === 'ACTIVE',
-        limit: 50,
+        page: currentPage,
+        limit: pageSize,
       });
       return res?.data;
     },
   });
 
+  // Summary query for the top 3 cards so metric totals don't jump when searching
+  const { data: summaryResponse } = useQuery({
+    queryKey: ['admin-exam-groups-summary'],
+    queryFn: async () => {
+      const res = await examGroupService.getAll({ limit: 1000 });
+      return res?.data;
+    },
+  });
+
+  const summaryList: ExamGroupItem[] = summaryResponse?.data || [];
+  const totalGroups = summaryResponse?.total ?? summaryList.length;
+  const totalExamsCombined = summaryList.reduce((acc, g) => acc + (g.examCount || 0), 0);
+  const totalActiveGroups = summaryList.filter((g) => g.isActive).length;
+
   const groups: ExamGroupItem[] = groupsResponse?.data || [];
-  const totalGroups = groupsResponse?.total ?? groups.length;
-  const totalExamsCombined = groups.reduce((acc, g) => acc + (g.examCount || 0), 0);
+  const totalFiltered = groupsResponse?.total ?? groups.length;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
+
+  // Smart pagination pages window
+  const paginationPages = useMemo(() => {
+    const pages: (number | string)[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (currentPage > 3) pages.push('...');
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (currentPage < totalPages - 2) pages.push('...');
+      pages.push(totalPages);
+    }
+    return pages;
+  }, [currentPage, totalPages]);
 
   return (
     <div className="min-h-screen bg-slate-50/50 p-6 md:p-8 space-y-6 w-full">
@@ -125,7 +202,7 @@ export default function ExamGroupsPage() {
               {t('examGroups.activeGroups')}
             </p>
             <p className="text-xl font-bold text-slate-900 mt-0.5">
-              {groups.filter((g) => g.isActive).length}
+              {totalActiveGroups}
             </p>
           </div>
         </div>
@@ -140,8 +217,11 @@ export default function ExamGroupsPage() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder={t('examGroups.searchPlaceholder')}
-            className="w-full h-9 pl-9 pr-3.5 rounded border border-slate-200 bg-slate-50/50 text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+            className="w-full h-9 pl-9 pr-8 rounded border border-slate-200 bg-slate-50/50 text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
           />
+          {isFetching && (
+            <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 text-blue-500 animate-spin" />
+          )}
         </div>
 
         <div className="w-full sm:w-48">
@@ -273,6 +353,86 @@ export default function ExamGroupsPage() {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Pagination Footer */}
+        {groups.length > 0 && (
+          <div className="py-3 px-4 border-t border-slate-200/90 bg-white rounded-b flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-500">
+            <div>
+              {t('pagination.showing')}{' '}
+              <span className="font-semibold text-slate-700">
+                {(currentPage - 1) * pageSize + 1} -{' '}
+                {Math.min(currentPage * pageSize, totalFiltered)}
+              </span>{' '}
+              {t('pagination.of')}{' '}
+              <span className="font-semibold text-slate-700">{totalFiltered}</span> {t('examGroups.title').toLowerCase()}
+            </div>
+
+            <div className="flex items-center gap-2.5 self-end sm:self-auto">
+              {/* Prev */}
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                disabled={currentPage === 1}
+                className="w-7 h-7 rounded border border-slate-200 flex items-center justify-center hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+              >
+                <ChevronLeft className="h-3.5 w-3.5 text-slate-600" />
+              </button>
+
+              {/* Page numbers with ellipsis */}
+              {paginationPages.map((page, idx) =>
+                typeof page === 'number' ? (
+                  <button
+                    key={page}
+                    type="button"
+                    onClick={() => setCurrentPage(page)}
+                    className={`w-7 h-7 rounded text-xs font-semibold cursor-pointer transition-colors ${
+                      currentPage === page
+                        ? 'bg-blue-600 text-white'
+                        : 'border border-slate-200 hover:bg-slate-50 text-slate-600'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ) : (
+                  <span key={`ellipsis-${idx}`} className="px-1 text-slate-400 font-bold">
+                    ...
+                  </span>
+                )
+              )}
+
+              {/* Next */}
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                disabled={currentPage >= totalPages}
+                className="w-7 h-7 rounded border border-slate-200 flex items-center justify-center hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+              >
+                <ChevronRight className="h-3.5 w-3.5 text-slate-600" />
+              </button>
+
+              {/* Page Size Select */}
+              <div className="w-28 ml-1">
+                <Select
+                  value={String(pageSize)}
+                  onValueChange={(val) => {
+                    setPageSize(Number(val));
+                    setCurrentPage(1);
+                  }}
+                >
+                  <SelectTrigger className="h-7 text-xs rounded border border-slate-200 bg-white">
+                    <SelectValue placeholder="10 / trang" />
+                  </SelectTrigger>
+                  <SelectContent className="text-xs rounded border border-slate-200 bg-white">
+                    <SelectItem value="5">5 / {t('pagination.page')}</SelectItem>
+                    <SelectItem value="10">10 / {t('pagination.page')}</SelectItem>
+                    <SelectItem value="20">20 / {t('pagination.page')}</SelectItem>
+                    <SelectItem value="50">50 / {t('pagination.page')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
         )}
       </div>

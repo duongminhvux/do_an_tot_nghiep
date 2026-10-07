@@ -58,6 +58,13 @@ export function EditPassageDialog({
   const [questions, setQuestions] = useState<EditableQuestion[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const showError = (msg: string) => {
+    setErrorMessage(msg);
+    setTimeout(() => {
+      document.getElementById('edit-passage-error-alert')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 50);
+  };
+
   useEffect(() => {
     if (passageGroup) {
       setTitle(passageGroup.title || passageGroup.passage?.title || '');
@@ -206,7 +213,7 @@ export function EditPassageDialog({
     },
     onError: (err: any) => {
       const msg = err.response?.data?.message || err.message || 'Lỗi khi cập nhật bài đọc và câu hỏi';
-      setErrorMessage(Array.isArray(msg) ? msg.join(', ') : msg);
+      showError(Array.isArray(msg) ? msg.join(', ') : msg);
     },
   });
 
@@ -216,8 +223,8 @@ export function EditPassageDialog({
     updateMutation.isPending || isUploading ||
     !title.trim() ||
     editablePassages.some((p) => isListening
-      ? !p.content?.trim() && !p.imageUrl?.trim() && !p.audioUrl?.trim()
-      : Boolean(p.content?.trim()) === Boolean(p.imageUrl?.trim()));
+      ? !p.audioUrl?.trim()
+      : (!p.content?.trim() && !p.imageUrl?.trim()) || (Boolean(p.content?.trim()) && Boolean(p.imageUrl?.trim())));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -225,7 +232,37 @@ export function EditPassageDialog({
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (!isSaveDisabled) updateMutation.mutate();
+            if (updateMutation.isPending || isUploading) return;
+            setErrorMessage(null);
+
+            if (!title.trim()) {
+              showError('Vui lòng nhập tiêu đề cho cụm câu hỏi / bài đọc.');
+              return;
+            }
+
+            if (isListening) {
+              const missingAudio = editablePassages.some((p) => !p.audioUrl?.trim());
+              if (missingAudio) {
+                showError('Vui lòng cung cấp đầy đủ file audio cho bài nghe.');
+                return;
+              }
+            } else {
+              for (let i = 0; i < editablePassages.length; i++) {
+                const p = editablePassages[i]!;
+                const hasText = Boolean(p.content?.trim());
+                const hasImg = Boolean(p.imageUrl?.trim());
+                if (!hasText && !hasImg) {
+                  showError(`Đoạn văn / Đề bài số ${i + 1} không được để trống (cần có nội dung văn bản hoặc hình ảnh).`);
+                  return;
+                }
+                if (hasText && hasImg) {
+                  showError(`Đoạn văn số ${i + 1} chỉ được chọn một trong hai: văn bản hoặc hình ảnh.`);
+                  return;
+                }
+              }
+            }
+
+            updateMutation.mutate();
           }}
           className="space-y-5"
         >
@@ -253,7 +290,12 @@ export function EditPassageDialog({
           </DialogHeader>
 
           {errorMessage && (
-            <div className="p-3 rounded bg-red-50 border border-red-200 text-xs text-red-700">
+            <div
+              id="edit-passage-error-alert"
+              tabIndex={-1}
+              role="alert"
+              className="p-3.5 rounded border-2 border-red-300 bg-red-50 text-xs text-red-700 font-medium"
+            >
               {errorMessage}
             </div>
           )}
@@ -456,7 +498,7 @@ export function EditPassageDialog({
             </button>
             <button
               type="submit"
-              disabled={isSaveDisabled}
+              disabled={updateMutation.isPending || isUploading}
               className="px-5 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-2xs transition-colors"
             >
               {updateMutation.isPending && (

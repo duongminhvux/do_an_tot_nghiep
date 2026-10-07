@@ -65,9 +65,12 @@ export function AddExamToGroupDialog({
       return examGroupService.addExams(groupId, selectedExamIds);
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-exam-group-exams', groupId] });
+      queryClient.invalidateQueries({ queryKey: ['admin-exam-group-exams'] });
       queryClient.invalidateQueries({ queryKey: ['admin-exam-group', groupId] });
       queryClient.invalidateQueries({ queryKey: ['admin-exam-groups'] });
       queryClient.invalidateQueries({ queryKey: ['admin-exams'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-exams-unassigned'] });
       setSelectedExamIds([]);
       setErrorMessage(null);
       onOpenChange(false);

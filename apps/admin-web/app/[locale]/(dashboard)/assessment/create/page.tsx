@@ -13,6 +13,7 @@ import {
   Eye,
   Info,
   AlertTriangle,
+  AlertCircle,
   Clock,
   Bell,
   ListOrdered,
@@ -27,6 +28,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+
+interface FormErrors {
+  name?: string;
+  durationMinutes?: string;
+  order?: string;
+  type?: string;
+}
 
 export default function CreateExamPage() {
   const router = useRouter();
@@ -44,9 +52,13 @@ export default function CreateExamPage() {
   const [isActive, setIsActive] = useState(true);
   const [type, setType] = useState<ExamType>('TOEIC');
   const [description, setDescription] = useState('');
-  const [durationMinutes, setDurationMinutes] = useState<number>(120);
-  const [order, setOrder] = useState<number>(1);
+  const [durationMinutes, setDurationMinutes] = useState<number | string>(120);
+  const [order, setOrder] = useState<number | string>(1);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Validation states
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   // Query groups for selection
   const { data: groupsResponse } = useQuery({
@@ -67,9 +79,16 @@ export default function CreateExamPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-exams'] });
       queryClient.invalidateQueries({ queryKey: ['admin-exam-groups'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-exam-group-exams'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-exams-unassigned'] });
       if (initialGroupId) {
         queryClient.invalidateQueries({ queryKey: ['admin-exam-group', initialGroupId] });
+        queryClient.invalidateQueries({ queryKey: ['admin-exam-group-exams', initialGroupId] });
         router.push(`/${locale}/assessment/groups/${initialGroupId}`);
+      } else if (groupId) {
+        queryClient.invalidateQueries({ queryKey: ['admin-exam-group', groupId] });
+        queryClient.invalidateQueries({ queryKey: ['admin-exam-group-exams', groupId] });
+        router.push(`/${locale}/assessment`);
       } else {
         router.push(`/${locale}/assessment`);
       }
@@ -77,17 +96,84 @@ export default function CreateExamPage() {
     onError: (err: any) => {
       const msg = err.response?.data?.message || err.message || 'Lỗi khi tạo đề thi';
       setErrorMessage(Array.isArray(msg) ? msg.join(', ') : msg);
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        setTimeout(() => {
+          document.getElementById('exam-create-error-alert')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 50);
+      }
     },
   });
 
+  const validateForm = (
+    currentName: string,
+    currentDuration: string | number,
+    currentOrder: string | number,
+    currentType: string
+  ): FormErrors => {
+    const errs: FormErrors = {};
+
+    const trimmedName = currentName.trim();
+    if (!trimmedName) {
+      errs.name = t('createPage.nameRequired');
+    } else if (trimmedName.length < 3) {
+      errs.name = t('createPage.nameMinLength');
+    }
+
+    if (currentDuration === '' || currentDuration === undefined || currentDuration === null) {
+      errs.durationMinutes = t('createPage.durationRequired');
+    } else {
+      const durNum = Number(currentDuration);
+      if (isNaN(durNum) || durNum < 1 || durNum > 300) {
+        errs.durationMinutes = t('createPage.durationMinMax');
+      }
+    }
+
+    if (currentOrder === '' || currentOrder === undefined || currentOrder === null) {
+      errs.order = t('createPage.orderRequired');
+    } else {
+      const ordNum = Number(currentOrder);
+      if (isNaN(ordNum) || ordNum < 0) {
+        errs.order = t('createPage.orderMin');
+      }
+    }
+
+    if (!currentType) {
+      errs.type = t('createPage.typeRequired');
+    }
+
+    return errs;
+  };
+
+  const handleBlur = (field: string) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    const formErrors = validateForm(name, durationMinutes, order, type);
+    setErrors(formErrors);
+  };
+
   const handleSubmit = (asDraft: boolean = false) => {
     setErrorMessage(null);
-    const trimmedName = name.trim();
-    if (!trimmedName) {
-      setErrorMessage(t('createPage.nameRequired'));
+    const formErrors = validateForm(name, durationMinutes, order, type);
+    setErrors(formErrors);
+    setTouched({
+      name: true,
+      durationMinutes: true,
+      order: true,
+      type: true,
+    });
+
+    if (Object.keys(formErrors).length > 0) {
+      setErrorMessage(t('createPage.validationErrorsTitle'));
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        setTimeout(() => {
+          document.getElementById('exam-create-error-alert')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 50);
+      }
       return;
     }
 
+    const trimmedName = name.trim();
     const activeState = asDraft ? false : isActive;
 
     createMutation.mutate({
@@ -97,7 +183,7 @@ export default function CreateExamPage() {
       durationMinutes: Number(durationMinutes) || 120,
       totalQuestions: 200,
       isActive: activeState,
-      order: Number(order) || 1,
+      order: Number(order) || 0,
       groupId: groupId ? groupId : undefined,
     });
   };
@@ -115,9 +201,23 @@ export default function CreateExamPage() {
       </div>
 
       {errorMessage && (
-        <div className="p-3.5 bg-red-50 border border-red-200 rounded flex items-center gap-2.5 text-xs text-red-600">
-          <AlertTriangle className="h-4 w-4 shrink-0 text-red-500" />
-          <span>{errorMessage}</span>
+        <div
+          id="exam-create-error-alert"
+          tabIndex={-1}
+          role="alert"
+          className="p-4 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 space-y-2 shadow-xs animate-in fade-in duration-200"
+        >
+          <div className="flex items-center gap-2 font-bold text-red-800 text-sm">
+            <AlertTriangle className="h-4 w-4 shrink-0 text-red-600" />
+            <span>{errorMessage}</span>
+          </div>
+          {Object.values(errors).length > 0 && (
+            <ul className="list-disc pl-6 space-y-1 text-red-600 text-xs font-medium">
+              {Object.entries(errors).map(([key, err]) => (
+                <li key={key}>{err}</li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 
@@ -138,19 +238,42 @@ export default function CreateExamPage() {
 
             {/* Field: Tên đề */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-800 flex items-center gap-1">
-                {t('createPage.nameLabel')} <span className="text-red-500">*</span>
+              <label className="text-xs font-semibold text-slate-800 flex items-center justify-between">
+                <span className="flex items-center gap-1">
+                  {t('createPage.nameLabel')} <span className="text-red-500">*</span>
+                </span>
+                {(touched.name || errors.name) && errors.name && (
+                  <span className="text-[11px] font-medium text-red-500">{errors.name}</span>
+                )}
               </label>
               <input
                 type="text"
                 value={name}
                 maxLength={100}
-                onChange={(e) => setName(e.target.value)}
+                onBlur={() => handleBlur('name')}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setName(val);
+                  if (touched.name || errors.name) {
+                    const errs = validateForm(val, durationMinutes, order, type);
+                    setErrors((prev) => ({ ...prev, name: errs.name }));
+                  }
+                }}
                 placeholder={t('createPage.namePlaceholder')}
-                className="w-full h-11 px-3.5 rounded border border-slate-200 bg-white text-sm placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                className={`w-full h-11 px-3.5 rounded border text-sm placeholder:text-slate-400 focus:outline-none transition-all ${
+                  (touched.name || errors.name) && errors.name
+                    ? 'border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500/20 focus:border-red-500'
+                    : 'border-slate-200 bg-white focus:ring-1 focus:ring-blue-500/20 focus:border-blue-500'
+                }`}
               />
               <div className="flex items-center justify-between text-[11px] text-slate-400 px-0.5">
-                <span>{t('createPage.nameHint')}</span>
+                {(touched.name || errors.name) && errors.name ? (
+                  <span className="text-red-500 font-medium flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3 inline shrink-0" /> {errors.name}
+                  </span>
+                ) : (
+                  <span>{t('createPage.nameHint')}</span>
+                )}
                 <span>{name.length}/100</span>
               </div>
             </div>
@@ -181,20 +304,39 @@ export default function CreateExamPage() {
               <label className="text-xs font-semibold text-slate-800 flex items-center gap-1">
                 {t('createPage.typeLabel')} <span className="text-red-500">*</span>
               </label>
-              <Select value={type} onValueChange={(val) => setType(val as ExamType)}>
-                <SelectTrigger className="w-full h-10 px-3.5 rounded border border-slate-200 bg-white text-xs text-slate-800">
+              <Select
+                value={type}
+                onValueChange={(val) => {
+                  setType(val as ExamType);
+                  if (touched.type || errors.type) {
+                    const errs = validateForm(name, durationMinutes, order, val);
+                    setErrors((prev) => ({ ...prev, type: errs.type }));
+                  }
+                }}
+              >
+                <SelectTrigger
+                  className={`w-full h-10 px-3.5 rounded border bg-white text-xs text-slate-800 ${
+                    (touched.type || errors.type) && errors.type
+                      ? 'border-red-500 focus:ring-red-500/20'
+                      : 'border-slate-200'
+                  }`}
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-white border border-slate-200 rounded text-xs shadow-md">
                   <SelectItem value="TOEIC">TOEIC</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-[11px] text-slate-400 px-0.5">
-                {t('createPage.typeHint')}
-              </p>
+              {(touched.type || errors.type) && errors.type ? (
+                <p className="text-[11px] text-red-500 font-medium flex items-center gap-1 px-0.5">
+                  <AlertCircle className="h-3 w-3 inline shrink-0" /> {errors.type}
+                </p>
+              ) : (
+                <p className="text-[11px] text-slate-400 px-0.5">
+                  {t('createPage.typeHint')}
+                </p>
+              )}
             </div>
-
-
 
             {/* Field: Mô tả */}
             <div className="space-y-1.5">
@@ -238,12 +380,30 @@ export default function CreateExamPage() {
                   min={1}
                   max={300}
                   value={durationMinutes}
-                  onChange={(e) => setDurationMinutes(Number(e.target.value))}
-                  className="w-full h-10 px-3 rounded border border-slate-200 bg-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                  onBlur={() => handleBlur('durationMinutes')}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setDurationMinutes(val);
+                    if (touched.durationMinutes || errors.durationMinutes) {
+                      const errs = validateForm(name, val, order, type);
+                      setErrors((prev) => ({ ...prev, durationMinutes: errs.durationMinutes }));
+                    }
+                  }}
+                  className={`w-full h-10 px-3 rounded border text-sm focus:outline-none transition-all ${
+                    (touched.durationMinutes || errors.durationMinutes) && errors.durationMinutes
+                      ? 'border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500/20 focus:border-red-500'
+                      : 'border-slate-200 bg-white focus:ring-1 focus:ring-blue-500/20 focus:border-blue-500'
+                  }`}
                 />
-                <p className="text-[11px] text-slate-400 leading-snug">
-                  {t('createPage.durationHint')}
-                </p>
+                {(touched.durationMinutes || errors.durationMinutes) && errors.durationMinutes ? (
+                  <p className="text-[11px] text-red-500 font-medium flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3 inline shrink-0" /> {errors.durationMinutes}
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-slate-400 leading-snug">
+                    {t('createPage.durationHint')}
+                  </p>
+                )}
               </div>
 
               {/* Trạng thái hoạt động */}
@@ -277,14 +437,32 @@ export default function CreateExamPage() {
                 </label>
                 <input
                   type="number"
-                  min={1}
+                  min={0}
                   value={order}
-                  onChange={(e) => setOrder(Number(e.target.value))}
-                  className="w-full h-10 px-3 rounded border border-slate-200 bg-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                  onBlur={() => handleBlur('order')}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setOrder(val);
+                    if (touched.order || errors.order) {
+                      const errs = validateForm(name, durationMinutes, val, type);
+                      setErrors((prev) => ({ ...prev, order: errs.order }));
+                    }
+                  }}
+                  className={`w-full h-10 px-3 rounded border text-sm focus:outline-none transition-all ${
+                    (touched.order || errors.order) && errors.order
+                      ? 'border-red-500 bg-red-50/20 focus:ring-1 focus:ring-red-500/20 focus:border-red-500'
+                      : 'border-slate-200 bg-white focus:ring-1 focus:ring-blue-500/20 focus:border-blue-500'
+                  }`}
                 />
-                <p className="text-[11px] text-slate-400 leading-snug">
-                  {t('createPage.orderHint')}
-                </p>
+                {(touched.order || errors.order) && errors.order ? (
+                  <p className="text-[11px] text-red-500 font-medium flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3 inline shrink-0" /> {errors.order}
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-slate-400 leading-snug">
+                    {t('createPage.orderHint')}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -376,7 +554,7 @@ export default function CreateExamPage() {
                     {t('table.duration')}
                   </span>
                   <span className="font-bold text-slate-900 text-xs">
-                    {durationMinutes} {t('table.minutes')}
+                    {durationMinutes || 0} {t('table.minutes')}
                   </span>
                 </div>
 
@@ -405,7 +583,7 @@ export default function CreateExamPage() {
                     <ListOrdered className="h-4 w-4 text-slate-400" />
                     {t('createPage.orderLabel')}
                   </span>
-                  <span className="font-bold text-slate-900 text-xs">{order}</span>
+                  <span className="font-bold text-slate-900 text-xs">{order !== '' ? order : 0}</span>
                 </div>
               </div>
             </div>

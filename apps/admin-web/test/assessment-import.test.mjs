@@ -160,3 +160,61 @@ test("option E stays visible and blocks a four-choice question", () => {
   assert.equal(draft.questions[0].options.length, 5);
   assert.ok(validateImportDraft(draft, 5).some((i) => i.severity === "error"));
 });
+
+test("Part 1 requires both image and audio, Part 2 and 3 require audio, Part 6 and 7 require passage content", () => {
+  // Part 1 missing image
+  const p1NoImg = parseImportText(
+    "1. Look at picture\nAudio: https://example.com/audio.mp3\nA. A\nB. B\nC. C\nD. D\nAnswer: A",
+    1,
+  );
+  assert.ok(
+    validateImportDraft(p1NoImg, 1).some(
+      (i) => i.severity === "error" && i.message.includes("ảnh"),
+    ),
+  );
+
+  // Part 1 missing audio
+  const p1NoAudio = parseImportText(
+    "1. Look at picture\nImage: https://example.com/image.jpg\nA. A\nB. B\nC. C\nD. D\nAnswer: A",
+    1,
+  );
+  assert.ok(
+    validateImportDraft(p1NoAudio, 1).some(
+      (i) => i.severity === "error" && i.message.includes("audio"),
+    ),
+  );
+
+  // Part 2 missing audio
+  const p2NoAudio = parseImportText(
+    "7. Where is the meeting?\nA. Friday\nB. Room 204\nC. Yes\nAnswer: B",
+    2,
+  );
+  assert.ok(
+    validateImportDraft(p2NoAudio, 2).some(
+      (i) => i.severity === "error" && i.message.includes("audio"),
+    ),
+  );
+
+  // Part 3 missing audio in passage
+  const p3NoAudio = parseImportText(
+    "[PASSAGE]\nContent: Transcript\n32. What is discussed?\nA. A\nB. B\nC. C\nD. D\nAnswer: A",
+    3,
+  );
+  assert.ok(
+    validateImportDraft(p3NoAudio, 3).some(
+      (i) => i.severity === "error" && i.message.includes("audio"),
+    ),
+  );
+
+  // Part 7 missing passage content/image
+  const p7EmptyPassage = parseImportText(
+    "[PASSAGE]\n147. What is said?\nA. A\nB. B\nC. C\nD. D\nAnswer: A",
+    7,
+  );
+  assert.ok(
+    validateImportDraft(p7EmptyPassage, 7).some(
+      (i) => i.severity === "error" && i.message.includes("nội dung"),
+    ),
+  );
+});
+
