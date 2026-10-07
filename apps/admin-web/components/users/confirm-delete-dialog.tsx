@@ -46,10 +46,10 @@ export function ConfirmDeleteDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[420px]">
+      <DialogContent className="sm:max-w-[420px] rounded">
         <DialogHeader>
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-red-50 text-red-600">
+            <div className="p-2 rounded bg-red-50 text-red-600">
               <AlertTriangle className="w-5 h-5" />
             </div>
             <div>

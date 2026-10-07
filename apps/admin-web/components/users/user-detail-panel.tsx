@@ -29,9 +29,11 @@ import {
   Award,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { UserActivityLogs } from '@/components/users/user-activity-logs';
 
 interface UserDetailPanelProps {
   user: UserItem;
+  initialTab?: DetailTab;
   onEdit: (user: UserItem) => void;
   onToggleBan: (user: UserItem) => void;
   onDelete: (user: UserItem) => void;
@@ -42,17 +44,24 @@ type DetailTab = 'overview' | 'activity' | 'learning' | 'other';
 
 export function UserDetailPanel({
   user,
+  initialTab,
   onEdit,
   onToggleBan,
   onDelete,
   onSaveNotes,
 }: UserDetailPanelProps) {
   const { t } = useTranslation('users');
-  const [activeTab, setActiveTab] = useState<DetailTab>('overview');
+  const [activeTab, setActiveTab] = useState<DetailTab>(initialTab || 'overview');
   const [copied, setCopied] = useState(false);
   const [note, setNote] = useState(user.notes || '');
   const [noteSaved, setNoteSaved] = useState(false);
   const [isSavingNote, setIsSavingNote] = useState(false);
+
+  React.useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   // Sync note when user changes
   React.useEffect(() => {
@@ -100,7 +109,7 @@ export function UserDetailPanel({
   return (
     <div className="space-y-6">
       {/* 1. Profile Banner Card */}
-      <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+      <div className="rounded border border-slate-200 bg-white p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-5">
         <div className="flex items-center gap-4">
           <div className="relative">
             <UserAvatar
@@ -137,7 +146,7 @@ export function UserDetailPanel({
             </div>
 
             <div>
-              <span className="inline-block px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-blue-50 text-blue-600 border border-blue-100">
+              <span className="inline-block px-2.5 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-600 border border-blue-100">
                 User
               </span>
             </div>
@@ -145,8 +154,8 @@ export function UserDetailPanel({
         </div>
 
         {/* Right: Registration Date Box */}
-        <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3.5 flex items-center gap-3.5 shrink-0 self-start sm:self-center">
-          <div className="w-10 h-10 rounded-xl bg-blue-100/80 text-blue-600 flex items-center justify-center shrink-0">
+        <div className="rounded border border-slate-200 bg-slate-50/70 p-3.5 flex items-center gap-3.5 shrink-0 self-start sm:self-center">
+          <div className="w-10 h-10 rounded bg-blue-100/80 text-blue-600 flex items-center justify-center shrink-0">
             <Calendar className="w-5 h-5" />
           </div>
           <div className="text-xs">
@@ -166,8 +175,8 @@ export function UserDetailPanel({
       {/* 2. Four Quick Stat Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Tổng số từ đã học */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs flex items-center gap-4 hover:border-blue-200 transition-colors">
-          <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+        <div className="rounded border border-slate-200 bg-white p-5 shadow-xs flex items-center gap-4 hover:border-blue-200 transition-colors">
+          <div className="w-11 h-11 rounded bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
             <BookOpen className="w-5 h-5" />
           </div>
           <div className="min-w-0">
@@ -181,8 +190,8 @@ export function UserDetailPanel({
         </div>
 
         {/* Card 2: Hoàn thành khóa học */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs flex items-center gap-4 hover:border-blue-200 transition-colors">
-          <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+        <div className="rounded border border-slate-200 bg-white p-5 shadow-xs flex items-center gap-4 hover:border-blue-200 transition-colors">
+          <div className="w-11 h-11 rounded bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
             <GraduationCap className="w-5 h-5" />
           </div>
           <div className="min-w-0">
@@ -204,8 +213,8 @@ export function UserDetailPanel({
         </div>
 
         {/* Card 3: Thời gian học */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs flex items-center gap-4 hover:border-blue-200 transition-colors">
-          <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+        <div className="rounded border border-slate-200 bg-white p-5 shadow-xs flex items-center gap-4 hover:border-blue-200 transition-colors">
+          <div className="w-11 h-11 rounded bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
             <Clock className="w-5 h-5" />
           </div>
           <div className="min-w-0">
@@ -221,8 +230,8 @@ export function UserDetailPanel({
         </div>
 
         {/* Card 4: Streak hiện tại */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs flex items-center gap-4 hover:border-amber-200 transition-colors">
-          <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center shrink-0">
+        <div className="rounded border border-slate-200 bg-white p-5 shadow-xs flex items-center gap-4 hover:border-amber-200 transition-colors">
+          <div className="w-11 h-11 rounded bg-amber-50 text-amber-500 flex items-center justify-center shrink-0">
             <Flame className="w-5 h-5 fill-amber-400 text-amber-500" />
           </div>
           <div className="min-w-0">
@@ -293,7 +302,7 @@ export function UserDetailPanel({
           {/* Left Column (4 cols) */}
           <div className="lg:col-span-4 space-y-5">
             {/* Card: Thông tin cá nhân */}
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs space-y-4">
+            <div className="rounded border border-slate-200 bg-white p-5 shadow-xs space-y-4">
               <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100 text-blue-600 font-bold text-sm">
                 <UserIcon className="w-4 h-4" />
                 <span className="text-slate-900">
@@ -334,7 +343,7 @@ export function UserDetailPanel({
                   <p className="text-slate-400 font-medium mb-0.5">
                     {t('detail.personal.role', 'Vai trò')}
                   </p>
-                  <span className="inline-block px-2 py-0.5 rounded-md text-xs font-semibold bg-blue-50 text-blue-600 border border-blue-100">
+                  <span className="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-blue-50 text-blue-600 border border-blue-100">
                     {t('detail.role_badge', 'User')}
                   </span>
                 </div>
@@ -389,7 +398,7 @@ export function UserDetailPanel({
             </div>
 
             {/* Card: Ghi chú */}
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs space-y-3">
+            <div className="rounded border border-slate-200 bg-white p-5 shadow-xs space-y-3">
               <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100 text-blue-600 font-bold text-sm">
                 <FileText className="w-4 h-4" />
                 <span className="text-slate-900">
@@ -401,14 +410,14 @@ export function UserDetailPanel({
                 onChange={(e) => setNote(e.target.value)}
                 rows={3}
                 placeholder={t('detail.notes.placeholder', 'Thêm ghi chú...')}
-                className="w-full text-xs p-3 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none transition-all placeholder:text-slate-400"
+                className="w-full text-xs p-3 rounded border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none transition-all placeholder:text-slate-400"
               />
               <div className="flex justify-end">
                 <Button
                   type="button"
                   size="sm"
                   onClick={handleSaveNote}
-                  className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold px-4 cursor-pointer shadow-xs"
+                  className="bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold px-4 cursor-pointer shadow-xs"
                 >
                   {noteSaved ? t('detail.notes.saved', 'Đã lưu') : t('detail.notes.save', 'Lưu')}
                 </Button>
@@ -419,7 +428,7 @@ export function UserDetailPanel({
           {/* Right Column (8 cols) */}
           <div className="lg:col-span-8 space-y-5">
             {/* Card: Tiến độ học tập */}
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs space-y-4">
+            <div className="rounded border border-slate-200 bg-white p-5 shadow-xs space-y-4">
               <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                 <div className="flex items-center gap-2.5 text-blue-600 font-bold text-sm">
                   <Bookmark className="w-4 h-4" />
@@ -484,7 +493,7 @@ export function UserDetailPanel({
               {/* Courses progress list */}
               <div className="space-y-4 pt-2">
                 {coursesList.length === 0 ? (
-                  <div className="py-6 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-xl">
+                  <div className="py-6 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded">
                     {t('detail.no_lessons_desc', 'Chưa có bài học nào được ghi nhận.')}
                   </div>
                 ) : (
@@ -493,7 +502,7 @@ export function UserDetailPanel({
                       <div className="flex items-center justify-between text-xs">
                         <div className="flex items-center gap-2.5">
                           <div
-                            className={`w-6 h-6 rounded-md ${
+                            className={`w-6 h-6 rounded ${
                               course.color || 'bg-blue-600'
                             } text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs`}
                           >
@@ -529,8 +538,8 @@ export function UserDetailPanel({
               </div>
             </div>
 
-            {/* Card: Hoạt động gần đây */}
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs space-y-3.5">
+            {/* Card: Hoạt động gần đây tích hợp API Activity Logs */}
+            <div className="rounded border border-slate-200 bg-white p-5 shadow-xs space-y-3.5">
               <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                 <div className="flex items-center gap-2.5 text-blue-600 font-bold text-sm">
                   <Activity className="w-4 h-4" />
@@ -548,92 +557,38 @@ export function UserDetailPanel({
                 </button>
               </div>
 
-              <div className="space-y-2.5 text-xs">
-                {activitiesList.length === 0 ? (
-                  <div className="py-6 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-xl">
-                    {t('detail.no_recent_activities', 'Chưa có hoạt động nào gần đây.')}
-                  </div>
-                ) : (
-                  activitiesList.map((act: any) => {
-                    let icon = <BookOpen className="w-4 h-4" />;
-                    let bg = 'bg-blue-50 text-blue-600';
-
-                    if (act.type === 'word') {
-                      icon = <BookMarked className="w-4 h-4" />;
-                      bg = 'bg-blue-50 text-blue-600';
-                    } else if (act.type === 'login' || act.iconType === 'auth') {
-                      icon = <LogIn className="w-4 h-4" />;
-                      bg = 'bg-emerald-50 text-emerald-600';
-                    } else if (act.type === 'profile' || act.iconType === 'profile') {
-                      icon = <UserIcon className="w-4 h-4" />;
-                      bg = 'bg-purple-50 text-purple-600';
-                    } else if (act.type === 'lesson' || act.iconType === 'lesson') {
-                      icon = <GraduationCap className="w-4 h-4" />;
-                      bg = 'bg-blue-50 text-blue-600';
-                    }
-
-                    return (
-                      <div
-                        key={act.id}
-                        className="flex items-center justify-between gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div
-                            className={`w-8 h-8 rounded-xl ${bg} flex items-center justify-center shrink-0`}
-                          >
-                            {icon}
-                          </div>
-                          <span className="font-semibold text-slate-800 truncate">
-                            {act.title}
-                          </span>
-                        </div>
-                        <span className="text-slate-400 font-medium shrink-0 whitespace-nowrap">
-                          {act.time}
-                        </span>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
+              {/* Real integrated user activity logs */}
+              <UserActivityLogs
+                userId={user._id || user.id}
+                userEmail={user.email}
+                limit={5}
+                compact
+              />
             </div>
           </div>
         </div>
       )}
 
-      {/* 5. Tab 2: ACTIVITY HISTORY (Lịch sử hoạt động) */}
+      {/* 5. Tab 2: ACTIVITY HISTORY (Lịch sử hoạt động tích hợp API) */}
       {activeTab === 'activity' && (
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs space-y-5">
+        <div className="rounded border border-slate-200 bg-white p-6 shadow-xs space-y-5">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h3 className="text-sm font-bold text-slate-900">
-              {t('detail.activity_log.heading', 'Nhật ký tương tác tài khoản')}
-            </h3>
-            <span className="text-xs text-slate-400">
-              {t('detail.recent_events_count', {
-                count: activitiesList.length,
-                defaultValue: `${activitiesList.length} sự kiện gần nhất`,
-              })}
-            </span>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">
+                {t('detail.activity_log.heading', 'Nhật ký tương tác tài khoản')}
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {user.name} ({user.email})
+              </p>
+            </div>
           </div>
 
-          {activitiesList.length === 0 ? (
-            <div className="py-8 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-xl">
-              {t('detail.no_activity_history', 'Chưa có lịch sử hoạt động nào được ghi nhận.')}
-            </div>
-          ) : (
-            <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
-              {activitiesList.map((act: any) => (
-                <div key={act.id} className="relative group">
-                  <div className="absolute -left-6 top-1 w-3.5 h-3.5 rounded-full border-2 border-white bg-blue-600 shadow-xs" />
-                  <div className="space-y-0.5">
-                    <p className="text-xs font-semibold text-slate-800">
-                      {act.title}
-                    </p>
-                    <p className="text-[11px] text-slate-400">{act.time}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          {/* Full Activity Logs with filters and pagination */}
+          <UserActivityLogs
+            userId={user._id || user.id}
+            userEmail={user.email}
+            limit={15}
+          />
         </div>
       )}
 
@@ -641,7 +596,7 @@ export function UserDetailPanel({
       {activeTab === 'learning' && (
         <div className="space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs space-y-2">
+            <div className="rounded border border-slate-200 bg-white p-5 shadow-xs space-y-2">
               <span className="text-xs text-slate-500 font-medium">
                 {t('detail.learning_stats.accuracy', 'Tỷ lệ trả lời chính xác')}
               </span>
@@ -656,7 +611,7 @@ export function UserDetailPanel({
               </p>
             </div>
 
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs space-y-2">
+            <div className="rounded border border-slate-200 bg-white p-5 shadow-xs space-y-2">
               <span className="text-xs text-slate-500 font-medium">
                 {t('detail.learning_stats.avg_score', 'Điểm số trung bình')}
               </span>
@@ -672,7 +627,7 @@ export function UserDetailPanel({
               </p>
             </div>
 
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs space-y-2">
+            <div className="rounded border border-slate-200 bg-white p-5 shadow-xs space-y-2">
               <span className="text-xs text-slate-500 font-medium">
                 {t('detail.learning_stats.study_time', 'Tổng thời gian học')}
               </span>
@@ -689,12 +644,12 @@ export function UserDetailPanel({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs space-y-4">
+          <div className="rounded border border-slate-200 bg-white p-6 shadow-xs space-y-4">
             <h4 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3">
               {t('detail.enrolled_courses_title', 'Danh sách khóa học đã ghi danh')}
             </h4>
             {coursesList.length === 0 ? (
-              <div className="py-8 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-xl">
+              <div className="py-8 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded">
                 {t('detail.no_enrolled_courses', 'Chưa tham gia khóa học hoặc bài học nào.')}
               </div>
             ) : (
@@ -702,11 +657,11 @@ export function UserDetailPanel({
                 {coursesList.map((course: any) => (
                   <div
                     key={course.id}
-                    className="rounded-xl border border-slate-200 p-4 space-y-3 bg-slate-50/40 hover:bg-white hover:border-blue-200 transition-all"
+                    className="rounded border border-slate-200 p-4 space-y-3 bg-slate-50/40 hover:bg-white hover:border-blue-200 transition-all"
                   >
                     <div className="flex items-center gap-3">
                       <div
-                        className={`w-9 h-9 rounded-lg ${
+                        className={`w-9 h-9 rounded ${
                           course.color || 'bg-blue-600'
                         } text-white font-bold text-sm flex items-center justify-center shadow-xs`}
                       >
@@ -744,13 +699,13 @@ export function UserDetailPanel({
       {/* 7. Tab 4: OTHER INFO & SETTINGS (Thông tin khác & Quản trị) */}
       {activeTab === 'other' && (
         <div className="space-y-5">
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs space-y-5">
+          <div className="rounded border border-slate-200 bg-white p-6 shadow-xs space-y-5">
             <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3">
               {t('detail.security.title', 'Chi tiết xác thực & Bảo mật')}
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="p-4 rounded-xl bg-slate-50/70 border border-slate-200/80 space-y-1">
+              <div className="p-4 rounded bg-slate-50/70 border border-slate-200 space-y-1">
                 <span className="text-[11px] font-medium text-slate-400 flex items-center gap-1.5">
                   <ShieldCheck className="w-3.5 h-3.5" /> {t('detail.security.auth_method', 'Phương thức đăng nhập')}
                 </span>
@@ -759,7 +714,7 @@ export function UserDetailPanel({
                 </p>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-50/70 border border-slate-200/80 space-y-1">
+              <div className="p-4 rounded bg-slate-50/70 border border-slate-200 space-y-1">
                 <span className="text-[11px] font-medium text-slate-400 flex items-center gap-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5" /> {t('detail.security.email_verification', 'Xác thực email')}
                 </span>
@@ -768,7 +723,7 @@ export function UserDetailPanel({
                 </p>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-50/70 border border-slate-200/80 space-y-1">
+              <div className="p-4 rounded bg-slate-50/70 border border-slate-200 space-y-1">
                 <span className="text-[11px] font-medium text-slate-400 flex items-center gap-1.5">
                   <Calendar className="w-3.5 h-3.5" /> {t('detail.security.created_at', 'Ngày tạo tài khoản')}
                 </span>
@@ -777,7 +732,7 @@ export function UserDetailPanel({
                 </p>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-50/70 border border-slate-200/80 space-y-1">
+              <div className="p-4 rounded bg-slate-50/70 border border-slate-200 space-y-1">
                 <span className="text-[11px] font-medium text-slate-400 flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5" /> {t('detail.security.last_accessed', 'Lần truy cập gần nhất')}
                 </span>
@@ -789,13 +744,13 @@ export function UserDetailPanel({
           </div>
 
           {/* Danger Zone: Khóa / Xóa tài khoản */}
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs space-y-4">
+          <div className="rounded border border-slate-200 bg-white p-6 shadow-xs space-y-4">
             <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3">
               {t('detail.management_actions.heading', 'Thao tác quản trị tài khoản')}
             </h3>
 
             <div className="space-y-3">
-              <div className="p-4 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="p-4 rounded border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="space-y-0.5">
                   <p className="text-xs font-bold text-slate-900">
                     {isBanned
@@ -813,7 +768,7 @@ export function UserDetailPanel({
                   variant="outline"
                   size="sm"
                   onClick={() => onToggleBan(user)}
-                  className={`h-8 text-xs font-semibold cursor-pointer shrink-0 ${
+                  className={`h-8 text-xs font-semibold rounded cursor-pointer shrink-0 ${
                     isBanned
                       ? 'text-emerald-600 border-emerald-200 hover:bg-emerald-50'
                       : 'text-rose-600 border-rose-200 hover:bg-rose-50'
@@ -825,7 +780,7 @@ export function UserDetailPanel({
                 </Button>
               </div>
 
-              <div className="p-4 rounded-xl border border-rose-200 bg-rose-50/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="p-4 rounded border border-rose-200 bg-rose-50/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="space-y-0.5">
                   <p className="text-xs font-bold text-rose-700">
                     {t('detail.management_actions.delete_title', 'Xóa vĩnh viễn tài khoản')}
@@ -838,7 +793,7 @@ export function UserDetailPanel({
                   type="button"
                   size="sm"
                   onClick={() => onDelete(user)}
-                  className="h-8 text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white border-0 cursor-pointer shrink-0"
+                  className="h-8 text-xs font-semibold rounded bg-rose-600 hover:bg-rose-700 text-white border-0 cursor-pointer shrink-0"
                 >
                   {t('detail.management_actions.delete_btn', 'Xóa tài khoản')}
                 </Button>

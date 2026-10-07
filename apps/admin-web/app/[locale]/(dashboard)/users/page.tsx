@@ -29,6 +29,7 @@ import {
   Eye,
   Loader2,
   Sparkles,
+  Activity,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -46,11 +47,19 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { CreateUserDialog } from '@/components/users/create-user-dialog';
 import { EditUserDialog } from '@/components/users/edit-user-dialog';
 import { ConfirmBanDialog } from '@/components/users/confirm-ban-dialog';
 import { ConfirmDeleteDialog } from '@/components/users/confirm-delete-dialog';
 import { UserAvatar } from '@/components/users/user-avatar';
+import { UserActivityLogs } from '@/components/users/user-activity-logs';
 
 export default function UsersPage() {
   const { t } = useTranslation('users');
@@ -74,6 +83,7 @@ export default function UsersPage() {
   const [editingUser, setEditingUser] = useState<UserItem | null>(null);
   const [banningUser, setBanningUser] = useState<UserItem | null>(null);
   const [deletingUser, setDeletingUser] = useState<UserItem | null>(null);
+  const [viewingLogsUser, setViewingLogsUser] = useState<UserItem | null>(null);
 
   // Debounce search
   useEffect(() => {
@@ -203,7 +213,7 @@ export default function UsersPage() {
       {/* 2. Top Summary Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Tổng người dùng */}
-        <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-2xs hover:shadow-xs transition-shadow">
+        <div className="rounded border border-slate-200 bg-white p-5 shadow-2xs hover:shadow-xs transition-shadow">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-blue-500/20">
               <Users className="w-6 h-6" />
@@ -223,7 +233,7 @@ export default function UsersPage() {
         </div>
 
         {/* Card 2: Đang hoạt động */}
-        <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-2xs hover:shadow-xs transition-shadow">
+        <div className="rounded border border-slate-200 bg-white p-5 shadow-2xs hover:shadow-xs transition-shadow">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm shadow-emerald-500/20">
               <CheckCircle2 className="w-6 h-6" />
@@ -244,7 +254,7 @@ export default function UsersPage() {
         </div>
 
         {/* Card 3: Tài khoản mới (7 ngày) */}
-        <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-2xs hover:shadow-xs transition-shadow">
+        <div className="rounded border border-slate-200 bg-white p-5 shadow-2xs hover:shadow-xs transition-shadow">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-full bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm shadow-amber-500/20">
               <Clock className="w-6 h-6" />
@@ -265,7 +275,7 @@ export default function UsersPage() {
         </div>
 
         {/* Card 4: Bị khóa */}
-        <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-2xs hover:shadow-xs transition-shadow">
+        <div className="rounded border border-slate-200 bg-white p-5 shadow-2xs hover:shadow-xs transition-shadow">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-full bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-sm shadow-rose-500/20">
               <Ban className="w-6 h-6" />
@@ -287,7 +297,7 @@ export default function UsersPage() {
       </div>
 
       {/* 3. Filter & Action Toolbar */}
-      <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-2xs space-y-4">
+      <div className="rounded border border-slate-200 bg-white p-4 shadow-2xs space-y-4">
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3.5">
           {/* Left search & filters */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 flex-wrap">
@@ -301,7 +311,7 @@ export default function UsersPage() {
                 )}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 h-10 rounded-xl border-slate-200 text-xs sm:text-sm bg-slate-50/40 focus:bg-white"
+                className="pl-10 h-10 rounded border-slate-200 text-xs sm:text-sm bg-slate-50/40 focus:bg-white"
               />
             </div>
 
@@ -311,10 +321,10 @@ export default function UsersPage() {
                 {t('filters.status', 'Trạng thái')}:
               </span>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="h-10 w-[125px] rounded-xl text-xs font-medium">
+                <SelectTrigger className="h-10 w-[125px] rounded text-xs font-medium">
                   <SelectValue placeholder={t('filters.status', 'Trạng thái')} />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded">
                   <SelectItem value="all">{t('filters.all', 'Tất cả')}</SelectItem>
                   <SelectItem value="active">{t('filters.active', 'Hoạt động')}</SelectItem>
                   <SelectItem value="banned">{t('filters.banned', 'Bị khóa')}</SelectItem>
@@ -328,10 +338,10 @@ export default function UsersPage() {
                 {t('filters.registered_date', 'Ngày đăng ký')}:
               </span>
               <Select value={dateFilter} onValueChange={setDateFilter}>
-                <SelectTrigger className="h-10 w-[130px] rounded-xl text-xs font-medium">
+                <SelectTrigger className="h-10 w-[130px] rounded text-xs font-medium">
                   <SelectValue placeholder={t('filters.registered_date', 'Ngày đăng ký')} />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded">
                   <SelectItem value="all">{t('filters.all', 'Tất cả')}</SelectItem>
                   <SelectItem value="today">{t('filters.today', 'Hôm nay')}</SelectItem>
                   <SelectItem value="7days">{t('filters.last_7_days', '7 ngày qua')}</SelectItem>
@@ -347,7 +357,7 @@ export default function UsersPage() {
             <Button
               type="button"
               onClick={() => setCreateOpen(true)}
-              className="h-10 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm shadow-sm flex items-center gap-2 cursor-pointer transition-all hover:shadow-blue-500/20"
+              className="h-10 px-4 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm shadow-sm flex items-center gap-2 cursor-pointer transition-all hover:shadow-blue-500/20"
             >
               <Plus className="w-4 h-4" />
               <span>{t('actions.add_user', 'Thêm người dùng')}</span>
@@ -356,7 +366,7 @@ export default function UsersPage() {
         </div>
 
         {/* 4. Table */}
-        <div className="overflow-x-auto rounded-xl border border-slate-100">
+        <div className="overflow-x-auto rounded border border-slate-200">
           <table className="w-full text-left border-collapse min-w-[900px]">
             <thead>
               <tr className="border-b border-slate-200/80 bg-slate-50/70 text-[11px] font-bold uppercase tracking-wider text-slate-500">
@@ -470,12 +480,12 @@ export default function UsersPage() {
                           <DropdownMenuTrigger asChild>
                             <button
                               type="button"
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                              className="p-1.5 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
                             >
                               <MoreHorizontal className="w-4 h-4" />
                             </button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuContent align="end" className="w-48 rounded">
                             <DropdownMenuItem
                               onClick={() =>
                                 router.push(`/${locale}/users/${user._id || user.id}`)
@@ -483,6 +493,13 @@ export default function UsersPage() {
                             >
                               <Eye className="w-3.5 h-3.5 text-blue-600 mr-2" />
                               <span>{t('actions.view_detail', 'Xem chi tiết')}</span>
+                            </DropdownMenuItem>
+
+                            <DropdownMenuItem
+                              onClick={() => setViewingLogsUser(user)}
+                            >
+                              <Activity className="w-3.5 h-3.5 text-blue-600 mr-2" />
+                              <span>{t('actions.view_logs', 'Nhật ký hoạt động')}</span>
                             </DropdownMenuItem>
 
                             <DropdownMenuItem
@@ -552,7 +569,7 @@ export default function UsersPage() {
               size="sm"
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="h-8 w-8 p-0 rounded-lg text-slate-600 cursor-pointer disabled:cursor-not-allowed"
+              className="h-8 w-8 p-0 rounded text-slate-600 cursor-pointer disabled:cursor-not-allowed"
             >
               <ChevronLeft className="w-4 h-4" />
             </Button>
@@ -575,7 +592,7 @@ export default function UsersPage() {
                   type="button"
                   size="sm"
                   onClick={() => setPage(pageNum)}
-                  className={`h-8 min-w-[32px] px-2 rounded-lg text-xs font-semibold cursor-pointer ${
+                  className={`h-8 min-w-[32px] px-2 rounded text-xs font-semibold cursor-pointer ${
                     isActive
                       ? 'bg-blue-600 text-white hover:bg-blue-700'
                       : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
@@ -592,13 +609,42 @@ export default function UsersPage() {
               size="sm"
               disabled={page >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="h-8 w-8 p-0 rounded-lg text-slate-600 cursor-pointer disabled:cursor-not-allowed"
+              className="h-8 w-8 p-0 rounded text-slate-600 cursor-pointer disabled:cursor-not-allowed"
             >
               <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
         </div>
       </div>
+
+      {/* Activity Logs Modal */}
+      {viewingLogsUser && (
+        <Dialog
+          open={!!viewingLogsUser}
+          onOpenChange={(open) => !open && setViewingLogsUser(null)}
+        >
+          <DialogContent className="max-w-3xl rounded p-6">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold flex items-center gap-2">
+                <Activity className="w-4 h-4 text-blue-600" />
+                <span>
+                  {t('activityLog:title', 'Nhật ký hoạt động')} - {viewingLogsUser.name}
+                </span>
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-500">
+                {viewingLogsUser.email} (ID: {viewingLogsUser.id})
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="mt-4 max-h-[65vh] overflow-y-auto pr-1">
+              <UserActivityLogs
+                userId={viewingLogsUser._id || viewingLogsUser.id}
+                userEmail={viewingLogsUser.email}
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Modals & Dialogs */}
       <CreateUserDialog
