@@ -38,3 +38,7 @@ yarn-error.log*
 *.pem
 .vscode/
 .pnpm-store/
+
+*.zip 
+*.rar
+repomix-output.xml
