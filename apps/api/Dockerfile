@@ -17,6 +17,6 @@ ENV NODE_ENV=production
 EXPOSE 5000
 
 HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=5 \
-  CMD node -e "fetch('http://127.0.0.1:5000/api/health').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))"
+  CMD node -e "const p=process.env.PORT||5000; fetch('http://127.0.0.1:'+p+'/api/health').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))"
 
 CMD ["pnpm", "--filter", "api", "start:prod"]

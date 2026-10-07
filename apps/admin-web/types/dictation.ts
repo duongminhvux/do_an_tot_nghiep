@@ -6,6 +6,7 @@ export type DictationStatus =
   | 'PUBLISHED'
   | 'AUDIO_FAILED'
   | 'ARCHIVED';
+export type DictationAudioSource = 'TTS' | 'UPLOAD';
 
 export interface DictationVoice {
   id: string;
@@ -14,16 +15,29 @@ export interface DictationVoice {
   gender: 'Female' | 'Male';
 }
 
+export interface DictationWordTiming {
+  word: string;
+  startMs: number;
+  endMs: number;
+  probability: number;
+}
+
 export interface DictationSegment {
   _id: string;
   lessonId: string;
   order: number;
   text: string;
-  voiceId: string;
+  normalizedText?: string;
+  source: 'TTS' | 'ASR';
+  speaker?: string;
+  voiceId?: string;
   language: 'en-US' | 'en-GB';
   speed: number;
-  audioUrl: string;
+  startMs: number;
+  endMs: number;
   durationMs: number;
+  confidence?: number;
+  words?: DictationWordTiming[];
 }
 
 export interface DictationLesson {
@@ -34,6 +48,7 @@ export interface DictationLesson {
   level: DictationLevel;
   topic: string;
   thumbnailUrl?: string;
+  audioSource: DictationAudioSource;
   sourceText: string;
   language: 'en-US' | 'en-GB';
   voiceIds: string[];
@@ -44,6 +59,8 @@ export interface DictationLesson {
   totalDurationMs: number;
   fullAudioUrl?: string;
   processingError?: string;
+  audioProcessor?: string;
+  audioProcessorDevice?: string;
   publishedAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -57,9 +74,18 @@ export interface CreateDictationPayload {
   level: DictationLevel;
   topic?: string;
   thumbnailUrl?: string;
-  sourceText: string;
+  audioSource?: DictationAudioSource;
+  sourceText?: string;
   language: 'en-US' | 'en-GB';
   voiceIds: string[];
   speed: number;
   pauseAfterMs: number;
+}
+
+export interface DictationSegmentEditPayload {
+  order: number;
+  text: string;
+  startMs: number;
+  endMs: number;
+  speaker?: string;
 }

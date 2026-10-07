@@ -1,4 +1,5 @@
 export type DictationLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+export type DictationAudioSource = 'TTS' | 'UPLOAD';
 
 export interface DictationProgress {
   _id?: string;
@@ -21,6 +22,7 @@ export interface DictationLessonSummary {
   level: DictationLevel;
   topic: string;
   thumbnailUrl?: string;
+  audioSource?: DictationAudioSource;
   language: 'en-US' | 'en-GB';
   voiceIds: string[];
   sentenceCount: number;
@@ -30,15 +32,30 @@ export interface DictationLessonSummary {
   progress?: DictationProgress | null;
 }
 
+export interface DictationWordTiming {
+  word: string;
+  startMs: number;
+  endMs: number;
+  probability: number;
+}
+
 export interface DictationSegment {
   _id: string;
   order: number;
   text: string;
-  voiceId: string;
+  normalizedText?: string;
+  source: 'TTS' | 'ASR';
+  speaker?: string;
+  voiceId?: string;
   language: 'en-US' | 'en-GB';
   speed: number;
-  audioUrl: string;
+  startMs: number;
+  endMs: number;
   durationMs: number;
+  confidence?: number;
+  words?: DictationWordTiming[];
+  /** Legacy only. New lessons use lesson.fullAudioUrl + startMs/endMs. */
+  audioUrl?: string;
 }
 
 export interface DictationLessonDetail extends DictationLessonSummary {

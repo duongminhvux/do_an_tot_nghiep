@@ -20,6 +20,7 @@ import { DictationModule } from './modules/dictation/dictation.module.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const rootEnvPath = path.resolve(__dirname, '../../../.env');
 
 // Prioritize source directory so Nest compiler clearing dist during watch mode never triggers ENOENT
 const candidatePaths = [
@@ -34,7 +35,8 @@ const isDev = process.env.NODE_ENV !== 'production';
 @Module({
   imports: [
     ConfigModule.forRoot({
-      isGlobal: true
+      isGlobal: true,
+      envFilePath: rootEnvPath,
     }),
     I18nModule.forRoot({
       fallbackLanguage: 'vi',

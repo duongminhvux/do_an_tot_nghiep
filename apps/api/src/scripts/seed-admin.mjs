@@ -1,32 +1,8 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { loadRootEnv } from './load-root-env.mjs';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Read apps/api/.env only as a fallback. Runtime variables supplied by
-// Docker Compose must win over values in the file.
-const envPath = path.resolve(__dirname, '../../.env');
-if (fs.existsSync(envPath)) {
-  const envContent = fs.readFileSync(envPath, 'utf8');
-  for (const line of envContent.split('\n')) {
-    const trimmed = line.trim();
-    if (trimmed && !trimmed.startsWith('#')) {
-      const [key, ...vals] = trimmed.split('=');
-      const normalizedKey = key?.trim();
-      if (
-        normalizedKey &&
-        vals.length > 0 &&
-        process.env[normalizedKey] === undefined
-      ) {
-        process.env[normalizedKey] = vals.join('=').trim();
-      }
-    }
-  }
-}
+loadRootEnv();
 
 const MONGO_URI =
   process.env.MONGO_URI || 'mongodb://localhost:27017/english-platform';

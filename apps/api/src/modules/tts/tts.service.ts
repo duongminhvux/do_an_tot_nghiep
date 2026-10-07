@@ -17,6 +17,7 @@ export interface TtsAudioResult {
   sampleRate?: string;
   provider?: string;
   device?: string;
+  segmentTimingsMs?: Array<{ startMs: number; endMs: number; durationMs: number }>;
 }
 
 @Injectable()
@@ -78,6 +79,23 @@ export class TtsService {
       await this.throwUpstreamError(response, path);
     }
 
+    const timingHeader = response.headers.get('x-segment-timings-ms');
+    const segmentTimingsMs = timingHeader
+      ? timingHeader
+          .split(',')
+          .map((item) => {
+            const [startRaw, endRaw] = item.split(':');
+            const startMs = Number(startRaw);
+            const endMs = Number(endRaw);
+            return {
+              startMs,
+              endMs,
+              durationMs: Math.max(0, endMs - startMs),
+            };
+          })
+          .filter((item) => Number.isFinite(item.startMs) && Number.isFinite(item.endMs))
+      : undefined;
+
     return {
       audio: Buffer.from(await response.arrayBuffer()),
       contentType: response.headers.get('content-type') ?? 'audio/wav',
@@ -85,6 +103,7 @@ export class TtsService {
       sampleRate: response.headers.get('x-audio-sample-rate') ?? undefined,
       provider: response.headers.get('x-tts-provider') ?? undefined,
       device: response.headers.get('x-tts-device') ?? undefined,
+      segmentTimingsMs,
     };
   }
 

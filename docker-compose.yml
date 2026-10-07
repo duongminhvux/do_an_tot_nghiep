@@ -26,11 +26,32 @@ services:
     environment:
       KOKORO_DEVICE: ${KOKORO_DEVICE:-cpu}
       KOKORO_MODEL_ID: ${KOKORO_MODEL_ID:-hexgrad/Kokoro-82M}
-      HF_HOME: /models/huggingface
+      HF_HOME: ${KOKORO_HF_HOME:-/models/huggingface}
     volumes:
-      - kokoro_models:/models/huggingface
+      - kokoro_models:${KOKORO_HF_HOME:-/models/huggingface}
     expose:
       - "8001"
+    networks:
+      - toeic-network
+
+  asr-service:
+    build:
+      context: .
+      dockerfile: services/asr-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      ASR_DEVICE: ${ASR_DEVICE:-cpu}
+      ASR_COMPUTE_TYPE: ${ASR_COMPUTE_TYPE:-int8}
+      ASR_MODEL: ${ASR_MODEL:-small.en}
+      ASR_MODEL_DIR: ${ASR_MODEL_DIR:-/models/faster-whisper}
+      ASR_VAD_FILTER: ${ASR_VAD_FILTER:-true}
+      ASR_BEAM_SIZE: ${ASR_BEAM_SIZE:-5}
+      ASR_SENTENCE_GAP_MS: ${ASR_SENTENCE_GAP_MS:-900}
+      ASR_MAX_UPLOAD_MB: ${ASR_MAX_UPLOAD_MB:-100}
+    volumes:
+      - whisper_models:${ASR_MODEL_DIR:-/models/faster-whisper}
+    expose:
+      - "8002"
     networks:
       - toeic-network
 
@@ -39,23 +60,53 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     restart: unless-stopped
-    env_file:
-      - ./apps/api/.env
     environment:
-      NODE_ENV: production
-      PORT: 5000
-      MONGO_URI: mongodb://mongo:27017/${MONGO_DB_NAME:-english-platform}
-      TTS_SERVICE_URL: http://tts-service:8001
-      TTS_REQUEST_TIMEOUT_MS: ${TTS_REQUEST_TIMEOUT_MS:-120000}
+      NODE_ENV: ${DOCKER_NODE_ENV:-production}
+      PORT: ${PORT:-5000}
+      MONGO_URI: ${DOCKER_MONGO_URI:-mongodb://mongo:27017/english-platform}
+
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      JWT_ACCESS_TOKEN_EXPIRES: ${JWT_ACCESS_TOKEN_EXPIRES:-15m}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_REFRESH_TOKEN_EXPIRES: ${JWT_REFRESH_TOKEN_EXPIRES:-7d}
+
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:5000/api/auth/google/callback}
+      SESSION_SECRET: ${SESSION_SECRET:-}
+
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       ADMIN_URL: ${ADMIN_URL:-http://localhost:3001}
-      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:5000/api/auth/google/callback}
+
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-Daily English}
+      MAIL_SERVER: ${MAIL_SERVER:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
+
+      DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-admin@gmail.com}
+      DEFAULT_ADMIN_USERNAME: ${DEFAULT_ADMIN_USERNAME:-admin}
+      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-admin123}
+      DEFAULT_ADMIN_SYNC_PASSWORD: ${DEFAULT_ADMIN_SYNC_PASSWORD:-false}
+
+      TTS_SERVICE_URL: ${DOCKER_TTS_SERVICE_URL:-http://tts-service:8001}
+      TTS_REQUEST_TIMEOUT_MS: ${TTS_REQUEST_TIMEOUT_MS:-120000}
+      ASR_SERVICE_URL: ${DOCKER_ASR_SERVICE_URL:-http://asr-service:8002}
+      ASR_REQUEST_TIMEOUT_MS: ${ASR_REQUEST_TIMEOUT_MS:-600000}
+      DICTATION_SEGMENT_START_PADDING_MS: ${DICTATION_SEGMENT_START_PADDING_MS:-100}
+      DICTATION_SEGMENT_END_PADDING_MS: ${DICTATION_SEGMENT_END_PADDING_MS:-150}
     ports:
-      - "5000:5000"
+      - "${PORT:-5000}:${PORT:-5000}"
     depends_on:
       mongo:
         condition: service_healthy
       tts-service:
+        condition: service_started
+      asr-service:
         condition: service_started
     networks:
       - toeic-network
@@ -68,7 +119,7 @@ services:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000/api}
     restart: unless-stopped
     environment:
-      NODE_ENV: production
+      NODE_ENV: ${DOCKER_NODE_ENV:-production}
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000/api}
     ports:
       - "3000:3000"
@@ -86,7 +137,7 @@ services:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000/api}
     restart: unless-stopped
     environment:
-      NODE_ENV: production
+      NODE_ENV: ${DOCKER_NODE_ENV:-production}
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000/api}
     ports:
       - "3001:3001"
@@ -99,6 +150,7 @@ services:
 volumes:
   mongo_data:
   kokoro_models:
+  whisper_models:
 
 networks:
   toeic-network:

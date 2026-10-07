@@ -21,6 +21,11 @@ export enum DictationStatus {
   ARCHIVED = 'ARCHIVED',
 }
 
+export enum DictationAudioSource {
+  TTS = 'TTS',
+  UPLOAD = 'UPLOAD',
+}
+
 @Schema({ timestamps: true })
 export class DictationLesson {
   @Prop({ required: true, trim: true })
@@ -41,7 +46,12 @@ export class DictationLesson {
   @Prop({ trim: true, default: '' })
   thumbnailUrl!: string;
 
-  @Prop({ required: true, trim: true })
+  @Prop({ enum: DictationAudioSource, default: DictationAudioSource.TTS, index: true })
+  audioSource!: DictationAudioSource;
+
+  // Canonical transcript. For TTS this is admin input. For uploaded audio it is
+  // filled by Faster Whisper, then can be reviewed/edited by the admin.
+  @Prop({ trim: true, default: '' })
   sourceText!: string;
 
   @Prop({ enum: ['en-US', 'en-GB'], default: 'en-US' })
@@ -65,6 +75,7 @@ export class DictationLesson {
   @Prop({ default: 0 })
   totalDurationMs!: number;
 
+  // Exactly one persisted lesson audio file for both TTS and uploaded-audio flows.
   @Prop({ trim: true, default: '' })
   fullAudioUrl!: string;
 
@@ -73,6 +84,12 @@ export class DictationLesson {
 
   @Prop({ trim: true, default: '' })
   processingError!: string;
+
+  @Prop({ trim: true, default: '' })
+  audioProcessor!: string;
+
+  @Prop({ trim: true, default: '' })
+  audioProcessorDevice!: string;
 
   @Prop({ default: false })
   isDeleted!: boolean;

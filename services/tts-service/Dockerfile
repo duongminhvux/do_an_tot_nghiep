@@ -5,10 +5,7 @@ ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cpu
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
-    HF_HOME=/models/huggingface \
-    KOKORO_DEVICE=cpu \
-    KOKORO_MODEL_ID=hexgrad/Kokoro-82M
+    PIP_NO_CACHE_DIR=1
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends espeak-ng libsndfile1 \

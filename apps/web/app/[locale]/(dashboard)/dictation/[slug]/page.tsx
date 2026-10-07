@@ -56,7 +56,10 @@ export default function DictationPracticePage() {
   const [tab, setTab] = useState<'dictation' | 'transcript'>('dictation');
   const [isPlaying, setIsPlaying] = useState(false);
   const [autoScroll, setAutoScroll] = useState(true);
-  const sentenceAudioRef = useRef<HTMLAudioElement | null>(null);
+  const lessonAudioRef = useRef<HTMLAudioElement | null>(null);
+  const legacyAudioRef = useRef<HTMLAudioElement | null>(null);
+  const segmentEndMsRef = useRef<number | null>(null);
+  const segmentPlaybackRef = useRef(false);
   const rowRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   const [progress, setProgress] = useState<DictationProgress | null>(null);
@@ -96,29 +99,86 @@ export default function DictationPracticePage() {
   const goTo = useCallback((index: number) => {
     if (!segments.length) return;
     const safe = Math.max(0, Math.min(index, segments.length - 1));
-    sentenceAudioRef.current?.pause();
+    lessonAudioRef.current?.pause();
+    legacyAudioRef.current?.pause();
+    segmentEndMsRef.current = null;
     setIsPlaying(false);
     setCurrentIndex(safe);
     resetSentenceState();
   }, [segments.length, resetSentenceState]);
 
+  useEffect(() => {
+    const audio = lessonAudioRef.current;
+    if (!audio) return;
+
+    const handleTimeUpdate = () => {
+      const endMs = segmentEndMsRef.current;
+      if (endMs !== null && audio.currentTime * 1000 >= endMs) {
+        audio.pause();
+        segmentEndMsRef.current = null;
+      }
+    };
+    const handlePlay = () => setIsPlaying(segmentEndMsRef.current !== null);
+    const handlePause = () => setIsPlaying(false);
+
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('play', handlePlay);
+    audio.addEventListener('pause', handlePause);
+    return () => {
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('play', handlePlay);
+      audio.removeEventListener('pause', handlePause);
+    };
+  }, [lesson?.fullAudioUrl]);
+
   const playCurrent = useCallback(() => {
-    if (!current?.audioUrl) return;
-    if (!sentenceAudioRef.current || sentenceAudioRef.current.src !== current.audioUrl) {
-      sentenceAudioRef.current?.pause();
-      const audio = new Audio(current.audioUrl);
-      audio.addEventListener('ended', () => setIsPlaying(false));
-      audio.addEventListener('pause', () => setIsPlaying(false));
-      audio.addEventListener('play', () => setIsPlaying(true));
-      sentenceAudioRef.current = audio;
+    const hasUnifiedTiming =
+      current?.startMs !== undefined &&
+      current?.endMs !== undefined &&
+      current.endMs > current.startMs;
+
+    if (!hasUnifiedTiming && current?.audioUrl) {
+      lessonAudioRef.current?.pause();
+      if (!legacyAudioRef.current || legacyAudioRef.current.src !== current.audioUrl) {
+        legacyAudioRef.current?.pause();
+        const legacy = new Audio(current.audioUrl);
+        legacy.addEventListener('play', () => setIsPlaying(true));
+        legacy.addEventListener('pause', () => setIsPlaying(false));
+        legacy.addEventListener('ended', () => setIsPlaying(false));
+        legacyAudioRef.current = legacy;
+      }
+      const legacy = legacyAudioRef.current;
+      if (legacy.paused) {
+        legacy.currentTime = 0;
+        legacy.play().catch(() => setIsPlaying(false));
+      } else {
+        legacy.pause();
+      }
+      return;
     }
-    if (sentenceAudioRef.current.paused) {
-      sentenceAudioRef.current.currentTime = 0;
-      sentenceAudioRef.current.play().catch(() => setIsPlaying(false));
-    } else {
-      sentenceAudioRef.current.pause();
+
+    const audio = lessonAudioRef.current;
+    if (!audio || !lesson?.fullAudioUrl || !hasUnifiedTiming) return;
+
+    legacyAudioRef.current?.pause();
+    const sameSegmentPlaying = !audio.paused && segmentEndMsRef.current === current.endMs;
+    if (sameSegmentPlaying) {
+      audio.pause();
+      return;
     }
-  }, [current?.audioUrl]);
+
+    segmentPlaybackRef.current = true;
+    segmentEndMsRef.current = current.endMs;
+    audio.currentTime = Math.max(0, current.startMs) / 1000;
+    audio.play()
+      .catch(() => {
+        segmentEndMsRef.current = null;
+        setIsPlaying(false);
+      })
+      .finally(() => {
+        segmentPlaybackRef.current = false;
+      });
+  }, [current?.startMs, current?.endMs, current?.audioUrl, lesson?.fullAudioUrl]);
 
   const checkAnswer = useCallback(() => {
     if (!current || !answer.trim() || attemptMutation.isPending) return;
@@ -207,7 +267,15 @@ export default function DictationPracticePage() {
           <div className="grid min-h-[560px] lg:grid-cols-[minmax(0,1fr)_minmax(360px,.78fr)]">
             <div className="flex flex-col border-b border-slate-200 p-4 sm:p-6 lg:border-b-0 lg:border-r">
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <audio controls src={lesson.fullAudioUrl} className="h-9 w-full" />
+                <audio
+                  ref={lessonAudioRef}
+                  controls
+                  src={lesson.fullAudioUrl}
+                  className="h-9 w-full"
+                  onPlay={() => {
+                    if (!segmentPlaybackRef.current) segmentEndMsRef.current = null;
+                  }}
+                />
               </div>
 
               {tab === 'dictation' ? (

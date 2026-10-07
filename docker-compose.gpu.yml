@@ -2,7 +2,15 @@ services:
   tts-service:
     build:
       args:
-        TORCH_INDEX_URL: https://download.pytorch.org/whl/cu126
+        TORCH_INDEX_URL: ${TORCH_INDEX_URL_GPU:-https://download.pytorch.org/whl/cu126}
     environment:
-      KOKORO_DEVICE: cuda
+      KOKORO_DEVICE: ${KOKORO_DEVICE_GPU:-cuda}
+    gpus: all
+
+  asr-service:
+    build:
+      dockerfile: services/asr-service/Dockerfile.gpu
+    environment:
+      ASR_DEVICE: ${ASR_DEVICE_GPU:-cuda}
+      ASR_COMPUTE_TYPE: ${ASR_COMPUTE_TYPE_GPU:-float16}
     gpus: all

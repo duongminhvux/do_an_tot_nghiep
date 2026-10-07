@@ -1,96 +1,171 @@
-# Dictation module
+# Dictation module - unified audio/timestamp architecture
 
-## What is implemented
+## Final storage model
 
-- Learner sidebar:
-  - `Dictation` -> `/[locale]/dictation`
-  - `Tiến độ Dictation` -> `/[locale]/dictation/progress`
-- Admin sidebar:
-  - `Dictation` -> `/[locale]/dictation`
-- Admin can create/edit a lesson from a paragraph or dialogue, choose level/topic/accent, choose one or two Kokoro voices, configure speed/pause, generate audio, preview every segment, and publish/unpublish.
-- Learners can browse published lessons, listen to full audio or each sentence, type an answer, check it, reveal the answer, navigate sentences, use keyboard shortcuts, open the full transcript, and save progress.
-
-## Segmentation behavior
-
-The backend owns segmentation.
-
-1. If the admin text contains multiple non-empty lines, each line becomes one dictation segment. This is useful for dialogue turns where one turn may contain multiple grammatical sentences.
-2. If the admin enters one continuous paragraph, Node `Intl.Segmenter('en', { granularity: 'sentence' })` splits it into English sentences automatically.
-
-The create page has a **Xem cách tách câu** action that calls the backend preview endpoint, so the admin sees the exact segment boundaries before generation.
-
-## Voice assignment
-
-`voiceIds` is an ordered list. The backend rotates through it by segment index:
+Both Dictation sources now converge to the same persisted shape:
 
 ```text
-segment 1 -> voiceIds[0]
-segment 2 -> voiceIds[1]
-segment 3 -> voiceIds[0]
-segment 4 -> voiceIds[1]
-...
+DictationLesson
+  fullAudioUrl     -> exactly one persisted lesson audio file
+  totalDurationMs
+  audioSource      -> TTS | UPLOAD
+
+DictationSegment[]
+  text
+  normalizedText
+  startMs
+  endMs
+  durationMs
+  source           -> TTS | ASR
+  voiceId          -> populated for TTS, blank for uploaded audio
+  confidence       -> 1 for TTS, ASR confidence for uploaded audio
+  words[]          -> word timestamps from Faster Whisper when available
 ```
 
-If the admin chooses only one voice, every segment uses that voice.
+Learners never need a separate URL for every sentence. The web player seeks the single lesson audio to `startMs` and pauses at `endMs`.
 
-## Audio generation flow
+## TTS flow (Kokoro)
 
 ```text
-Admin source text
-    -> NestJS splitIntoSentences()
-    -> Kokoro /v1/synthesize for each segment
-    -> upload each WAV to Cloudinary
-    -> Kokoro /v1/synthesize-sequence for full audio
-    -> upload full WAV to Cloudinary
-    -> save DictationLesson + DictationSegment metadata in MongoDB
+Admin transcript
+  -> NestJS splits into segments
+  -> NestJS calls Kokoro sequence endpoint
+  -> Kokoro synthesizes EACH segment independently in memory
+  -> Kokoro appends the generated arrays + configured silence
+  -> Kokoro returns one WAV + exact start/end metadata for every segment
+  -> NestJS uploads only the final WAV to Cloudinary
+  -> MongoDB stores segment timestamps
 ```
 
-The old published audio stays untouched until the new set has finished generating and uploading. A content/voice change marks the lesson as `DRAFT`; it cannot be published again until generation finishes and the status becomes `READY`.
+No sentence WAV is uploaded anymore. There is therefore nothing to clean up per sentence in the normal flow. Legacy per-segment Cloudinary assets are deleted the next time an old lesson is regenerated.
 
-## Main Mongo collections
-
-- `dictationlessons`
-- `dictationsegments`
-- `dictationprogresses`
-
-## Admin API
+Kokoro returns a compact `X-Segment-Timings-Ms` header in the form:
 
 ```text
-GET    /api/admin/dictation
-POST   /api/admin/dictation
-GET    /api/admin/dictation/voices
-POST   /api/admin/dictation/preview-split
-GET    /api/admin/dictation/:id
-PATCH  /api/admin/dictation/:id
-POST   /api/admin/dictation/:id/generate-audio
-POST   /api/admin/dictation/:id/publish
-POST   /api/admin/dictation/:id/unpublish
-DELETE /api/admin/dictation/:id
+0:3240,3540:7180,7480:10250
 ```
 
-## Learner API
+NestJS converts this to `startMs/endMs/durationMs` metadata.
+
+## Uploaded-audio flow (Faster Whisper)
+
+The create screen now has two sources:
+
+- `Kokoro TTS`
+- `Upload audio`
+
+Upload flow:
 
 ```text
-GET  /api/dictation
-GET  /api/dictation/progress
-GET  /api/dictation/slug/:slug
-GET  /api/dictation/:id/progress
-POST /api/dictation/:id/progress/attempt
-POST /api/dictation/:id/progress/reset
+Admin uploads MP3/WAV/M4A/OGG/WEBM/...
+  -> NestJS sends bytes to asr-service
+  -> Faster Whisper transcribes English audio
+  -> word_timestamps=true
+  -> ASR service groups words into sentence-like segments
+  -> NestJS adds small configurable playback padding
+  -> original upload becomes the one persisted lesson audio file
+  -> transcript + start/end + word metadata are stored in MongoDB
+  -> admin reviews text/timestamps before publishing
 ```
 
-## Run
+The admin detail screen can play any segment by seeking the full audio. Text, start time, end time and speaker can be edited without cutting or re-uploading audio.
+
+## ASR service
+
+Internal Docker service:
+
+```text
+http://asr-service:8002
+```
+
+Endpoints:
+
+```text
+GET  /health
+POST /v1/transcribe
+```
+
+NestJS endpoint used by admin:
+
+```text
+POST /api/admin/dictation/:id/analyze-audio
+multipart/form-data field: file
+```
+
+Other admin endpoints added/updated:
+
+```text
+GET   /api/admin/dictation/processors/health
+PATCH /api/admin/dictation/:id/segments
+POST  /api/admin/dictation/:id/generate-audio
+```
+
+## CPU / GPU configuration
+
+### CPU
+
+Default stack:
 
 ```bash
 docker compose up --build
 ```
 
-Then open:
+Defaults:
 
-```text
-Learner: http://localhost:3000
-Admin:   http://localhost:3001
-API:     http://localhost:5000/api
+```env
+KOKORO_DEVICE=cpu
+ASR_DEVICE=cpu
+ASR_COMPUTE_TYPE=int8
+ASR_MODEL=small.en
 ```
 
-Kokoro runs inside Docker. Generated audio is persisted on Cloudinary, so valid Cloudinary credentials are required in `apps/api/.env` for Dictation generation.
+### NVIDIA GPU
+
+Requirements: NVIDIA driver + NVIDIA Container Toolkit.
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up --build
+```
+
+GPU override values are also configured in root `.env`:
+
+```env
+KOKORO_DEVICE_GPU=cuda
+ASR_DEVICE_GPU=cuda
+ASR_COMPUTE_TYPE_GPU=float16
+```
+
+`docker-compose.gpu.yml` maps these GPU-specific values onto the runtime `KOKORO_DEVICE`, `ASR_DEVICE`, and `ASR_COMPUTE_TYPE` variables.
+
+Kokoro uses the CUDA PyTorch wheel in the GPU compose override. Faster Whisper uses the CUDA/cuDNN ASR image.
+
+## Relevant env vars
+
+```env
+# Kokoro
+KOKORO_DEVICE=cpu
+KOKORO_MODEL_ID=hexgrad/Kokoro-82M
+TTS_REQUEST_TIMEOUT_MS=120000
+
+# Faster Whisper
+ASR_DEVICE=cpu
+ASR_COMPUTE_TYPE=int8
+ASR_MODEL=small.en
+ASR_VAD_FILTER=true
+ASR_BEAM_SIZE=5
+ASR_SENTENCE_GAP_MS=900
+ASR_MAX_UPLOAD_MB=100
+ASR_REQUEST_TIMEOUT_MS=600000
+
+# Playback padding for uploaded audio
+DICTATION_SEGMENT_START_PADDING_MS=100
+DICTATION_SEGMENT_END_PADDING_MS=150
+```
+
+All Dictation, Kokoro and Faster Whisper configuration is centralized in the repository root `.env`. Use root `.env.example` as the template; there are no app-level env files.
+
+## Notes
+
+- Faster Whisper output is an automatic draft. Admin review is intentionally kept in the workflow because names, numbers and uncommon words can be transcribed incorrectly.
+- `words[]` is persisted for uploaded audio so later features such as karaoke highlighting, word-level replay or smarter split/merge can be added without re-running ASR.
+- Existing Dictation records created by the old architecture can be regenerated. Their old sentence audio assets are cleaned up during replacement.

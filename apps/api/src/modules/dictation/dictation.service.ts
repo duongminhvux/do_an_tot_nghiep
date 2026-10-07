@@ -4,14 +4,17 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { AsrService } from '../asr/asr.service.js';
 import { CloudinaryService } from '../upload/cloudinary.service.js';
 import { TtsService } from '../tts/tts.service.js';
 import { CreateDictationDto } from './dto/create-dictation.dto.js';
 import { UpdateDictationDto } from './dto/update-dictation.dto.js';
 import { QueryDictationDto } from './dto/query-dictation.dto.js';
 import {
+  DictationAudioSource,
   DictationLesson,
   DictationLessonDocument,
   DictationStatus,
@@ -25,8 +28,19 @@ import {
   DictationProgressDocument,
 } from './schemas/dictation-progress.schema.js';
 
+interface EditableSegmentInput {
+  order: number;
+  text: string;
+  startMs: number;
+  endMs: number;
+  speaker?: string;
+}
+
 @Injectable()
 export class DictationService {
+  private readonly asrStartPaddingMs: number;
+  private readonly asrEndPaddingMs: number;
+
   constructor(
     @InjectModel(DictationLesson.name)
     private readonly lessonModel: Model<DictationLessonDocument>,
@@ -35,8 +49,18 @@ export class DictationService {
     @InjectModel(DictationProgress.name)
     private readonly progressModel: Model<DictationProgressDocument>,
     private readonly ttsService: TtsService,
+    private readonly asrService: AsrService,
     private readonly cloudinaryService: CloudinaryService,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    this.asrStartPaddingMs = this.readNonNegativeInt('DICTATION_SEGMENT_START_PADDING_MS', 100);
+    this.asrEndPaddingMs = this.readNonNegativeInt('DICTATION_SEGMENT_END_PADDING_MS', 150);
+  }
+
+  private readNonNegativeInt(key: string, fallback: number): number {
+    const value = Number(this.configService.get<string>(key) ?? fallback);
+    return Number.isFinite(value) && value >= 0 ? Math.round(value) : fallback;
+  }
 
   splitIntoSentences(sourceText: string): string[] {
     const cleaned = sourceText
@@ -47,10 +71,6 @@ export class DictationService {
 
     if (!cleaned) return [];
 
-    // A newline is an explicit segment boundary. This is useful for dialogue:
-    // one speaker turn may contain more than one grammatical sentence, just like
-    // the reference dictation UI. If the admin pastes one normal paragraph,
-    // Intl.Segmenter automatically splits it sentence by sentence.
     const explicitLines = cleaned
       .split(/\n+/)
       .map((line) => line.replace(/\s+/g, ' ').trim())
@@ -69,6 +89,15 @@ export class DictationService {
       count: sentences.length,
       sentences: sentences.map((text, order) => ({ order, text })),
     };
+  }
+
+  private normalizeText(value: string): string {
+    return value
+      .toLowerCase()
+      .replace(/[’‘]/g, "'")
+      .replace(/[^a-z0-9\s]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   private slugify(value: string): string {
@@ -109,19 +138,23 @@ export class DictationService {
   }
 
   async create(dto: CreateDictationDto) {
-    const sentences = this.splitIntoSentences(dto.sourceText);
-    if (!sentences.length) {
-      throw new BadRequestException('The dictation text does not contain any usable sentence.');
+    const audioSource = dto.audioSource ?? DictationAudioSource.TTS;
+    const sourceText = (dto.sourceText || '').trim();
+    const sentences = this.splitIntoSentences(sourceText);
+
+    if (audioSource === DictationAudioSource.TTS && !sentences.length) {
+      throw new BadRequestException('TTS dictation requires source text.');
     }
 
     const slug = await this.uniqueSlug(dto.slug || dto.title);
     const lesson = new this.lessonModel({
       ...dto,
+      audioSource,
       title: dto.title.trim(),
       slug,
       topic: dto.topic?.trim() || 'General',
       description: dto.description?.trim() || '',
-      sourceText: dto.sourceText.trim(),
+      sourceText,
       voiceIds: this.ensureVoiceIds(dto.voiceIds),
       sentenceCount: sentences.length,
       status: DictationStatus.DRAFT,
@@ -165,21 +198,24 @@ export class DictationService {
     if (dto.voiceIds !== undefined) update.voiceIds = this.ensureVoiceIds(dto.voiceIds);
     if (dto.slug || dto.title) update.slug = await this.uniqueSlug(dto.slug || dto.title || current.title, id);
 
+    const nextAudioSource = dto.audioSource ?? current.audioSource ?? DictationAudioSource.TTS;
     const nextVoiceIds = dto.voiceIds !== undefined ? this.ensureVoiceIds(dto.voiceIds) : current.voiceIds;
-    const audioInputsChanged =
-      (dto.sourceText !== undefined && dto.sourceText.trim() !== current.sourceText) ||
-      (dto.voiceIds !== undefined && JSON.stringify(nextVoiceIds) !== JSON.stringify(current.voiceIds)) ||
-      (dto.language !== undefined && dto.language !== current.language) ||
-      (dto.speed !== undefined && dto.speed !== current.speed) ||
-      (dto.pauseAfterMs !== undefined && dto.pauseAfterMs !== current.pauseAfterMs);
+    const ttsInputsChanged =
+      nextAudioSource === DictationAudioSource.TTS &&
+      ((dto.sourceText !== undefined && dto.sourceText.trim() !== current.sourceText) ||
+        (dto.voiceIds !== undefined && JSON.stringify(nextVoiceIds) !== JSON.stringify(current.voiceIds)) ||
+        (dto.language !== undefined && dto.language !== current.language) ||
+        (dto.speed !== undefined && dto.speed !== current.speed) ||
+        (dto.pauseAfterMs !== undefined && dto.pauseAfterMs !== current.pauseAfterMs));
+    const sourceChanged = dto.audioSource !== undefined && dto.audioSource !== current.audioSource;
 
-    if (dto.sourceText !== undefined) {
+    if (dto.sourceText !== undefined && nextAudioSource === DictationAudioSource.TTS) {
       const sentences = this.splitIntoSentences(dto.sourceText);
       if (!sentences.length) throw new BadRequestException('The dictation text is empty.');
       update.sentenceCount = sentences.length;
     }
 
-    if (audioInputsChanged) {
+    if (ttsInputsChanged || sourceChanged) {
       update.status = DictationStatus.DRAFT;
       update.processingError = '';
     }
@@ -192,11 +228,11 @@ export class DictationService {
     if (!lesson) throw new NotFoundException('Dictation lesson not found.');
     if (lesson.status === DictationStatus.PUBLISHED) return lesson;
     if (lesson.status !== DictationStatus.READY || !lesson.fullAudioUrl || lesson.sentenceCount <= 0) {
-      throw new ConflictException('Generate dictation audio after the latest content changes before publishing this lesson.');
+      throw new ConflictException('Process dictation audio after the latest content changes before publishing this lesson.');
     }
     const segmentCount = await this.segmentModel.countDocuments({ lessonId: lesson._id });
     if (segmentCount !== lesson.sentenceCount) {
-      throw new ConflictException('Some sentence audio is missing. Regenerate audio before publishing.');
+      throw new ConflictException('Segment metadata is incomplete. Reprocess audio before publishing.');
     }
 
     lesson.status = DictationStatus.PUBLISHED;
@@ -212,9 +248,17 @@ export class DictationService {
     return lesson.save();
   }
 
+  /**
+   * TTS flow: Kokoro synthesizes each sentence independently in memory, appends
+   * them into one final WAV, and returns exact start/end offsets for each segment.
+   * Only the final lesson WAV is uploaded; sentence WAVs are never persisted.
+   */
   async generateAudio(id: string) {
     const lesson = await this.lessonModel.findOne({ _id: id, isDeleted: { $ne: true } });
     if (!lesson) throw new NotFoundException('Dictation lesson not found.');
+    if ((lesson.audioSource ?? DictationAudioSource.TTS) !== DictationAudioSource.TTS) {
+      throw new BadRequestException('This lesson uses uploaded audio. Analyze a new upload instead of generating TTS.');
+    }
 
     const sentences = this.splitIntoSentences(lesson.sourceText);
     if (!sentences.length) throw new BadRequestException('The dictation text is empty.');
@@ -227,69 +271,34 @@ export class DictationService {
     }
 
     const voices = this.ensureVoiceIds(lesson.voiceIds);
-    const uploadedAssets: Array<{ publicId: string; resourceType: string }> = [];
-
     lesson.status = DictationStatus.PROCESSING_AUDIO;
     lesson.processingError = '';
     lesson.sentenceCount = sentences.length;
     await lesson.save();
 
+    let newPublicId = '';
     try {
-      const generatedSegments: Array<{
-        lessonId: Types.ObjectId;
-        order: number;
-        text: string;
-        voiceId: string;
-        language: 'en-US' | 'en-GB';
-        speed: number;
-        audioUrl: string;
-        audioPublicId: string;
-        durationMs: number;
-      }> = [];
-
-      for (let order = 0; order < sentences.length; order += 1) {
-        const text = sentences[order];
-        const voiceId = voices[order % voices.length];
-        const result = await this.ttsService.synthesize({
-          text,
-          voiceId,
-          language: lesson.language,
-          speed: lesson.speed,
-        });
-
-        const uploaded = await this.cloudinaryService.uploadBuffer(result.audio, {
-          folder: `english-platform/dictation/${lesson._id.toString()}/segments`,
-          resourceType: 'video',
-          format: 'wav',
-          publicId: `sentence-${String(order + 1).padStart(3, '0')}-${Date.now()}`,
-        });
-        uploadedAssets.push({ publicId: uploaded.public_id, resourceType: 'video' });
-
-        generatedSegments.push({
-          lessonId: lesson._id as Types.ObjectId,
-          order,
-          text,
-          voiceId,
-          language: lesson.language,
-          speed: lesson.speed,
-          audioUrl: uploaded.url,
-          audioPublicId: uploaded.public_id,
-          durationMs: Number(result.durationMs || 0),
-        });
-      }
+      const sequence = sentences.map((text, order) => ({
+        text,
+        voiceId: voices[order % voices.length],
+        language: lesson.language,
+        speed: lesson.speed,
+        pauseAfterMs: order === sentences.length - 1 ? 0 : lesson.pauseAfterMs,
+      }));
 
       const fullResult = await this.ttsService.synthesizeSequence({
-        segments: generatedSegments.map((segment, index) => ({
-          text: segment.text,
-          voiceId: segment.voiceId,
-          language: segment.language,
-          speed: segment.speed,
-          pauseAfterMs: index === generatedSegments.length - 1 ? 0 : lesson.pauseAfterMs,
-        })),
+        segments: sequence,
         defaultVoiceId: voices[0],
         defaultLanguage: lesson.language,
         defaultSpeed: lesson.speed,
       });
+
+      const timings = fullResult.segmentTimingsMs || [];
+      if (timings.length !== sentences.length) {
+        throw new Error(
+          `Kokoro returned ${timings.length} segment timings for ${sentences.length} segments.`,
+        );
+      }
 
       const fullUpload = await this.cloudinaryService.uploadBuffer(fullResult.audio, {
         folder: `english-platform/dictation/${lesson._id.toString()}`,
@@ -297,44 +306,231 @@ export class DictationService {
         format: 'wav',
         publicId: `full-${Date.now()}`,
       });
-      uploadedAssets.push({ publicId: fullUpload.public_id, resourceType: 'video' });
+      newPublicId = fullUpload.public_id;
 
-      const oldSegments = await this.segmentModel.find({ lessonId: lesson._id }).lean();
-      const oldFullPublicId = lesson.fullAudioPublicId;
+      const generatedSegments = sentences.map((text, order) => ({
+        lessonId: lesson._id as Types.ObjectId,
+        order,
+        text,
+        normalizedText: this.normalizeText(text),
+        source: 'TTS' as const,
+        speaker: '',
+        voiceId: sequence[order].voiceId,
+        language: lesson.language,
+        speed: lesson.speed,
+        startMs: timings[order].startMs,
+        endMs: timings[order].endMs,
+        durationMs: timings[order].durationMs,
+        confidence: 1,
+        words: [],
+      }));
 
-      await this.segmentModel.deleteMany({ lessonId: lesson._id });
-      await this.segmentModel.insertMany(generatedSegments);
-
-      lesson.fullAudioUrl = fullUpload.url;
-      lesson.fullAudioPublicId = fullUpload.public_id;
-      lesson.totalDurationMs = Number(fullResult.durationMs || 0);
-      lesson.sentenceCount = generatedSegments.length;
-      lesson.status = DictationStatus.READY;
-      lesson.processingError = '';
-      await lesson.save();
-
-      // Old media is deleted only after the new set is fully stored.
-      await Promise.allSettled([
-        ...oldSegments
-          .filter((segment) => Boolean(segment.audioPublicId))
-          .map((segment) => this.cloudinaryService.deleteFile(segment.audioPublicId, 'video')),
-        ...(oldFullPublicId
-          ? [this.cloudinaryService.deleteFile(oldFullPublicId, 'video')]
-          : []),
-      ]);
+      await this.replaceProcessedAudio(lesson, generatedSegments, {
+        url: fullUpload.url,
+        publicId: fullUpload.public_id,
+        durationMs: Number(fullResult.durationMs || 0),
+        processor: fullResult.provider || 'kokoro',
+        device: fullResult.device || '',
+      });
 
       return this.getAdmin(id);
     } catch (error) {
-      await Promise.allSettled(
-        uploadedAssets.map((asset) =>
-          this.cloudinaryService.deleteFile(asset.publicId, asset.resourceType),
-        ),
-      );
+      if (newPublicId) {
+        await this.cloudinaryService.deleteFile(newPublicId, 'video');
+      }
       lesson.status = DictationStatus.AUDIO_FAILED;
       lesson.processingError = error instanceof Error ? error.message : String(error);
       await lesson.save();
       throw error;
     }
+  }
+
+  /**
+   * Upload flow: Faster Whisper returns transcript + word/sentence timestamps.
+   * The original uploaded audio becomes the single lesson audio file and ASR
+   * timings are stored in the same startMs/endMs schema used by Kokoro.
+   */
+  async analyzeUploadedAudio(id: string, file: Express.Multer.File) {
+    const lesson = await this.lessonModel.findOne({ _id: id, isDeleted: { $ne: true } });
+    if (!lesson) throw new NotFoundException('Dictation lesson not found.');
+    if (!file?.buffer?.length) throw new BadRequestException('Audio file is required.');
+
+    const supportedMime =
+      !file.mimetype ||
+      file.mimetype.startsWith('audio/') ||
+      file.mimetype === 'video/mp4' ||
+      file.mimetype === 'application/ogg';
+    if (!supportedMime) {
+      throw new BadRequestException(`Unsupported audio type: ${file.mimetype}`);
+    }
+
+    lesson.audioSource = DictationAudioSource.UPLOAD;
+    lesson.status = DictationStatus.PROCESSING_AUDIO;
+    lesson.processingError = '';
+    await lesson.save();
+
+    let newPublicId = '';
+    try {
+      const transcription = await this.asrService.transcribe(
+        file.buffer,
+        file.originalname || 'dictation-audio',
+        file.mimetype || 'application/octet-stream',
+        'en',
+      );
+      if (!transcription.segments?.length) {
+        throw new BadRequestException('Faster Whisper could not detect any speech segments.');
+      }
+      if (transcription.segments.length > 200) {
+        throw new BadRequestException('Uploaded audio produced more than 200 dictation segments.');
+      }
+
+      const upload = await this.cloudinaryService.uploadBuffer(file.buffer, {
+        folder: `english-platform/dictation/${lesson._id.toString()}`,
+        resourceType: 'video',
+        publicId: `uploaded-${Date.now()}`,
+      });
+      newPublicId = upload.public_id;
+
+      const totalDurationMs = Math.max(
+        Number(transcription.durationMs || 0),
+        ...transcription.segments.map((segment) => segment.endMs),
+      );
+      const segments = transcription.segments.map((segment, order) => {
+        const startMs = Math.max(0, segment.startMs - this.asrStartPaddingMs);
+        const endMs = Math.min(
+          totalDurationMs || segment.endMs + this.asrEndPaddingMs,
+          segment.endMs + this.asrEndPaddingMs,
+        );
+        return {
+          lessonId: lesson._id as Types.ObjectId,
+          order,
+          text: segment.text.trim(),
+          normalizedText: this.normalizeText(segment.text),
+          source: 'ASR' as const,
+          speaker: '',
+          voiceId: '',
+          language: lesson.language,
+          speed: 1,
+          startMs,
+          endMs,
+          durationMs: Math.max(0, endMs - startMs),
+          confidence: Number(segment.confidence || 0),
+          words: segment.words || [],
+        };
+      });
+
+      lesson.sourceText = segments.map((segment) => segment.text).join('\n');
+      lesson.audioSource = DictationAudioSource.UPLOAD;
+
+      await this.replaceProcessedAudio(lesson, segments, {
+        url: upload.url,
+        publicId: upload.public_id,
+        durationMs: totalDurationMs,
+        processor: `faster-whisper:${transcription.model}`,
+        device: transcription.device || '',
+      });
+
+      return this.getAdmin(id);
+    } catch (error) {
+      if (newPublicId) {
+        await this.cloudinaryService.deleteFile(newPublicId, 'video');
+      }
+      lesson.status = DictationStatus.AUDIO_FAILED;
+      lesson.processingError = error instanceof Error ? error.message : String(error);
+      await lesson.save();
+      throw error;
+    }
+  }
+
+  async updateSegments(id: string, inputs: EditableSegmentInput[]) {
+    const lesson = await this.lessonModel.findOne({ _id: id, isDeleted: { $ne: true } });
+    if (!lesson) throw new NotFoundException('Dictation lesson not found.');
+    if (!lesson.fullAudioUrl) throw new ConflictException('Process lesson audio before editing segment metadata.');
+    if (!Array.isArray(inputs) || !inputs.length || inputs.length > 200) {
+      throw new BadRequestException('Provide between 1 and 200 segments.');
+    }
+
+    const sorted = [...inputs].sort((a, b) => a.order - b.order);
+    for (let index = 0; index < sorted.length; index += 1) {
+      const item = sorted[index];
+      if (!item.text?.trim()) throw new BadRequestException(`Segment ${index + 1} text is empty.`);
+      if (!Number.isFinite(item.startMs) || !Number.isFinite(item.endMs) || item.startMs < 0 || item.endMs <= item.startMs) {
+        throw new BadRequestException(`Segment ${index + 1} has invalid timestamps.`);
+      }
+      if (lesson.totalDurationMs && item.endMs > lesson.totalDurationMs + 1000) {
+        throw new BadRequestException(`Segment ${index + 1} ends after the audio duration.`);
+      }
+    }
+
+    const existing = await this.segmentModel.find({ lessonId: lesson._id }).sort({ order: 1 }).lean();
+    const byOrder = new Map(existing.map((segment) => [segment.order, segment]));
+    const replacement = sorted.map((item, order) => {
+      const previous = byOrder.get(item.order);
+      return {
+        lessonId: lesson._id,
+        order,
+        text: item.text.trim(),
+        normalizedText: this.normalizeText(item.text),
+        source: previous?.source || (lesson.audioSource === DictationAudioSource.UPLOAD ? 'ASR' : 'TTS'),
+        speaker: item.speaker?.trim() || previous?.speaker || '',
+        voiceId: previous?.voiceId || '',
+        language: previous?.language || lesson.language,
+        speed: previous?.speed || lesson.speed,
+        startMs: Math.round(item.startMs),
+        endMs: Math.round(item.endMs),
+        durationMs: Math.max(0, Math.round(item.endMs - item.startMs)),
+        confidence: previous?.confidence || 0,
+        words: previous?.words || [],
+      };
+    });
+
+    await this.segmentModel.deleteMany({ lessonId: lesson._id });
+    await this.segmentModel.insertMany(replacement);
+    lesson.sourceText = replacement.map((segment) => segment.text).join('\n');
+    lesson.sentenceCount = replacement.length;
+    lesson.status = DictationStatus.READY;
+    lesson.processingError = '';
+    await lesson.save();
+    return this.getAdmin(id);
+  }
+
+  private async replaceProcessedAudio(
+    lesson: DictationLessonDocument,
+    segments: Array<Record<string, unknown>>,
+    audio: {
+      url: string;
+      publicId: string;
+      durationMs: number;
+      processor: string;
+      device: string;
+    },
+  ) {
+    const oldSegments = await this.segmentModel.find({ lessonId: lesson._id }).lean();
+    const oldFullPublicId = lesson.fullAudioPublicId;
+
+    await this.segmentModel.deleteMany({ lessonId: lesson._id });
+    await this.segmentModel.insertMany(segments);
+
+    lesson.fullAudioUrl = audio.url;
+    lesson.fullAudioPublicId = audio.publicId;
+    lesson.totalDurationMs = Math.max(0, Math.round(audio.durationMs));
+    lesson.sentenceCount = segments.length;
+    lesson.audioProcessor = audio.processor;
+    lesson.audioProcessorDevice = audio.device;
+    lesson.status = DictationStatus.READY;
+    lesson.processingError = '';
+    await lesson.save();
+
+    // Delete old media only after the replacement is safely persisted. Legacy
+    // sentence assets are removed here as old lessons are regenerated/analyzed.
+    await Promise.allSettled([
+      ...oldSegments
+        .filter((segment) => Boolean(segment.audioPublicId))
+        .map((segment) => this.cloudinaryService.deleteFile(segment.audioPublicId!, 'video')),
+      ...(oldFullPublicId && oldFullPublicId !== audio.publicId
+        ? [this.cloudinaryService.deleteFile(oldFullPublicId, 'video')]
+        : []),
+    ]);
   }
 
   async remove(id: string) {
@@ -398,7 +594,17 @@ export class DictationService {
       ...lesson,
       fullAudioPublicId: undefined,
       processingError: undefined,
-      segments: segments.map(({ audioPublicId: _audioPublicId, ...segment }) => segment),
+      segments: segments.map(({ audioPublicId: _audioPublicId, ...segment }) => {
+        const hasUnifiedTiming =
+          Number.isFinite(segment.startMs) &&
+          Number.isFinite(segment.endMs) &&
+          segment.endMs > segment.startMs;
+        if (hasUnifiedTiming) {
+          const { audioUrl: _legacyAudioUrl, ...unifiedSegment } = segment;
+          return unifiedSegment;
+        }
+        return segment;
+      }),
       progress: progress || null,
     };
   }

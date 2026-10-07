@@ -4,6 +4,7 @@ import io
 import os
 import threading
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Literal
 
 import numpy as np
@@ -13,9 +14,37 @@ from fastapi import FastAPI, HTTPException, Response
 from kokoro import KPipeline
 from pydantic import BaseModel, Field, field_validator
 
+
+
+def _load_root_env() -> None:
+    root_env = next(
+        (parent / ".env" for parent in Path(__file__).resolve().parents if (parent / ".env").exists()),
+        None,
+    )
+    if root_env is None:
+        return
+
+    for raw_line in root_env.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+
+        key, value = line.split("=", 1)
+        key = key.strip()
+        if not key or key in os.environ:
+            continue
+
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {"\"", "'"}:
+            value = value[1:-1]
+        os.environ[key] = value.replace("\\n", "\n")
+
+
+_load_root_env()
+
 SAMPLE_RATE = 24_000
 MODEL_ID = os.getenv("KOKORO_MODEL_ID", "hexgrad/Kokoro-82M")
-DEVICE = os.getenv("KOKORO_DEVICE", "cuda").strip().lower()
+DEVICE = os.getenv("KOKORO_DEVICE", "cpu").strip().lower()
 
 US_VOICES = [
     ("af_heart", "Heart", "Female"),
@@ -182,8 +211,16 @@ class KokoroRuntime:
         duration_ms = round(len(audio) / SAMPLE_RATE * 1000)
         return self.wav_bytes(audio), duration_ms
 
-    def synthesize_sequence(self, request: SequenceRequest) -> tuple[bytes, int]:
+    def synthesize_sequence(
+        self, request: SequenceRequest
+    ) -> tuple[bytes, int, list[tuple[int, int]]]:
         pieces: list[np.ndarray] = []
+        timings: list[tuple[int, int]] = []
+        sample_cursor = 0
+
+        # Each segment is synthesized independently in memory, then appended to
+        # one final waveform. This keeps per-segment timing exact without
+        # persisting sentence WAV files.
         with self.lock:
             for segment in request.segments:
                 language = segment.language or request.defaultLanguage
@@ -193,23 +230,37 @@ class KokoroRuntime:
                     or self.default_voice(language)
                 )
                 speed = segment.speed or request.defaultSpeed
-                if segment.text.strip():
-                    pieces.append(
-                        self.synthesize_array(
-                            segment.text.strip(),
-                            voice,
-                            language,
-                            speed,
-                        )
+
+                start_sample = sample_cursor
+                text = segment.text.strip()
+                if text:
+                    segment_audio = self.synthesize_array(
+                        text,
+                        voice,
+                        language,
+                        speed,
                     )
+                    pieces.append(segment_audio)
+                    sample_cursor += len(segment_audio)
+                end_sample = sample_cursor
+
+                timings.append(
+                    (
+                        round(start_sample / SAMPLE_RATE * 1000),
+                        round(end_sample / SAMPLE_RATE * 1000),
+                    )
+                )
+
                 if segment.pauseAfterMs:
                     silence_samples = round(SAMPLE_RATE * segment.pauseAfterMs / 1000)
                     pieces.append(np.zeros(silence_samples, dtype=np.float32))
+                    sample_cursor += silence_samples
+
         if not pieces:
             raise ValueError("Sequence contains neither speakable text nor pauses")
         audio = np.concatenate(pieces).astype(np.float32, copy=False)
         duration_ms = round(len(audio) / SAMPLE_RATE * 1000)
-        return self.wav_bytes(audio), duration_ms
+        return self.wav_bytes(audio), duration_ms, timings
 
 
 runtime = KokoroRuntime()
@@ -224,17 +275,25 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title="ListenUp Local Kokoro TTS", version="1.0.0", lifespan=lifespan)
 
 
-def audio_response(audio: bytes, duration_ms: int) -> Response:
-    return Response(
-        content=audio,
-        media_type="audio/wav",
-        headers={
-            "X-Audio-Duration-Ms": str(duration_ms),
-            "X-Audio-Sample-Rate": str(SAMPLE_RATE),
-            "X-TTS-Provider": "kokoro",
-            "X-TTS-Device": runtime.device,
-        },
-    )
+def audio_response(
+    audio: bytes,
+    duration_ms: int,
+    timings: list[tuple[int, int]] | None = None,
+) -> Response:
+    headers = {
+        "X-Audio-Duration-Ms": str(duration_ms),
+        "X-Audio-Sample-Rate": str(SAMPLE_RATE),
+        "X-TTS-Provider": "kokoro",
+        "X-TTS-Device": runtime.device,
+    }
+    if timings is not None:
+        # Compact header: start:end,start:end,... (milliseconds). With the
+        # 200-segment API limit this remains comfortably below common header limits.
+        headers["X-Segment-Timings-Ms"] = ",".join(
+            f"{start}:{end}" for start, end in timings
+        )
+
+    return Response(content=audio, media_type="audio/wav", headers=headers)
 
 
 @app.get("/health")
@@ -282,8 +341,8 @@ def synthesize_sequence(request: SequenceRequest) -> Response:
     if not runtime.ready:
         raise HTTPException(status_code=503, detail=runtime.error or "Kokoro is not ready")
     try:
-        audio, duration_ms = runtime.synthesize_sequence(request)
-        return audio_response(audio, duration_ms)
+        audio, duration_ms, timings = runtime.synthesize_sequence(request)
+        return audio_response(audio, duration_ms, timings)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:

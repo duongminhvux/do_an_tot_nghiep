@@ -14,7 +14,10 @@ import {
   MinLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { DictationLevel } from '../schemas/dictation-lesson.schema.js';
+import {
+  DictationAudioSource,
+  DictationLevel,
+} from '../schemas/dictation-lesson.schema.js';
 
 export class CreateDictationDto {
   @IsString()
@@ -44,10 +47,14 @@ export class CreateDictationDto {
   @IsString()
   thumbnailUrl?: string;
 
+  @IsOptional()
+  @IsEnum(DictationAudioSource)
+  audioSource: DictationAudioSource = DictationAudioSource.TTS;
+
+  @IsOptional()
   @IsString()
-  @MinLength(2)
   @MaxLength(50_000)
-  sourceText!: string;
+  sourceText: string = '';
 
   @IsOptional()
   @IsIn(['en-US', 'en-GB'])

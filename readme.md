@@ -1,3 +1,16 @@
+# TOEIC English Platform
+
+## Environment configuration
+
+The repository uses a single root `.env`. Copy `.env.example` to `.env`; do not create env files inside `apps/api`, `apps/web`, or `apps/admin-web`. See `ENVIRONMENT.md` and `DOCKER.md`.
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+---
+
 # Turborepo starter
 
 This Turborepo starter is maintained by the Turborepo core team.
