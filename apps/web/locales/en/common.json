@@ -37,6 +37,10 @@
     "explore": "Explore",
     "my_words": "My Words",
     "dictation": "Dictation",
-    "dictation_progress": "Dictation Progress"
+    "dictation_progress": "Dictation Progress",
+    "toeic": "TOEIC",
+    "toeic_exams": "Exams & Practice",
+    "toeic_history": "Test History",
+    "toeic_stats": "Statistics"
   }
 }

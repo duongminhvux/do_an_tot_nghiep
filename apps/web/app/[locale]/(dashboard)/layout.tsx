@@ -25,6 +25,15 @@ export default function DashboardLayout({
   const getPageTitle = () => {
     const isEn = locale === 'en';
 
+    if (pathname?.includes('/toeic/history')) {
+      return t('nav.toeic_history', isEn ? 'Test History' : 'Lịch sử làm bài');
+    }
+    if (pathname?.includes('/toeic/stats')) {
+      return t('nav.toeic_stats', isEn ? 'Statistics' : 'Thống kê');
+    }
+    if (pathname?.includes('/toeic')) {
+      return t('nav.toeic_exams', isEn ? 'Exams & Practice' : 'Đề thi');
+    }
     if (pathname?.includes('/vocabulary')) {
       return t('nav.vocabulary', isEn ? 'Vocabulary' : 'Từ vựng');
     }

@@ -37,6 +37,10 @@
     "explore": "Khám phá",
     "my_words": "Từ vựng của tôi",
     "dictation": "Dictation",
-    "dictation_progress": "Tiến độ Dictation"
+    "dictation_progress": "Tiến độ Dictation",
+    "toeic": "TOEIC",
+    "toeic_exams": "Đề thi",
+    "toeic_history": "Lịch sử làm bài",
+    "toeic_stats": "Thống kê"
   }
 }

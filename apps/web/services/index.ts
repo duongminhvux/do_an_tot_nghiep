@@ -9,6 +9,7 @@ import { userService } from './user.service';
 import { collectionService, lessonService, wordService } from './vocabulary.service';
 import { learningService } from './learning.service';
 import { dictationService } from './dictation.service';
+import { toeicService } from './toeic.service';
 
 export const apiService = {
   auth: authService,
@@ -18,7 +19,9 @@ export const apiService = {
   words: wordService,
   learning: learningService,
   dictation: dictationService,
+  toeic: toeicService,
 };
 
 export default apiService;
 export * from './dictation.service';
+export * from './toeic.service';

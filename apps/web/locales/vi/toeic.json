@@ -1,0 +1,196 @@
+{
+  "banner": {
+    "tag": "LUYỆN ĐỀ TOEIC",
+    "title_part1": "Chuẩn bị tốt hơn",
+    "title_part2": "cho kỳ thi TOEIC",
+    "desc": "Hệ thống đề thi được phân loại theo trình độ và kỹ năng, được thiết kế bám sát cấu trúc đề thi thật.",
+    "btn_guide": "Xem hướng dẫn"
+  },
+  "groups": {
+    "title": "Các nhóm đề thi",
+    "desc": "Chọn nhóm đề phù hợp với mục tiêu học tập của bạn.",
+    "exam_count": "{{count}} đề thi",
+    "attempts_count": "{{count}} lượt làm",
+    "basic_listening": {
+      "title": "Luyện nghe cơ bản",
+      "desc": "Các đề luyện nghe từ cơ bản đến nâng cao, bám sát Part 1 - 4."
+    },
+    "basic_reading": {
+      "title": "Luyện đọc cơ bản",
+      "desc": "Các đề luyện đọc từ cơ bản đến nâng cao, bám sát Part 5 - 7."
+    },
+    "practice_tests": {
+      "title": "Đề thi thử",
+      "desc": "Bộ đề thi thử hoàn chỉnh 200 câu, đúng cấu trúc và thời gian thật."
+    },
+    "by_level": {
+      "title": "Luyện theo trình độ",
+      "desc": "Đề thi được phân loại theo trình độ từ Beginner đến Advanced."
+    },
+    "by_topic": {
+      "title": "Luyện theo chủ đề",
+      "desc": "Các đề luyện tập theo chủ đề thường gặp trong TOEIC."
+    },
+    "advanced": {
+      "title": "Đề nâng cao",
+      "desc": "Dành cho người đã có nền tảng, muốn đạt 800+ điểm."
+    }
+  },
+  "structure": {
+    "title": "Cấu trúc đề thi TOEIC",
+    "listening": "Listening",
+    "reading": "Reading",
+    "questions_count": "(100 câu)",
+    "listening_duration": "45 phút",
+    "reading_duration": "75 phút",
+    "part1": "Photographs",
+    "part1_count": "(6 câu)",
+    "part2": "Question & Response",
+    "part2_count": "(25 câu)",
+    "part3": "Conversations",
+    "part3_count": "(39 câu)",
+    "part4": "Talks",
+    "part4_count": "(30 câu)",
+    "part5": "Incomplete Sentences",
+    "part5_count": "(30 câu)",
+    "part6": "Text Completion",
+    "part6_count": "(16 câu)",
+    "part7": "Reading Comprehension",
+    "part7_count": "(54 câu)"
+  },
+  "scoring": {
+    "title": "Cách tính điểm TOEIC",
+    "view_details": "Xem chi tiết",
+    "desc": "Mỗi phần Listening và Reading chấm từ 5-495 điểm, tổng 10-990. TOEIC không có điểm đậu/rớt cố định; điểm được quy đổi từ số câu đúng theo bảng chuẩn.",
+    "listening_label": "Nghe (Listening)",
+    "reading_label": "Đọc (Reading)",
+    "range_val": "5 - 495 điểm",
+    "col_tier": "Mức điểm",
+    "col_meaning": "Ý nghĩa",
+    "col_proficiency": "Ý nghĩa năng lực",
+    "tier_450_600": "Giao tiếp công việc cơ bản, chuẩn tốt nghiệp nhiều trường",
+    "tier_650_750": "Đủ cho phần lớn vị trí công việc yêu cầu tiếng Anh",
+    "tier_800_900": "Thành thạo, lợi thế khi ứng tuyển môi trường quốc tế",
+    "tier_900_plus": "Trình độ cao, gần như tối đa",
+    "total_calc": "Tổng điểm TOEIC = Điểm Nghe + Điểm Đọc",
+    "scale": "Thang điểm: 10 - 990 điểm"
+  },
+  "tips": {
+    "title": "Mẹo thi TOEIC",
+    "view_all": "Xem tất cả",
+    "part_strategy": {
+      "title": "Chiến lược làm bài theo từng Part",
+      "subtitle": "Cách phân bổ thời gian và chiến thuật làm bài hiệu quả.",
+      "items": [
+        "Part 1: Tận dụng thời gian đọc hướng dẫn để quan sát nhanh bức tranh, định hình hành động và vị trí.",
+        "Part 2: Chú ý từ để hỏi đầu câu (Who, Where, When, Why, How) và tránh các bẫy đồng âm (same sounds).",
+        "Part 3 & 4: Luôn đọc trước 3 câu hỏi và các phương án trước khi đoạn audio bắt đầu phát.",
+        "Part 5: Xác định từ loại cần điền trước khi dịch nghĩa để tiết kiệm tối đa thời gian.",
+        "Part 6: Đọc hiểu ngữ cảnh toàn đoạn văn, đặc biệt các câu hỏi điền cả câu văn.",
+        "Part 7: Đọc lướt câu hỏi trước, xác định từ khóa và vị trí thông tin cần tìm trong bài đọc."
+      ]
+    },
+    "common_mistakes": {
+      "title": "Những lỗi thường gặp",
+      "subtitle": "Các lỗi phổ biến và cách tránh.",
+      "items": [
+        "Bẫy từ phát âm tương tự trong Listening Part 1 & 2 (ví dụ: walk / work, coffee / copy).",
+        "Sa đà quá lâu vào một câu khó khiến không đủ thời gian làm các câu dễ phía sau.",
+        "Tô nhầm số câu trên Answer Sheet khi bỏ qua một câu chưa làm.",
+        "Không đọc kỹ câu hỏi phủ định (NOT, EXCEPT, LEAST likely).",
+        "Quên kiểm tra thì của động từ và sự hòa hợp giữa chủ ngữ - vị ngữ."
+      ]
+    },
+    "time_management": {
+      "title": "Quản lý thời gian",
+      "subtitle": "Mẹo làm bài nhanh và chính xác hơn.",
+      "items": [
+        "Phần Nghe (45 phút): Tuân thủ chặt chẽ nhịp độ băng nghe, nếu lỡ câu nào thì đoán nhanh và chuyển sang câu tiếp theo.",
+        "Part 5 (30 câu): Hoàn thành trong khoảng 10 - 12 phút (trung bình 20 - 25 giây/câu).",
+        "Part 6 (16 câu): Hoàn thành trong khoảng 6 - 8 phút.",
+        "Part 7 (54 câu): Dành trọn vẹn 52 - 55 phút còn lại. Ưu tiên đoạn văn đơn trước, đoạn kép sau.",
+        "Luôn dành ra 2 - 3 phút cuối cùng để kiểm tra lại toàn bộ phiếu trả lời."
+      ]
+    },
+    "vocabulary_grammar": {
+      "title": "Từ vựng và ngữ pháp trọng tâm",
+      "subtitle": "Những chủ điểm cần nắm chắc.",
+      "items": [
+        "Bộ từ vựng kinh doanh, văn phòng: contracts, marketing, travel, banking, real estate, personnel.",
+        "Đại từ quan hệ và rút gọn mệnh đề quan hệ (V-ing / V-ed).",
+        "Câu điều kiện loại 1, 2, 3 và thể giả định (suggest/recommend + that + S + [should] + V bare).",
+        "Cặp liên từ tương quan: neither...nor, either...or, not only...but also, both...and.",
+        "Phân biệt giới từ chỉ thời gian, nơi chốn (in, on, at, during, while, throughout)."
+      ]
+    },
+    "high_score_tips": {
+      "title": "Kinh nghiệm đạt điểm cao",
+      "subtitle": "Chia sẻ từ những người đã đạt 800+ TOEIC.",
+      "items": [
+        "Luyện thói quen nghe Tiếng Anh hàng ngày qua phương pháp nghe chép chính tả (Dictation).",
+        "Sau mỗi đề thi thử, bắt buộc phải xem lại transcript và giải thích chi tiết lý do sai.",
+        "Ghi chép một cuốn sổ tay từ mới (Vocab Notebook) kèm ngữ cảnh và cụm từ (collocations).",
+        "Thi thử với áp lực thời gian thực tế 120 phút không ngắt quãng ít nhất 1 lần/tuần trước kỳ thi."
+      ]
+    }
+  },
+  "modals": {
+    "close": "Đóng",
+    "guide": {
+      "title": "Hướng dẫn làm bài thi TOEIC",
+      "ets_rule_title": "📌 Quy chế bài thi chuẩn ETS:",
+      "ets_rule_content": "Tổng thời gian làm bài là 120 phút gồm 2 phần: Listening (45 phút, 100 câu) và Reading (75 phút, 100 câu).",
+      "sec1_title": "1. Chuẩn bị trước khi làm bài:",
+      "sec1_item1": "Đảm bảo tai nghe và loa hoạt động tốt trước khi bắt đầu bài nghe Part 1 - 4.",
+      "sec1_item2": "Chuẩn bị không gian yên tĩnh, tắt thông báo để tập trung trọn vẹn trong 2 tiếng.",
+      "sec2_title": "2. Thao tác trên hệ thống:",
+      "sec2_item1": "Bấm nút Luyện thi ngay ở bất kỳ đề thi nào để mở giao diện làm bài.",
+      "sec2_item2": "Hệ thống có thanh điều hướng câu hỏi giúp bạn đánh dấu (flag) các câu còn phân vân.",
+      "sec2_item3": "Sau khi nộp bài, hệ thống tự động chấm điểm và cung cấp phân tích chi tiết từng Part.",
+      "btn_understand": "Đã hiểu, quay lại"
+    },
+    "scoring": {
+      "title": "Bảng quy đổi thang điểm TOEIC",
+      "sec1_title": "1. Phân loại mức điểm & Ý nghĩa",
+      "sec2_title": "2. Bảng quy đổi câu đúng chuẩn hóa (Equating Table)",
+      "col_correct": "Số câu đúng",
+      "col_listening": "Điểm Nghe (Listening)",
+      "col_reading": "Điểm Đọc (Reading)",
+      "questions_suffix": "câu"
+    },
+    "group_exams": {
+      "loading": "Đang tải đề thi...",
+      "empty_title": "Chưa có đề thi cụ thể trong nhóm này",
+      "empty_desc": "Đang cập nhật thêm đề thi mới bám sát lộ trình.",
+      "start_test": "Vào thi",
+      "mins": "phút",
+      "questions": "câu hỏi"
+    }
+  },
+  "group_detail": {
+    "breadcrumb_home": "Trang chủ",
+    "breadcrumb_toeic": "TOEIC",
+    "breadcrumb_exams": "Đề thi",
+    "tab_exams": "Danh sách đề thi",
+    "tab_about": "Giới thiệu",
+    "tab_tips": "Mẹo luyện tập",
+    "total_exams_label": "đề thi",
+    "in_group": "Trong nhóm",
+    "attempts_label": "Lượt làm bài",
+    "search_placeholder": "Tìm kiếm đề thi trong nhóm này...",
+    "sort_label": "Sắp xếp",
+    "sort_newest": "Mới nhất",
+    "sort_oldest": "Cũ nhất",
+    "sort_az": "Tên A-Z",
+    "status_not_started": "Chưa làm",
+    "status_in_progress": "Đang làm",
+    "status_completed": "Đã hoàn thành",
+    "score_label": "Điểm",
+    "btn_start": "Bắt đầu làm",
+    "btn_continue": "Tiếp tục",
+    "btn_view_result": "Xem kết quả",
+    "new_badge": "Mới",
+    "questions_count": "{{count}} câu",
+    "mins_duration": "{{count}} phút"
+  }
+}

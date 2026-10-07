@@ -1,0 +1,196 @@
+{
+  "banner": {
+    "tag": "TOEIC PRACTICE",
+    "title_part1": "Prepare Better",
+    "title_part2": "for the TOEIC Exam",
+    "desc": "Exam system categorized by proficiency level and skill, designed to closely mirror the real exam format.",
+    "btn_guide": "View Guide"
+  },
+  "groups": {
+    "title": "Exam Categories",
+    "desc": "Choose a practice test group that fits your learning goals.",
+    "exam_count": "{{count}} tests",
+    "attempts_count": "{{count}} attempts",
+    "basic_listening": {
+      "title": "Basic Listening Practice",
+      "desc": "Listening tests from basic to advanced, covering Part 1 - 4."
+    },
+    "basic_reading": {
+      "title": "Basic Reading Practice",
+      "desc": "Reading tests from basic to advanced, covering Part 5 - 7."
+    },
+    "practice_tests": {
+      "title": "Full Practice Tests",
+      "desc": "Complete 200-question practice tests with real format and timing."
+    },
+    "by_level": {
+      "title": "Practice by Level",
+      "desc": "Tests classified by target proficiency from Beginner to Advanced."
+    },
+    "by_topic": {
+      "title": "Practice by Topic",
+      "desc": "Tests categorized by common TOEIC business and communication topics."
+    },
+    "advanced": {
+      "title": "Advanced Tests",
+      "desc": "Designed for advanced learners targeting an 800+ TOEIC score."
+    }
+  },
+  "structure": {
+    "title": "TOEIC Exam Structure",
+    "listening": "Listening",
+    "reading": "Reading",
+    "questions_count": "(100 questions)",
+    "listening_duration": "45 mins",
+    "reading_duration": "75 mins",
+    "part1": "Photographs",
+    "part1_count": "(6 questions)",
+    "part2": "Question & Response",
+    "part2_count": "(25 questions)",
+    "part3": "Conversations",
+    "part3_count": "(39 questions)",
+    "part4": "Talks",
+    "part4_count": "(30 questions)",
+    "part5": "Incomplete Sentences",
+    "part5_count": "(30 questions)",
+    "part6": "Text Completion",
+    "part6_count": "(16 questions)",
+    "part7": "Reading Comprehension",
+    "part7_count": "(54 questions)"
+  },
+  "scoring": {
+    "title": "TOEIC Scoring System",
+    "view_details": "View details",
+    "desc": "Each Listening and Reading section is scored from 5-495, total 10-990. TOEIC has no fixed pass/fail; scores are equated based on correct answers.",
+    "listening_label": "Listening",
+    "reading_label": "Reading",
+    "range_val": "5 - 495 points",
+    "col_tier": "Score Range",
+    "col_meaning": "Meaning",
+    "col_proficiency": "Proficiency Level",
+    "tier_450_600": "Basic workplace communication, standard graduation requirement",
+    "tier_650_750": "Sufficient for most job positions requiring English proficiency",
+    "tier_800_900": "Fluent proficiency, competitive edge in global environments",
+    "tier_900_plus": "Advanced mastery, near-maximum score level",
+    "total_calc": "Total TOEIC Score = Listening Score + Reading Score",
+    "scale": "Score scale: 10 - 990 points"
+  },
+  "tips": {
+    "title": "TOEIC Tips & Strategies",
+    "view_all": "View all",
+    "part_strategy": {
+      "title": "Part-by-Part Strategy",
+      "subtitle": "Time allocation and proven techniques for each part.",
+      "items": [
+        "Part 1: Use direction audio time to preview images, identifying core actions and spatial positions.",
+        "Part 2: Focus sharply on the opening question word (Who, Where, When, Why, How) and avoid same-sound traps.",
+        "Part 3 & 4: Always preview the 3 questions and answer choices before the audio conversation plays.",
+        "Part 5: Identify the required part of speech before translating full meaning to save valuable time.",
+        "Part 6: Read with whole-paragraph context, especially for full sentence insertion questions.",
+        "Part 7: Skim questions first, identify key keywords, and locate supporting evidence in the text."
+      ]
+    },
+    "common_mistakes": {
+      "title": "Common Mistakes",
+      "subtitle": "Frequent pitfalls and how to avoid them.",
+      "items": [
+        "Homophone and similar-sounding word traps in Listening Part 1 & 2 (e.g., walk / work, coffee / copy).",
+        "Dwelling too long on single difficult questions, running out of time for easier ones later.",
+        "Misaligning answer sheet numbers after skipping a question.",
+        "Overlooking negative question words (NOT, EXCEPT, LEAST likely).",
+        "Failing to verify verb tense and subject-verb agreement in sentence completion."
+      ]
+    },
+    "time_management": {
+      "title": "Time Management",
+      "subtitle": "Pacing strategies for speed and precision.",
+      "items": [
+        "Listening (45 mins): Strictly follow the recording speed; guess promptly if a question is missed.",
+        "Part 5 (30 questions): Finish within 10 - 12 minutes (averaging 20 - 25 seconds per question).",
+        "Part 6 (16 questions): Finish within 6 - 8 minutes.",
+        "Part 7 (54 questions): Dedicate the full remaining 52 - 55 minutes. Tackle single passages before double/triple ones.",
+        "Always reserve the final 2 - 3 minutes to double check the entire answer sheet."
+      ]
+    },
+    "vocabulary_grammar": {
+      "title": "Key Vocabulary & Grammar",
+      "subtitle": "Essential grammar topics and vocabulary banks.",
+      "items": [
+        "Business and corporate vocabulary: contracts, marketing, travel, banking, real estate, personnel.",
+        "Relative clauses and reduced relative clauses (V-ing / V-ed).",
+        "Conditionals (types 1, 2, 3) and subjunctive mood (suggest/recommend + that + S + [should] + V bare).",
+        "Correlative conjunctions: neither...nor, either...or, not only...but also, both...and.",
+        "Prepositions of time and place (in, on, at, during, while, throughout)."
+      ]
+    },
+    "high_score_tips": {
+      "title": "High Score Experiences",
+      "subtitle": "Proven insights from 800+ TOEIC achievers.",
+      "items": [
+        "Build daily English listening habits through dictation exercises.",
+        "Always review full transcripts and error explanations after every mock test.",
+        "Maintain a vocabulary notebook containing words in authentic contexts and collocations.",
+        "Take uninterrupted full 120-minute mock tests under real conditions at least once a week before the exam."
+      ]
+    }
+  },
+  "modals": {
+    "close": "Close",
+    "guide": {
+      "title": "TOEIC Exam Instructions",
+      "ets_rule_title": "📌 ETS Standard Exam Regulations:",
+      "ets_rule_content": "Total test duration is 120 minutes with 2 sections: Listening (45 mins, 100 questions) and Reading (75 mins, 100 questions).",
+      "sec1_title": "1. Preparation before starting:",
+      "sec1_item1": "Ensure your headphones and audio device function properly before starting Listening Part 1 - 4.",
+      "sec1_item2": "Prepare a quiet study environment and mute notifications to maintain full focus for 2 hours.",
+      "sec2_title": "2. System interactions:",
+      "sec2_item1": "Click 'Start Test' on any test card to open the examination interface.",
+      "sec2_item2": "Use the question navigation drawer to flag questions you want to revisit.",
+      "sec2_item3": "Upon submitting, your exam is auto-graded with detailed part-by-part analysis.",
+      "btn_understand": "Understood, go back"
+    },
+    "scoring": {
+      "title": "TOEIC Score Conversion Table",
+      "sec1_title": "1. Score Ranges & Proficiency Levels",
+      "sec2_title": "2. Standard Equating Table",
+      "col_correct": "Correct Answers",
+      "col_listening": "Listening Score",
+      "col_reading": "Reading Score",
+      "questions_suffix": "questions"
+    },
+    "group_exams": {
+      "loading": "Loading tests...",
+      "empty_title": "No tests available in this category yet",
+      "empty_desc": "New tests aligned with the preparation path are being added.",
+      "start_test": "Start test",
+      "mins": "mins",
+      "questions": "questions"
+    }
+  },
+  "group_detail": {
+    "breadcrumb_home": "Home",
+    "breadcrumb_toeic": "TOEIC",
+    "breadcrumb_exams": "Tests",
+    "tab_exams": "Test List",
+    "tab_about": "About",
+    "tab_tips": "Practice Tips",
+    "total_exams_label": "tests",
+    "in_group": "In group",
+    "attempts_label": "Attempts",
+    "search_placeholder": "Search tests in this category...",
+    "sort_label": "Sort by",
+    "sort_newest": "Newest",
+    "sort_oldest": "Oldest",
+    "sort_az": "Name A-Z",
+    "status_not_started": "Not started",
+    "status_in_progress": "In progress",
+    "status_completed": "Completed",
+    "score_label": "Score",
+    "btn_start": "Start Test",
+    "btn_continue": "Continue",
+    "btn_view_result": "View Result",
+    "new_badge": "New",
+    "questions_count": "{{count}} questions",
+    "mins_duration": "{{count}} mins"
+  }
+}

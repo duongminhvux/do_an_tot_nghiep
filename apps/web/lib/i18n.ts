@@ -4,20 +4,28 @@ import { initReactI18next } from 'react-i18next';
 import viCommon from '../locales/vi/common.json';
 import viAuth from '../locales/vi/auth.json';
 import viVocabulary from '../locales/vi/vocabulary.json';
+import viProgress from '../locales/vi/progress.json';
+import viToeic from '../locales/vi/toeic.json';
 import enCommon from '../locales/en/common.json';
 import enAuth from '../locales/en/auth.json';
 import enVocabulary from '../locales/en/vocabulary.json';
+import enProgress from '../locales/en/progress.json';
+import enToeic from '../locales/en/toeic.json';
 
 const resources = {
   vi: {
     common: viCommon,
     auth: viAuth,
     vocabulary: viVocabulary,
+    progress: viProgress,
+    toeic: viToeic,
   },
   en: {
     common: enCommon,
     auth: enAuth,
     vocabulary: enVocabulary,
+    progress: enProgress,
+    toeic: enToeic,
   },
 };
 

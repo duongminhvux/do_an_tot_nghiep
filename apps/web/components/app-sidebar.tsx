@@ -17,6 +17,10 @@ import {
   ChevronRight,
   Dumbbell,
   TrendingUp,
+  GraduationCap,
+  FileText,
+  History,
+  BarChart3,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -48,6 +52,7 @@ export function AppSidebar() {
   const { t } = useTranslation('common');
 
   const [vocabMenuOpen, setVocabMenuOpen] = useState(true);
+  const [toeicMenuOpen, setToeicMenuOpen] = useState(true);
 
   const handleLogout = async () => {
     try {
@@ -69,6 +74,20 @@ export function AppSidebar() {
     pathname === `/${locale}/dictation` ||
     (pathname?.startsWith(`/${locale}/dictation/`) && !pathname?.startsWith(`/${locale}/dictation/progress`));
   const isProgressActive = pathname?.startsWith(`/${locale}/dictation/progress`);
+
+  const isToeicExamsActive =
+    pathname === `/${locale}/toeic` ||
+    pathname === `/${locale}/toeic/exams` ||
+    pathname?.startsWith(`/${locale}/toeic/exams/`);
+  const isToeicHistoryActive = pathname?.startsWith(`/${locale}/toeic/history`);
+  const isToeicStatsActive =
+    pathname?.startsWith(`/${locale}/toeic/stats`) ||
+    pathname?.startsWith(`/${locale}/toeic/analytics`);
+  const isToeicSectionActive =
+    pathname?.startsWith(`/${locale}/toeic`) ||
+    isToeicExamsActive ||
+    isToeicHistoryActive ||
+    isToeicStatsActive;
 
   return (
     <Sidebar collapsible="icon" className="border-r border-slate-200 bg-white">
@@ -124,7 +143,100 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
-              {/* 2. Vocabulary (Collapsible with Explore & My Words) */}
+              {/* 2. TOEIC (Collapsible Level 1 with 3 sub-pages: Đề thi, Lịch sử làm bài, Thống kê) */}
+              <SidebarMenuItem>
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setToeicMenuOpen(!toeicMenuOpen)}
+                    className={cn(
+                      'w-full flex items-center justify-between h-9 px-2.5 rounded-xl text-slate-700 hover:text-blue-600 hover:bg-slate-50 transition-all font-semibold text-sm cursor-pointer group',
+                      isToeicSectionActive && 'text-blue-600'
+                    )}
+                    title={t('nav.toeic', 'TOEIC')}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <GraduationCap
+                        className={cn(
+                          'h-4 w-4 shrink-0',
+                          isToeicSectionActive ? 'text-blue-600' : 'text-slate-500'
+                        )}
+                      />
+                      <span className="truncate group-data-[collapsible=icon]:hidden font-semibold">
+                        {t('nav.toeic', 'TOEIC')}
+                      </span>
+                    </div>
+                    <div className="group-data-[collapsible=icon]:hidden text-slate-400 group-hover:text-blue-600 transition-colors">
+                      {toeicMenuOpen ? (
+                        <ChevronUp className="w-3.5 h-3.5" />
+                      ) : (
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      )}
+                    </div>
+                  </button>
+
+                  {/* Submenu: Đề thi, Lịch sử làm bài, Thống kê */}
+                  {toeicMenuOpen && (
+                    <div className="pl-6 pr-1 pt-1 space-y-1 group-data-[collapsible=icon]:hidden">
+                      <Link
+                        href={`/${locale}/toeic`}
+                        className={cn(
+                          'flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all',
+                          isToeicExamsActive
+                            ? 'bg-blue-50 text-blue-600 font-semibold'
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                        )}
+                      >
+                        <FileText
+                          className={cn(
+                            'w-3.5 h-3.5 shrink-0',
+                            isToeicExamsActive ? 'text-blue-600' : 'text-slate-400'
+                          )}
+                        />
+                        <span>{t('nav.toeic_exams', 'Đề thi')}</span>
+                      </Link>
+
+                      <Link
+                        href={`/${locale}/toeic/history`}
+                        className={cn(
+                          'flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all',
+                          isToeicHistoryActive
+                            ? 'bg-blue-50 text-blue-600 font-semibold'
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                        )}
+                      >
+                        <History
+                          className={cn(
+                            'w-3.5 h-3.5 shrink-0',
+                            isToeicHistoryActive ? 'text-blue-600' : 'text-slate-400'
+                          )}
+                        />
+                        <span>{t('nav.toeic_history', 'Lịch sử làm bài')}</span>
+                      </Link>
+
+                      <Link
+                        href={`/${locale}/toeic/stats`}
+                        className={cn(
+                          'flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all',
+                          isToeicStatsActive
+                            ? 'bg-blue-50 text-blue-600 font-semibold'
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                        )}
+                      >
+                        <BarChart3
+                          className={cn(
+                            'w-3.5 h-3.5 shrink-0',
+                            isToeicStatsActive ? 'text-blue-600' : 'text-slate-400'
+                          )}
+                        />
+                        <span>{t('nav.toeic_stats', 'Thống kê')}</span>
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              </SidebarMenuItem>
+
+              {/* 3. Vocabulary (Collapsible with Explore & My Words) */}
               <SidebarMenuItem>
                 <div>
                   <button
