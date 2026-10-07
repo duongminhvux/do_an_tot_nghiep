@@ -1,0 +1,63 @@
+{
+  "title": "Activity Logs",
+  "subtitle": "Monitor and analyze all user activities and interactions across the platform",
+  "filters": {
+    "all_categories": "All Categories",
+    "all_actions": "All Actions",
+    "all_statuses": "All Statuses",
+    "search_placeholder": "Search by email, name or description...",
+    "start_date": "From Date",
+    "end_date": "To Date",
+    "reset": "Reset Filters"
+  },
+  "columns": {
+    "user": "User",
+    "action": "Action",
+    "category": "Category",
+    "description": "Description",
+    "status": "Status",
+    "duration": "Duration",
+    "ip": "IP Address",
+    "time": "Time"
+  },
+  "actions": {
+    "AUTH_LOGIN": "Login",
+    "AUTH_LOGOUT": "Logout",
+    "AUTH_REGISTER": "Register Account",
+    "SESSION_START": "Session Started",
+    "SESSION_END": "Session Ended / Exit",
+    "HEARTBEAT": "Heartbeat",
+    "PAGE_VIEW": "Page View",
+    "VOCABULARY_LEARN": "Learn Vocabulary",
+    "VOCABULARY_TEST": "Vocabulary Test",
+    "VOCABULARY_SAVE": "Save Vocabulary",
+    "DICTATION_START": "Start Dictation",
+    "DICTATION_SUBMIT": "Submit Dictation",
+    "TOEIC_START": "Start TOEIC Exam",
+    "TOEIC_SUBMIT": "Submit TOEIC Exam",
+    "CUSTOM": "Custom Activity"
+  },
+  "categories": {
+    "AUTH": "Authentication",
+    "SESSION": "Session & Navigation",
+    "VOCABULARY": "Vocabulary",
+    "DICTATION": "Dictation Practice",
+    "ASSESSMENT": "TOEIC Assessment",
+    "GENERAL": "General"
+  },
+  "status": {
+    "SUCCESS": "Success",
+    "FAILED": "Failed",
+    "INFO": "Information",
+    "WARNING": "Warning"
+  },
+  "stats": {
+    "total_activities": "Total Activities",
+    "activities_today": "Activities Today",
+    "unique_users": "Active Users",
+    "top_actions": "Top Actions",
+    "category_distribution": "Category Breakdown",
+    "activity_timeline": "Activity Frequency Timeline",
+    "most_active_users": "Most Active Users"
+  }
+}

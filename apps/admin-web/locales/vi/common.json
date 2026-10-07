@@ -21,7 +21,8 @@
     "lessons": "Bài học",
     "assessment": "Đề thi",
     "users": "Người dùng",
-    "dictation": "Dictation"
+    "dictation": "Dictation",
+    "activity_logs": "Nhật ký hoạt động"
   },
   "nav.dashboard": "Bảng điều khiển",
   "nav.vocabulary": "Từ vựng",
@@ -31,5 +32,6 @@
   "nav.lessons": "Bài học",
   "nav.assessment": "Đề thi",
   "nav.users": "Người dùng",
-  "nav.dictation": "Dictation"
+  "nav.dictation": "Dictation",
+  "nav.activity_logs": "Nhật ký hoạt động"
 }

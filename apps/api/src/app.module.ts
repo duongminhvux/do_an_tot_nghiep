@@ -17,6 +17,7 @@ import { LearningModule } from './modules/learning/learning.module.js';
 import { TtsModule } from './modules/tts/tts.module.js';
 import { AssessmentModule } from './modules/assessment/assessment.module.js';
 import { DictationModule } from './modules/dictation/dictation.module.js';
+import { ActivityLogsModule } from './modules/activity-logs/activity-logs.module.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -67,6 +68,7 @@ const isDev = process.env.NODE_ENV !== 'production';
     TtsModule,
     AssessmentModule,
     DictationModule,
+    ActivityLogsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

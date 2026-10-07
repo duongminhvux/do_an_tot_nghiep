@@ -75,11 +75,11 @@ export function EditUserDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent className="sm:max-w-[480px] rounded">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-blue-50 text-blue-600">
+              <div className="p-2 rounded bg-blue-50 text-blue-600">
                 <Pencil className="w-5 h-5" />
               </div>
               <div>

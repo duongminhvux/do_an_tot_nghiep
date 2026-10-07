@@ -48,11 +48,11 @@ export function ConfirmBanDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[420px]">
+      <DialogContent className="sm:max-w-[420px] rounded">
         <DialogHeader>
           <div className="flex items-center gap-2.5">
             <div
-              className={`p-2 rounded-xl ${
+              className={`p-2 rounded ${
                 isBanning
                   ? 'bg-rose-50 text-rose-600'
                   : 'bg-emerald-50 text-emerald-600'

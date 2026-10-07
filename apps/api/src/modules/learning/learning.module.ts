@@ -33,10 +33,13 @@ import {
 
 import { VocabularyModule } from '../vocabulary/vocabulary.module.js';
 import { SavedWordsModule } from './saved-words/saved-words.module.js';
+import { ActivityLogsModule } from '../activity-logs/activity-logs.module.js';
 
 @Module({
   imports: [
     VocabularyModule,
+    SavedWordsModule,
+    ActivityLogsModule,
     MongooseModule.forFeature([
       {
         name: UserLessonProgress.name,

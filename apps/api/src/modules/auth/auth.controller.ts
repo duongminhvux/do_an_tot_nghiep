@@ -15,6 +15,8 @@ import { ResetPasswordDto } from './dto/reset-password.dto.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { I18nService } from 'nestjs-i18n';
 import { GoogleOauthGuard } from './guards/google-oauth.guard.js';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service.js';
+import { ActivityAction, ActivityCategory } from '../activity-logs/schemas/activity-log.schema.js';
 
 @Controller('auth')
 export class AuthController {
@@ -24,6 +26,7 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
     private readonly i18n: I18nService,
+    private readonly activityLogsService: ActivityLogsService,
   ) { }
 
   setCookie(res: express.Response, refresh_token: string) {
@@ -68,6 +71,21 @@ export class AuthController {
 
     this.setCookie(res, refreshToken);
 
+    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip;
+    const userAgent = req.headers['user-agent'];
+
+    this.activityLogsService.log({
+      userId: String(user._id),
+      userEmail: user.email,
+      userName: user.username,
+      action: ActivityAction.AUTH_LOGIN,
+      category: ActivityCategory.AUTH,
+      description: `Đăng nhập thành công với tài khoản ${user.email}`,
+      metadata: { method: 'LOCAL' },
+      ipAddress: ip,
+      userAgent,
+    });
+
     return {
       message: await this.i18n.t('auth.LOGIN_SUCCESSFULLY'),
       accessToken,
@@ -92,6 +110,22 @@ export class AuthController {
     const loginResult = await this.authService.googleLogin(req.user);
     const frontendUrl = this.configService.get<string>('FRONTEND_URL') || this.configService.get<string>('FRONTEND_CLIENT_URL') || 'http://localhost:3000';
     this.setCookie(res, loginResult.refreshToken);
+
+    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip;
+    const userAgent = req.headers['user-agent'];
+
+    this.activityLogsService.log({
+      userId: loginResult.profile._id,
+      userEmail: loginResult.profile.email,
+      userName: loginResult.profile.username,
+      action: ActivityAction.AUTH_LOGIN,
+      category: ActivityCategory.AUTH,
+      description: `Đăng nhập Google thành công với tài khoản ${loginResult.profile.email}`,
+      metadata: { method: 'GOOGLE' },
+      ipAddress: ip,
+      userAgent,
+    });
+
     return res.redirect(`${frontendUrl}/auth/callback?token=${loginResult.accessToken}`);
   }
 
@@ -127,8 +161,24 @@ export class AuthController {
 
   @Public()
   @Post('logout')
-  async logout(@Res({ passthrough: true }) res: express.Response) {
+  async logout(@Req() req: any, @Res({ passthrough: true }) res: express.Response) {
     this.clearCookie(res);
+
+    const authUser = req.user;
+    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip;
+    const userAgent = req.headers['user-agent'];
+
+    this.activityLogsService.log({
+      userId: authUser?._id,
+      userEmail: authUser?.email,
+      userName: authUser?.username,
+      action: ActivityAction.AUTH_LOGOUT,
+      category: ActivityCategory.AUTH,
+      description: authUser?.email ? `Đăng xuất khỏi hệ thống (${authUser.email})` : `Đăng xuất khỏi hệ thống`,
+      ipAddress: ip,
+      userAgent,
+    });
+
     return {
       message: await this.i18n.t('auth.LOGOUT_SUCCESSFULLY'),
     };

@@ -70,4 +70,11 @@ export const userService = {
     const res = await apiClient.patch<ApiResponse<any>>(`/admin/users/${id}/notes`, { notes });
     return res.data;
   },
+
+  getUserLogs: async (userId: string, params?: any) => {
+    const res = await apiClient.get<ApiResponse<any>>('/admin/activity-logs', {
+      params: { ...params, userId },
+    });
+    return res?.data?.data || { items: [], total: 0, page: 1, limit: 20, totalPages: 1 };
+  },
 };

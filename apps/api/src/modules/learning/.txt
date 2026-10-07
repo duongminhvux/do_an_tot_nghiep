@@ -1,5 +1,0 @@
-UserLessonProgress	User hoàn thành Lesson bao nhiêu %?
-UserLessonWord	User đã học từ này trong Lesson này chưa?
-UserWordReview	Khi nào cần ôn Word này?
-LearningSession	User đã có những phiên học nào?
-LearningSessionWord	Trong phiên đó user làm với những từ nào, đúng/sai ra sao?

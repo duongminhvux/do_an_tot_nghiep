@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { userService } from '@/services/user.service';
@@ -17,11 +17,13 @@ import { ConfirmDeleteDialog } from '@/components/users/confirm-delete-dialog';
 export default function UserDetailPage() {
   const { t } = useTranslation('users');
   const params = useParams();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const queryClient = useQueryClient();
 
   const userId = params?.id as string;
   const locale = (params?.locale as string) || 'vi';
+  const initialTab = searchParams.get('tab') as any;
 
   // Dialog states
   const [editingUser, setEditingUser] = useState<UserItem | null>(null);
@@ -104,7 +106,7 @@ export default function UserDetailPage() {
               <Button
                 type="button"
                 onClick={() => setEditingUser(user)}
-                className="h-9 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs flex items-center gap-2 cursor-pointer transition-all"
+                className="h-9 px-4 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs flex items-center gap-2 cursor-pointer transition-all"
               >
                 <Pencil className="w-3.5 h-3.5" />
                 <span>{t('actions.edit', 'Chỉnh sửa')}</span>
@@ -114,7 +116,7 @@ export default function UserDetailPage() {
                 type="button"
                 variant="outline"
                 onClick={() => setBanningUser(user)}
-                className={`h-9 px-4 rounded-xl font-semibold text-xs border shadow-2xs flex items-center gap-2 cursor-pointer transition-all ${
+                className={`h-9 px-4 rounded font-semibold text-xs border shadow-2xs flex items-center gap-2 cursor-pointer transition-all ${
                   user.status === 'banned'
                     ? 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'
                     : 'border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-600'
@@ -139,14 +141,14 @@ export default function UserDetailPage() {
 
       {/* Main Content State */}
       {isLoading ? (
-        <div className="rounded-2xl border border-slate-200/90 bg-white p-16 flex flex-col items-center justify-center text-center shadow-2xs">
+        <div className="rounded border border-slate-200 bg-white p-16 flex flex-col items-center justify-center text-center shadow-2xs">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600 mb-3" />
           <p className="text-sm font-medium text-slate-600">
             {t('detail_page.loading', 'Đang tải thông tin người dùng...')}
           </p>
         </div>
       ) : isError || !user ? (
-        <div className="rounded-2xl border border-slate-200/90 bg-white p-12 text-center shadow-2xs space-y-4">
+        <div className="rounded border border-slate-200 bg-white p-12 text-center shadow-2xs space-y-4">
           <div className="w-14 h-14 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center mx-auto">
             <UserX className="w-7 h-7" />
           </div>
@@ -162,7 +164,7 @@ export default function UserDetailPage() {
             <Button
               type="button"
               onClick={() => router.push(`/${locale}/users`)}
-              className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold px-4 cursor-pointer"
+              className="bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold px-4 cursor-pointer"
             >
               {t('detail_page.back_to_list', 'Quay lại danh sách người dùng')}
             </Button>
@@ -171,6 +173,7 @@ export default function UserDetailPage() {
       ) : (
         <UserDetailPanel
           user={user}
+          initialTab={initialTab}
           onEdit={(u) => setEditingUser(u)}
           onToggleBan={(u) => setBanningUser(u)}
           onDelete={(u) => setDeletingUser(u)}
