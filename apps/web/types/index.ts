@@ -4,3 +4,4 @@ export * from './user';
 export * from './vocabulary';
 export * from './learning';
 export * from './dictation';
+export * from './activity-log';
