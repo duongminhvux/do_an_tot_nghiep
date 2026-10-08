@@ -13,6 +13,11 @@ export interface SaveWordButtonProps {
   wordId?: string;
 
   /**
+   * Word text/spelling for notifications and activity logs.
+   */
+  wordText?: string;
+
+  /**
    * Controlled saved state. If provided, takes precedence over internal state.
    */
   isSaved?: boolean;
@@ -58,6 +63,7 @@ export interface SaveWordButtonProps {
 
 export function SaveWordButton({
   wordId,
+  wordText,
   isSaved: controlledIsSaved,
   onToggle,
   variant = 'pill',
@@ -87,7 +93,7 @@ export function SaveWordButton({
   const isSaved = controlledIsSaved !== undefined ? controlledIsSaved : autonomousIsSaved;
 
   const toggleMutation = useMutation({
-    mutationFn: (id: string) => savedWordsService.toggle(id),
+    mutationFn: (id: string) => savedWordsService.toggle(id, wordText),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['saved-word-ids'] });
       queryClient.invalidateQueries({ queryKey: ['saved-words'] });

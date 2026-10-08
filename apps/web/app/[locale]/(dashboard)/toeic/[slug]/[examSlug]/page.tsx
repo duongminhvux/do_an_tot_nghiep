@@ -22,6 +22,7 @@ import {
   ToeicExamPart,
   ToeicAttemptSummary,
 } from '@/services/toeic.service';
+import { activityLogService } from '@/services/activity-log.service';
 import { ExamStructureTable } from './components/exam-structure-table';
 import { ExamModePartsSelector } from './components/exam-mode-parts-selector';
 import { ExamLeaderboard } from './components/exam-leaderboard';
@@ -135,10 +136,22 @@ export default function ToeicExamDetailPage() {
 
   const handleStart = () => {
     const partIds = Array.from(selected).join(',');
+    if (exam) {
+      activityLogService.logToeicStart(exam._id, exam.name, mode, {
+        partCount: selected.size,
+        parts: Array.from(selected),
+      });
+    }
     router.push(`/${locale}/toeic/take/${exam?._id}?${new URLSearchParams({ mode, parts: partIds })}`);
   };
-  const handleContinue = () =>
+  const handleContinue = () => {
+    if (exam) {
+      activityLogService.logToeicStart(exam._id, exam.name, 'continue', {
+        attemptId: latestAttempt?._id,
+      });
+    }
     router.push(`/${locale}/toeic/take/${exam?._id}?attemptId=${latestAttempt?._id}`);
+  };
 
   /* error */
   if (!isExamLoading && (isExamError || (!isLoading && !exam))) {

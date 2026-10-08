@@ -9,6 +9,7 @@ import {
   lessonService,
 } from '@/services/vocabulary.service';
 import { learningService } from '@/services/learning.service';
+import { activityLogService } from '@/services/activity-log.service';
 import { StudyModeType, SrsRatingType } from '@/types/learning';
 import {
   CollectionItem,
@@ -646,6 +647,19 @@ export default function LessonStudyPage() {
       setCompleted(true);
       if (sessionIdRef.current) {
         learningService.completeSession(sessionIdRef.current).catch(() => {});
+      }
+      if (currentLesson) {
+        activityLogService.logVocabLearn(
+          currentLesson._id,
+          currentLesson.title,
+          {
+            mode,
+            totalWords: wordsList.length,
+            masteredCount: masteredWords.size,
+            needReviewCount: needReviewWords.size,
+            status: 'COMPLETED',
+          }
+        );
       }
       refetchProgress();
       if (soundEnabled) playVictoryFanfare();

@@ -6,7 +6,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { UserPlus, Lock, Mail, User, Eye, EyeOff, AlertCircle } from 'lucide-react';
-import { authService } from '@/services';
+import { authService, activityLogService } from '@/services';
 import { RegisterDto } from '@/types';
 
 interface RegisterFormData extends RegisterDto {
@@ -46,6 +46,15 @@ export default function RegisterPage() {
         email: data.email,
         password: data.password,
       });
+
+      activityLogService.logAuth(
+        'AUTH_REGISTER',
+        `Đăng ký tài khoản mới (${data.email})`,
+        {
+          email: data.email,
+          username: data.username,
+        }
+      );
 
       router.push(`/${locale}/verify-email?email=${encodeURIComponent(data.email)}`);
     } catch (err: any) {

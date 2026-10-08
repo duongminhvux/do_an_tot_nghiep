@@ -21,6 +21,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { dictationService } from '@/services/dictation.service';
+import { activityLogService } from '@/services/activity-log.service';
 import { DictationLessonDetail, DictationProgress } from '@/types/dictation';
 
 function unwrap<T>(value: any): T {
@@ -63,6 +64,7 @@ export default function DictationPracticePage() {
   const rowRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   const [progress, setProgress] = useState<DictationProgress | null>(null);
+  const loggedStartRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!lesson) return;
@@ -71,7 +73,16 @@ export default function DictationPracticePage() {
       ? 0
       : Math.min(lesson.progress?.currentSegment || 0, Math.max((lesson.segments?.length || 1) - 1, 0));
     setCurrentIndex(nextIndex);
-  }, [lesson?._id]);
+
+    if (lesson._id && loggedStartRef.current !== lesson._id) {
+      loggedStartRef.current = lesson._id;
+      activityLogService.logDictationStart(lesson._id, lesson.title, {
+        level: lesson.level,
+        topic: lesson.topic,
+        sentenceCount: lesson.sentenceCount,
+      });
+    }
+  }, [lesson]);
 
   const segments = lesson?.segments || [];
   const current = segments[currentIndex];
@@ -87,6 +98,15 @@ export default function DictationPracticePage() {
       setProgress(next);
       queryClient.invalidateQueries({ queryKey: ['dictation-lessons'] });
       queryClient.invalidateQueries({ queryKey: ['dictation-progress-overview'] });
+
+      if (next?.completed) {
+        const acc = next.attempts ? Math.round((next.correctCount / next.attempts) * 100) : 100;
+        activityLogService.logDictationSubmit(lesson._id, lesson.title, acc, undefined, {
+          correctCount: next.correctCount,
+          totalAttempts: next.attempts,
+          level: lesson.level,
+        });
+      }
     },
   });
 
