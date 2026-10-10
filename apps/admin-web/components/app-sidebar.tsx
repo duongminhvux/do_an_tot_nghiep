@@ -17,6 +17,7 @@ import {
   ChevronRight,
   ClipboardCheck,
   Headphones,
+  FolderTree,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -82,6 +83,8 @@ export function AppSidebar() {
     pathname?.startsWith(`/${locale}/lessons/`);
   const isDictationActive =
     pathname === `/${locale}/dictation` || pathname?.startsWith(`/${locale}/dictation/`);
+  const isDictationStructureActive = pathname === `/${locale}/dictation/structure`;
+  const isDictationLessonsActive = isDictationActive && !isDictationStructureActive;
   const isAssessmentActive =
     pathname === `/${locale}/assessment` ||
     pathname?.startsWith(`/${locale}/assessment/`);
@@ -296,29 +299,38 @@ export function AppSidebar() {
               </SidebarMenuItem> */}
 
               {/* Dictation */}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={isDictationActive}
-                  tooltip={t('nav.dictation', 'Dictation')}
-                  className={cn(
-                    'h-9 px-2 rounded-lg text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition-all font-medium text-sm',
-                    isDictationActive && 'bg-blue-50 text-blue-600 font-semibold shadow-xs'
-                  )}
-                >
-                  <Link href={`/${locale}/dictation`} className="flex items-center gap-2.5">
-                    <Headphones
+              <Collapsible asChild defaultOpen={isDictationActive} className="group/collapsible">
+                <SidebarMenuItem>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton
+                      isActive={isDictationActive}
+                      tooltip={t('nav.dictation', 'Dictation')}
                       className={cn(
-                        'h-4.5 w-4.5 shrink-0',
-                        isDictationActive ? 'text-blue-600' : 'text-slate-500'
+                        'h-9 px-2 rounded-lg text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition-all font-medium text-sm cursor-pointer',
+                        isDictationActive && 'bg-blue-50 text-blue-600 font-semibold shadow-xs'
                       )}
-                    />
-                    <span className="truncate group-data-[collapsible=icon]:hidden">
-                      {t('nav.dictation', 'Dictation')}
-                    </span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+                    >
+                      <Headphones className={cn('h-4.5 w-4.5 shrink-0', isDictationActive ? 'text-blue-600' : 'text-slate-500')} />
+                      <span className="truncate group-data-[collapsible=icon]:hidden">{t('nav.dictation', 'Dictation')}</span>
+                      <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90 group-data-[collapsible=icon]:hidden text-slate-400" />
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      <SidebarMenuSubItem>
+                        <SidebarMenuSubButton asChild isActive={isDictationLessonsActive} className={cn('h-8 px-2 rounded-md text-xs font-medium text-slate-600 hover:text-blue-600 hover:bg-blue-50', isDictationLessonsActive && 'bg-blue-50 text-blue-600 font-semibold')}>
+                          <Link href={`/${locale}/dictation`} className="flex items-center gap-2"><BookOpen className="h-3.5 w-3.5" /><span>Lessons</span></Link>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                      <SidebarMenuSubItem>
+                        <SidebarMenuSubButton asChild isActive={isDictationStructureActive} className={cn('h-8 px-2 rounded-md text-xs font-medium text-slate-600 hover:text-blue-600 hover:bg-blue-50', isDictationStructureActive && 'bg-blue-50 text-blue-600 font-semibold')}>
+                          <Link href={`/${locale}/dictation/structure`} className="flex items-center gap-2"><FolderTree className="h-3.5 w-3.5" /><span>Topic & Section</span></Link>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </SidebarMenuItem>
+              </Collapsible>
 
               {/* Assessment (Collapsible with Exam Groups & Exams) */}
               <Collapsible

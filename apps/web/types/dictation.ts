@@ -1,17 +1,61 @@
 export type DictationLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
 export type DictationAudioSource = 'TTS' | 'UPLOAD';
 
+export interface DictationSegmentProgress {
+  segmentIndex: number;
+  attempts: number;
+  wrongAttempts: number;
+  replayCount: number;
+  correct: boolean;
+  firstTryCorrect: boolean;
+  revealed: boolean;
+  completedAt?: string;
+}
+
 export interface DictationProgress {
   _id?: string;
   userId?: string;
   lessonId: string | DictationLessonSummary;
   currentSegment: number;
   completedSegments: number[];
+  revealedSegments?: number[];
+  segmentProgress?: DictationSegmentProgress[];
   correctCount: number;
   wrongCount: number;
   attempts: number;
+  transcriptRevealed?: boolean;
+  transcriptRevealedAt?: string;
   completed: boolean;
   lastPracticedAt?: string;
+}
+
+export interface DictationTopicSummary {
+  _id: string;
+  title: string;
+  slug: string;
+  description?: string;
+  thumbnailUrl?: string;
+  order: number;
+  sectionCount: number;
+  lessonCount: number;
+  sentenceCount: number;
+  totalDurationMs: number;
+  levels: DictationLevel[];
+  completedLessons: number;
+}
+
+export interface DictationSectionSummary {
+  _id: string;
+  topicId: string;
+  title: string;
+  slug: string;
+  description?: string;
+  order: number;
+  lessons: DictationLessonSummary[];
+}
+
+export interface DictationTopicDetail extends DictationTopicSummary {
+  sections: DictationSectionSummary[];
 }
 
 export interface DictationLessonSummary {
@@ -21,6 +65,9 @@ export interface DictationLessonSummary {
   description: string;
   level: DictationLevel;
   topic: string;
+  topicId?: string;
+  sectionId?: string;
+  order?: number;
   thumbnailUrl?: string;
   audioSource?: DictationAudioSource;
   language: 'en-US' | 'en-GB';
@@ -54,7 +101,6 @@ export interface DictationSegment {
   durationMs: number;
   confidence?: number;
   words?: DictationWordTiming[];
-  /** Legacy only. New lessons use lesson.fullAudioUrl + startMs/endMs. */
   audioUrl?: string;
 }
 
@@ -63,6 +109,12 @@ export interface DictationLessonDetail extends DictationLessonSummary {
   speed: number;
   pauseAfterMs: number;
   segments: DictationSegment[];
+  topicInfo?: { _id: string; title: string; slug: string } | null;
+  sectionInfo?: { _id: string; title: string; slug: string } | null;
+  practiceSettings?: {
+    maxAttemptsBeforeReveal: number;
+    autoNextDelayMs: number;
+  };
 }
 
 export interface DictationProgressOverview {

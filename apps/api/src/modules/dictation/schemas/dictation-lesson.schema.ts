@@ -1,5 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
+import { HydratedDocument, Types } from 'mongoose';
+import { DictationTopic } from './dictation-topic.schema.js';
+import { DictationSection } from './dictation-section.schema.js';
 
 export type DictationLessonDocument = HydratedDocument<DictationLesson>;
 
@@ -40,8 +42,18 @@ export class DictationLesson {
   @Prop({ enum: DictationLevel, default: DictationLevel.B1, index: true })
   level!: DictationLevel;
 
+  // Legacy/denormalized label kept for old data and fast display.
   @Prop({ trim: true, default: 'General', index: true })
   topic!: string;
+
+  @Prop({ type: Types.ObjectId, ref: DictationTopic.name, index: true })
+  topicId?: Types.ObjectId;
+
+  @Prop({ type: Types.ObjectId, ref: DictationSection.name, index: true })
+  sectionId?: Types.ObjectId;
+
+  @Prop({ default: 0, index: true })
+  order!: number;
 
   @Prop({ trim: true, default: '' })
   thumbnailUrl!: string;

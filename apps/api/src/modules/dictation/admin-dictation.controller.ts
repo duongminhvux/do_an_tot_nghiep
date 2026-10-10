@@ -19,6 +19,12 @@ import { UpdateDictationDto } from './dto/update-dictation.dto.js';
 import { QueryDictationDto } from './dto/query-dictation.dto.js';
 import { PreviewSplitDto } from './dto/preview-split.dto.js';
 import { UpdateDictationSegmentsDto } from './dto/update-dictation-segments.dto.js';
+import {
+  CreateDictationSectionDto,
+  CreateDictationTopicDto,
+  UpdateDictationSectionDto,
+  UpdateDictationTopicDto,
+} from './dto/dictation-hierarchy.dto.js';
 
 @AdminController('dictation')
 export class AdminDictationController {
@@ -43,6 +49,41 @@ export class AdminDictationController {
       tts: tts.status === 'fulfilled' ? tts.value : { ready: false, error: String(tts.reason) },
       asr: asr.status === 'fulfilled' ? asr.value : { ready: false, error: String(asr.reason) },
     };
+  }
+
+  @Get('hierarchy')
+  hierarchy() {
+    return this.dictationService.getAdminHierarchy();
+  }
+
+  @Post('topics')
+  createTopic(@Body() dto: CreateDictationTopicDto) {
+    return this.dictationService.createTopic(dto);
+  }
+
+  @Patch('topics/:id')
+  updateTopic(@Param('id') id: string, @Body() dto: UpdateDictationTopicDto) {
+    return this.dictationService.updateTopic(id, dto);
+  }
+
+  @Delete('topics/:id')
+  removeTopic(@Param('id') id: string) {
+    return this.dictationService.removeTopic(id);
+  }
+
+  @Post('sections')
+  createSection(@Body() dto: CreateDictationSectionDto) {
+    return this.dictationService.createSection(dto);
+  }
+
+  @Patch('sections/:id')
+  updateSection(@Param('id') id: string, @Body() dto: UpdateDictationSectionDto) {
+    return this.dictationService.updateSection(id, dto);
+  }
+
+  @Delete('sections/:id')
+  removeSection(@Param('id') id: string) {
+    return this.dictationService.removeSection(id);
   }
 
   @Post('preview-split')

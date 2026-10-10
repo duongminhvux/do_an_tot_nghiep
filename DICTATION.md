@@ -169,3 +169,78 @@ All Dictation, Kokoro and Faster Whisper configuration is centralized in the rep
 - Faster Whisper output is an automatic draft. Admin review is intentionally kept in the workflow because names, numbers and uncommon words can be transcribed incorrectly.
 - `words[]` is persisted for uploaded audio so later features such as karaoke highlighting, word-level replay or smarter split/merge can be added without re-running ASR.
 - Existing Dictation records created by the old architecture can be regenerated. Their old sentence audio assets are cleaned up during replacement.
+
+## Topic -> Section -> Lesson hierarchy
+
+Dictation content is now organized in three levels:
+
+```text
+Topic
+  -> Section
+      -> Lesson
+```
+
+`DictationTopic` stores the learner-facing topic card, including `title`, `slug`, description, thumbnail, order and active state. `DictationSection` belongs to a Topic and controls grouping/order. Every Dictation Lesson now stores `topicId`, `sectionId` and `order` in addition to the legacy denormalized `topic` label.
+
+Old flat Dictation lessons are migrated lazily when Dictation APIs are opened: their existing `topic` label becomes a Topic and lessons are placed into a default `Section 1`. This keeps current data usable without a destructive migration.
+
+Admin management:
+
+```text
+/admin/dictation/structure
+  -> create/edit/delete Topic
+  -> upload/replace Topic thumbnail
+  -> create/edit/delete Section
+
+/admin/dictation
+  -> Lessons
+  -> each Lesson chooses Topic + Section
+```
+
+Learner navigation:
+
+```text
+/dictation
+  -> Topic card grid
+/dictation/topic/:slug
+  -> collapsible Sections
+  -> Lesson cards
+/dictation/:lessonSlug
+  -> sentence-by-sentence practice
+```
+
+## Sentence practice behavior
+
+The practice loop is intentionally short:
+
+```text
+play sentence
+  -> learner types answer
+  -> Check
+      -> correct: mark correct, wait briefly, auto-next
+      -> wrong: increment wrong attempt and replay
+      -> reaches N wrong attempts: reveal answer + final replay
+         -> learner presses Next manually
+```
+
+Replays do not count as answer attempts. Progress stores per-sentence `attempts`, `wrongAttempts`, `replayCount`, `correct`, `firstTryCorrect` and `revealed`.
+
+A sentence is considered handled when it was answered correctly **or** its answer was revealed. This allows a lesson to reach 100% completion even when some sentences required help, while `correctCount` and revealed state remain separate for accuracy/statistics.
+
+Default practice settings are configured from root `.env` and passed to the API container:
+
+```env
+DICTATION_MAX_ATTEMPTS_BEFORE_REVEAL=3
+DICTATION_AUTO_NEXT_DELAY_MS=700
+```
+
+## Full transcript: soft reveal
+
+Full transcript is not hard-locked. The first time a learner opens it before completing the lesson, the UI explains that the answers will be visible and offers:
+
+```text
+Continue practicing
+View transcript
+```
+
+Choosing `View transcript` records `transcriptRevealed=true` (and the timestamp) in progress, then opens the transcript. This keeps the feature learner-friendly while preserving useful study analytics.

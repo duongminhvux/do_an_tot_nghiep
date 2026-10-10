@@ -22,6 +22,7 @@ import {
   DictationLevel,
   DictationSegmentEditPayload,
   DictationVoice,
+  DictationTopic,
 } from '@/types/dictation';
 
 function unwrap<T>(value: any): T {
@@ -48,6 +49,12 @@ export default function DictationDetailPage() {
   const lesson = unwrap<DictationLesson>(data);
   const effectiveAudioSource = lesson?.audioSource || 'TTS';
 
+  const { data: hierarchyData } = useQuery({
+    queryKey: ['dictation-hierarchy'],
+    queryFn: () => dictationService.getHierarchy(),
+  });
+  const topics = unwrap<DictationTopic[]>(hierarchyData) || [];
+
   const { data: voicesData } = useQuery({
     queryKey: ['dictation-voices'],
     queryFn: () => dictationService.getVoices(),
@@ -57,7 +64,8 @@ export default function DictationDetailPage() {
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [topic, setTopic] = useState('General');
+  const [topicId, setTopicId] = useState('');
+  const [sectionId, setSectionId] = useState('');
   const [level, setLevel] = useState<DictationLevel>('B1');
   const [sourceText, setSourceText] = useState('');
   const [language, setLanguage] = useState<'en-US' | 'en-GB'>('en-US');
@@ -68,12 +76,15 @@ export default function DictationDetailPage() {
   const [replacementFile, setReplacementFile] = useState<File | null>(null);
   const [segmentDrafts, setSegmentDrafts] = useState<DictationSegmentEditPayload[]>([]);
   const [message, setMessage] = useState('');
+  const selectedTopic = topics.find((item) => item._id === topicId);
+  const availableSections = selectedTopic?.sections || [];
 
   useEffect(() => {
     if (!lesson?._id) return;
     setTitle(lesson.title || '');
     setDescription(lesson.description || '');
-    setTopic(lesson.topic || 'General');
+    setTopicId(lesson.topicId || '');
+    setSectionId(lesson.sectionId || '');
     setLevel(lesson.level || 'B1');
     setSourceText(lesson.sourceText || '');
     setLanguage(lesson.language || 'en-US');
@@ -104,7 +115,9 @@ export default function DictationDetailPage() {
     mutationFn: () => dictationService.update(id, {
       title,
       description,
-      topic,
+      topic: selectedTopic?.title || lesson.topic || 'General',
+      topicId,
+      sectionId,
       level,
       ...(effectiveAudioSource === 'TTS' ? { sourceText } : {}),
       language,
@@ -126,7 +139,9 @@ export default function DictationDetailPage() {
       await dictationService.update(id, {
         title,
         description,
-        topic,
+        topic: selectedTopic?.title || lesson.topic || 'General',
+        topicId,
+        sectionId,
         level,
         audioSource: effectiveAudioSource,
         ...(effectiveAudioSource === 'TTS' ? { sourceText } : {}),
@@ -210,8 +225,8 @@ export default function DictationDetailPage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button onClick={() => saveMutation.mutate()} disabled={busy || !title.trim() || (effectiveAudioSource === 'TTS' && !sourceText.trim())} className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">{saveMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Lưu thông tin</button>
-            {effectiveAudioSource === 'TTS' && <button onClick={() => processMutation.mutate()} disabled={busy || !sourceText.trim()} className="inline-flex h-9 items-center gap-2 rounded-lg border border-blue-200 bg-white px-3 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-50">{processMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />} Regenerate Kokoro</button>}
+            <button onClick={() => saveMutation.mutate()} disabled={busy || !title.trim() || !topicId || !sectionId || (effectiveAudioSource === 'TTS' && !sourceText.trim())} className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">{saveMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Lưu thông tin</button>
+            {effectiveAudioSource === 'TTS' && <button onClick={() => processMutation.mutate()} disabled={busy || !topicId || !sectionId || !sourceText.trim()} className="inline-flex h-9 items-center gap-2 rounded-lg border border-blue-200 bg-white px-3 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-50">{processMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />} Regenerate Kokoro</button>}
             {(lesson.status === 'READY' || lesson.status === 'PUBLISHED') && <button onClick={() => publishMutation.mutate()} disabled={busy} className="inline-flex h-9 items-center gap-2 rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50">{lesson.status === 'PUBLISHED' ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Send className="h-3.5 w-3.5" />}{lesson.status === 'PUBLISHED' ? 'Unpublish' : 'Publish'}</button>}
           </div>
         </div>
@@ -227,7 +242,8 @@ export default function DictationDetailPage() {
                 <label className="block text-xs font-semibold text-slate-600">Tiêu đề<input value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm" /></label>
                 <div className="grid grid-cols-2 gap-3">
                   <label className="text-xs font-semibold text-slate-600">Level<select value={level} onChange={(e) => setLevel(e.target.value as DictationLevel)} className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm">{['A1','A2','B1','B2','C1','C2'].map((item) => <option key={item}>{item}</option>)}</select></label>
-                  <label className="text-xs font-semibold text-slate-600">Chủ đề<input value={topic} onChange={(e) => setTopic(e.target.value)} className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm" /></label>
+                  <label className="text-xs font-semibold text-slate-600">Topic<select value={topicId} onChange={(e) => { setTopicId(e.target.value); setSectionId(''); }} className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"><option value="">Chọn Topic...</option>{topics.map((item) => <option key={item._id} value={item._id}>{item.title}</option>)}</select></label>
+                  <label className="col-span-2 text-xs font-semibold text-slate-600">Section<select value={sectionId} onChange={(e) => setSectionId(e.target.value)} className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"><option value="">Chọn Section...</option>{availableSections.map((item) => <option key={item._id} value={item._id}>{item.title}</option>)}</select></label>
                 </div>
                 <label className="block text-xs font-semibold text-slate-600">Mô tả<textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" /></label>
                 <label className="block text-xs font-semibold text-slate-600">Accent<select value={language} onChange={(e) => setLanguage(e.target.value as 'en-US' | 'en-GB')} className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"><option value="en-US">English (US)</option><option value="en-GB">English (UK)</option></select></label>

@@ -4,10 +4,22 @@ import {
   DictationLessonSummary,
   DictationProgress,
   DictationProgressOverview,
+  DictationTopicDetail,
+  DictationTopicSummary,
 } from '@/types';
 import { ApiResponse } from '@/services/types';
 
 export const dictationService = {
+
+  getTopics: async () => {
+    const res = await apiClient.get<ApiResponse<DictationTopicSummary[]>>('/dictation/topics');
+    return res.data;
+  },
+
+  getTopicBySlug: async (slug: string) => {
+    const res = await apiClient.get<ApiResponse<DictationTopicDetail>>(`/dictation/topics/${slug}`);
+    return res.data;
+  },
   getAll: async (params?: Record<string, string | undefined>) => {
     const res = await apiClient.get<ApiResponse<DictationLessonSummary[]>>('/dictation', { params });
     return res.data;
@@ -32,6 +44,30 @@ export const dictationService = {
     const res = await apiClient.post<ApiResponse<DictationProgress>>(
       `/dictation/${lessonId}/progress/attempt`,
       { segmentIndex, isCorrect },
+    );
+    return res.data;
+  },
+
+
+  revealSegment: async (lessonId: string, segmentIndex: number) => {
+    const res = await apiClient.post<ApiResponse<DictationProgress>>(
+      `/dictation/${lessonId}/progress/reveal-segment`,
+      { segmentIndex },
+    );
+    return res.data;
+  },
+
+  revealTranscript: async (lessonId: string) => {
+    const res = await apiClient.post<ApiResponse<DictationProgress>>(
+      `/dictation/${lessonId}/progress/reveal-transcript`,
+    );
+    return res.data;
+  },
+
+  recordReplay: async (lessonId: string, segmentIndex: number) => {
+    const res = await apiClient.post<ApiResponse<DictationProgress>>(
+      `/dictation/${lessonId}/progress/replay`,
+      { segmentIndex },
     );
     return res.data;
   },

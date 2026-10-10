@@ -44,12 +44,13 @@ export default function DictationProgressPage() {
               {overview.items.map((progress) => {
                 const lesson = progress.lessonId as DictationLessonSummary;
                 if (!lesson || typeof lesson === 'string') return null;
-                const percent = lesson.sentenceCount ? Math.round((progress.completedSegments.length / lesson.sentenceCount) * 100) : 0;
+                const handled = new Set([...(progress.completedSegments || []), ...(progress.revealedSegments || [])]).size;
+                const percent = lesson.sentenceCount ? Math.round((handled / lesson.sentenceCount) * 100) : 0;
                 const rowAccuracy = progress.attempts ? Math.round((progress.correctCount / progress.attempts) * 100) : 0;
                 return (
                   <Link key={progress._id || lesson._id} href={`/${locale}/dictation/${lesson.slug}`} className="grid gap-3 px-5 py-4 transition hover:bg-slate-50 sm:grid-cols-[minmax(0,1fr)_130px_130px] sm:items-center">
                     <div><p className="text-sm font-bold text-slate-800">{lesson.title}</p><p className="mt-1 text-xs text-slate-400">{lesson.level} · {lesson.topic}</p><div className="mt-2 h-1.5 max-w-lg overflow-hidden rounded-full bg-slate-100"><div className="h-full bg-blue-600" style={{ width: `${percent}%` }} /></div></div>
-                    <div><p className="text-[11px] text-slate-400">Hoàn thành</p><p className="mt-1 text-sm font-bold text-slate-700">{progress.completedSegments.length}/{lesson.sentenceCount} câu</p></div>
+                    <div><p className="text-[11px] text-slate-400">Hoàn thành</p><p className="mt-1 text-sm font-bold text-slate-700">{handled}/{lesson.sentenceCount} câu</p></div>
                     <div><p className="text-[11px] text-slate-400">Chính xác</p><p className="mt-1 text-sm font-bold text-slate-700">{rowAccuracy}%</p></div>
                   </Link>
                 );

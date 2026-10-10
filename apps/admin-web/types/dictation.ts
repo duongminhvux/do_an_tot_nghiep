@@ -22,6 +22,29 @@ export interface DictationWordTiming {
   probability: number;
 }
 
+export interface DictationSection {
+  _id: string;
+  topicId: string;
+  title: string;
+  slug: string;
+  description?: string;
+  order: number;
+  isActive: boolean;
+  lessonCount?: number;
+}
+
+export interface DictationTopic {
+  _id: string;
+  title: string;
+  slug: string;
+  description?: string;
+  thumbnailUrl?: string;
+  thumbnailPublicId?: string;
+  order: number;
+  isActive: boolean;
+  sections?: DictationSection[];
+}
+
 export interface DictationSegment {
   _id: string;
   lessonId: string;
@@ -47,6 +70,9 @@ export interface DictationLesson {
   description: string;
   level: DictationLevel;
   topic: string;
+  topicId?: string;
+  sectionId?: string;
+  order?: number;
   thumbnailUrl?: string;
   audioSource: DictationAudioSource;
   sourceText: string;
@@ -73,6 +99,9 @@ export interface CreateDictationPayload {
   description?: string;
   level: DictationLevel;
   topic?: string;
+  topicId?: string;
+  sectionId?: string;
+  order?: number;
   thumbnailUrl?: string;
   audioSource?: DictationAudioSource;
   sourceText?: string;
@@ -88,4 +117,23 @@ export interface DictationSegmentEditPayload {
   startMs: number;
   endMs: number;
   speaker?: string;
+}
+
+export interface CreateDictationTopicPayload {
+  title: string;
+  slug?: string;
+  description?: string;
+  thumbnailUrl?: string;
+  thumbnailPublicId?: string;
+  order?: number;
+  isActive?: boolean;
+}
+
+export interface CreateDictationSectionPayload {
+  topicId: string;
+  title: string;
+  slug?: string;
+  description?: string;
+  order?: number;
+  isActive?: boolean;
 }

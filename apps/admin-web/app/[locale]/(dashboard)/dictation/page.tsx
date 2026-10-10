@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Clock3,
   FileAudio,
+  FolderTree,
   Loader2,
   Plus,
   Search,
@@ -82,15 +83,23 @@ export default function AdminDictationPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">Dictation</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Tạo bài nghe, tự tách câu và sinh audio Kokoro cho từng câu.
+            Quản lý Topic → Section → Lesson, TTS Kokoro và audio upload Faster Whisper.
           </p>
         </div>
-        <Link
-          href={`/${locale}/dictation/create`}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
-        >
-          <Plus className="h-4 w-4" /> Tạo bài Dictation
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={`/${locale}/dictation/structure`}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+          >
+            <FolderTree className="h-4 w-4" /> Topic & Section
+          </Link>
+          <Link
+            href={`/${locale}/dictation/create`}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+          >
+            <Plus className="h-4 w-4" /> Tạo Lesson
+          </Link>
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

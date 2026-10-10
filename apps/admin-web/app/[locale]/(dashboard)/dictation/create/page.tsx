@@ -20,6 +20,7 @@ import {
   DictationLevel,
   DictationLesson,
   DictationVoice,
+  DictationTopic,
 } from '@/types/dictation';
 
 function unwrap<T>(value: any): T {
@@ -33,7 +34,8 @@ export default function CreateDictationPage() {
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [topic, setTopic] = useState('General');
+  const [topicId, setTopicId] = useState('');
+  const [sectionId, setSectionId] = useState('');
   const [level, setLevel] = useState<DictationLevel>('B1');
   const [audioSource, setAudioSource] = useState<DictationAudioSource>('TTS');
   const [language, setLanguage] = useState<'en-US' | 'en-GB'>('en-US');
@@ -46,6 +48,14 @@ export default function CreateDictationPage() {
   const [preview, setPreview] = useState<Array<{ order: number; text: string }>>([]);
   const [publishAfter, setPublishAfter] = useState(true);
   const [error, setError] = useState('');
+
+  const { data: hierarchyData } = useQuery({
+    queryKey: ['dictation-hierarchy'],
+    queryFn: () => dictationService.getHierarchy(),
+  });
+  const topics = unwrap<DictationTopic[]>(hierarchyData) || [];
+  const selectedTopic = topics.find((item) => item._id === topicId);
+  const availableSections = selectedTopic?.sections || [];
 
   const { data: voicesData, isLoading: loadingVoices } = useQuery({
     queryKey: ['dictation-voices'],
@@ -72,7 +82,9 @@ export default function CreateDictationPage() {
       const createdRes = await dictationService.create({
         title,
         description,
-        topic,
+        topic: selectedTopic?.title || 'General',
+        topicId,
+        sectionId,
         level,
         audioSource,
         sourceText: audioSource === 'TTS' ? sourceText : '',
@@ -102,6 +114,10 @@ export default function CreateDictationPage() {
       setError('Nhập tiêu đề bài Dictation.');
       return;
     }
+    if (!topicId || !sectionId) {
+      setError('Chọn Topic và Section cho Lesson.');
+      return;
+    }
     if (audioSource === 'TTS' && !sourceText.trim()) {
       setError('Nhập đoạn văn trước khi generate bằng Kokoro.');
       return;
@@ -114,7 +130,7 @@ export default function CreateDictationPage() {
   };
 
   const canSubmit = Boolean(
-    title.trim() &&
+    title.trim() && topicId && sectionId &&
       (audioSource === 'TTS' ? sourceText.trim() : audioFile),
   );
 
@@ -147,9 +163,24 @@ export default function CreateDictationPage() {
                   </select>
                 </label>
                 <label className="text-xs font-semibold text-slate-600">
-                  Chủ đề
-                  <input value={topic} onChange={(e) => setTopic(e.target.value)} className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm" placeholder="Travel" />
+                  Topic
+                  <select value={topicId} onChange={(e) => { setTopicId(e.target.value); setSectionId(''); }} className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm">
+                    <option value="">Chọn Topic...</option>
+                    {topics.map((item) => <option key={item._id} value={item._id}>{item.title}</option>)}
+                  </select>
                 </label>
+                <label className="text-xs font-semibold text-slate-600">
+                  Section
+                  <select value={sectionId} onChange={(e) => setSectionId(e.target.value)} disabled={!topicId} className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm disabled:bg-slate-50">
+                    <option value="">Chọn Section...</option>
+                    {availableSections.map((item) => <option key={item._id} value={item._id}>{item.title}</option>)}
+                  </select>
+                </label>
+                {topics.length === 0 && (
+                  <div className="sm:col-span-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                    Chưa có Topic/Section. <Link href={`/${locale}/dictation/structure`} className="font-bold underline">Tạo cấu trúc trước</Link>.
+                  </div>
+                )}
                 <label className="sm:col-span-2 text-xs font-semibold text-slate-600">
                   Mô tả
                   <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="mt-1.5 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500" placeholder="Mô tả ngắn cho học viên..." />

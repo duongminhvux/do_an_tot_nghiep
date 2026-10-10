@@ -15,6 +15,8 @@ import {
   DictationProgress,
   DictationProgressSchema,
 } from './schemas/dictation-progress.schema.js';
+import { DictationTopic, DictationTopicSchema } from './schemas/dictation-topic.schema.js';
+import { DictationSection, DictationSectionSchema } from './schemas/dictation-section.schema.js';
 import { TtsModule } from '../tts/tts.module.js';
 import { UploadModule } from '../upload/upload.module.js';
 import { AsrModule } from '../asr/asr.module.js';
@@ -25,6 +27,8 @@ import { AsrModule } from '../asr/asr.module.js';
       { name: DictationLesson.name, schema: DictationLessonSchema },
       { name: DictationSegment.name, schema: DictationSegmentSchema },
       { name: DictationProgress.name, schema: DictationProgressSchema },
+      { name: DictationTopic.name, schema: DictationTopicSchema },
+      { name: DictationSection.name, schema: DictationSectionSchema },
     ]),
     TtsModule,
     UploadModule,

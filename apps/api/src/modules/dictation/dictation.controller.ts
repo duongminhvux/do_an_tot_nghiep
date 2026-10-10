@@ -2,10 +2,21 @@ import { Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
 import { DictationService } from './dictation.service.js';
 import { QueryDictationDto } from './dto/query-dictation.dto.js';
 import { DictationAttemptDto } from './dto/dictation-attempt.dto.js';
+import { DictationSegmentActionDto } from './dto/dictation-progress-action.dto.js';
 
 @Controller('dictation')
 export class DictationController {
   constructor(private readonly dictationService: DictationService) {}
+
+  @Get('topics')
+  topics(@Req() req: any) {
+    return this.dictationService.listPublishedTopics(req.user._id);
+  }
+
+  @Get('topics/:slug')
+  topic(@Req() req: any, @Param('slug') slug: string) {
+    return this.dictationService.getPublishedTopicBySlug(slug, req.user._id);
+  }
 
   @Get()
   list(@Req() req: any, @Query() query: QueryDictationDto) {
@@ -39,6 +50,29 @@ export class DictationController {
       dto.segmentIndex,
       dto.isCorrect,
     );
+  }
+
+  @Post(':id/progress/reveal-segment')
+  revealSegment(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() dto: DictationSegmentActionDto,
+  ) {
+    return this.dictationService.revealSegment(req.user._id, id, dto.segmentIndex);
+  }
+
+  @Post(':id/progress/reveal-transcript')
+  revealTranscript(@Req() req: any, @Param('id') id: string) {
+    return this.dictationService.revealTranscript(req.user._id, id);
+  }
+
+  @Post(':id/progress/replay')
+  replay(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() dto: DictationSegmentActionDto,
+  ) {
+    return this.dictationService.recordReplay(req.user._id, id, dto.segmentIndex);
   }
 
   @Post(':id/progress/reset')

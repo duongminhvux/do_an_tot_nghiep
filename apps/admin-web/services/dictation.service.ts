@@ -5,9 +5,48 @@ import {
   DictationLesson,
   DictationSegmentEditPayload,
   DictationVoice,
+  DictationTopic,
+  DictationSection,
+  CreateDictationTopicPayload,
+  CreateDictationSectionPayload,
 } from '@/types';
 
 export const dictationService = {
+
+  getHierarchy: async () => {
+    const res = await apiClient.get<ApiResponse<DictationTopic[]>>('/admin/dictation/hierarchy');
+    return res.data;
+  },
+
+  createTopic: async (payload: CreateDictationTopicPayload) => {
+    const res = await apiClient.post<ApiResponse<DictationTopic>>('/admin/dictation/topics', payload);
+    return res.data;
+  },
+
+  updateTopic: async (id: string, payload: Partial<CreateDictationTopicPayload>) => {
+    const res = await apiClient.patch<ApiResponse<DictationTopic>>(`/admin/dictation/topics/${id}`, payload);
+    return res.data;
+  },
+
+  removeTopic: async (id: string) => {
+    const res = await apiClient.delete<ApiResponse<DictationTopic>>(`/admin/dictation/topics/${id}`);
+    return res.data;
+  },
+
+  createSection: async (payload: CreateDictationSectionPayload) => {
+    const res = await apiClient.post<ApiResponse<DictationSection>>('/admin/dictation/sections', payload);
+    return res.data;
+  },
+
+  updateSection: async (id: string, payload: Partial<CreateDictationSectionPayload>) => {
+    const res = await apiClient.patch<ApiResponse<DictationSection>>(`/admin/dictation/sections/${id}`, payload);
+    return res.data;
+  },
+
+  removeSection: async (id: string) => {
+    const res = await apiClient.delete<ApiResponse<DictationSection>>(`/admin/dictation/sections/${id}`);
+    return res.data;
+  },
   getAll: async (params?: Record<string, string | undefined>) => {
     const res = await apiClient.get<ApiResponse<DictationLesson[]>>('/admin/dictation', { params });
     return res.data;

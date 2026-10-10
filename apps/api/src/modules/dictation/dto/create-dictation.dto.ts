@@ -5,6 +5,7 @@ import {
   IsEnum,
   IsIn,
   IsInt,
+  IsMongoId,
   IsNumber,
   IsOptional,
   IsString,
@@ -42,6 +43,20 @@ export class CreateDictationDto {
   @IsString()
   @MaxLength(80)
   topic?: string;
+
+  @IsOptional()
+  @IsMongoId()
+  topicId?: string;
+
+  @IsOptional()
+  @IsMongoId()
+  sectionId?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  order?: number;
 
   @IsOptional()
   @IsString()

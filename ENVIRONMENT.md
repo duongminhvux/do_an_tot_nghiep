@@ -33,7 +33,7 @@ NestJS and API scripts use the local values when run directly. `docker-compose.y
 
 ## Next.js
 
-`apps/web` and `apps/admin-web` load the root `.env` through `scripts/run-next-with-root-env.mjs`. The wrapper calls Node's `process.loadEnvFile()` first and then starts Next.js in a clean child process. This keeps root-env support for local dev/builds without passing `--env-file` through Next.js worker processes. The Next config files do not read `.env` directly. Docker builds still receive `NEXT_PUBLIC_API_URL` as a build argument because public Next.js variables are compiled into the client bundle.
+`apps/web/next.config.js` and `apps/admin-web/next.config.ts` load the root `.env` for local builds/dev. Docker builds still receive `NEXT_PUBLIC_API_URL` as a build argument because public Next.js variables are compiled into the client bundle.
 
 ## CPU / GPU
 
