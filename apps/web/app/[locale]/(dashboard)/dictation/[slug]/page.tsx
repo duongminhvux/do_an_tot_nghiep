@@ -23,7 +23,8 @@ import {
   XCircle,
 } from 'lucide-react';
 import { dictationService } from '@/services/dictation.service';
-import type { DictationLessonDetail, DictationProgress } from '@/types/dictation';
+import { activityLogService } from '@/services/activity-log.service';
+import { DictationLessonDetail, DictationProgress } from '@/types/dictation';
 
 function unwrap<T>(value: any): T {
   return (value?.data ?? value) as T;
@@ -67,20 +68,8 @@ export default function DictationPracticePage() {
   const legacyAudioRef = useRef<HTMLAudioElement | null>(null);
   const segmentEndMsRef = useRef<number | null>(null);
   const rowRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const autoNextTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const segments = lesson?.segments || [];
-  const current = segments[currentIndex];
-  const completed = progress?.completedSegments || [];
-  const revealed = progress?.revealedSegments || [];
-  const currentSegmentProgress = progress?.segmentProgress?.find((item) => item.segmentIndex === currentIndex);
-  const maxAttempts = lesson?.practiceSettings?.maxAttemptsBeforeReveal || 3;
-  const autoNextDelay = lesson?.practiceSettings?.autoNextDelayMs ?? 700;
-  const wrongAttempts = currentSegmentProgress?.wrongAttempts || 0;
-  const currentIsCompleted = completed.includes(currentIndex);
-  const handledCount = new Set([...(completed || []), ...(revealed || [])]).size;
-  const percent = segments.length ? Math.round((handledCount / segments.length) * 100) : 0;
+  const [progress, setProgress] = useState<DictationProgress | null>(null);
 
   useEffect(() => {
     if (!lesson) return;
@@ -89,7 +78,16 @@ export default function DictationPracticePage() {
       ? 0
       : Math.min(lesson.progress?.currentSegment || 0, Math.max((lesson.segments?.length || 1) - 1, 0));
     setCurrentIndex(nextIndex);
-  }, [lesson?._id]);
+
+    if (lesson._id && loggedStartRef.current !== lesson._id) {
+      loggedStartRef.current = lesson._id;
+      activityLogService.logDictationStart(lesson._id, lesson.title, {
+        level: lesson.level,
+        topic: lesson.topic,
+        sentenceCount: lesson.sentenceCount,
+      });
+    }
+  }, [lesson]);
 
   useEffect(() => () => {
     if (autoNextTimerRef.current) clearTimeout(autoNextTimerRef.current);
@@ -105,9 +103,12 @@ export default function DictationPracticePage() {
   const attemptMutation = useMutation({
     mutationFn: ({ index, correct }: { index: number; correct: boolean }) =>
       dictationService.recordAttempt(lesson._id, index, correct),
-  });
-  const revealMutation = useMutation({
-    mutationFn: (index: number) => dictationService.revealSegment(lesson._id, index),
+    onSuccess: (response) => {
+      const next = unwrap<DictationProgress>(response);
+      setProgress(next);
+      queryClient.invalidateQueries({ queryKey: ['dictation-lessons'] });
+      queryClient.invalidateQueries({ queryKey: ['dictation-progress-overview'] });
+    },
   });
   const transcriptMutation = useMutation({
     mutationFn: () => dictationService.revealTranscript(lesson._id),

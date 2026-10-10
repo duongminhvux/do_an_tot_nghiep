@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
-import { logout, setUser } from '@/redux/features/auth/authSlice';
+import { logout, setUser, updateAccessToken } from '@/redux/features/auth/authSlice';
 import { authService } from '@/services';
 import { Loader2 } from 'lucide-react';
 
@@ -22,21 +22,35 @@ export default function AuthGuard({ children }: AuthGuardProps) {
   useEffect(() => {
     if (!isInitialized) return;
 
-    if (!isAuthenticated) {
-      router.replace(`/${locale}/login`);
-      return;
-    }
-
-    // Token exists, verify with backend profile API
     const verifySession = async () => {
       try {
+        // If not marked authenticated in store, attempt silent refresh first
+        if (!isAuthenticated) {
+          try {
+            const refreshRes = await authService.refreshToken();
+            const newAccess =
+              refreshRes?.data?.accessToken || (refreshRes as any)?.accessToken;
+
+            if (newAccess) {
+              dispatch(updateAccessToken(newAccess));
+            } else {
+              throw new Error('No access token returned');
+            }
+          } catch {
+            dispatch(logout());
+            router.replace(`/${locale}/login`);
+            return;
+          }
+        }
+
+        // Fetch profile to verify session and get latest user data
         const res = await authService.getProfile();
-        if (res.data) {
+        if (res?.data) {
           dispatch(setUser(res.data));
         }
         setIsVerifying(false);
       } catch {
-        // Token expired or invalid, and refresh failed
+        // Token expired or invalid, and auto-refresh failed
         dispatch(logout());
         router.replace(`/${locale}/login`);
       }
@@ -45,7 +59,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     verifySession();
   }, [isAuthenticated, isInitialized, router, dispatch, locale]);
 
-  if (!isInitialized || !isAuthenticated || isVerifying) {
+  if (!isInitialized || isVerifying) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
         <Loader2 className="w-10 h-10 animate-spin text-blue-600" />

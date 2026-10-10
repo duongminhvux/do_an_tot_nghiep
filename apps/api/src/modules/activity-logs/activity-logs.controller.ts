@@ -25,10 +25,21 @@ export class ActivityLogsController {
     @Ip() ip: string,
     @Headers('user-agent') userAgent: string,
   ) {
-    // If request has authenticated user attached via JWT middleware/guard
-    const authUser = req.user;
+    let authUser = req.user;
+    if (!authUser && req.headers?.authorization?.startsWith('Bearer ')) {
+      try {
+        const token = req.headers.authorization.substring(7);
+        const payloadBase64 = token.split('.')[1];
+        if (payloadBase64) {
+          authUser = JSON.parse(Buffer.from(payloadBase64, 'base64').toString('utf8'));
+        }
+      } catch {
+        // ignore invalid token parsing
+      }
+    }
+
     if (authUser) {
-      dto.userId = dto.userId || authUser._id || authUser.id;
+      dto.userId = dto.userId || authUser._id || authUser.sub || authUser.id;
       dto.userEmail = dto.userEmail || authUser.email;
       dto.userName = dto.userName || authUser.username;
       dto.role = dto.role || authUser.role || 'USER';
@@ -60,11 +71,24 @@ export class ActivityLogsController {
     @Ip() ip: string,
     @Headers('user-agent') userAgent: string,
   ) {
-    const authUser = req.user;
+    let authUser = req.user;
+    if (!authUser && req.headers?.authorization?.startsWith('Bearer ')) {
+      try {
+        const token = req.headers.authorization.substring(7);
+        const payloadBase64 = token.split('.')[1];
+        if (payloadBase64) {
+          authUser = JSON.parse(Buffer.from(payloadBase64, 'base64').toString('utf8'));
+        }
+      } catch {
+        // ignore invalid token parsing
+      }
+    }
+
     if (authUser) {
-      dto.userId = dto.userId || authUser._id || authUser.id;
+      dto.userId = dto.userId || authUser._id || authUser.sub || authUser.id;
       dto.userEmail = dto.userEmail || authUser.email;
       dto.userName = dto.userName || authUser.username;
+      dto.role = dto.role || authUser.role || 'USER';
     }
 
     dto.ipAddress =

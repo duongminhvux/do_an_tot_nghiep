@@ -9,6 +9,7 @@ import {
   lessonService,
 } from '@/services/vocabulary.service';
 import { learningService } from '@/services/learning.service';
+import { activityLogService } from '@/services/activity-log.service';
 import { StudyModeType, SrsRatingType } from '@/types/learning';
 import {
   CollectionItem,
@@ -647,6 +648,19 @@ export default function LessonStudyPage() {
       if (sessionIdRef.current) {
         learningService.completeSession(sessionIdRef.current).catch(() => {});
       }
+      if (currentLesson) {
+        activityLogService.logVocabLearn(
+          currentLesson._id,
+          currentLesson.title,
+          {
+            mode,
+            totalWords: wordsList.length,
+            masteredCount: masteredWords.size,
+            needReviewCount: needReviewWords.size,
+            status: 'COMPLETED',
+          }
+        );
+      }
       refetchProgress();
       if (soundEnabled) playVictoryFanfare();
       triggerConfetti(0.5, 0.3);
@@ -877,31 +891,33 @@ export default function LessonStudyPage() {
         .flashcard-3d-wrapper {
           perspective: 1400px;
           width: 100%;
-          height: auto;
-          min-height: 440px;
+          height: 480px;
         }
         @media (min-width: 640px) {
           .flashcard-3d-wrapper {
-            min-height: 470px;
+            height: 520px;
+          }
+        }
+        @media (min-width: 1024px) {
+          .flashcard-3d-wrapper {
+            height: 540px;
           }
         }
         .flashcard-3d-inner {
           position: relative;
           width: 100%;
-          min-height: 440px;
+          height: 100%;
           transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
           transform-style: preserve-3d;
-        }
-        @media (min-width: 640px) {
-          .flashcard-3d-inner {
-            min-height: 470px;
-          }
         }
         .flashcard-3d-inner.is-flipped {
           transform: rotateY(180deg);
         }
         .flashcard-face {
+          position: absolute;
+          inset: 0;
           width: 100%;
+          height: 100%;
           backface-visibility: hidden;
           -webkit-backface-visibility: hidden;
         }
@@ -910,6 +926,20 @@ export default function LessonStudyPage() {
         }
         .flashcard-back {
           transform: rotateY(180deg);
+        }
+        .flashcard-scroll::-webkit-scrollbar {
+          width: 6px;
+        }
+        .flashcard-scroll::-webkit-scrollbar-track {
+          background: #f8fafc;
+          border-radius: 9999px;
+        }
+        .flashcard-scroll::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+          border-radius: 9999px;
+        }
+        .flashcard-scroll::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8;
         }
       `}</style>
 
@@ -988,13 +1018,13 @@ export default function LessonStudyPage() {
 
             {/* Study Card Area */}
             {isWordsLoading ? (
-              <div className="w-full h-[440px] sm:h-[470px] bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col items-center justify-center gap-3 text-slate-400">
+              <div className="w-full h-[480px] sm:h-[520px] lg:h-[540px] bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col items-center justify-center gap-3 text-slate-400">
                 <div className="w-9 h-9 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" />
                 <p className="text-xs font-semibold text-slate-600">{t('loading_cards')}</p>
               </div>
             ) : wordsList.length === 0 ? (
               allSectionWords.length > 0 ? (
-                <div className="w-full h-[440px] sm:h-[470px] bg-white rounded-2xl border border-emerald-200 shadow-sm flex flex-col items-center justify-center text-center p-6 sm:p-8 space-y-4">
+                <div className="w-full h-[480px] sm:h-[520px] lg:h-[540px] bg-white rounded-2xl border border-emerald-200 shadow-sm flex flex-col items-center justify-center text-center p-6 sm:p-8 space-y-4">
                   <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-200 shadow-xs">
                     <CheckCheck className="w-8 h-8" />
                   </div>
@@ -1040,7 +1070,7 @@ export default function LessonStudyPage() {
                   </div>
                 </div>
               ) : (
-                <div className="w-full h-[440px] sm:h-[470px] bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center p-6 sm:p-8 space-y-3">
+                <div className="w-full h-[480px] sm:h-[520px] lg:h-[540px] bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center p-6 sm:p-8 space-y-3">
                   <div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-inner border border-blue-100">
                     <BookOpen className="w-8 h-8" />
                   </div>
@@ -1108,7 +1138,7 @@ export default function LessonStudyPage() {
 
                 {/* MODES 2 & 3 (SOLID CRISP WHITE CARD) */}
                 {mode !== 'flashcard' && (
-                  <div className="w-full min-h-[440px] sm:min-h-[470px] bg-white rounded-xl border border-slate-200 shadow-md p-4 sm:p-6 flex flex-col justify-center items-center">
+                  <div className="w-full h-[480px] sm:h-[520px] lg:h-[540px] bg-white rounded-xl border border-slate-200 shadow-md p-4 sm:p-6 flex flex-col justify-center items-center overflow-hidden">
                     {/* MODE 2: ĐOÁN TỪ (GUESS MODE) */}
                     {mode === 'guess' && (
                       <GuessModeView

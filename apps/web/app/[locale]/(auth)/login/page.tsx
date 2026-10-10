@@ -6,7 +6,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { LogIn, Lock, User, Eye, EyeOff, AlertCircle } from 'lucide-react';
-import { authService } from '@/services';
+import { authService, activityLogService } from '@/services';
 import { useAppDispatch } from '@/redux/hooks';
 import { setCredentials } from '@/redux/features/auth/authSlice';
 import { LoginDto } from '@/types';
@@ -42,6 +42,15 @@ export default function LoginPage() {
       const { accessToken, profile } = res.data;
 
       dispatch(setCredentials({ user: profile, accessToken }));
+      activityLogService.logAuth(
+        'AUTH_LOGIN',
+        `Đăng nhập thành công (${profile.email})`,
+        {
+          userId: profile._id,
+          userEmail: profile.email,
+          method: 'CREDENTIALS',
+        }
+      );
       router.push(`/${locale}`);
     } catch (err: any) {
       const msg =

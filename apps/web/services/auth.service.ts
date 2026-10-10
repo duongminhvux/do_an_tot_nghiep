@@ -33,7 +33,10 @@ export const authService = {
   },
 
   refreshToken: async () => {
-    const res = await apiClient.post<ApiResponse<RefreshTokenResponse>>('/auth/refresh-token');
+    const res = await apiClient.post<ApiResponse<RefreshTokenResponse>>(
+      '/auth/refresh-token',
+      {}
+    );
     return res.data;
   },
 

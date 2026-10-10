@@ -55,15 +55,23 @@ function CallbackContent() {
         };
 
         // Save immediately
-        localStorage.setItem('accessToken', token);
-        document.cookie = `accessToken=${token}; path=/; max-age=604800; SameSite=Lax`;
-        dispatch(setCredentials({ user: fallbackUser, accessToken: token }));
+        dispatch(
+          setCredentials({
+            user: fallbackUser,
+            accessToken: token,
+          })
+        );
 
         // Fetch full profile from API if possible
         try {
           const profileRes = await authService.getProfile();
           if (profileRes.data) {
-            dispatch(setCredentials({ user: profileRes.data, accessToken: token }));
+            dispatch(
+              setCredentials({
+                user: profileRes.data,
+                accessToken: token,
+              })
+            );
           }
         } catch {
           // If getProfile fails, fallbackUser is already set
