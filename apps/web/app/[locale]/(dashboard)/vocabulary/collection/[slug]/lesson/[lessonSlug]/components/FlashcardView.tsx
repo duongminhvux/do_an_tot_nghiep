@@ -70,7 +70,9 @@ export function FlashcardView({
         {/* CARD FRONT: Razor Sharp, Solid White, Full Width */}
         {/* --------------------------------------------- */}
         <div
-          className="flashcard-face flashcard-front rounded-xl border border-slate-200/90 bg-white p-5 sm:p-7 shadow-md hover:shadow-lg transition-all flex flex-col justify-between overflow-hidden"
+          className={`flashcard-face flashcard-front rounded-xl border border-slate-200/90 bg-white p-5 sm:p-7 shadow-md hover:shadow-lg transition-all flex flex-col justify-between ${
+            isFlipped ? 'absolute inset-0' : 'relative min-h-[440px] sm:min-h-[470px]'
+          }`}
           style={{ pointerEvents: isFlipped ? 'none' : 'auto' }}
         >
           {/* Top Card Badge Header */}
@@ -173,19 +175,15 @@ export function FlashcardView({
               )}
             </div>
           </div>
-
-          {/* Bottom Card Footer Prompt */}
-          <div className="shrink-0 flex items-center justify-between text-[11px] text-slate-400 pt-2.5 border-t border-slate-100/80">
-            <span>{t('space_prompt_flip')}</span>
-            <span className="text-slate-400">Click để lật thẻ ↻</span>
-          </div>
         </div>
 
         {/* --------------------------------------------- */}
         {/* CARD BACK: DISPLAYING ALL MEANINGS & EXAMPLES */}
         {/* --------------------------------------------- */}
         <div
-          className="flashcard-face flashcard-back rounded-xl border border-slate-200/90 bg-white p-4 sm:p-6 shadow-md flex flex-col justify-between overflow-hidden"
+          className={`flashcard-face flashcard-back rounded-xl border border-slate-200/90 bg-white p-4 sm:p-6 shadow-md flex flex-col justify-between ${
+            isFlipped ? 'relative min-h-[440px] sm:min-h-[470px]' : 'absolute inset-0'
+          }`}
           style={{ pointerEvents: isFlipped ? 'auto' : 'none' }}
         >
           {/* Header: Word & BOTH US & UK Audios / IPAs & Summary */}
@@ -245,10 +243,10 @@ export function FlashcardView({
             </div>
           </div>
 
-          {/* Content Area: Scrollable internally so back face never stretches the page */}
+          {/* Content Area: All Parts of Speech and All Meanings (Full natural height, no scrollbars) */}
           <div
             onClick={(e) => e.stopPropagation()}
-            className="flex-1 min-h-0 overflow-y-auto pr-1 sm:pr-2.5 py-2.5 space-y-4 text-left my-1 divide-y divide-slate-100 flashcard-scroll overscroll-contain"
+            className="w-full py-3 space-y-4 text-left my-2 divide-y divide-slate-100"
           >
             {parsedParts.map((partGroup, partIdx) => (
               <div key={partIdx} className={partIdx > 0 ? 'pt-4 space-y-3' : 'space-y-3'}>
@@ -360,15 +358,6 @@ export function FlashcardView({
                 </div>
               </div>
             ))}
-          </div>
-
-          {/* Bottom Card Footer Prompt */}
-          <div className="shrink-0 flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-100/80">
-            <span>{t('space_prompt_flip')}</span>
-            <span className="text-slate-400 flex items-center gap-1 font-medium">
-              <span>Cuộn xem thêm</span>
-              <span className="text-blue-500 font-bold">↕</span>
-            </span>
           </div>
         </div>
       </div>

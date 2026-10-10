@@ -39,7 +39,7 @@ import {
 import LanguageSwitcher from '@/components/language-switcher';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { logout } from '@/redux/features/auth/authSlice';
-import { authService, activityLogService } from '@/services';
+import { authService } from '@/services';
 import { cn } from '@/lib/utils';
 
 export function AppSidebar() {
@@ -56,16 +56,6 @@ export function AppSidebar() {
 
   const handleLogout = async () => {
     try {
-      if (user) {
-        activityLogService.logAuth(
-          'AUTH_LOGOUT',
-          `Người dùng đăng xuất (${user.email})`,
-          {
-            userId: user._id,
-            userEmail: user.email,
-          }
-        );
-      }
       await authService.logout();
     } catch {
       // Ignore errors on logout

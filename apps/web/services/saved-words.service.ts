@@ -5,7 +5,6 @@ import {
   SavedWordsPagination,
   SavedWordsQuery,
 } from '@/types/saved-words';
-import { activityLogService } from './activity-log.service';
 
 export interface SavedWordsListResponse {
   data: SavedWordItem[];
@@ -47,40 +46,31 @@ export const savedWordsService = {
   /**
    * Bật/tắt lưu từ vựng (Toggle bookmark)
    */
-  toggle: async (wordId: string, wordText?: string) => {
+  toggle: async (wordId: string) => {
     const res = await apiClient.post<
       ApiResponse<{ saved: boolean; wordId: string; data?: any }>
     >('/learning/saved-words/toggle', { wordId });
-    if (res.data?.data) {
-      activityLogService.logVocabSave(
-        wordId,
-        wordText || wordId,
-        res.data.data.saved
-      );
-    }
     return res.data;
   },
 
   /**
    * Lưu một từ vựng
    */
-  save: async (wordId: string, note?: string, wordText?: string) => {
+  save: async (wordId: string, note?: string) => {
     const res = await apiClient.post<ApiResponse<any>>(
       '/learning/saved-words',
       { wordId, note },
     );
-    activityLogService.logVocabSave(wordId, wordText || wordId, true);
     return res.data;
   },
 
   /**
    * Bỏ lưu một từ vựng
    */
-  unsave: async (wordId: string, wordText?: string) => {
+  unsave: async (wordId: string) => {
     const res = await apiClient.delete<
       ApiResponse<{ success: boolean; wordId: string }>
     >(`/learning/saved-words/${wordId}`);
-    activityLogService.logVocabSave(wordId, wordText || wordId, false);
     return res.data;
   },
 

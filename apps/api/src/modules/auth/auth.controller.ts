@@ -32,25 +32,17 @@ export class AuthController {
   setCookie(res: express.Response, refresh_token: string) {
     const refreshTokenExpires = this.configService.get<string>('JWT_REFRESH_TOKEN_EXPIRES') || '7d';
     const maxAge = ms(refreshTokenExpires as StringValue);
-    const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
 
     res.cookie('refresh_token', refresh_token, {
       httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? 'none' : 'lax',
-      path: '/',
+      secure: false,
+      sameSite: 'strict',
       maxAge: typeof maxAge === 'number' ? maxAge : 7 * 24 * 60 * 60 * 1000,
     });
   }
 
   clearCookie(res: express.Response) {
-    const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
-    res.clearCookie('refresh_token', {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? 'none' : 'lax',
-      path: '/',
-    });
+    res.clearCookie('refresh_token');
   }
 
   @Public()
@@ -101,8 +93,7 @@ export class AuthController {
         _id: String(user._id),
         username: user.username,
         email: user.email,
-        avatarUrl: user.avatarUrl,
-        role: user.role || 'USER',
+        avatarUrl: user.avatarUrl
       },
     };
   }
@@ -158,11 +149,8 @@ export class AuthController {
 
   @Public()
   @Post('refresh-token')
-  async refreshToken(
-    @Req() req: any,
-    @Res({ passthrough: true }) res: express.Response,
-  ) {
-    const refreshToken = req.cookies?.['refresh_token'] || req.body?.refreshToken;
+  async refreshToken(@Req() req: any, @Res({ passthrough: true }) res: express.Response) {
+    const refreshToken = req.cookies?.['refresh_token'];
     const result = await this.authService.refreshToken(refreshToken);
     this.setCookie(res, result.refreshToken);
     return {

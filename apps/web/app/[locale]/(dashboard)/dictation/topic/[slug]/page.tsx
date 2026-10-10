@@ -34,10 +34,13 @@ export default function DictationTopicPage() {
   const topic = unwrap<DictationTopicDetail>(data);
 
   useEffect(() => {
-    if (topic?.sections?.length && openSections.size === 0) {
-      setOpenSections(new Set([topic.sections[0]._id]));
-    }
-  }, [topic?._id]);
+    const firstSectionId = topic?.sections?.[0]?._id;
+    if (!firstSectionId) return;
+
+    setOpenSections((current) =>
+      current.size === 0 ? new Set([firstSectionId]) : current,
+    );
+  }, [topic?._id, topic?.sections]);
 
   const sections = useMemo(() => {
     if (!topic?.sections) return [];

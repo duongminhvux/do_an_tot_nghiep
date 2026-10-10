@@ -616,33 +616,31 @@ export default function SrsReviewPage() {
         .flashcard-3d-wrapper {
           perspective: 1400px;
           width: 100%;
-          height: 480px;
+          height: auto;
+          min-height: 440px;
         }
         @media (min-width: 640px) {
           .flashcard-3d-wrapper {
-            height: 520px;
-          }
-        }
-        @media (min-width: 1024px) {
-          .flashcard-3d-wrapper {
-            height: 540px;
+            min-height: 470px;
           }
         }
         .flashcard-3d-inner {
           position: relative;
           width: 100%;
-          height: 100%;
+          min-height: 440px;
           transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
           transform-style: preserve-3d;
+        }
+        @media (min-width: 640px) {
+          .flashcard-3d-inner {
+            min-height: 470px;
+          }
         }
         .flashcard-3d-inner.is-flipped {
           transform: rotateY(180deg);
         }
         .flashcard-face {
-          position: absolute;
-          inset: 0;
           width: 100%;
-          height: 100%;
           backface-visibility: hidden;
           -webkit-backface-visibility: hidden;
         }
@@ -651,20 +649,6 @@ export default function SrsReviewPage() {
         }
         .flashcard-back {
           transform: rotateY(180deg);
-        }
-        .flashcard-scroll::-webkit-scrollbar {
-          width: 6px;
-        }
-        .flashcard-scroll::-webkit-scrollbar-track {
-          background: #f8fafc;
-          border-radius: 9999px;
-        }
-        .flashcard-scroll::-webkit-scrollbar-thumb {
-          background: #cbd5e1;
-          border-radius: 9999px;
-        }
-        .flashcard-scroll::-webkit-scrollbar-thumb:hover {
-          background: #94a3b8;
         }
       `}</style>
 
@@ -721,13 +705,13 @@ export default function SrsReviewPage() {
 
         {/* Study Card Area */}
         {isDueLoading ? (
-          <div className="w-full h-[480px] sm:h-[520px] lg:h-[540px] bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center gap-3 text-slate-400">
+          <div className="w-full h-[440px] sm:h-[470px] bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center gap-3 text-slate-400">
             <div className="w-9 h-9 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" />
             <p className="text-xs font-semibold text-slate-600">{t('loading_cards')}</p>
           </div>
         ) : wordsList.length === 0 ? (
           /* Empty Due Reviews State */
-          <div className="w-full h-[480px] sm:h-[520px] lg:h-[540px] bg-white rounded-2xl border border-emerald-200 shadow-sm flex flex-col items-center justify-center text-center p-6 sm:p-8 space-y-4">
+          <div className="w-full h-[440px] sm:h-[470px] bg-white rounded-2xl border border-emerald-200 shadow-sm flex flex-col items-center justify-center text-center p-6 sm:p-8 space-y-4">
             <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-200 shadow-xs">
               <CheckCheck className="w-8 h-8" />
             </div>
@@ -797,7 +781,7 @@ export default function SrsReviewPage() {
 
             {/* MODES 2 & 3: GUESS / REPEAT */}
             {mode !== 'flashcard' && (
-              <div className="w-full h-[480px] sm:h-[520px] lg:h-[540px] bg-white rounded-2xl border border-slate-200 shadow-md p-4 sm:p-6 flex flex-col justify-center items-center overflow-hidden">
+              <div className="w-full min-h-[440px] sm:min-h-[470px] bg-white rounded-2xl border border-slate-200 shadow-md p-4 sm:p-6 flex flex-col justify-center items-center">
                 {mode === 'guess' && (
                   <GuessModeView
                     illustration={illustration}

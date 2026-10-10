@@ -11,14 +11,6 @@ import { learningService } from './learning.service';
 import { dictationService } from './dictation.service';
 import { toeicService } from './toeic.service';
 
-export * from './dictation.service';
-export * from './toeic.service';
-export * from './saved-words.service';
-export * from './activity-log.service';
-
-import { savedWordsService } from './saved-words.service';
-import { activityLogService } from './activity-log.service';
-
 export const apiService = {
   auth: authService,
   user: userService,
@@ -28,8 +20,8 @@ export const apiService = {
   learning: learningService,
   dictation: dictationService,
   toeic: toeicService,
-  savedWords: savedWordsService,
-  activityLog: activityLogService,
 };
 
 export default apiService;
+export * from './dictation.service';
+export * from './toeic.service';

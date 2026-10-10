@@ -23,10 +23,7 @@ export const authSlice = createSlice({
   reducers: {
     setCredentials: (
       state,
-      action: PayloadAction<{
-        user: UserProfile;
-        accessToken: string;
-      }>
+      action: PayloadAction<{ user: UserProfile; accessToken: string }>
     ) => {
       state.user = action.payload.user;
       state.accessToken = action.payload.accessToken;
@@ -35,21 +32,14 @@ export const authSlice = createSlice({
       if (typeof window !== 'undefined') {
         localStorage.setItem('accessToken', action.payload.accessToken);
         localStorage.setItem('user', JSON.stringify(action.payload.user));
-        localStorage.removeItem('refreshToken');
         document.cookie = `accessToken=${action.payload.accessToken}; path=/; max-age=604800; SameSite=Lax`;
       }
     },
-    updateAccessToken: (
-      state,
-      action: PayloadAction<string>
-    ) => {
-      const newAccess = action.payload;
-      state.accessToken = newAccess;
-      state.isAuthenticated = true;
+    updateAccessToken: (state, action: PayloadAction<string>) => {
+      state.accessToken = action.payload;
       if (typeof window !== 'undefined') {
-        localStorage.setItem('accessToken', newAccess);
-        localStorage.removeItem('refreshToken');
-        document.cookie = `accessToken=${newAccess}; path=/; max-age=604800; SameSite=Lax`;
+        localStorage.setItem('accessToken', action.payload);
+        document.cookie = `accessToken=${action.payload}; path=/; max-age=604800; SameSite=Lax`;
       }
     },
     setUser: (state, action: PayloadAction<UserProfile>) => {
@@ -66,7 +56,6 @@ export const authSlice = createSlice({
       state.isInitialized = true;
       if (typeof window !== 'undefined') {
         localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
         document.cookie = 'accessToken=; path=/; max-age=0; SameSite=Lax';
       }
@@ -77,13 +66,12 @@ export const authSlice = createSlice({
     initializeAuth: (state) => {
       state.isInitialized = true;
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('refreshToken');
         const token = localStorage.getItem('accessToken');
         const userStr = localStorage.getItem('user');
-        if (userStr && token) {
+        if (token && userStr) {
           try {
-            state.user = JSON.parse(userStr);
             state.accessToken = token;
+            state.user = JSON.parse(userStr);
             state.isAuthenticated = true;
             document.cookie = `accessToken=${token}; path=/; max-age=604800; SameSite=Lax`;
           } catch {
