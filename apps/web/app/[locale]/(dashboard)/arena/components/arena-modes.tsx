@@ -11,7 +11,7 @@ export function ArenaModes({ text, openPanel, button }: Props) {
   return (
     <section
       aria-label={text("Chọn chế độ chơi", "Choose a game mode")}
-      className="grid gap-4 md:grid-cols-3"
+      className="grid min-w-0 gap-3 @min-[560px]/arena:grid-cols-2 @min-[900px]/arena:grid-cols-3 sm:gap-4"
     >
       {[
         {
@@ -69,7 +69,7 @@ export function ArenaModes({ text, openPanel, button }: Props) {
         <article
           key={mode.key}
           className={cn(
-            "flex flex-col rounded bg-gradient-to-br p-5",
+            "flex min-w-0 flex-col rounded bg-gradient-to-br p-4 @min-[560px]/arena:last:col-span-2 @min-[900px]/arena:p-5 @min-[900px]/arena:last:col-span-1",
             mode.style,
           )}
         >
@@ -83,7 +83,7 @@ export function ArenaModes({ text, openPanel, button }: Props) {
             >
               <mode.icon className="size-7" strokeWidth={2.3} />
             </span>
-            <div>
+            <div className="min-w-0">
               <h2 className="flex flex-wrap items-center gap-2 text-sm font-bold text-slate-900">
                 {mode.title}
                 {mode.key === "rank" && (

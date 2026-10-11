@@ -11,140 +11,6 @@ export const arenaStats = {
   winRate: 60.5,
 };
 
-export const recentMatches = [
-  {
-    id: 1,
-    name: "Lê Hoàng Minh",
-    initials: "HM",
-    color: "blue",
-    won: true,
-    score: [18, 12],
-    minutes: 2,
-    mode: "rank",
-    points: 25,
-  },
-  {
-    id: 2,
-    name: "Trần Phương Thảo",
-    initials: "PT",
-    color: "rose",
-    won: false,
-    score: [14, 18],
-    minutes: 15,
-    mode: "friend",
-    points: -15,
-  },
-  {
-    id: 3,
-    name: "Nguyễn Thanh Tùng",
-    initials: "TT",
-    color: "amber",
-    won: true,
-    score: [20, 15],
-    minutes: 1440,
-    mode: "room",
-    points: 28,
-  },
-  {
-    id: 4,
-    name: "Phạm Minh Đức",
-    initials: "MĐ",
-    color: "violet",
-    won: true,
-    score: [17, 9],
-    minutes: 180,
-    mode: "rank",
-    points: 22,
-  },
-  {
-    id: 5,
-    name: "Vũ Hoài An",
-    initials: "HA",
-    color: "teal",
-    won: false,
-    score: [11, 16],
-    minutes: 300,
-    mode: "rank",
-    points: -18,
-  },
-  {
-    id: 6,
-    name: "Đặng Hải Nam",
-    initials: "HN",
-    color: "blue",
-    won: true,
-    score: [19, 14],
-    minutes: 1440,
-    mode: "friend",
-    points: 24,
-  },
-  {
-    id: 7,
-    name: "Mai Ngọc Anh",
-    initials: "NA",
-    color: "rose",
-    won: true,
-    score: [16, 10],
-    minutes: 2880,
-    mode: "room",
-    points: 21,
-  },
-  {
-    id: 8,
-    name: "Hoàng Gia Huy",
-    initials: "GH",
-    color: "teal",
-    won: false,
-    score: [12, 17],
-    minutes: 2880,
-    mode: "rank",
-    points: -16,
-  },
-] as const;
-
-export const leaderboard = [
-  {
-    name: "Trần Minh Quân",
-    initials: "MQ",
-    color: "amber",
-    week: 2350,
-    month: 3280,
-    all: 5120,
-  },
-  {
-    name: "Nguyễn Lê Bảo",
-    initials: "LB",
-    color: "blue",
-    week: 2180,
-    month: 3420,
-    all: 4890,
-  },
-  {
-    name: "Phạm Thu Hà",
-    initials: "TH",
-    color: "rose",
-    week: 2120,
-    month: 3100,
-    all: 5360,
-  },
-  {
-    name: "Lê Hoàng Minh",
-    initials: "HM",
-    color: "teal",
-    week: 1980,
-    month: 2940,
-    all: 4510,
-  },
-  {
-    name: "Nguyễn Thanh Tùng",
-    initials: "TT",
-    color: "violet",
-    week: 1860,
-    month: 2870,
-    all: 4280,
-  },
-];
-
 export const friends = [
   {
     name: "Lê Hoàng Minh",
@@ -204,4 +70,16 @@ export const demoQuestions = [
   },
 ];
 
-export type ArenaMatch = (typeof recentMatches)[number];
+export type ArenaMatch = {
+  id: string;
+  name: string;
+  initials: string;
+  color: string;
+  avatarUrl?: string;
+  won: boolean;
+  draw: boolean;
+  score: [number, number];
+  minutes: number;
+  mode: "rank" | "friend" | "room";
+  points: number;
+};

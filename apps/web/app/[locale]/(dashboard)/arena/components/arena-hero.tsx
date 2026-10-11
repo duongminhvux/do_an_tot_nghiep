@@ -8,15 +8,15 @@ type Props = Pick<ArenaController, "text">;
 
 export function ArenaHero({ text }: Props) {
   return (
-    <section className="relative isolate min-h-[180px] overflow-hidden rounded bg-gradient-to-r from-[#eef5ff] to-[#dce9ff] px-6 py-7 sm:px-7 lg:min-h-[192px]">
-      <div className="relative z-10 max-w-[480px] md:w-[54%]">
+    <section className="relative isolate overflow-hidden rounded bg-gradient-to-r from-[#eef5ff] to-[#dce9ff] px-4 py-5 @min-[700px]/arena:min-h-[192px] @min-[700px]/arena:px-7 @min-[700px]/arena:py-7">
+      <div className="relative z-10 min-w-0 max-w-[480px] @min-[700px]/arena:w-[54%]">
         <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[.18em] text-blue-500">
           {text(
             "Học hết mình · Chơi hết sức",
             "Learn together · Play together",
           )}
         </div>
-        <h1 className="text-[30px] font-extrabold leading-tight tracking-tight text-slate-950 sm:text-4xl">
+        <h1 className="text-2xl font-extrabold leading-tight tracking-tight text-slate-950 @min-[480px]/arena:text-3xl @min-[900px]/arena:text-4xl">
           Vocabulary <span className="text-blue-600">Arena</span>
         </h1>
         <p className="mt-2 text-sm font-semibold text-slate-800">
@@ -32,7 +32,7 @@ export function ArenaHero({ text }: Props) {
           )}
         </p>
       </div>
-      <div className="absolute inset-y-0 right-0 hidden w-[46%] md:block">
+      <div className="absolute inset-y-0 right-0 hidden w-[46%] @min-[700px]/arena:block">
         <Image
           src="/images/arena/arena-hero.png"
           alt={text(

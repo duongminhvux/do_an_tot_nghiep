@@ -24,17 +24,21 @@ export function MatchDetailsPanel({
           <span
             className={cn(
               "mx-auto flex size-16 items-center justify-center rounded-full",
-              selectedMatch.won
-                ? "bg-emerald-50 text-emerald-500"
-                : "bg-rose-50 text-rose-500",
+              selectedMatch.draw
+                ? "bg-blue-50 text-blue-500"
+                : selectedMatch.won
+                  ? "bg-emerald-50 text-emerald-500"
+                  : "bg-rose-50 text-rose-500",
             )}
           >
             <Trophy className="size-8" />
           </span>
           <h3 className="mt-3 text-xl font-bold text-slate-900">
-            {selectedMatch.won
-              ? text("Chiến thắng!", "Victory!")
-              : text("Cố gắng ở trận sau!", "Better luck next time!")}
+            {selectedMatch.draw
+              ? text("Hòa!", "Draw!")
+              : selectedMatch.won
+                ? text("Chiến thắng!", "Victory!")
+                : text("Cố gắng ở trận sau!", "Better luck next time!")}
           </h3>
           <p className="mt-2 text-xs text-slate-500">
             {modeLabel(selectedMatch.mode)} · {timeLabel(selectedMatch.minutes)}
@@ -51,7 +55,11 @@ export function MatchDetailsPanel({
           <p
             className={cn(
               "text-sm font-semibold",
-              selectedMatch.won ? "text-emerald-600" : "text-rose-500",
+              selectedMatch.draw
+                ? "text-blue-600"
+                : selectedMatch.won
+                  ? "text-emerald-600"
+                  : "text-rose-500",
             )}
           >
             {selectedMatch.points > 0 ? "+" : ""}

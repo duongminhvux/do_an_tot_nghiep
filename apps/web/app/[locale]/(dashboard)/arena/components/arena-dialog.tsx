@@ -11,21 +11,26 @@ import { MatchDetailsPanel } from "./match-details-panel";
 import { DemoGamePanel } from "./demo-game-panel";
 
 export function ArenaDialog(props: ArenaController) {
-  const { panel, setPanel, text, dialogTitle } = props;
+  const { panel, setPanel, text, dialogTitle, cancelRankedQueue } = props;
   return (
     <Dialog.Root
       open={panel !== null}
       onOpenChange={(open) => {
-        if (!open) setPanel(null);
+        if (!open) {
+          if (panel === "rank") {
+            cancelRankedQueue();
+          }
+          setPanel(null);
+        }
       }}
     >
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-slate-950/35 backdrop-blur-sm" />
         <Dialog.Content
           className={cn(
-            "fixed left-1/2 top-1/2 z-50 max-h-[90dvh] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded border border-slate-200 p-6 shadow-2xl",
+            "fixed left-1/2 top-1/2 z-50 max-h-[calc(100dvh-2rem)] w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded border border-slate-200 p-4 shadow-2xl sm:w-[calc(100%-2rem)] sm:p-6",
             panel === "rank"
-              ? "max-w-[380px] bg-[radial-gradient(ellipse_at_center,#edf5ff_0%,#f8fbff_65%,#fff_100%)] p-4 sm:p-5"
+              ? "max-w-2xl rounded   bg-[radial-gradient(ellipse_at_center,#edf5ff_0%,#f8fbff_65%,#fff_100%)] p-0"
               : "bg-white",
           )}
         >

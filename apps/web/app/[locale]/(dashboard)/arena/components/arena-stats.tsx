@@ -1,110 +1,191 @@
 "use client";
 
-import { ArrowUp, BarChart3, Flame, Target, Trophy } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  BarChart3,
+  Flame,
+  Target,
+  Trophy,
+} from "lucide-react";
+
 import { cn } from "@/lib/utils";
-import { arenaStats } from "../arena-data";
 
 import type { ArenaController } from "../hooks/use-arena-controller";
 
-type Props = Pick<ArenaController, "text" | "number">;
+type Props = Pick<ArenaController, "text" | "number" | "profile">;
 
-export function ArenaStats({ text, number }: Props) {
+export function ArenaStats({ text, number, profile }: Props) {
+  const rating = profile?.rating ?? 0;
+
+  const totalMatches = profile?.ranked?.matches ?? 0;
+
+  const rankPosition =
+    totalMatches > 0 ? (profile?.leaderboard?.position ?? 0) : 0;
+
+  const topPercent =
+    totalMatches > 0 ? (profile?.leaderboard?.topPercent ?? 0) : 0;
+
+  const todayRatingChange = profile?.todayRatingChange ?? 0;
+
+  const wins = profile?.ranked?.wins ?? 0;
+
+  const losses = profile?.ranked?.losses ?? 0;
+
+  const currentStreak = profile?.ranked?.currentWinStreak ?? 0;
+
+  const bestStreak = profile?.ranked?.bestWinStreak ?? 0;
+
+  const winRate = profile?.ranked?.winRate ?? 0;
+
+  const stats = [
+    {
+      title: text("Hạng hiện tại", "Current rank"),
+      value:
+        totalMatches > 0 && rankPosition > 0
+          ? `#${number(rankPosition)}`
+          : "--",
+      icon: BarChart3,
+      color: "text-blue-600 bg-blue-50",
+      note:
+        totalMatches > 0 && topPercent > 0
+          ? text(
+              `Top ${topPercent}% người chơi`,
+              `Top ${topPercent}% of players`,
+            )
+          : text("Chưa có hạng", "Not ranked yet"),
+    },
+
+    {
+      title: text("Điểm xếp hạng", "Rating"),
+      value: number(rating),
+      icon: Trophy,
+      color: "text-amber-500 bg-amber-50",
+      note: text(
+        `${
+          todayRatingChange > 0 ? "+" : ""
+        }${number(todayRatingChange)} hôm nay`,
+        `${todayRatingChange > 0 ? "+" : ""}${number(todayRatingChange)} today`,
+      ),
+      ratingChange: todayRatingChange,
+    },
+
+    {
+      title: text("Tổng số trận", "Total matches"),
+      value: number(totalMatches),
+      icon: Target,
+      color: "text-violet-600 bg-violet-50",
+      note: text(
+        `Thắng ${number(wins)} · Thua ${number(losses)}`,
+        `${number(wins)} wins · ${number(losses)} losses`,
+      ),
+    },
+
+    {
+      title: text("Chuỗi thắng", "Win streak"),
+      value: text(
+        `${number(currentStreak)} trận`,
+        `${number(currentStreak)} matches`,
+      ),
+      icon: Flame,
+      color: "text-orange-500 bg-orange-50",
+      note: text(
+        `Kỷ lục: ${number(bestStreak)} trận`,
+        `Best: ${number(bestStreak)} matches`,
+      ),
+    },
+
+    {
+      title: text("Tỷ lệ thắng", "Win rate"),
+      value: `${winRate}%`,
+      icon: BarChart3,
+      color: "text-blue-500 bg-blue-50",
+      progress: true,
+    },
+  ];
+
   return (
     <section
       aria-label={text("Thống kê của bạn", "Your statistics")}
-      className="grid grid-cols-2 gap-3 xl:grid-cols-5"
+      className="grid min-w-0 gap-2 @min-[340px]/arena:grid-cols-2 @min-[640px]/arena:grid-cols-3 @min-[1080px]/arena:grid-cols-5 sm:gap-3"
     >
-      {[
-        {
-          title: text("Hạng hiện tại", "Current rank"),
-          value: `#${arenaStats.rank}`,
-          icon: BarChart3,
-          color: "text-blue-600 bg-blue-50",
-          note: text("Top 12% người chơi", "Top 12% of players"),
-          increase: arenaStats.rankChange,
-        },
-        {
-          title: text("Điểm xếp hạng", "Rating"),
-          value: number(arenaStats.rating),
-          icon: Trophy,
-          color: "text-amber-500 bg-amber-50",
-          note: text("+35 hôm nay", "+35 today"),
-          green: true,
-        },
-        {
-          title: text("Tổng số trận", "Total matches"),
-          value: arenaStats.total,
-          icon: Target,
-          color: "text-violet-600 bg-violet-50",
-          note: text("Thắng 52 · Thua 34", "52 wins · 34 losses"),
-        },
-        {
-          title: text("Chuỗi thắng", "Win streak"),
-          value: text("5 trận", "5 matches"),
-          icon: Flame,
-          color: "text-orange-500 bg-orange-50",
-          note: text("Kỷ lục: 8 trận", "Best: 8 matches"),
-        },
-        {
-          title: text("Tỷ lệ thắng", "Win rate"),
-          value: `${arenaStats.winRate}%`,
-          icon: BarChart3,
-          color: "text-blue-500 bg-blue-50",
-          progress: true,
-        },
-      ].map((stat) => (
-        <article
-          key={stat.title}
-          className="flex items-center gap-3 rounded border border-slate-200/70 bg-white px-4 py-4 last:col-span-2 xl:last:col-span-1"
-        >
-          <span
-            className={cn(
-              "flex size-11 shrink-0 items-center justify-center rounded-xl",
-              stat.color,
-            )}
+      {stats.map((stat) => {
+        const isPositive =
+          stat.ratingChange !== undefined && stat.ratingChange > 0;
+
+        const isNegative =
+          stat.ratingChange !== undefined && stat.ratingChange < 0;
+
+        return (
+          <article
+            key={stat.title}
+            className="flex min-w-0 items-center gap-2 rounded border border-slate-200/70 bg-white p-3 @min-[340px]/arena:last:col-span-2 @min-[640px]/arena:gap-3 @min-[640px]/arena:p-4 @min-[640px]/arena:last:col-span-1"
           >
-            <stat.icon className="size-6" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-medium text-slate-500">
-              {stat.title}
-            </p>
-            <div className="mt-1 flex items-center gap-2">
-              <p
-                className={cn(
-                  "text-lg font-bold tracking-tight text-slate-900",
-                  stat.progress && "text-blue-600",
-                )}
-              >
-                {stat.value}
+            <span
+              className={cn(
+                "flex size-8 shrink-0 items-center justify-center rounded-xl @min-[640px]/arena:size-11",
+                stat.color,
+              )}
+            >
+              <stat.icon className="size-4 @min-[640px]/arena:size-6" />
+            </span>
+
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-medium text-slate-500">
+                {stat.title}
               </p>
-              {stat.increase && (
-                <span className="flex items-center rounded bg-emerald-50 px-1 py-0.5 text-[9px] font-semibold text-emerald-600">
-                  <ArrowUp className="size-3" />
-                  {stat.increase}
-                </span>
+
+              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <p
+                  className={cn(
+                    "text-lg font-bold tracking-tight text-slate-900",
+                    stat.progress && "text-blue-600",
+                  )}
+                >
+                  {stat.value}
+                </p>
+
+                {stat.ratingChange !== undefined && stat.ratingChange !== 0 && (
+                  <span
+                    className={cn(
+                      "flex items-center rounded px-1 py-0.5 text-[9px] font-semibold",
+                      isPositive && "bg-emerald-50 text-emerald-600",
+                      isNegative && "bg-red-50 text-red-600",
+                    )}
+                  >
+                    {isPositive && <ArrowUp className="size-3" />}
+
+                    {isNegative && <ArrowDown className="size-3" />}
+
+                    {Math.abs(stat.ratingChange)}
+                  </span>
+                )}
+              </div>
+
+              {stat.progress ? (
+                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className="h-full rounded-full bg-blue-600 transition-all"
+                    style={{
+                      width: `${Math.min(100, Math.max(0, winRate))}%`,
+                    }}
+                  />
+                </div>
+              ) : (
+                <p
+                  className={cn(
+                    "mt-0.5 text-[9px] text-slate-500",
+                    isPositive && "text-emerald-500",
+                    isNegative && "text-red-500",
+                  )}
+                >
+                  {stat.note}
+                </p>
               )}
             </div>
-            {stat.progress ? (
-              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                <div
-                  className="h-full rounded-full bg-blue-600"
-                  style={{ width: `${arenaStats.winRate}%` }}
-                />
-              </div>
-            ) : (
-              <p
-                className={cn(
-                  "mt-0.5 text-[9px] text-slate-500",
-                  stat.green && "text-emerald-500",
-                )}
-              >
-                {stat.note}
-              </p>
-            )}
-          </div>
-        </article>
-      ))}
+          </article>
+        );
+      })}
     </section>
   );
 }

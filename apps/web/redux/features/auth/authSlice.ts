@@ -66,13 +66,12 @@ export const authSlice = createSlice({
     initializeAuth: (state) => {
       state.isInitialized = true;
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('refreshToken');
         const token = localStorage.getItem('accessToken');
         const userStr = localStorage.getItem('user');
-        if (userStr && token) {
+        if (token && userStr) {
           try {
-            state.user = JSON.parse(userStr);
             state.accessToken = token;
+            state.user = JSON.parse(userStr);
             state.isAuthenticated = true;
             document.cookie = `accessToken=${token}; path=/; max-age=604800; SameSite=Lax`;
           } catch {
