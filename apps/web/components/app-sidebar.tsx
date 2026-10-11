@@ -22,6 +22,7 @@ import {
   History,
   BarChart3,
   Swords,
+  Gamepad2,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -54,6 +55,7 @@ export function AppSidebar() {
 
   const [vocabMenuOpen, setVocabMenuOpen] = useState(true);
   const [toeicMenuOpen, setToeicMenuOpen] = useState(true);
+  const [gamesMenuOpen, setGamesMenuOpen] = useState(true);
 
   const handleLogout = async () => {
     try {
@@ -75,6 +77,9 @@ export function AppSidebar() {
     pathname === `/${locale}/dictation` ||
     (pathname?.startsWith(`/${locale}/dictation/`) && !pathname?.startsWith(`/${locale}/dictation/progress`));
   const isProgressActive = pathname?.startsWith(`/${locale}/dictation/progress`);
+  const isArenaActive = pathname === `/${locale}/arena` || pathname?.startsWith(`/${locale}/arena/`);
+  const isGamesListActive = pathname === `/${locale}/games` || pathname?.startsWith(`/${locale}/games/`);
+  const isGamesSectionActive = isArenaActive || isGamesListActive;
 
   const isToeicExamsActive =
     pathname === `/${locale}/toeic` ||
@@ -237,14 +242,78 @@ export function AppSidebar() {
                 </div>
               </SidebarMenuItem>
 
+              {/* 3. Trò chơi (Collapsible with Vocabulary Arena & Game List) */}
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname === `/${locale}/arena`} tooltip={t('nav.arena', locale === 'en' ? 'Vocabulary Arena' : 'Đấu trường')} className={cn('h-10 px-3 rounded text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-all font-medium text-[15px]', pathname === `/${locale}/arena` && 'bg-blue-50/80 text-blue-600 font-semibold shadow-xs')}>
-                  <Link href={`/${locale}/arena`} className="flex items-center gap-3">
-                    <Swords className="h-5 w-5 shrink-0" />
-                    <span className="group-data-[collapsible=icon]:hidden">{t('nav.arena', locale === 'en' ? 'Vocabulary Arena' : 'Đấu trường')}</span>
-                    <span className="ml-auto rounded bg-blue-50 px-1.5 py-0.5 text-[9px] font-bold text-blue-500 group-data-[collapsible=icon]:hidden">NEW</span>
-                  </Link>
-                </SidebarMenuButton>
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setGamesMenuOpen(!gamesMenuOpen)}
+                    className={cn(
+                      'w-full flex items-center justify-between h-10 px-3 rounded text-slate-700 hover:text-blue-600 hover:bg-slate-50 transition-all font-semibold text-[15px] cursor-pointer group',
+                      isGamesSectionActive && 'text-blue-600'
+                    )}
+                    title={t('nav.games', 'Trò chơi')}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Gamepad2
+                        className={cn(
+                          'h-5 w-5 shrink-0',
+                          isGamesSectionActive ? 'text-blue-600' : 'text-slate-500'
+                        )}
+                      />
+                      <span className="truncate group-data-[collapsible=icon]:hidden font-semibold">
+                        {t('nav.games', 'Trò chơi')}
+                      </span>
+                    </div>
+                    <div className="group-data-[collapsible=icon]:hidden text-slate-400 group-hover:text-blue-600 transition-colors">
+                      {gamesMenuOpen ? (
+                        <ChevronUp className="w-4 h-4" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4" />
+                      )}
+                    </div>
+                  </button>
+
+                  {gamesMenuOpen && (
+                    <div className="pl-7 pr-1 pt-1.5 space-y-1 group-data-[collapsible=icon]:hidden">
+                      <Link
+                        href={`/${locale}/arena`}
+                        className={cn(
+                          'flex items-center gap-2.5 px-3 py-2 rounded text-sm font-medium transition-all',
+                          isArenaActive
+                            ? 'bg-blue-50 text-blue-600 font-semibold'
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                        )}
+                      >
+                        <Swords
+                          className={cn(
+                            'w-4 h-4 shrink-0',
+                            isArenaActive ? 'text-blue-600' : 'text-slate-400'
+                          )}
+                        />
+                        <span>{t('nav.arena', 'Đấu trường từ vựng')}</span>
+                      </Link>
+
+                      <Link
+                        href={`/${locale}/games`}
+                        className={cn(
+                          'flex items-center gap-2.5 px-3 py-2 rounded text-sm font-medium transition-all',
+                          isGamesListActive
+                            ? 'bg-blue-50 text-blue-600 font-semibold'
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                        )}
+                      >
+                        <Gamepad2
+                          className={cn(
+                            'w-4 h-4 shrink-0',
+                            isGamesListActive ? 'text-blue-600' : 'text-slate-400'
+                          )}
+                        />
+                        <span>{t('nav.game_list', 'Danh sách trò chơi')}</span>
+                      </Link>
+                    </div>
+                  )}
+                </div>
               </SidebarMenuItem>
 
               {/* 3. Vocabulary (Collapsible with Explore & My Words) */}
