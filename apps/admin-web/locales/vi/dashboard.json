@@ -1,27 +1,73 @@
 {
-  "badge": "Bảng điều khiển Quản trị",
-  "welcome": "Chào mừng trở lại, {{name}}!",
-  "description": "Quản lý bộ sưu tập từ vựng, bài học, từ mới và tài khoản người dùng từ một trang quản trị tập trung.",
-  "cards": {
-    "collections": {
-      "tag": "Danh mục",
-      "title": "Bộ sưu tập",
-      "desc": "Quản lý các chủ đề và danh mục học"
-    },
-    "lessons": {
-      "tag": "Lộ trình",
-      "title": "Bài học",
-      "desc": "Tạo và sắp xếp lộ trình bài học"
-    },
-    "vocabulary": {
-      "tag": "Kho dữ liệu",
-      "title": "Từ vựng",
-      "desc": "Kho từ vựng, phiên âm, nghĩa và ví dụ"
-    },
+  "breadcrumb": {
+    "home": "Trang chủ",
+    "overview": "Tổng quan"
+  },
+  "title": "Tổng quan",
+  "description": "Tổng quan tình hình hoạt động của hệ thống VocaLearn.",
+  "range": {
+    "7": "7 ngày gần đây",
+    "30": "30 ngày gần đây",
+    "90": "90 ngày gần đây"
+  },
+  "stats": {
     "users": {
-      "tag": "Tài khoản",
-      "title": "Người dùng",
-      "desc": "Theo dõi tài khoản học viên và phân quyền"
+      "label": "Tổng người dùng",
+      "sub": "so với kỳ trước"
+    },
+    "exams": {
+      "label": "Tổng đề thi",
+      "sub": "đang hoạt động"
+    },
+    "attempts": {
+      "label": "Lượt làm bài",
+      "sub": "trong 7 ngày"
+    },
+    "avgScore": {
+      "label": "Điểm trung bình",
+      "sub": "điểm so với kỳ trước"
     }
-  }
+  },
+  "chart": {
+    "title": "Hoạt động {{days}} ngày gần đây",
+    "subtitle": "Theo dõi hoạt động của người dùng và lượt làm bài.",
+    "listening": "Người dùng mới",
+    "reading": "Lượt làm bài",
+    "fullTest": "Full Test",
+    "empty": "Không có dữ liệu để hiển thị"
+  },
+  "examStatus": {
+    "title": "Tỷ lệ trạng thái đề",
+    "total": "tổng số đề",
+    "active": "đang hoạt động",
+    "inactive": "đang ẩn",
+    "manage": "Quản lý đề thi"
+  },
+  "popular": {
+    "title": "Nhóm đề nổi bật",
+    "attempts": "{{n}} lượt làm",
+    "view": "Xem"
+  },
+  "newUsers": {
+    "title": "Người dùng mới",
+    "viewAll": "Xem tất cả"
+  },
+  "recent": {
+    "title": "Hoạt động gần đây",
+    "completed_exam": "{{user}} hoàn thành {{target}}",
+    "registered": "{{user}} đăng ký tài khoản",
+    "created_exam": "{{user}} tạo {{target}}",
+    "achieved_score": "{{user}} đạt {{score}} điểm",
+    "started_exam": "{{user}} bắt đầu làm {{target}}",
+    "learned_words": "{{user}} học từ vựng mới",
+    "submitted_dictation": "{{user}} nộp bài nghe viết",
+    "generic": "{{user}} {{target}}"
+  },
+  "time": {
+    "justNow": "Vừa xong",
+    "minutesAgo": "{{n}} phút trước",
+    "hoursAgo": "{{n}} giờ trước",
+    "daysAgo": "{{n}} ngày trước"
+  },
+  "empty": "Chưa có dữ liệu"
 }

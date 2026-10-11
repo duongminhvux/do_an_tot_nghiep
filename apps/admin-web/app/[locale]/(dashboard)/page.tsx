@@ -1,111 +1,121 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo, useState } from 'react';
+import { useParams } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { dashboardService } from '@/services/dashboard.service';
+import { OverviewHeader } from '@/components/dashboard/overview-header';
+import { StatCards } from '@/components/dashboard/stat-cards';
+import { ActivityChart } from '@/components/dashboard/activity-chart';
+import { ExamStatusCard } from '@/components/dashboard/exam-status-card';
+import { PopularExams } from '@/components/dashboard/popular-exams';
+import { NewUsersCard } from '@/components/dashboard/new-users-card';
+import { RecentActivityCard } from '@/components/dashboard/recent-activity-card';
 import {
-  BookOpen,
-  FolderKanban,
-  FileText,
-  Users,
-  LayoutDashboard,
-} from 'lucide-react';
-import { useAppSelector } from '@/redux/hooks';
+  mapLogToActivity,
+  toMinutesAgo,
+  type ActivityViewItem,
+  type NewUserItem,
+  type PopularExamItem,
+  type TimeRangeDays,
+} from '@/components/dashboard/dashboard-data';
 
 export default function AdminHomePage() {
-  const { user } = useAppSelector((state) => state.auth);
+  const params = useParams();
+  const locale = (params?.locale as string) || 'vi';
   const { t } = useTranslation('dashboard');
+  const [days, setDays] = useState<TimeRangeDays>(7);
+
+  const overviewQuery = useQuery({
+    queryKey: ['admin-dashboard-overview', days],
+    queryFn: () => dashboardService.getOverview(days),
+  });
+  const overview = overviewQuery.data;
+  const loading = overviewQuery.isLoading;
+  const chartData = {
+    labels: overview?.period.labels || [],
+    listening: overview?.series.newUsers || [],
+    reading: overview?.series.attempts || [],
+    fullTest: [],
+  };
+  const stats = overview?.stats;
+  const newUsers: NewUserItem[] = (overview?.newUsers || []).map((user) => ({
+    ...user,
+    minutesAgo: toMinutesAgo(user.createdAt),
+  }));
+  const recentActivity: ActivityViewItem[] = (overview?.recentActivity || []).map(mapLogToActivity);
+  const popularExams: PopularExamItem[] = overview?.popularExams || [];
+  const toeicExams = overview?.examTypes.find((item) => item.type === 'TOEIC')?.count || 0;
+
+  const formatMinutes = (minutes: number) => {
+    if (minutes < 1) return t('time.justNow');
+    if (minutes < 60) return t('time.minutesAgo', { n: minutes });
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return t('time.hoursAgo', { n: hours });
+    return t('time.daysAgo', { n: Math.floor(hours / 24) });
+  };
 
   return (
-    <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Welcome Banner */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm">
-        <div className="max-w-2xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold mb-3">
-            <LayoutDashboard className="w-3.5 h-3.5 text-blue-600" />
-            <span>{t('badge')}</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
-            {t('welcome', { name: user?.username || 'Admin' })}
-          </h1>
-          <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-            {t('description')}
-          </p>
+    <main className="w-full flex-1 space-y-3.5 px-3 py-4 sm:px-4 lg:px-5 lg:py-5">
+      <OverviewHeader locale={locale} days={days} onChange={setDays} />
+
+      {/* 4 card thống kê chính */}
+      <StatCards
+        locale={locale}
+        loading={loading}
+        users={stats?.users || 0}
+        usersGrowth={stats?.usersGrowth || 0}
+        exams={stats?.exams || 0}
+        activeExams={stats?.activeExams || 0}
+        attempts={stats?.attempts || 0}
+        attemptsGrowth={stats?.attemptsGrowth || 0}
+        avgScore={stats?.avgScore || 0}
+        scoreGrowth={stats?.scoreGrowth || 0}
+      />
+
+      {/* Biểu đồ hoạt động + Tình trạng đề thi */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
+        <div className="min-w-0 lg:col-span-6">
+          <ActivityChart
+            locale={locale}
+            days={days}
+            data={chartData}
+            loading={false}
+          />
+        </div>
+        <div className="min-w-0 lg:col-span-3">
+          <ExamStatusCard
+          locale={locale}
+          total={stats?.exams || 0}
+          toeic={toeicExams}
+          active={stats?.activeExams || 0}
+          inactive={Math.max(0, (stats?.exams || 0) - (stats?.activeExams || 0))}
+          loading={loading}
+          />
+        </div>
+        <div className="min-w-0 lg:col-span-3">
+          <PopularExams
+            locale={locale}
+            exams={popularExams}
+            loading={loading}
+          />
         </div>
       </div>
 
-      {/* Quick Management Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {/* Collections Card */}
-        <div className="group rounded-2xl border border-slate-200 bg-white p-6 hover:border-blue-500 hover:shadow-md transition-all shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center">
-              <FolderKanban className="w-6 h-6" />
-            </div>
-            <span className="text-xs font-semibold text-slate-400">
-              {t('cards.collections.tag')}
-            </span>
-          </div>
-          <h3 className="text-base font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">
-            {t('cards.collections.title')}
-          </h3>
-          <p className="text-xs text-slate-500 mt-1">
-            {t('cards.collections.desc')}
-          </p>
-        </div>
-
-        {/* Lessons Card */}
-        <div className="group rounded-2xl border border-slate-200 bg-white p-6 hover:border-blue-500 hover:shadow-md transition-all shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 rounded-xl bg-sky-50 text-sky-600 border border-sky-100 flex items-center justify-center">
-              <BookOpen className="w-6 h-6" />
-            </div>
-            <span className="text-xs font-semibold text-slate-400">
-              {t('cards.lessons.tag')}
-            </span>
-          </div>
-          <h3 className="text-base font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">
-            {t('cards.lessons.title')}
-          </h3>
-          <p className="text-xs text-slate-500 mt-1">
-            {t('cards.lessons.desc')}
-          </p>
-        </div>
-
-        {/* Words Card */}
-        <div className="group rounded-2xl border border-slate-200 bg-white p-6 hover:border-blue-500 hover:shadow-md transition-all shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center">
-              <FileText className="w-6 h-6" />
-            </div>
-            <span className="text-xs font-semibold text-slate-400">
-              {t('cards.vocabulary.tag')}
-            </span>
-          </div>
-          <h3 className="text-base font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">
-            {t('cards.vocabulary.title')}
-          </h3>
-          <p className="text-xs text-slate-500 mt-1">
-            {t('cards.vocabulary.desc')}
-          </p>
-        </div>
-
-        {/* Users Card */}
-        <div className="group rounded-2xl border border-slate-200 bg-white p-6 hover:border-blue-500 hover:shadow-md transition-all shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 rounded-xl bg-violet-50 text-violet-600 border border-violet-100 flex items-center justify-center">
-              <Users className="w-6 h-6" />
-            </div>
-            <span className="text-xs font-semibold text-slate-400">
-              {t('cards.users.tag')}
-            </span>
-          </div>
-          <h3 className="text-base font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">
-            {t('cards.users.title')}
-          </h3>
-          <p className="text-xs text-slate-500 mt-1">
-            {t('cards.users.desc')}
-          </p>
-        </div>
+      {/* Người dùng mới + Hoạt động gần đây */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <NewUsersCard
+          locale={locale}
+          users={newUsers}
+          loading={loading}
+          formatMinutes={formatMinutes}
+        />
+        <RecentActivityCard
+          activities={recentActivity}
+          loading={loading}
+          formatMinutes={formatMinutes}
+        />
       </div>
     </main>
   );

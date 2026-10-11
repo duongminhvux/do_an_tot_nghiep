@@ -1,27 +1,73 @@
 {
-  "badge": "Administration Dashboard",
-  "welcome": "Welcome back, {{name}}!",
-  "description": "Manage vocabulary collections, lessons, word definitions, and user accounts from one unified portal.",
-  "cards": {
-    "collections": {
-      "tag": "Modules",
-      "title": "Collections",
-      "desc": "Manage topic collections and categories"
-    },
-    "lessons": {
-      "tag": "Curriculum",
-      "title": "Lessons",
-      "desc": "Create and organize structured lessons"
-    },
-    "vocabulary": {
-      "tag": "Database",
-      "title": "Vocabulary",
-      "desc": "Word bank, meanings, phonetics and examples"
-    },
+  "breadcrumb": {
+    "home": "Home",
+    "overview": "Overview"
+  },
+  "title": "Overview",
+  "description": "Overview of VocaLearn system activity.",
+  "range": {
+    "7": "Last 7 days",
+    "30": "Last 30 days",
+    "90": "Last 90 days"
+  },
+  "stats": {
     "users": {
-      "tag": "Accounts",
-      "title": "User Accounts",
-      "desc": "Monitor registered learners and permissions"
+      "label": "Total users",
+      "sub": "vs previous period"
+    },
+    "exams": {
+      "label": "Total exams",
+      "sub": "active"
+    },
+    "attempts": {
+      "label": "Test Attempts",
+      "sub": "in the last 7 days"
+    },
+    "avgScore": {
+      "label": "Average Score",
+      "sub": "points vs previous period"
     }
-  }
+  },
+  "chart": {
+    "title": "{{days}}-Day Activity",
+    "subtitle": "Track users and test attempts.",
+    "listening": "New users",
+    "reading": "Test attempts",
+    "fullTest": "Full Test",
+    "empty": "No data to display"
+  },
+  "examStatus": {
+    "title": "Exam Status Ratio",
+    "total": "total exams",
+    "active": "active",
+    "inactive": "hidden",
+    "manage": "Manage Exams"
+  },
+  "popular": {
+    "title": "Featured Groups",
+    "attempts": "{{n}} attempts",
+    "view": "View"
+  },
+  "newUsers": {
+    "title": "New Users",
+    "viewAll": "View all"
+  },
+  "recent": {
+    "title": "Recent Activity",
+    "completed_exam": "{{user}} completed {{target}}",
+    "registered": "{{user}} registered an account",
+    "created_exam": "{{user}} created {{target}}",
+    "achieved_score": "{{user}} scored {{score}} points",
+    "started_exam": "{{user}} started {{target}}",
+    "learned_words": "{{user}} learned new words",
+    "submitted_dictation": "{{user}} submitted a dictation",
+    "generic": "{{user}} {{target}}"
+  },
+  "time": {
+    "justNow": "Just now",
+    "minutesAgo": "{{n}} min ago",
+    "hoursAgo": "{{n}} hr ago",
+    "daysAgo": "{{n}} d ago"
+  },
+  "empty": "No data yet"
 }
