@@ -33,7 +33,7 @@ export class DictationLesson {
   @Prop({ required: true, trim: true })
   title!: string;
 
-  @Prop({ required: true, trim: true, index: true })
+  @Prop({ required: true, trim: true })
   slug!: string;
 
   @Prop({ trim: true, default: '' })
