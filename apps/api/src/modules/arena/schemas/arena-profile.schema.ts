@@ -4,6 +4,7 @@ import { HydratedDocument, Types } from 'mongoose';
 export type ArenaProfileDocument = HydratedDocument<ArenaProfile>;
 
 @Schema({ timestamps: true })
+/** Hồ sơ xếp hạng và thống kê tích lũy của một người chơi Arena. */
 export class ArenaProfile {
   @Prop({
     type: Types.ObjectId,

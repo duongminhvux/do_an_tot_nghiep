@@ -8,15 +8,55 @@ import { ArenaRoomService } from './rooms/arena-room.service.js';
 import { ArenaScoringService } from './scoring/arena-scoring.service.js';
 import { ArenaMatchService } from './matches/arena-match.service.js';
 import { ArenaService } from './arena.service.js';
+import { ArenaReadService } from './arena-read.service.js';
 import { MongooseModule } from '@nestjs/mongoose';
-import { ArenaProfile, ArenaProfileSchema } from './schemas/arena-profile.schema.js';
+import {
+  ArenaProfile,
+  ArenaProfileSchema,
+} from './schemas/arena-profile.schema.js';
+import {
+  ArenaInvitation,
+  ArenaInvitationSchema,
+} from './schemas/arena-invitation.schema.js';
+import { ArenaRoom, ArenaRoomSchema } from './schemas/arena-room.schema.js';
+import { ArenaMatch, ArenaMatchSchema } from './schemas/arena-match.schema.js';
+import {
+  ArenaMatchPlayer,
+  ArenaMatchPlayerSchema,
+} from './schemas/arena-match-player.schema.js';
+import {
+  ArenaMatchQuestion,
+  ArenaMatchQuestionSchema,
+} from './schemas/arena-match-question.schema.js';
+import {
+  ArenaPlayerAnswer,
+  ArenaPlayerAnswerSchema,
+} from './schemas/arena-player-answer.schema.js';
+import {
+  ArenaRatingHistory,
+  ArenaRatingHistorySchema,
+} from './schemas/arena-rating-history.schema.js';
+import { ArenaController } from './arena.controller.js';
+import { User, UserSchema } from '../users/schema/user.schema.js';
+import { ArenaQuestionService } from './question/arena-question.service.js';
+import { ArenaRoundService } from './question/arena-round.service.js';
+import { Word, WordSchema } from '../vocabulary/words/word.schema.js';
+import { ArenaRatingService } from './rating/arena-rating.service.js';
 
 @Module({
   imports: [
     AuthModule,
     MongooseModule.forFeature([
+      { name: Word.name, schema: WordSchema },
+      { name: User.name, schema: UserSchema },
       { name: ArenaProfile.name, schema: ArenaProfileSchema },
-      // { name: ArenaMatch.name, schema: ArenaMatchSchema },
+      { name: ArenaInvitation.name, schema: ArenaInvitationSchema },
+      { name: ArenaRoom.name, schema: ArenaRoomSchema },
+      { name: ArenaMatch.name, schema: ArenaMatchSchema },
+      { name: ArenaMatchPlayer.name, schema: ArenaMatchPlayerSchema },
+      { name: ArenaMatchQuestion.name, schema: ArenaMatchQuestionSchema },
+      { name: ArenaPlayerAnswer.name, schema: ArenaPlayerAnswerSchema },
+      { name: ArenaRatingHistory.name, schema: ArenaRatingHistorySchema },
     ]),
   ],
   providers: [
@@ -27,7 +67,12 @@ import { ArenaProfile, ArenaProfileSchema } from './schemas/arena-profile.schema
     ArenaPresenceService,
     ArenaScoringService,
     ArenaService,
+    ArenaReadService,
+    ArenaQuestionService,
+    ArenaRoundService,
+    ArenaRatingService,
   ],
+  controllers: [ArenaController],
   exports: [
     ArenaMatchmakingService,
     ArenaRoomService,
@@ -36,4 +81,5 @@ import { ArenaProfile, ArenaProfileSchema } from './schemas/arena-profile.schema
     ArenaScoringService,
   ],
 })
+/** Đăng ký toàn bộ model, service, controller và gateway của Arena. */
 export class ArenaModule {}

@@ -1,8 +1,78 @@
 import { Injectable } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { WsException } from '@nestjs/websockets';
+import { Model, Types } from 'mongoose';
+import { ArenaRoom, ArenaRoomDocument } from '../schemas/arena-room.schema.js';
 
 @Injectable()
 export class ArenaRoomService {
-  createRoom(roomId: string, metadata: Record<string, unknown> = {}) {
-    return { roomId, metadata };
+  constructor(
+    @InjectModel(ArenaRoom.name)
+    private readonly roomModel: Model<ArenaRoomDocument>,
+  ) {}
+
+  /** Tạo phòng chờ dùng chung cho friend và room match. */
+  async createRoom(
+    ownerId: string,
+    options: {
+      name: string;
+      visibility?: 'PUBLIC' | 'PRIVATE';
+      questionMode?: 'MIXED' | 'MEANING' | 'ENGLISH' | 'LISTENING' | 'CONTEXT';
+      questionCount?: number;
+      secondsPerQuestion?: number;
+      maxPlayers?: number;
+    },
+  ) {
+    const code = await this.generateCode();
+    return this.roomModel.create({
+      name: options.name.trim(),
+      code,
+      ownerId: new Types.ObjectId(ownerId),
+      visibility: options.visibility ?? 'PRIVATE',
+      questionMode: options.questionMode ?? 'MIXED',
+      questionCount: options.questionCount ?? 20,
+      secondsPerQuestion: options.secondsPerQuestion ?? 15,
+      maxPlayers: options.maxPlayers ?? 8,
+      members: [
+        {
+          userId: new Types.ObjectId(ownerId),
+          role: 'HOST',
+          isReady: false,
+        },
+      ],
+    });
+  }
+
+  /** Thêm người chơi atomically và không vượt quá giới hạn phòng. */
+  async joinRoom(roomCode: string, userId: string) {
+    const room = await this.roomModel.findOneAndUpdate(
+      {
+        code: roomCode.trim().toUpperCase(),
+        status: 'WAITING',
+        $expr: { $lt: [{ $size: '$members' }, '$maxPlayers'] },
+        'members.userId': { $ne: new Types.ObjectId(userId) },
+      },
+      {
+        $push: {
+          members: {
+            userId: new Types.ObjectId(userId),
+            role: 'PLAYER',
+            isReady: false,
+          },
+        },
+      },
+      { new: true },
+    );
+    if (!room) throw new WsException('Room is unavailable');
+    return room;
+  }
+
+  /** Sinh code dễ đọc và kiểm tra collision qua unique index. */
+  private async generateCode() {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const code = Math.random().toString(36).slice(2, 8).toUpperCase();
+      if (!(await this.roomModel.exists({ code }))) return code;
+    }
+    throw new WsException('Unable to create room code');
   }
 }
