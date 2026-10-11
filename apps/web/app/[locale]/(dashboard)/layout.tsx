@@ -25,6 +25,10 @@ export default function DashboardLayout({
   const getPageTitle = () => {
     const isEn = locale === 'en';
 
+    if (pathname?.includes('/arena')) {
+      return t('nav.arena', isEn ? 'Vocabulary Arena' : 'Đấu trường từ vựng');
+    }
+
     if (pathname?.includes('/toeic/history')) {
       return t('nav.toeic_history', isEn ? 'Test History' : 'Lịch sử làm bài');
     }
@@ -50,25 +54,25 @@ export default function DashboardLayout({
   };
 
   return (
-    <AuthGuard>
-      <SidebarProvider>
-        <AppSidebar />
-        <SidebarInset className="bg-slate-50 min-h-screen flex flex-col">
-          {/* Top Bar with Sidebar Trigger - Sticky Fixed to top */}
-          <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-slate-200 bg-white/95 px-4 sm:px-6 backdrop-blur-md shadow-xs">
-            <SidebarTrigger className="-ml-1 text-slate-600 hover:text-slate-900 cursor-pointer" />
-            <Separator orientation="vertical" className="mr-2 h-4" />
-            <span className="text-xs font-semibold text-slate-700">
-              {getPageTitle()}
-            </span>
-          </header>
+      <AuthGuard>
+        <SidebarProvider>
+          <AppSidebar />
+          <SidebarInset className="bg-slate-50 min-h-screen flex flex-col">
+            {/* Top Bar with Sidebar Trigger - Sticky Fixed to top */}
+            <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-slate-200 bg-white/95 px-4 sm:px-6 backdrop-blur-md shadow-xs">
+              <SidebarTrigger className="-ml-1 text-slate-600 hover:text-slate-900 cursor-pointer" />
+              <Separator orientation="vertical" className="mr-2 h-4" />
+              <span className="text-xs font-semibold text-slate-700">
+                {getPageTitle()}
+              </span>
+            </header>
 
-          {/* Page Content */}
-          <div className="flex-1 w-full">
-            {children}
-          </div>
-        </SidebarInset>
-      </SidebarProvider>
-    </AuthGuard>
+            {/* Page Content */}
+            <div className="flex-1 w-full">
+              {children}
+            </div>
+          </SidebarInset>
+        </SidebarProvider>
+      </AuthGuard>
   );
 }

@@ -1,4 +1,13 @@
 services:
+  redis:
+      image: redis:7-alpine
+      container_name: vocalearn-redis
+      restart: unless-stopped
+      ports:
+        - "6379:6379"
+      volumes:
+        - redis_data:/data
+
   mongo:
     image: mongo:8.0
     restart: unless-stopped
@@ -153,6 +162,7 @@ volumes:
   mongo_data:
   kokoro_models:
   whisper_models:
+  redis_data:
 
 networks:
   toeic-network:

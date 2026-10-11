@@ -19,10 +19,12 @@ import { AssessmentModule } from './modules/assessment/assessment.module.js';
 import { DictationModule } from './modules/dictation/dictation.module.js';
 import { ActivityLogsModule } from './modules/activity-logs/activity-logs.module.js';
 import { DashboardModule } from './modules/dashboard/dashboard.module.js';
+import { RedisModule } from './common/redis/redis.module.js';
+import { ArenaModule } from './modules/arena/arena.module.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const rootEnvPath = path.resolve(__dirname, '../../../.env');
+const rootEnvPath = path.resolve(__dirname, '../.env');
 
 // Prioritize source directory so Nest compiler clearing dist during watch mode never triggers ENOENT
 const candidatePaths = [
@@ -38,7 +40,11 @@ const isDev = process.env.NODE_ENV !== 'production';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: rootEnvPath,
+      envFilePath: [
+        rootEnvPath,
+        path.resolve(process.cwd(), '.env'),
+        path.resolve(process.cwd(), 'apps/api/.env'),
+      ],
     }),
     I18nModule.forRoot({
       fallbackLanguage: 'vi',
@@ -71,6 +77,8 @@ const isDev = process.env.NODE_ENV !== 'production';
     DictationModule,
     ActivityLogsModule,
     DashboardModule,
+    RedisModule,
+    ArenaModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -26,6 +26,7 @@
   "navigation": "Navigation",
   "words": "Vocabulary",
   "nav": {
+    "arena": "Vocabulary Arena",
     "dashboard": "Home",
     "vocabulary": "Vocabulary",
     "collections": "Collections",

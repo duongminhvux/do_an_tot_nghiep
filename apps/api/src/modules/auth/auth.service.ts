@@ -94,6 +94,32 @@ export class AuthService {
     };
   }
 
+  async verifyToken(token: string): Promise<{ _id: string; role: 'USER' }> {
+    if (typeof token !== 'string' || !token.trim()) {
+      throw new UnauthorizedException('Invalid or expired access token');
+    }
+
+    const secret = this.configService.getOrThrow<string>('JWT_ACCESS_SECRET');
+    let payload: { _id: string; role: 'USER' };
+
+    try {
+      payload = await this.jwtService.verifyAsync(token, { secret });
+    } catch {
+      throw new UnauthorizedException('Invalid or expired access token');
+    }
+
+    if (!payload || typeof payload._id !== 'string' || !/^[a-f\d]{24}$/i.test(payload._id) || payload.role !== 'USER') {
+      throw new UnauthorizedException('Invalid access token payload');
+    }
+
+    const user = await this.usersService.findById(payload._id);
+    if (!user || user.isDeleted) {
+      throw new UnauthorizedException('User not found or deleted');
+    }
+
+    return payload;
+  }
+
   async register(createUserDto: CreateUserDto) {
     const { email, password, authProvider = AuthProvider.LOCAL, ggId } = createUserDto;
 

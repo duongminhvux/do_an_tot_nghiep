@@ -21,6 +21,7 @@ import {
   FileText,
   History,
   BarChart3,
+  Swords,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -234,6 +235,16 @@ export function AppSidebar() {
                     </div>
                   )}
                 </div>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname === `/${locale}/arena`} tooltip={t('nav.arena', locale === 'en' ? 'Vocabulary Arena' : 'Đấu trường')} className={cn('h-10 px-3 rounded text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-all font-medium text-[15px]', pathname === `/${locale}/arena` && 'bg-blue-50/80 text-blue-600 font-semibold shadow-xs')}>
+                  <Link href={`/${locale}/arena`} className="flex items-center gap-3">
+                    <Swords className="h-5 w-5 shrink-0" />
+                    <span className="group-data-[collapsible=icon]:hidden">{t('nav.arena', locale === 'en' ? 'Vocabulary Arena' : 'Đấu trường')}</span>
+                    <span className="ml-auto rounded bg-blue-50 px-1.5 py-0.5 text-[9px] font-bold text-blue-500 group-data-[collapsible=icon]:hidden">NEW</span>
+                  </Link>
+                </SidebarMenuButton>
               </SidebarMenuItem>
 
               {/* 3. Vocabulary (Collapsible with Explore & My Words) */}

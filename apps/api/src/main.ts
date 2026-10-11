@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor.js';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter.js';
 import { I18nService, I18nValidationExceptionFilter, I18nValidationPipe } from 'nestjs-i18n';
+import { RedisIoAdapter } from './common/socket/redis-io.adapter.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -17,6 +18,11 @@ async function bootstrap() {
   app.use(urlencoded({ extended: true, limit: '50mb' }))
   const frontendUrl = configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
   const adminUrl = configService.get<string>('ADMIN_URL') || 'http://localhost:3001';
+
+  const redisIoAdapter = new RedisIoAdapter(app, configService);
+  await redisIoAdapter.connectToRedis();
+  app.useWebSocketAdapter(redisIoAdapter);
+
   app.enableCors({
     origin: [frontendUrl, adminUrl, 'http://localhost:3000', 'http://localhost:3001'],
     credentials: true,

@@ -13,17 +13,15 @@ export default function AuthLayout({
   const router = useRouter();
   const params = useParams();
   const locale = (params?.locale as string) || 'vi';
-  const { isAuthenticated } = useAppSelector((state) => state.auth);
+  const { isAuthenticated, isInitialized } = useAppSelector((state) => state.auth);
 
   useEffect(() => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-    if (isAuthenticated || token) {
+    if (isInitialized && isAuthenticated) {
       router.replace(`/${locale}`);
     }
-  }, [isAuthenticated, locale, router]);
+  }, [isAuthenticated, isInitialized, locale, router]);
 
-  const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-  if (isAuthenticated || token) {
+  if (!isInitialized || isAuthenticated) {
     return null;
   }
 

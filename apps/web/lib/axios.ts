@@ -1,6 +1,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { store } from '@/redux/store';
 import { logout, updateAccessToken } from '@/redux/features/auth/authSlice';
+import { isAccessTokenValid } from './access-token';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
@@ -12,23 +13,30 @@ export const apiClient = axios.create({
   withCredentials: true,
 });
 
-let isRefreshing = false;
-let failedQueue: Array<{
-  resolve: (token: string) => void;
-  reject: (error: unknown) => void;
-}> = [];
+let refreshPromise: Promise<string> | null = null;
 
-const processQueue = (error: unknown, token: string | null = null) => {
-  failedQueue.forEach((prom) => {
-    if (error) {
-      prom.reject(error);
-    } else if (token) {
-      prom.resolve(token);
-    }
-  });
-
-  failedQueue = [];
-};
+export function refreshAccessToken(): Promise<string> {
+  if (!refreshPromise) {
+    refreshPromise = axios.post(
+      `${API_URL}/auth/refresh-token`,
+      {},
+      { withCredentials: true }
+    ).then((response) => {
+      const token = response.data?.data?.accessToken || response.data?.accessToken;
+      if (!isAccessTokenValid(token)) {
+        throw new Error('Refresh token failed: Invalid access token returned');
+      }
+      store.dispatch(updateAccessToken(token));
+      return token;
+    }).catch((error) => {
+      store.dispatch(logout());
+      throw error;
+    }).finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
+}
 
 // Request Interceptor: Attach Access Token
 apiClient.interceptors.request.use(
@@ -73,38 +81,10 @@ apiClient.interceptors.response.use(
       originalRequest.url?.includes('/auth/refresh-token');
 
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        })
-          .then((token) => {
-            if (originalRequest.headers) {
-              originalRequest.headers.Authorization = `Bearer ${token}`;
-            }
-            return apiClient(originalRequest);
-          })
-          .catch((err) => Promise.reject(err));
-      }
-
       originalRequest._retry = true;
-      isRefreshing = true;
 
       try {
-        const response = await axios.post(
-          `${API_URL}/auth/refresh-token`,
-          {},
-          { withCredentials: true }
-        );
-
-        const newAccessToken =
-          response.data?.data?.accessToken || response.data?.accessToken;
-
-        if (!newAccessToken) {
-          throw new Error('Refresh token failed: No access token returned');
-        }
-
-        store.dispatch(updateAccessToken(newAccessToken));
-        processQueue(null, newAccessToken);
+        const newAccessToken = await refreshAccessToken();
 
         if (originalRequest.headers) {
           originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
@@ -112,11 +92,7 @@ apiClient.interceptors.response.use(
 
         return apiClient(originalRequest);
       } catch (refreshError) {
-        processQueue(refreshError, null);
-        store.dispatch(logout());
         return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
       }
     }
 
