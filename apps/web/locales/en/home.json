@@ -1,0 +1,83 @@
+{
+  "greeting": {
+    "hello": "Hello, {{name}}!",
+    "subtitle": "Today is a wonderful day to learn something new!",
+    "default_name": "there"
+  },
+  "errors": {
+    "generic": "Failed to load data from server. Please try again later.",
+    "retry": "Retry",
+    "overview": "Failed to load learning progress overview.",
+    "vocabulary": "Failed to load vocabulary progress.",
+    "activity": "Failed to load activity history.",
+    "tasks": "Failed to load today's tasks."
+  },
+  "stats": {
+    "streak": "Study streak",
+    "streak_value": "{{count}} days",
+    "streak_growth": "{{count}} days vs last week",
+    "streak_record": "Record: {{count}} days",
+    "words_learned": "Total words learned",
+    "words_learned_value": "{{count}} words",
+    "words_learned_growth": "{{count}} words vs last week",
+    "words_reviewed": "Total words reviewed",
+    "words_reviewed_value": "{{count}} words",
+    "words_reviewed_growth": "{{count}} words vs last week",
+    "study_time": "Study time",
+    "study_time_growth": "{{time}} vs last week"
+  },
+  "progress": {
+    "title": "Learning progress",
+    "view_detail": "View details",
+    "empty_title": "No learning progress yet",
+    "empty_desc": "Start your first lesson to track your progress.",
+    "empty_cta": "Go to vocabulary",
+    "words_progress": "{{learned}} / {{total}} words"
+  },
+  "heatmap": {
+    "title": "Study activity (last 90 days)",
+    "days": {
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat",
+      "sun": "Sun"
+    },
+    "week": "Week {{count}}",
+    "tooltip_not_yet": "{{date}}: Not yet",
+    "tooltip_learned": "{{date}}: Learned {{words}} words ({{minutes}} mins)",
+    "tooltip_none": "{{date}}: No study activity",
+    "lesson_item": "{{title}}{{collection}} [{{count}} words]",
+    "today": "Today",
+    "minutes_studied": "{{count}} mins studied",
+    "not_yet": "Not yet",
+    "words_learned": "words learned",
+    "words_reviewed": "words reviewed",
+    "sessions": "sessions",
+    "lessons_joined": "Lessons joined:",
+    "no_activity_day": "No study activity on this day.",
+    "hint": "Hover over a day on the calendar to see lesson details and word count",
+    "real_data": "Real data",
+    "legend_active": "Studied",
+    "legend_light": "Light activity",
+    "legend_none": "No activity"
+  },
+  "tasks": {
+    "title": "Today you have {{count}} study tasks",
+    "goal_label": "Today's goal",
+    "goal_value": "{{learned}} / {{goal}} words",
+    "review_title": "Review vocabulary",
+    "review_desc": "{{count}} words to review",
+    "start_now": "Start now",
+    "new_title": "Learn new lesson",
+    "new_empty": "No new lesson today",
+    "course_fallback": "Course",
+    "go_to_vocab": "Go to vocabulary"
+  },
+  "quote": {
+    "title": "The more you study, the more you improve!",
+    "text": "There is no path to success without effort."
+  }
+}

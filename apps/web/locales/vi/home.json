@@ -1,0 +1,83 @@
+{
+  "greeting": {
+    "hello": "Xin chào, {{name}}!",
+    "subtitle": "Hôm nay là một ngày tuyệt vời để học thêm những điều mới!",
+    "default_name": "bạn"
+  },
+  "errors": {
+    "generic": "Không thể tải dữ liệu từ server. Vui lòng thử lại sau.",
+    "retry": "Thử lại",
+    "overview": "Lỗi tải tổng quan tiến độ học tập.",
+    "vocabulary": "Lỗi tải tiến độ từ vựng.",
+    "activity": "Lỗi tải lịch sử hoạt động học tập.",
+    "tasks": "Lỗi tải nhiệm vụ hôm nay."
+  },
+  "stats": {
+    "streak": "Chuỗi học",
+    "streak_value": "{{count}} ngày",
+    "streak_growth": "{{count}} ngày so với tuần trước",
+    "streak_record": "Kỷ lục: {{count}} ngày",
+    "words_learned": "Tổng từ đã học",
+    "words_learned_value": "{{count}} từ",
+    "words_learned_growth": "{{count}} từ so với tuần trước",
+    "words_reviewed": "Tổng từ đã ôn",
+    "words_reviewed_value": "{{count}} từ",
+    "words_reviewed_growth": "{{count}} từ so với tuần trước",
+    "study_time": "Thời gian học",
+    "study_time_growth": "{{time}} so với tuần trước"
+  },
+  "progress": {
+    "title": "Tiến độ học tập",
+    "view_detail": "Xem chi tiết",
+    "empty_title": "Chưa có dữ liệu tiến độ học tập",
+    "empty_desc": "Hãy bắt đầu học bài đầu tiên để theo dõi tiến độ của bạn.",
+    "empty_cta": "Đến trang từ vựng",
+    "words_progress": "{{learned}} / {{total}} từ"
+  },
+  "heatmap": {
+    "title": "Hoạt động học tập (90 ngày gần đây)",
+    "days": {
+      "mon": "T2",
+      "tue": "T3",
+      "wed": "T4",
+      "thu": "T5",
+      "fri": "T6",
+      "sat": "T7",
+      "sun": "CN"
+    },
+    "week": "Tuần {{count}}",
+    "tooltip_not_yet": "{{date}}: Chưa diễn ra",
+    "tooltip_learned": "{{date}}: Đã học {{words}} từ ({{minutes}} phút)",
+    "tooltip_none": "{{date}}: Không có hoạt động học tập",
+    "lesson_item": "{{title}}{{collection}} [{{count}} từ]",
+    "today": "Hôm nay",
+    "minutes_studied": "{{count}} phút học",
+    "not_yet": "Chưa diễn ra",
+    "words_learned": "từ đã học",
+    "words_reviewed": "từ đã ôn",
+    "sessions": "phiên học",
+    "lessons_joined": "Bài học đã tham gia:",
+    "no_activity_day": "Không có hoạt động học tập nào trong ngày này.",
+    "hint": "Rê chuột vào một ngày trên lịch để xem chi tiết bài học và số từ vựng",
+    "real_data": "Dữ liệu thực tế",
+    "legend_active": "Có học",
+    "legend_light": "Ít hoạt động",
+    "legend_none": "Không hoạt động"
+  },
+  "tasks": {
+    "title": "Hôm nay, bạn có {{count}} nhiệm vụ học tập",
+    "goal_label": "Mục tiêu hôm nay",
+    "goal_value": "{{learned}} / {{goal}} từ",
+    "review_title": "Ôn tập từ vựng",
+    "review_desc": "{{count}} từ cần ôn",
+    "start_now": "Bắt đầu ngay",
+    "new_title": "Học bài mới",
+    "new_empty": "Không có bài học mới nào hôm nay",
+    "course_fallback": "Khóa học",
+    "go_to_vocab": "Đến trang từ vựng"
+  },
+  "quote": {
+    "title": "Càng học nhiều bạn sẽ càng tiến bộ!",
+    "text": "Không có con đường nào dẫn đến thành công mà không có sự nỗ lực."
+  }
+}

@@ -998,6 +998,7 @@ export class ProgressService {
   /**
    * GET /progress/vocabulary
    * Trả về tiến độ vocabulary theo Collection
+   * (CHỈ trả về các collection mà user ĐÃ học, bỏ qua collection chưa bắt đầu)
    */
   async getVocabularyProgress(userId: string) {
     const userObjId = new Types.ObjectId(userId);
@@ -1021,16 +1022,8 @@ export class ProgressService {
 
       const lessonIds = lessons.map((l) => l._id);
 
+      // Collection không có bài học => user không thể đã học => bỏ qua
       if (lessonIds.length === 0) {
-        results.push({
-          collectionId: String(col._id),
-          collectionName: col.name,
-          collectionSlug: col.slug || '',
-          letter: (col.name || 'C').charAt(0).toUpperCase(),
-          totalWords: 0,
-          learnedWords: 0,
-          progress: 0,
-        });
         continue;
       }
 
@@ -1086,6 +1079,18 @@ export class ProgressService {
         progress = 1;
       }
       progress = Math.min(100, progress);
+
+      // CHỈ trả về collection user ĐÃ học:
+      // - có ít nhất 1 từ đã học, HOẶC
+      // - đã có bản ghi tiến độ (đã mở/bắt đầu bài học)
+      const hasStudied =
+        learnedWords > 0 ||
+        userProgresses.length > 0 ||
+        progress > 0 ||
+        completedLessonsCount > 0;
+      if (!hasStudied) {
+        continue;
+      }
 
       results.push({
         collectionId: String(col._id),

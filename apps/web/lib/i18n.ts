@@ -6,11 +6,13 @@ import viAuth from '../locales/vi/auth.json';
 import viVocabulary from '../locales/vi/vocabulary.json';
 import viProgress from '../locales/vi/progress.json';
 import viToeic from '../locales/vi/toeic.json';
+import viHome from '../locales/vi/home.json';
 import enCommon from '../locales/en/common.json';
 import enAuth from '../locales/en/auth.json';
 import enVocabulary from '../locales/en/vocabulary.json';
 import enProgress from '../locales/en/progress.json';
 import enToeic from '../locales/en/toeic.json';
+import enHome from '../locales/en/home.json';
 
 const resources = {
   vi: {
@@ -19,6 +21,7 @@ const resources = {
     vocabulary: viVocabulary,
     progress: viProgress,
     toeic: viToeic,
+    home: viHome,
   },
   en: {
     common: enCommon,
@@ -26,6 +29,7 @@ const resources = {
     vocabulary: enVocabulary,
     progress: enProgress,
     toeic: enToeic,
+    home: enHome,
   },
 };
 
