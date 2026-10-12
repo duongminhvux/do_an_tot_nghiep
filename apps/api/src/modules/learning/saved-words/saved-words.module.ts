@@ -10,6 +10,10 @@ import {
   UserWordReview,
   UserWordReviewSchema,
 } from '../reviews/schemas/user-word-review.schema.js';
+import {
+  VocabularyFolder,
+  VocabularyFolderSchema,
+} from './schema/vocabulary-folder.schema.js';
 import { VocabularyModule } from '../../vocabulary/vocabulary.module.js';
 
 @Module({
@@ -18,6 +22,7 @@ import { VocabularyModule } from '../../vocabulary/vocabulary.module.js';
     MongooseModule.forFeature([
       { name: UserSavedWord.name, schema: UserSavedWordSchema },
       { name: UserWordReview.name, schema: UserWordReviewSchema },
+      { name: VocabularyFolder.name, schema: VocabularyFolderSchema },
     ]),
   ],
   controllers: [SavedWordsController],

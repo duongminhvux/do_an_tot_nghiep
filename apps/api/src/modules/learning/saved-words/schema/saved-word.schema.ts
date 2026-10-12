@@ -22,6 +22,13 @@ export class UserSavedWord {
   wordId: Types.ObjectId;
 
   @Prop({
+    type: Types.ObjectId,
+    ref: 'VocabularyFolder',
+    index: true,
+  })
+  folderId?: Types.ObjectId;
+
+  @Prop({
     type: Date,
     default: Date.now,
   })

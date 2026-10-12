@@ -22,4 +22,8 @@ export class QuerySavedWordsDto {
   @IsOptional()
   @IsString()
   order?: 'asc' | 'desc';
+
+  @IsOptional()
+  @IsString()
+  folderId?: string;
 }

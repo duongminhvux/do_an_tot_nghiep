@@ -8,4 +8,8 @@ export class CreateSavedWordDto {
   @IsOptional()
   @IsString()
   note?: string;
+
+  @IsOptional()
+  @IsMongoId()
+  folderId?: string;
 }
