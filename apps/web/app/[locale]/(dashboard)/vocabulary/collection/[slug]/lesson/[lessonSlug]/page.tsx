@@ -9,6 +9,7 @@ import {
   lessonService,
 } from '@/services/vocabulary.service';
 import { learningService } from '@/services/learning.service';
+import { savedWordsService } from '@/services/saved-words.service';
 import { StudyModeType, SrsRatingType } from '@/types/learning';
 import {
   CollectionItem,
@@ -121,6 +122,11 @@ export default function LessonStudyPage() {
     enabled: !!currentLessonId,
   });
 
+  const { data: savedIdsRes } = useQuery({
+    queryKey: ['saved-word-ids'],
+    queryFn: () => savedWordsService.getSavedIds(),
+  });
+
   const lessonProgress = useMemo(() => {
     return (progressRes as any)?.data || progressRes || null;
   }, [progressRes]);
@@ -158,6 +164,12 @@ export default function LessonStudyPage() {
       setNeedReviewWords(new Set(lessonProgress.needReviewWordIds));
     }
   }, [lessonProgress]);
+
+  useEffect(() => {
+    if (Array.isArray(savedIdsRes?.data)) {
+      setSavedWords(new Set(savedIdsRes.data));
+    }
+  }, [savedIdsRes]);
 
   // Clean up session refs on lesson change or unmount
   useEffect(() => {
@@ -825,7 +837,7 @@ export default function LessonStudyPage() {
           handleToggleMastered();
           return;
         } else if (e.key === 's' || e.key === 'S' || e.key === 'b' || e.key === 'B') {
-          handleToggleSave();
+          document.querySelector<HTMLButtonElement>(`[data-save-word-id="${currentWord?._id}"]`)?.click();
           return;
         }
       }
@@ -1181,6 +1193,7 @@ export default function LessonStudyPage() {
                     isMastered={masteredWords.has(currentWord?._id || '')}
                     onToggleMastered={handleToggleMastered}
                     isSaved={savedWords.has(currentWord?._id || '')}
+                    wordId={currentWord?._id}
                     onToggleSave={handleToggleSave}
                     t={t}
                   />

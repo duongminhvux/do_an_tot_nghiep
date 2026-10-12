@@ -12,6 +12,7 @@ interface SrsRatingBarProps {
   isMastered: boolean;
   onToggleMastered: () => void;
   isSaved: boolean;
+  wordId?: string;
   onToggleSave: () => void;
   t: (key: string, options?: any) => string;
 }
@@ -21,6 +22,7 @@ export function SrsRatingBar({
   isMastered,
   onToggleMastered,
   isSaved,
+  wordId,
   onToggleSave,
   t,
 }: SrsRatingBarProps) {
@@ -144,6 +146,7 @@ export function SrsRatingBar({
           {/* Lưu */}
           <SaveWordButton
             isSaved={isSaved}
+            wordId={wordId}
             onToggle={onToggleSave}
             shortcutKey="S"
             variant="pill"

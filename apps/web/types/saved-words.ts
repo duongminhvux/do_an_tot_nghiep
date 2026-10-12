@@ -52,4 +52,14 @@ export interface SavedWordsQuery {
   level?: string;
   sortBy?: 'savedAt' | 'alpha';
   order?: 'asc' | 'desc';
+  folderId?: string;
+}
+
+export interface VocabularyFolder {
+  _id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  count: number;
+  createdAt?: string;
 }

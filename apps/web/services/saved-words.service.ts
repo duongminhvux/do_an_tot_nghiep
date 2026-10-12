@@ -1,10 +1,12 @@
-import apiClient from '@/lib/axios';
-import { ApiResponse } from './types';
+import apiClient from "@/lib/axios";
+import { ApiResponse } from "./types";
 import {
   SavedWordItem,
+  SavedWordWordDetail,
   SavedWordsPagination,
   SavedWordsQuery,
-} from '@/types/saved-words';
+  VocabularyFolder,
+} from "@/types/saved-words";
 
 export interface SavedWordsListResponse {
   data: SavedWordItem[];
@@ -17,7 +19,7 @@ export const savedWordsService = {
    */
   getAll: async (params?: SavedWordsQuery) => {
     const res = await apiClient.get<ApiResponse<SavedWordsListResponse>>(
-      '/learning/saved-words',
+      "/learning/saved-words",
       { params },
     );
     return res.data;
@@ -28,7 +30,7 @@ export const savedWordsService = {
    */
   getSavedIds: async () => {
     const res = await apiClient.get<ApiResponse<string[]>>(
-      '/learning/saved-words/ids',
+      "/learning/saved-words/ids",
     );
     return res.data;
   },
@@ -38,7 +40,52 @@ export const savedWordsService = {
    */
   getStats: async () => {
     const res = await apiClient.get<ApiResponse<{ total: number }>>(
-      '/learning/saved-words/stats',
+      "/learning/saved-words/stats",
+    );
+    return res.data;
+  },
+
+  getFolders: async () => {
+    const res = await apiClient.get<ApiResponse<VocabularyFolder[]>>(
+      "/learning/saved-words/folders",
+    );
+    return res.data;
+  },
+
+  searchWords: async (folderId: string, search: string) => {
+    const res = await apiClient.get<
+      ApiResponse<
+        Array<SavedWordWordDetail & { saved: boolean; inFolder: boolean }>
+      >
+    >(`/learning/saved-words/folders/${folderId}/words/search`, {
+      params: { search },
+    });
+    return res.data;
+  },
+
+  createFolder: async (name: string, description?: string) => {
+    const res = await apiClient.post<ApiResponse<VocabularyFolder>>(
+      "/learning/saved-words/folders",
+      { name, description },
+    );
+    return res.data;
+  },
+
+  updateFolder: async (
+    folderId: string,
+    name: string,
+    description?: string,
+  ) => {
+    const res = await apiClient.patch<ApiResponse<VocabularyFolder>>(
+      `/learning/saved-words/folders/${folderId}`,
+      { name, description },
+    );
+    return res.data;
+  },
+
+  deleteFolder: async (folderId: string) => {
+    const res = await apiClient.delete<ApiResponse<{ success: boolean }>>(
+      `/learning/saved-words/folders/${folderId}`,
     );
     return res.data;
   },
@@ -46,20 +93,20 @@ export const savedWordsService = {
   /**
    * Bật/tắt lưu từ vựng (Toggle bookmark)
    */
-  toggle: async (wordId: string) => {
+  toggle: async (wordId: string, folderId?: string) => {
     const res = await apiClient.post<
       ApiResponse<{ saved: boolean; wordId: string; data?: any }>
-    >('/learning/saved-words/toggle', { wordId });
+    >("/learning/saved-words/toggle", { wordId, folderId });
     return res.data;
   },
 
   /**
    * Lưu một từ vựng
    */
-  save: async (wordId: string, note?: string) => {
+  save: async (wordId: string, note?: string, folderId?: string) => {
     const res = await apiClient.post<ApiResponse<any>>(
-      '/learning/saved-words',
-      { wordId, note },
+      "/learning/saved-words",
+      { wordId, note, folderId },
     );
     return res.data;
   },
