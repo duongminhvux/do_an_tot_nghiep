@@ -80,6 +80,6 @@ export type ArenaMatch = {
   draw: boolean;
   score: [number, number];
   minutes: number;
-  mode: "rank" | "friend" | "room";
+  mode: "rank" | "friend" | "word-chain" | "room";
   points: number;
 };

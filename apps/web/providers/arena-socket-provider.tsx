@@ -5,6 +5,7 @@
 import { useEffect } from "react";
 import { useAppSelector } from "@/redux/hooks";
 import { isAccessTokenValid } from "@/lib/access-token";
+import { FriendlyInvitations } from "@/components/friendly-invitations";
 import {
   arenaSocket,
   connectArenaSocket,
@@ -59,8 +60,22 @@ export function ArenaSocketProvider({
       disconnectArenaSocket();
     }
 
-    return disconnectArenaSocket;
+    const heartbeat = window.setInterval(() => {
+      if (arenaSocket.connected) {
+        arenaSocket.emit("arena:presence-heartbeat");
+      }
+    }, 15000);
+
+    return () => {
+      window.clearInterval(heartbeat);
+      disconnectArenaSocket();
+    };
   }, [isInitialized, isAuthenticated, accessToken, user?._id, user?.role]);
 
-  return children;
+  return (
+    <>
+      {children}
+      <FriendlyInvitations />
+    </>
+  );
 }

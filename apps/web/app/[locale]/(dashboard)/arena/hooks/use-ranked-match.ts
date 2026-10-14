@@ -46,6 +46,11 @@ type ScoreUpdate = {
 };
 type Finished = {
   matchId: string;
+  finishReason?: string;
+  turnCount?: number;
+  requiredLetter?: string;
+  startedAt?: string;
+  finishedAt?: string;
   winnerId?: string | null;
   isDraw: boolean;
   players: {
@@ -76,7 +81,11 @@ function errorMessage(value: unknown) {
   return "Không thể xử lý yêu cầu. Vui lòng thử lại.";
 }
 
-export function useRankedMatch(matchId: string, currentUserId: string) {
+export function useRankedMatch(
+  matchId: string,
+  currentUserId: string,
+  friendly = false,
+) {
   const queryClient = useQueryClient();
   const [matchStatus, setMatchStatus] = useState<
     "WAITING" | "PLAYING" | "FINISHED"
@@ -111,7 +120,7 @@ export function useRankedMatch(matchId: string, currentUserId: string) {
   const { data: profile } = useQuery({
     queryKey: ["arena-profile", currentUserId],
     queryFn: arenaService.getProfile,
-    enabled: !!currentUserId,
+    enabled: !!currentUserId && !friendly,
   });
 
   useEffect(() => {
@@ -336,18 +345,23 @@ export function useRankedMatch(matchId: string, currentUserId: string) {
       setError(null);
       arenaSocket
         .timeout(10000)
-        .emit("match:ready", { matchId }, (failure: Error | null, ack: Ack) => {
-          if (
-            !active ||
-            sequence !== readySequence ||
-            questionRef.current ||
-            finishedRef.current
-          )
-            return;
-          if (failure) setError("Máy chủ chưa phản hồi. Hãy thử kết nối lại.");
-          else if (ack?.success === false)
-            setError(ack.message || "Không thể vào trận đấu.");
-        });
+        .emit(
+          friendly ? "friend:join" : "match:ready",
+          { matchId },
+          (failure: Error | null, ack: Ack) => {
+            if (
+              !active ||
+              sequence !== readySequence ||
+              questionRef.current ||
+              finishedRef.current
+            )
+              return;
+            if (failure)
+              setError("Máy chủ chưa phản hồi. Hãy thử kết nối lại.");
+            else if (ack?.success === false)
+              setError(ack.message || "Không thể vào trận đấu.");
+          },
+        );
     };
     const handleConnect = () => {
       setConnected(true);
@@ -370,6 +384,8 @@ export function useRankedMatch(matchId: string, currentUserId: string) {
     arenaSocket.on("match:question-resolved", handleResolved);
     arenaSocket.on("match:score-update", handleScore);
     arenaSocket.on("match:finished", handleFinished);
+    arenaSocket.on("friend:match-finished", handleFinished);
+    if (friendly) arenaSocket.on("friend:snapshot", handleScore);
     arenaSocket.on("exception", handleException);
     arenaSocket.on("connect", handleConnect);
     arenaSocket.on("arena:authenticated", sendReady);
@@ -391,13 +407,15 @@ export function useRankedMatch(matchId: string, currentUserId: string) {
       arenaSocket.off("match:question-resolved", handleResolved);
       arenaSocket.off("match:score-update", handleScore);
       arenaSocket.off("match:finished", handleFinished);
+      arenaSocket.off("friend:match-finished", handleFinished);
+      arenaSocket.off("friend:snapshot", handleScore);
       arenaSocket.off("exception", handleException);
       arenaSocket.off("connect", handleConnect);
       arenaSocket.off("arena:authenticated", sendReady);
       arenaSocket.off("disconnect", handleDisconnect);
       arenaSocket.off("connect_error", handleConnectError);
     };
-  }, [matchId, currentUserId, queryClient]);
+  }, [matchId, currentUserId, queryClient, friendly]);
 
   const sendAnswer = useCallback(
     (value: string, timedOut = false) => {
@@ -490,7 +508,17 @@ export function useRankedMatch(matchId: string, currentUserId: string) {
   };
   return {
     matchStatus,
-    currentQuestion,
+    currentQuestion: currentQuestion
+      ? {
+          ...currentQuestion,
+          letters:
+            timeLeft > 5 && timeLeft < 20
+              ? currentQuestion.letters
+              : currentQuestion.letters?.map((letter) =>
+                  letter && /[\p{L}\p{N}]/u.test(letter) ? null : letter,
+                ),
+        }
+      : null,
     answer,
     setAnswer,
     timeLeft,

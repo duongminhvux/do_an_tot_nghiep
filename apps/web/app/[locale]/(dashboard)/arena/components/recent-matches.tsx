@@ -122,7 +122,9 @@ export function RecentMatches({
                     : text("Thua", "Loss")}
               </span>
               <span className="text-center text-[11px] font-semibold tabular-nums text-slate-700">
-                {match.score[0]} - {match.score[1]}
+                {match.mode === "word-chain"
+                  ? text("Nối từ", "Word Chain")
+                  : `${match.score[0]} - ${match.score[1]}`}
               </span>
               <span className="hidden w-fit rounded-md bg-blue-50/70 px-2 py-1 text-[9px] text-blue-500 @min-[520px]/matches:block">
                 {modeLabel(match.mode)}

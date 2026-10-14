@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useParams, useRouter } from "next/navigation";
 
@@ -117,11 +117,41 @@ export function useArenaController() {
    * Ranked matchmaking
    */
   const [rankedStatus, setRankedStatus] = useState<RankedStatus>("IDLE");
+  const [rankedError, setRankedError] = useState<string | null>(null);
+  const queueAttempt = useRef(0);
 
   const [rankedMatch, setRankedMatch] =
     useState<RankedMatchFoundPayload | null>(null);
 
   const [matchCountdown, setMatchCountdown] = useState(5);
+
+  useEffect(() => {
+    const interrupted = () => {
+      if (rankedStatus !== "SEARCHING") return;
+      queueAttempt.current += 1;
+      setRankedStatus("IDLE");
+      setRankedError(
+        en
+          ? "Connection lost. Please retry matchmaking."
+          : "Mất kết nối. Hãy tìm trận lại.",
+      );
+    };
+    const failed = (data: { message?: string }) => {
+      if (rankedStatus !== "SEARCHING") return;
+      queueAttempt.current += 1;
+      setRankedStatus("IDLE");
+      setRankedError(
+        data?.message ||
+          (en ? "Unable to find a match." : "Không thể tìm trận."),
+      );
+    };
+    arenaSocket.on("disconnect", interrupted);
+    arenaSocket.on("exception", failed);
+    return () => {
+      arenaSocket.off("disconnect", interrupted);
+      arenaSocket.off("exception", failed);
+    };
+  }, [rankedStatus, en]);
 
   /*
    * Old states / friend / room
@@ -158,6 +188,8 @@ export function useArenaController() {
    */
   useEffect(() => {
     const handleMatchFound = (data: RankedMatchFoundPayload) => {
+      queueAttempt.current += 1;
+      setRankedError(null);
       try {
         sessionStorage.setItem("arena-ranked-match", JSON.stringify(data));
       } catch {
@@ -259,34 +291,50 @@ export function useArenaController() {
    */
   function handleFindMatch() {
     if (!arenaSocket.connected) {
-      console.error("[Arena] socket chưa kết nối");
-
+      setRankedError(
+        text(
+          "Chưa kết nối máy chủ Arena. Hãy thử lại.",
+          "Arena is disconnected. Please retry.",
+        ),
+      );
       return;
     }
 
     setRankedMatch(null);
 
     setRankedStatus("SEARCHING");
+    setRankedError(null);
+    const attempt = ++queueAttempt.current;
 
     setMatchCountdown(5);
 
-    arenaSocket.emit(
+    arenaSocket.timeout(10000).emit(
       "ranked:join-queue",
       {},
-      (response: {
-        matched?: boolean;
-        status?: string;
-        matchId?: string;
-        error?: string;
-      }) => {
+      (
+        failure: Error | null,
+        response?: {
+          matched?: boolean;
+          status?: string;
+          matchId?: string;
+          error?: string;
+        },
+      ) => {
+        if (attempt !== queueAttempt.current) return;
         console.log("[Arena] join queue ack:", response);
 
         /*
          * FE đã set SEARCHING trước rồi.
          * ACK chủ yếu để debug / xử lý lỗi.
          */
-        if (response?.error) {
-          console.error("[Arena] join queue error:", response.error);
+        if (failure || response?.error) {
+          setRankedError(
+            response?.error ||
+              text(
+                "Máy chủ chưa phản hồi. Hãy thử lại.",
+                "The server did not respond. Please retry.",
+              ),
+          );
 
           setRankedStatus("IDLE");
         }
@@ -307,6 +355,8 @@ export function useArenaController() {
     if (rankedStatus === "FOUND") {
       return;
     }
+    queueAttempt.current += 1;
+    setRankedError(null);
 
     arenaSocket.emit(
       "ranked:leave-queue",
@@ -370,9 +420,11 @@ export function useArenaController() {
   const modeLabel = (mode: string) =>
     mode === "rank"
       ? text("Xếp hạng", "Ranked")
-      : mode === "friend"
-        ? text("Đấu với bạn bè", "Friend match")
-        : text("Phòng đấu", "Battle room");
+      : mode === "word-chain"
+        ? text("Nối từ", "Word Chain")
+        : mode === "friend"
+          ? text("Đấu với bạn bè", "Friend match")
+          : text("Phòng đấu", "Battle room");
 
   const timeLabel = (minutes: number) =>
     minutes === 0
@@ -490,6 +542,7 @@ export function useArenaController() {
      * Ranked
      */
     rankedStatus,
+    rankedError,
     rankedMatch,
     rankedOpponent,
     matchCountdown,

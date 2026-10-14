@@ -26,6 +26,8 @@ type Props = Pick<
   | "button"
   | "profile"
   | "rankedStatus"
+  | "rankedError"
+  | "handleFindMatch"
   | "rankedOpponent"
   | "matchCountdown"
   | "cancelRankedQueue"
@@ -38,6 +40,8 @@ export function QuickMatchPanel({
   button,
   profile,
   rankedStatus,
+  rankedError,
+  handleFindMatch,
   rankedOpponent,
   matchCountdown,
   cancelRankedQueue,
@@ -45,6 +49,26 @@ export function QuickMatchPanel({
   if (panel !== "rank") {
     return null;
   }
+  if (rankedError)
+    return (
+      <div className="p-6 text-center">
+        <p role="alert" className="text-sm text-red-600">
+          {rankedError}
+        </p>
+        <button
+          onClick={handleFindMatch}
+          className={cn(button, "mt-5 bg-blue-600 text-white")}
+        >
+          {text("Thử lại", "Retry")}
+        </button>
+        <button
+          onClick={cancelRankedQueue}
+          className="mt-4 block w-full text-sm text-slate-500"
+        >
+          {text("Hủy tìm trận", "Cancel")}
+        </button>
+      </div>
+    );
 
   const searching = rankedStatus === "SEARCHING";
 
@@ -57,9 +81,8 @@ export function QuickMatchPanel({
   const rankPosition =
     totalMatches > 0 ? (profile?.leaderboard?.position ?? 0) : 0;
 
-  const rankValue = totalMatches > 0 && rankPosition > 0
-    ? `#${number(rankPosition)}`
-    : "--"
+  const rankValue =
+    totalMatches > 0 && rankPosition > 0 ? `#${number(rankPosition)}` : "--";
   return (
     <div className="w-full text-center">
       <div className="w-full px-4 pb-5 pt-5 sm:px-6 sm:pb-6">
@@ -91,7 +114,7 @@ export function QuickMatchPanel({
           className={cn(
             "mt-3",
             searching &&
-            "sm:grid sm:grid-cols-[220px_minmax(0,1fr)] sm:items-center sm:gap-6",
+              "sm:grid sm:grid-cols-[220px_minmax(0,1fr)] sm:items-center sm:gap-6",
           )}
         >
           {/* SEARCHING */}

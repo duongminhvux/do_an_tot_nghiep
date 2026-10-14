@@ -47,12 +47,19 @@ export type ArenaRecentMatch = {
   avatarUrl?: string;
   score: [number, number];
   result: "WIN" | "LOSS" | "DRAW";
-  mode: "rank" | "friend" | "room";
+  mode: "rank" | "friend" | "word-chain" | "room";
   points: number;
   finishedAt: string;
 };
 
 export const arenaService = {
+  getPresence: async () => {
+    const response =
+      await apiClient.get<ApiResponse<{ onlineCount: number }>>(
+        "/arena/presence",
+      );
+    return response.data;
+  },
   getRecentMatches: async (limit = 20) => {
     const response = await apiClient.get<ApiResponse<ArenaRecentMatch[]>>(
       "/arena/matches",

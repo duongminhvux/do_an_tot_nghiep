@@ -1,6 +1,9 @@
 "use client";
 
 import { Plus, Swords, Trophy, Users, Zap } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { arenaService } from "@/services/arena.service";
 import { cn } from "@/lib/utils";
 import { Avatar } from "./arena-avatar";
 import type { ArenaController } from "../hooks/use-arena-controller";
@@ -8,6 +11,16 @@ import type { ArenaController } from "../hooks/use-arena-controller";
 type Props = Pick<ArenaController, "text" | "openPanel" | "button">;
 
 export function ArenaModes({ text, openPanel, button }: Props) {
+  const router = useRouter();
+  const params = useParams();
+  const locale = typeof params.locale === "string" ? params.locale : "vi";
+  const { data: presence } = useQuery({
+    queryKey: ["arena-presence"],
+    queryFn: arenaService.getPresence,
+    refetchInterval: 5000,
+  });
+  const onlineCount = presence?.data.onlineCount;
+
   return (
     <section
       aria-label={text("Chọn chế độ chơi", "Choose a game mode")}
@@ -23,7 +36,16 @@ export function ArenaModes({ text, openPanel, button }: Props) {
             "Play 1 vs 1 against a similar-rated opponent and climb the ranks.",
           ),
           action: text("Tìm trận ngay", "Find a match"),
-          footer: text("1,234 người đang online", "1,234 players online"),
+          footer:
+            onlineCount === undefined
+              ? text(
+                  "Đang cập nhật số người online…",
+                  "Checking online players…",
+                )
+              : text(
+                  `${onlineCount} người đang online`,
+                  `${onlineCount} players online`,
+                ),
           style: "from-blue-50 to-[#e9f2ff]",
           color: "text-blue-600",
           iconBg: "bg-blue-100/70",
@@ -99,7 +121,11 @@ export function ArenaModes({ text, openPanel, button }: Props) {
           </div>
           <button
             type="button"
-            onClick={() => openPanel(mode.key)}
+            onClick={() =>
+              mode.key === "friends"
+                ? router.push(`/${locale}/arena/friend`)
+                : openPanel(mode.key)
+            }
             className={cn(button, "mt-4 w-full", mode.buttonStyle)}
           >
             {mode.key === "rank" ? (

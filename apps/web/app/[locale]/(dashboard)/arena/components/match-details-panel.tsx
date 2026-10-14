@@ -45,26 +45,37 @@ export function MatchDetailsPanel({
           </p>
           <div className="my-6 flex items-center justify-between rounded-xl bg-slate-50 p-4">
             <span className="text-xs font-semibold">{text("Bạn", "You")}</span>
-            <span className="text-2xl font-bold tabular-nums text-slate-900">
-              {selectedMatch.score[0]} : {selectedMatch.score[1]}
+            <span className="text-sm font-bold text-violet-600">
+              {selectedMatch.mode === "word-chain"
+                ? text("Nối từ", "Word Chain")
+                : `${selectedMatch.score[0]} : ${selectedMatch.score[1]}`}
             </span>
             <span className="max-w-24 text-xs font-semibold">
               {selectedMatch.name}
             </span>
           </div>
-          <p
-            className={cn(
-              "text-sm font-semibold",
-              selectedMatch.draw
-                ? "text-blue-600"
-                : selectedMatch.won
-                  ? "text-emerald-600"
-                  : "text-rose-500",
-            )}
-          >
-            {selectedMatch.points > 0 ? "+" : ""}
-            {selectedMatch.points} {text("điểm xếp hạng", "rating points")}
-          </p>
+          {selectedMatch.mode === "word-chain" ? (
+            <p className="text-sm font-semibold text-violet-600">
+              {text(
+                "Kết quả dựa trên số lượt nối từ hợp lệ",
+                "Result based on valid word-chain turns",
+              )}
+            </p>
+          ) : (
+            <p
+              className={cn(
+                "text-sm font-semibold",
+                selectedMatch.draw
+                  ? "text-blue-600"
+                  : selectedMatch.won
+                    ? "text-emerald-600"
+                    : "text-rose-500",
+              )}
+            >
+              {selectedMatch.points > 0 ? "+" : ""}
+              {selectedMatch.points} {text("điểm xếp hạng", "rating points")}
+            </p>
+          )}
         </div>
       )}
     </>

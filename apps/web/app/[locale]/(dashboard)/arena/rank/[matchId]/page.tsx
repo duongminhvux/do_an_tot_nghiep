@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -23,6 +24,8 @@ import {
 import { cn } from "@/lib/utils";
 import { useAppSelector } from "@/redux/hooks";
 import { useRankedMatch } from "../../hooks/use-ranked-match";
+import { useMatchExit } from "../../hooks/use-match-exit";
+import { friendlyRequest } from "@/lib/friendly-arena";
 
 export default function RankedGame() {
   const params = useParams();
@@ -55,6 +58,30 @@ export default function RankedGame() {
     opponent,
     myRating,
   } = useRankedMatch(matchId, currentUserId);
+  useMatchExit(matchId, matchStatus === "PLAYING" && !finished);
+  const [leaving, setLeaving] = useState(false);
+  const [exitError, setExitError] = useState("");
+  const leave = async () => {
+    if (
+      !window.confirm(
+        text(
+          "Bạn có muốn thoát trận? Thoát sẽ bị tính thua.",
+          "Leave this match? Leaving counts as a loss.",
+        ),
+      )
+    )
+      return;
+    setLeaving(true);
+    setExitError("");
+    try {
+      await friendlyRequest("match:leave", { matchId });
+      router.push(`/${locale}/arena`);
+    } catch (e) {
+      setExitError(e instanceof Error ? e.message : "Unable to leave match");
+    } finally {
+      setLeaving(false);
+    }
+  };
 
   const questionIndex = currentQuestion?.questionIndex ?? 0;
 
@@ -120,6 +147,12 @@ export default function RankedGame() {
             )}
             <Link
               href={`/${locale}/arena`}
+              onClick={(event) => {
+                if (matchStatus === "PLAYING") {
+                  event.preventDefault();
+                  void leave();
+                }
+              }}
               className="inline-flex min-h-11 items-center rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-600"
             >
               {text("Về đấu trường", "Back to Arena")}
@@ -240,14 +273,16 @@ export default function RankedGame() {
       {/* HEADER */}
 
       <div className="mb-2 flex items-center justify-between gap-3">
-        <Link
-          href={`/${locale}/arena`}
+        <button
+          type="button"
+          disabled={leaving}
+          onClick={() => void leave()}
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 transition hover:text-blue-600"
         >
           <ArrowLeft className="size-4" />
 
           {text("Đấu trường", "Arena")}
-        </Link>
+        </button>
 
         <span className="flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[10px] font-semibold text-blue-600">
           <Swords className="size-3" />
@@ -255,6 +290,11 @@ export default function RankedGame() {
           {text("Đấu Rank", "Ranked")}
         </span>
       </div>
+      {exitError && (
+        <p role="alert" className="mb-3 text-sm text-red-600">
+          {exitError}
+        </p>
+      )}
 
       {/* SCOREBOARD */}
 
