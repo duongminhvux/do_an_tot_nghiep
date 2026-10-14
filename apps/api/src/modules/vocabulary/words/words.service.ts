@@ -6,6 +6,7 @@ import { Word, WordDocument } from './word.schema.js';
 import { CreateWordDto } from './dto/create-word.dto.js';
 import { UpdateWordDto } from './dto/update-word.dto.js';
 import { QueryWordDto } from './dto/query-word.dto.js';
+import { AudioGenerationStatus } from '../../../common/media/generated-audio.schema.js';
 
 @Injectable()
 export class WordsService {
@@ -111,7 +112,7 @@ export class WordsService {
     const [data, total] = await Promise.all([
       this.wordModel
         .find(filter)
-        .select('word ipa audio parts.partOfSpeech parts.meanings.definition level isActive createdAt')
+        .select('word ipa audio audioMeta parts.partOfSpeech parts.meanings.definition level isActive createdAt')
         .sort(sortObj)
         .skip(skip)
         .limit(limit)
@@ -144,6 +145,10 @@ export class WordsService {
 
   async update(id: string, updateWordDto: UpdateWordDto) {
     const lang = this.getLang();
+    const currentWord = await this.wordModel.findOne({ _id: id, isDeleted: { $ne: true } }).lean().exec();
+    if (!currentWord) {
+      throw new NotFoundException(await this.i18n.t('word.WORD_NOT_FOUND', { lang }));
+    }
 
     const updatePayload: Record<string, any> = { ...updateWordDto };
     if (updateWordDto.word) {
@@ -165,6 +170,16 @@ export class WordsService {
         slug = `${baseSlug}-${counter++}`;
       }
       updatePayload.slug = slug;
+    }
+
+    const wordChanged = typeof updateWordDto.word === 'string' && updateWordDto.word.trim() !== currentWord.word;
+    if (wordChanged) {
+      for (const accent of ['us', 'uk'] as const) {
+        const meta = currentWord.audioMeta?.[accent];
+        if (meta?.status === AudioGenerationStatus.READY) {
+          updatePayload[`audioMeta.${accent}.status`] = AudioGenerationStatus.STALE;
+        }
+      }
     }
 
     const updatedWord = await this.wordModel

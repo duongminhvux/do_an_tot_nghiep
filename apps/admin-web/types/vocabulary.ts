@@ -194,6 +194,27 @@ export interface UpdateLessonWordDto {
   customNote?: string;
 }
 
+
+export interface GeneratedAudioMetadata {
+  source?: 'TTS' | 'UPLOAD';
+  status?: 'NONE' | 'PROCESSING' | 'READY' | 'STALE' | 'FAILED';
+  storageKey?: string;
+  provider?: string;
+  device?: string;
+  language?: 'en-US' | 'en-GB';
+  voiceIds?: string[];
+  speed?: number;
+  durationMs?: number;
+  scriptHash?: string;
+  generatedAt?: string;
+  error?: string;
+}
+
+export interface WordAudioMeta {
+  us?: GeneratedAudioMetadata;
+  uk?: GeneratedAudioMetadata;
+}
+
 // ==========================
 // WORDS
 // ==========================
@@ -223,6 +244,7 @@ export interface WordListItem {
   level: string;
   ipa?: WordIpa;
   audio?: WordAudio;
+  audioMeta?: WordAudioMeta;
   parts: WordPartListItem[];
   isActive: boolean;
 }
@@ -258,6 +280,7 @@ export interface WordDetail {
   level: string;
   ipa?: WordIpa;
   audio?: WordAudio;
+  audioMeta?: WordAudioMeta;
   image?: string;
   variations?: string[];
   relatedWords?: string[];
@@ -296,6 +319,7 @@ export interface CreateWordDto {
   level: string;
   ipa?: WordIpa;
   audio?: WordAudio;
+  audioMeta?: WordAudioMeta;
   image?: string;
   variations?: string[];
   relatedWords?: string[];

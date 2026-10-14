@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { examService } from '@/services/assessment.service';
+import { audioService } from '@/services/audio.service';
 import { useDraftUploads } from '@/hooks/use-draft-uploads';
 import { ImageUploadField } from './image-upload-field';
 import { PassageItem } from '@/types';
@@ -14,7 +15,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Loader2, BookOpen, CheckCircle2, HelpCircle, Volume2 } from 'lucide-react';
+import { Loader2, BookOpen, CheckCircle2, HelpCircle, Volume2, Upload, RefreshCw, AlertTriangle } from 'lucide-react';
 import { PassageGroupDetail } from './question-detail-dialog';
 import { AutoResizeTextarea } from './auto-resize-textarea';
 import { TiptapEditor } from './tiptap-editor';
@@ -58,6 +59,7 @@ export function EditPassageDialog({
   };
   const [questions, setQuestions] = useState<EditableQuestion[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [audioBusy, setAudioBusy] = useState<Record<string, 'generate' | 'upload' | undefined>>({});
 
   const showError = (msg: string) => {
     setErrorMessage(msg);
@@ -221,6 +223,73 @@ export function EditPassageDialog({
     },
   });
 
+  const unwrapAudioResult = (value: any) => value?.data?.data ?? value?.data ?? value;
+
+  const resolvePassageId = (p: PassageItem) => p._id || passageGroup?.passage?._id || '';
+
+  const handleGeneratePassageAudio = async (index: number) => {
+    const p = editablePassages[index];
+    if (!p || !passageGroup || !isListening) return;
+    const passageId = resolvePassageId(p);
+    if (!passageId) {
+      showError('Hãy lưu cụm câu hỏi trước khi generate audio.');
+      return;
+    }
+    if (!p.content?.trim()) {
+      showError('Cần có transcript trước khi generate audio.');
+      return;
+    }
+    setErrorMessage(null);
+    setAudioBusy((prev) => ({ ...prev, [passageId]: 'generate' }));
+    try {
+      await examService.updatePassage(passageId, {
+        type: p.type || 'TEXT',
+        content: p.content.trim(),
+        imageUrl: p.imageUrl?.trim() || '',
+      });
+      const response = await audioService.generateToeicPassage(passageId);
+      const updated = unwrapAudioResult(response);
+      setEditablePassages((prev) => prev.map((item, i) => i === index ? {
+        ...item,
+        audioUrl: updated?.audioUrl || item.audioUrl,
+        audioMeta: updated?.audioMeta || item.audioMeta,
+      } : item));
+      await queryClient.invalidateQueries({ queryKey: ['admin-exam-passages', examId] });
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Không thể generate audio bằng Kokoro.';
+      showError(Array.isArray(msg) ? msg.join(', ') : msg);
+    } finally {
+      setAudioBusy((prev) => ({ ...prev, [passageId]: undefined }));
+    }
+  };
+
+  const handleUploadPassageAudio = async (index: number, file?: File) => {
+    const p = editablePassages[index];
+    if (!p || !file) return;
+    const passageId = resolvePassageId(p);
+    if (!passageId) {
+      showError('Hãy lưu cụm câu hỏi trước khi upload audio.');
+      return;
+    }
+    setErrorMessage(null);
+    setAudioBusy((prev) => ({ ...prev, [passageId]: 'upload' }));
+    try {
+      const response = await audioService.uploadToeicPassage(passageId, file);
+      const updated = unwrapAudioResult(response);
+      setEditablePassages((prev) => prev.map((item, i) => i === index ? {
+        ...item,
+        audioUrl: updated?.audioUrl || item.audioUrl,
+        audioMeta: updated?.audioMeta || item.audioMeta,
+      } : item));
+      await queryClient.invalidateQueries({ queryKey: ['admin-exam-passages', examId] });
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Không thể upload audio.';
+      showError(Array.isArray(msg) ? msg.join(', ') : msg);
+    } finally {
+      setAudioBusy((prev) => ({ ...prev, [passageId]: undefined }));
+    }
+  };
+
   if (!passageGroup) return null;
 
   return (
@@ -237,13 +306,7 @@ export function EditPassageDialog({
               return;
             }
 
-            if (isListening) {
-              const missingAudio = editablePassages.some((p) => !p.audioUrl?.trim());
-              if (missingAudio) {
-                showError(t('editPassageDialog.missingAudioError'));
-                return;
-              }
-            } else {
+            if (!isListening) {
               for (let i = 0; i < editablePassages.length; i++) {
                 const p = editablePassages[i]!;
                 const hasText = Boolean(p.content?.trim());
@@ -350,15 +413,65 @@ export function EditPassageDialog({
                   onUploaded={draftUploads.track}
                   onBusyChange={(busy) => setUploadingPassages((prev) => ({ ...prev, [p._id || index]: busy }))}
                   onError={setErrorMessage} disabled={updateMutation.isPending} />)}
-                {isListening && (
-                  <label className="block space-y-1 text-xs font-semibold text-slate-700">
-                    {t('editPassageDialog.audioUrlLabel')}
-                    <input type="url" value={p.audioUrl || ''} disabled={updateMutation.isPending}
-                      onChange={(e) => updatePassage(index, { audioUrl: e.target.value })}
-                      className="h-9 w-full rounded border border-slate-200 px-3 text-xs" />
-                    {p.audioUrl && <audio controls src={p.audioUrl} className="w-full h-8" />}
-                  </label>
-                )}
+                {isListening && (() => {
+                  const passageId = resolvePassageId(p);
+                  const busy = passageId ? audioBusy[passageId] : undefined;
+                  const status = p.audioMeta?.status || (p.audioUrl ? 'READY' : 'NONE');
+                  return (
+                    <div className="space-y-2 rounded border border-blue-100 bg-blue-50/40 p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-800">
+                            <Volume2 className="h-3.5 w-3.5 text-blue-600" />
+                            Audio Part {passageGroup.part}
+                          </div>
+                          <p className="mt-0.5 text-[11px] font-normal text-slate-500">
+                            {passageGroup.part === 3 ? 'Transcript theo lượt A:/B:/C:, Kokoro tự đổi giọng theo speaker.' : 'Part 4 dùng một narrator và ghép thành một audio hoàn chỉnh.'}
+                          </p>
+                        </div>
+                        <span className={`rounded px-2 py-0.5 text-[10px] font-bold ${
+                          status === 'READY' ? 'bg-emerald-100 text-emerald-700' :
+                          status === 'STALE' ? 'bg-amber-100 text-amber-700' :
+                          status === 'FAILED' ? 'bg-red-100 text-red-700' : 'bg-slate-200 text-slate-600'
+                        }`}>{status}</span>
+                      </div>
+                      {status === 'STALE' && (
+                        <div className="flex items-center gap-1.5 rounded bg-amber-50 px-2 py-1.5 text-[11px] font-normal text-amber-800">
+                          <AlertTriangle className="h-3.5 w-3.5" /> Transcript đã đổi, nên generate lại audio.
+                        </div>
+                      )}
+                      {p.audioUrl && <audio controls src={p.audioUrl} className="w-full h-8" />}
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          disabled={Boolean(busy) || updateMutation.isPending}
+                          onClick={() => void handleGeneratePassageAudio(index)}
+                          className="inline-flex items-center gap-1.5 rounded bg-blue-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                        >
+                          {busy === 'generate' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : status === 'READY' ? <RefreshCw className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+                          {status === 'READY' || status === 'STALE' ? 'Regenerate Kokoro' : 'Generate Kokoro'}
+                        </button>
+                        <label className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50">
+                          {busy === 'upload' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                          Upload audio
+                          <input type="file" accept="audio/*" className="hidden" disabled={Boolean(busy) || updateMutation.isPending}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              void handleUploadPassageAudio(index, file);
+                              e.currentTarget.value = '';
+                            }} />
+                        </label>
+                      </div>
+                      <details className="text-[11px] font-normal text-slate-500">
+                        <summary className="cursor-pointer font-medium">URL thủ công / dữ liệu cũ</summary>
+                        <input type="text" value={p.audioUrl || ''} disabled={updateMutation.isPending}
+                          onChange={(e) => updatePassage(index, { audioUrl: e.target.value })}
+                          placeholder="/media/... hoặc https://..."
+                          className="mt-1.5 h-9 w-full rounded border border-slate-200 px-3 text-xs" />
+                      </details>
+                    </div>
+                  );
+                })()}
                 {!isListening && p.inputMode !== 'IMAGE' ? (
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">

@@ -10,6 +10,7 @@ import { Model, Types } from 'mongoose';
 import { AsrService } from '../asr/asr.service.js';
 import { CloudinaryService } from '../upload/cloudinary.service.js';
 import { TtsService } from '../tts/tts.service.js';
+import { MediaStorageService } from '../../common/media/media-storage.service.js';
 import { CreateDictationDto } from './dto/create-dictation.dto.js';
 import { UpdateDictationDto } from './dto/update-dictation.dto.js';
 import { QueryDictationDto } from './dto/query-dictation.dto.js';
@@ -65,6 +66,7 @@ export class DictationService {
     private readonly ttsService: TtsService,
     private readonly asrService: AsrService,
     private readonly cloudinaryService: CloudinaryService,
+    private readonly mediaStorage: MediaStorageService,
     private readonly configService: ConfigService,
   ) {
     this.asrStartPaddingMs = this.readNonNegativeInt('DICTATION_SEGMENT_START_PADDING_MS', 100);
@@ -668,7 +670,6 @@ export class DictationService {
     lesson.sentenceCount = sentences.length;
     await lesson.save();
 
-    let newPublicId = '';
     try {
       const sequence = sentences.map((text, order) => ({
         text,
@@ -692,13 +693,8 @@ export class DictationService {
         );
       }
 
-      const fullUpload = await this.cloudinaryService.uploadBuffer(fullResult.audio, {
-        folder: `english-platform/dictation/${lesson._id.toString()}`,
-        resourceType: 'video',
-        format: 'wav',
-        publicId: `full-${Date.now()}`,
-      });
-      newPublicId = fullUpload.public_id;
+      const storageKey = `dictation/${lesson._id.toString()}/full.wav`;
+      const fullUpload = await this.mediaStorage.saveBuffer(storageKey, fullResult.audio);
 
       const generatedSegments = sentences.map((text, order) => ({
         lessonId: lesson._id as Types.ObjectId,
@@ -719,7 +715,7 @@ export class DictationService {
 
       await this.replaceProcessedAudio(lesson, generatedSegments, {
         url: fullUpload.url,
-        publicId: fullUpload.public_id,
+        storageKey: fullUpload.storageKey,
         durationMs: Number(fullResult.durationMs || 0),
         processor: fullResult.provider || 'kokoro',
         device: fullResult.device || '',
@@ -727,9 +723,6 @@ export class DictationService {
 
       return this.getAdmin(id);
     } catch (error) {
-      if (newPublicId) {
-        await this.cloudinaryService.deleteFile(newPublicId, 'video');
-      }
       lesson.status = DictationStatus.AUDIO_FAILED;
       lesson.processingError = error instanceof Error ? error.message : String(error);
       await lesson.save();
@@ -761,7 +754,6 @@ export class DictationService {
     lesson.processingError = '';
     await lesson.save();
 
-    let newPublicId = '';
     try {
       const transcription = await this.asrService.transcribe(
         file.buffer,
@@ -776,12 +768,9 @@ export class DictationService {
         throw new BadRequestException('Uploaded audio produced more than 200 dictation segments.');
       }
 
-      const upload = await this.cloudinaryService.uploadBuffer(file.buffer, {
-        folder: `english-platform/dictation/${lesson._id.toString()}`,
-        resourceType: 'video',
-        publicId: `uploaded-${Date.now()}`,
-      });
-      newPublicId = upload.public_id;
+      const ext = (file.originalname?.split('.').pop() || 'audio').replace(/[^a-zA-Z0-9]/g, '').toLowerCase() || 'audio';
+      const storageKey = `dictation/${lesson._id.toString()}/uploaded.${ext}`;
+      const upload = await this.mediaStorage.saveBuffer(storageKey, file.buffer);
 
       const totalDurationMs = Math.max(
         Number(transcription.durationMs || 0),
@@ -816,7 +805,7 @@ export class DictationService {
 
       await this.replaceProcessedAudio(lesson, segments, {
         url: upload.url,
-        publicId: upload.public_id,
+        storageKey: upload.storageKey,
         durationMs: totalDurationMs,
         processor: `faster-whisper:${transcription.model}`,
         device: transcription.device || '',
@@ -824,9 +813,6 @@ export class DictationService {
 
       return this.getAdmin(id);
     } catch (error) {
-      if (newPublicId) {
-        await this.cloudinaryService.deleteFile(newPublicId, 'video');
-      }
       lesson.status = DictationStatus.AUDIO_FAILED;
       lesson.processingError = error instanceof Error ? error.message : String(error);
       await lesson.save();
@@ -891,7 +877,7 @@ export class DictationService {
     segments: Array<Record<string, unknown>>,
     audio: {
       url: string;
-      publicId: string;
+      storageKey: string;
       durationMs: number;
       processor: string;
       device: string;
@@ -899,12 +885,14 @@ export class DictationService {
   ) {
     const oldSegments = await this.segmentModel.find({ lessonId: lesson._id }).lean();
     const oldFullPublicId = lesson.fullAudioPublicId;
+    const oldStorageKey = lesson.fullAudioStorageKey;
 
     await this.segmentModel.deleteMany({ lessonId: lesson._id });
     await this.segmentModel.insertMany(segments);
 
     lesson.fullAudioUrl = audio.url;
-    lesson.fullAudioPublicId = audio.publicId;
+    lesson.fullAudioStorageKey = audio.storageKey;
+    lesson.fullAudioPublicId = '';
     lesson.totalDurationMs = Math.max(0, Math.round(audio.durationMs));
     lesson.sentenceCount = segments.length;
     lesson.audioProcessor = audio.processor;
@@ -919,8 +907,11 @@ export class DictationService {
       ...oldSegments
         .filter((segment) => Boolean(segment.audioPublicId))
         .map((segment) => this.cloudinaryService.deleteFile(segment.audioPublicId!, 'video')),
-      ...(oldFullPublicId && oldFullPublicId !== audio.publicId
+      ...(oldFullPublicId
         ? [this.cloudinaryService.deleteFile(oldFullPublicId, 'video')]
+        : []),
+      ...(oldStorageKey && oldStorageKey !== audio.storageKey
+        ? [this.mediaStorage.delete(oldStorageKey)]
         : []),
     ]);
   }

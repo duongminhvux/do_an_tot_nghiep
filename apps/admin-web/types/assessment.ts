@@ -87,6 +87,31 @@ export interface ExamListResponse {
   limit: number;
 }
 
+
+export interface GeneratedAudioSegmentMeta {
+  text?: string;
+  speaker?: string;
+  voiceId?: string;
+  startMs?: number;
+  endMs?: number;
+}
+
+export interface GeneratedAudioMeta {
+  source?: 'TTS' | 'UPLOAD';
+  status?: 'NONE' | 'PROCESSING' | 'READY' | 'STALE' | 'FAILED';
+  storageKey?: string;
+  provider?: string;
+  device?: string;
+  language?: string;
+  voiceIds?: string[];
+  speed?: number;
+  durationMs?: number;
+  scriptHash?: string;
+  generatedAt?: string;
+  error?: string;
+  segments?: GeneratedAudioSegmentMeta[];
+}
+
 export interface QuestionOption {
   key: 'A' | 'B' | 'C' | 'D';
   text: string;
@@ -105,6 +130,7 @@ export interface QuestionItem {
   correctAnswer: 'A' | 'B' | 'C' | 'D';
   explanation?: string;
   audioUrl?: string;
+  audioMeta?: GeneratedAudioMeta;
   imageUrl?: string;
   order: number;
   isActive: boolean;
@@ -139,8 +165,10 @@ export interface PassageItem {
   type?: PassageType;
   title?: string;
   section?: 'LISTENING' | 'READING';
+  part?: number;
   content?: string;
   audioUrl?: string;
+  audioMeta?: GeneratedAudioMeta;
   imageUrl?: string;
   order: number;
   passages?: PassageItem[];

@@ -42,3 +42,6 @@ yarn-error.log*
 *.zip 
 *.rar
 repomix-output.xml
+# Generated/local media
+storage/*
+!storage/.gitkeep

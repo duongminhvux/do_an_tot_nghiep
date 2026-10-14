@@ -167,14 +167,14 @@ TTS:
 
 ```text
 admin text -> Kokoro per-segment synthesis in memory -> one merged WAV
-          -> exact segment start/end metadata -> Cloudinary full WAV only
+          -> exact segment start/end metadata -> local ./storage full WAV only
 ```
 
 Upload:
 
 ```text
 admin audio -> Faster Whisper word timestamps -> sentence metadata
-            -> original full audio on Cloudinary
+            -> original full audio in local ./storage
 ```
 
 Important admin endpoints:
@@ -228,3 +228,18 @@ project/
 ```
 
 Do not recreate `apps/api/.env`, `apps/web/.env`, or `apps/admin-web/.env`. The root `.env` is the only configuration source. `.env` is ignored by Git; `.env.example` is safe to commit after keeping real secrets out of it.
+
+
+## 11. Local media + Redis audio jobs
+
+Generated/uploaded audio is stored on the host under `./storage` and bind-mounted into the API container at `/app/storage`. MongoDB stores the public media URL plus generation metadata; Redis stores only temporary/background job state. Images may still use the existing Cloudinary integration.
+
+```text
+./storage/
+├── vocab/<wordId>/us.wav | uk.wav
+├── toeic/questions/<questionId>/audio.wav
+├── toeic/passages/<passageId>/audio.wav
+└── dictation/<lessonId>/full.wav
+```
+
+The API exposes these files at `/media/*`. Bulk Vocabulary and TOEIC generation jobs are serialized through Redis with `AUDIO_QUEUE_CONCURRENCY=1` by default, which is safer when Kokoro and Faster Whisper share one GPU.

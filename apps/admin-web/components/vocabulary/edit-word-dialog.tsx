@@ -1,1466 +1,242 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useTranslation } from 'react-i18next';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ChevronDown, ChevronUp, Loader2, Plus, Trash2, Upload, Volume2, WandSparkles } from 'lucide-react';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { wordService } from '@/services/vocabulary.service';
-import { uploadService } from '@/services/upload.service';
-import { UpdateWordDto, WordPartDetail } from '@/types/vocabulary';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Book,
-  Volume2,
-  BookOpen,
-  Radio,
-  Plus,
-  Trash2,
-  UploadCloud,
-  Image as ImageIcon,
-  Loader2,
-  ArrowRight,
-  ArrowLeft,
-  AlertCircle,
-  Quote,
-  X,
-} from 'lucide-react';
+import { audioService } from '@/services/audio.service';
+import type { UpdateWordDto, WordDetail, WordPartDetail } from '@/types/vocabulary';
 
-const LEVEL_OPTIONS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+const LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+const POS = ['noun', 'verb', 'adjective', 'adverb', 'phrasal_verb', 'idiom', 'preposition', 'conjunction', 'pronoun', 'interjection', 'phrase', 'other'];
 
-const POS_OPTIONS = [
-  { value: 'verb', label: 'verb' },
-  { value: 'noun', label: 'noun' },
-  { value: 'adjective', label: 'adjective' },
-  { value: 'adverb', label: 'adverb' },
-  { value: 'phrasal_verb', label: 'phrasal verb' },
-  { value: 'idiom', label: 'idiom' },
-  { value: 'preposition', label: 'preposition' },
-  { value: 'conjunction', label: 'conjunction' },
-  { value: 'pronoun', label: 'pronoun' },
-  { value: 'interjection', label: 'interjection' },
-  { value: 'phrase', label: 'phrase' },
-  { value: 'other', label: 'other' },
-];
-
-export interface MeaningExample {
-  id: string;
-  sentence: string;
-  translation: string;
-}
-
-export interface MeaningRow {
+type MeaningDraft = {
   id: string;
   partOfSpeech: string;
-  english: string;
-  vietnamese: string;
+  definition: string;
+  translation: string;
   synonyms: string;
   antonyms: string;
-  examples: MeaningExample[];
-}
+  exampleEn: string;
+  exampleVi: string;
+};
 
-interface EditWordDialogProps {
+interface Props {
   wordId: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-type TabType = 'general' | 'meanings' | 'media';
+const splitList = (value: string) => value.split(/[,;]+/).map((item) => item.trim()).filter(Boolean);
+const newMeaning = (): MeaningDraft => ({ id: crypto.randomUUID(), partOfSpeech: 'noun', definition: '', translation: '', synonyms: '', antonyms: '', exampleEn: '', exampleVi: '' });
 
-export function EditWordDialog({ wordId, open, onOpenChange }: EditWordDialogProps) {
-  const { t } = useTranslation('vocabulary');
+function toDrafts(word?: WordDetail): MeaningDraft[] {
+  if (!word?.parts?.length) return [newMeaning()];
+  const rows: MeaningDraft[] = [];
+  for (const part of word.parts) {
+    for (const meaning of part.meanings || []) {
+      rows.push({
+        id: crypto.randomUUID(),
+        partOfSpeech: (part.partOfSpeech || 'noun').toLowerCase(),
+        definition: meaning.definition || '',
+        translation: (meaning.translation || []).join(', '),
+        synonyms: (meaning.synonyms || []).join(', '),
+        antonyms: (meaning.antonyms || []).join(', '),
+        exampleEn: meaning.examples?.[0]?.en || '',
+        exampleVi: meaning.examples?.[0]?.vi || '',
+      });
+    }
+  }
+  return rows.length ? rows : [newMeaning()];
+}
+
+export function EditWordDialog({ wordId, open, onOpenChange }: Props) {
   const queryClient = useQueryClient();
-
-  const [activeTab, setActiveTab] = useState<TabType>('general');
-
-  // Fetch word detail
-  const {
-    data: response,
-    isLoading: isFetching,
-  } = useQuery({
-    queryKey: ['word-detail', wordId],
-    queryFn: () => wordService.getById(wordId!),
-    enabled: !!wordId && open,
-  });
-
-  const wordDetail = response?.data;
-
-  // Form states
   const [word, setWord] = useState('');
   const [level, setLevel] = useState('A1');
-  const [isActive, setIsActive] = useState(true);
-
-  // Variations & Related Words (comma or semicolon separated)
-  const [variations, setVariations] = useState('');
-  const [relatedWords, setRelatedWords] = useState('');
-
-  // Pronunciations & Audio Uploads
+  const [meanings, setMeanings] = useState<MeaningDraft[]>([newMeaning()]);
+  const [advanced, setAdvanced] = useState(false);
   const [usIpa, setUsIpa] = useState('');
   const [ukIpa, setUkIpa] = useState('');
-  const [usAudioUrl, setUsAudioUrl] = useState('');
-  const [ukAudioUrl, setUkAudioUrl] = useState('');
-  const [usAudioName, setUsAudioName] = useState('');
-  const [ukAudioName, setUkAudioName] = useState('');
-  const [isUploadingUs, setIsUploadingUs] = useState(false);
-  const [isUploadingUk, setIsUploadingUk] = useState(false);
-
-  const usAudioInputRef = useRef<HTMLInputElement>(null);
-  const ukAudioInputRef = useRef<HTMLInputElement>(null);
-
-  // Meanings with nested examples
-  const [meanings, setMeanings] = useState<MeaningRow[]>([
-    { id: '1', partOfSpeech: 'verb', english: '', vietnamese: '', synonyms: '', antonyms: '', examples: [] },
-  ]);
-
-  const availablePosOptions = useMemo(() => {
-    const options = [...POS_OPTIONS];
-    meanings.forEach((m) => {
-      if (m.partOfSpeech && !options.some((opt) => opt.value === m.partOfSpeech)) {
-        options.push({
-          value: m.partOfSpeech,
-          label: m.partOfSpeech.replace(/_/g, ' '),
-        });
-      }
-    });
-    return options;
-  }, [meanings]);
-
-  // Media (Image)
+  const [variations, setVariations] = useState('');
+  const [relatedWords, setRelatedWords] = useState('');
   const [imageUrl, setImageUrl] = useState('');
-  const [imageName, setImageName] = useState('');
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const imageInputRef = useRef<HTMLInputElement>(null);
+  const [isActive, setIsActive] = useState(true);
+  const [error, setError] = useState('');
+  const [audioBusy, setAudioBusy] = useState<'us' | 'uk' | null>(null);
+  const usInput = useRef<HTMLInputElement>(null);
+  const ukInput = useRef<HTMLInputElement>(null);
 
-  // Error validation state
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const query = useQuery({
+    queryKey: ['word-detail', wordId],
+    queryFn: () => wordService.getById(wordId!),
+    enabled: open && !!wordId,
+  });
 
-  // Track temporarily uploaded Cloudinary URLs during this edit session
-  const tempUploadedUrls = useRef<Set<string>>(new Set());
-
-  const cleanupTempUploads = () => {
-    if (tempUploadedUrls.current.size > 0) {
-      tempUploadedUrls.current.forEach((url) => {
-        uploadService.deleteFile(url);
-      });
-      tempUploadedUrls.current.clear();
-    }
-  };
+  const detail: WordDetail | undefined = useMemo(() => {
+    const response: any = query.data;
+    return response?.data || response;
+  }, [query.data]);
 
   useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (tempUploadedUrls.current.size > 0) {
-        tempUploadedUrls.current.forEach((url) => {
-          uploadService.deleteFile(url);
+    if (!detail) return;
+    setWord(detail.word || '');
+    setLevel(detail.level || 'A1');
+    setMeanings(toDrafts(detail));
+    setUsIpa(detail.ipa?.us || '');
+    setUkIpa(detail.ipa?.uk || '');
+    setVariations((detail.variations || []).join(', '));
+    setRelatedWords((detail.relatedWords || []).join(', '));
+    setImageUrl(detail.image || '');
+    setIsActive(detail.isActive !== false);
+    setError('');
+  }, [detail?._id, detail?.updatedAt]);
+
+  const updateMutation = useMutation({
+    mutationFn: async () => {
+      if (!wordId) throw new Error('Missing word id.');
+      if (!word.trim()) throw new Error('Vui lòng nhập từ vựng.');
+      const valid = meanings.filter((item) => item.definition.trim() || item.translation.trim());
+      if (!valid.length) throw new Error('Vui lòng nhập ít nhất một nghĩa.');
+      const grouped = new Map<string, WordPartDetail>();
+      for (const item of valid) {
+        const key = item.partOfSpeech.toUpperCase();
+        if (!grouped.has(key)) grouped.set(key, { partOfSpeech: key, meanings: [] });
+        grouped.get(key)!.meanings.push({
+          definition: item.definition.trim(),
+          translation: splitList(item.translation),
+          synonyms: splitList(item.synonyms),
+          antonyms: splitList(item.antonyms),
+          examples: item.exampleEn.trim() || item.exampleVi.trim() ? [{ en: item.exampleEn.trim(), vi: item.exampleVi.trim() }] : [],
         });
       }
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      cleanupTempUploads();
-    };
-  }, []);
+      const payload: UpdateWordDto = {
+        word: word.trim(),
+        level,
+        ipa: { us: usIpa.trim() || undefined, uk: ukIpa.trim() || undefined },
+        variations: splitList(variations),
+        relatedWords: splitList(relatedWords),
+        image: imageUrl.trim() || undefined,
+        parts: [...grouped.values()],
+        isActive,
+      };
+      return wordService.update(wordId, payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['words'] });
+      queryClient.invalidateQueries({ queryKey: ['word-detail', wordId] });
+      onOpenChange(false);
+    },
+    onError: (err: any) => setError(err?.response?.data?.message || err?.message || 'Không thể cập nhật từ vựng.'),
+  });
 
-  // Populate data when wordDetail loads
-  useEffect(() => {
-    if (!wordDetail || !open) return;
-
-    cleanupTempUploads();
-    setActiveTab('general');
-    setWord(wordDetail.word || '');
-    setLevel(wordDetail.level || 'A1');
-    setIsActive(wordDetail.isActive !== false);
-
-    setVariations(Array.isArray(wordDetail.variations) ? wordDetail.variations.join(', ') : '');
-    setRelatedWords(Array.isArray(wordDetail.relatedWords) ? wordDetail.relatedWords.join(', ') : '');
-
-    setUsIpa(wordDetail.ipa?.us || '');
-    setUkIpa(wordDetail.ipa?.uk || '');
-    setUsAudioUrl(wordDetail.audio?.us || '');
-    setUkAudioUrl(wordDetail.audio?.uk || '');
-    setUsAudioName('');
-    setUkAudioName('');
-    setIsUploadingUs(false);
-    setIsUploadingUk(false);
-
-    // Extract meanings and their own examples
-    const loadedMeanings: MeaningRow[] = [];
-
-    if (Array.isArray(wordDetail.parts)) {
-      wordDetail.parts.forEach((part, pIdx) => {
-        const pos = (part.partOfSpeech || 'other').toLowerCase();
-        (part.meanings || []).forEach((m, mIdx) => {
-          const nestedExamples: MeaningExample[] = (m.examples || []).map(
-            (ex, eIdx) => ({
-              id: `ex_${pIdx}_${mIdx}_${eIdx}`,
-              sentence: ex.en || '',
-              translation: ex.vi || '',
-            })
-          );
-
-          loadedMeanings.push({
-            id: `m_${pIdx}_${mIdx}`,
-            partOfSpeech: pos,
-            english: m.definition || '',
-            vietnamese: Array.isArray(m.translation) ? m.translation.join(', ') : '',
-            synonyms: Array.isArray(m.synonyms) ? m.synonyms.join(', ') : '',
-            antonyms: Array.isArray(m.antonyms) ? m.antonyms.join(', ') : '',
-            examples: nestedExamples,
-          });
-        });
-      });
-    }
-
-    setMeanings(
-      loadedMeanings.length > 0
-        ? loadedMeanings
-        : [{ id: '1', partOfSpeech: 'verb', english: '', vietnamese: '', synonyms: '', antonyms: '', examples: [] }]
-    );
-
-    setImageUrl(wordDetail.image || '');
-    setImageName('');
-    setIsUploadingImage(false);
-    setErrorMessage(null);
-  }, [wordDetail, open]);
-
-  // Cloudinary Audio Upload handlers
-  const handleUsAudioFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      setIsUploadingUs(true);
-      setErrorMessage(null);
-      const res = await uploadService.uploadFile(file);
-
-      // If replacing previously uploaded audio in this session, delete old one
-      if (usAudioUrl && tempUploadedUrls.current.has(usAudioUrl)) {
-        uploadService.deleteFile(usAudioUrl, 'raw');
-        tempUploadedUrls.current.delete(usAudioUrl);
-      }
-
-      tempUploadedUrls.current.add(res.url);
-      setUsAudioUrl(res.url);
-      setUsAudioName(file.name);
-    } catch (err: any) {
-      setErrorMessage(err?.response?.data?.message || err?.message || 'Failed to upload US audio to Cloudinary');
-    } finally {
-      setIsUploadingUs(false);
-      if (usAudioInputRef.current) usAudioInputRef.current.value = '';
-    }
-  };
-
-  const handleRemoveUsAudio = () => {
-    if (usAudioUrl && tempUploadedUrls.current.has(usAudioUrl)) {
-      uploadService.deleteFile(usAudioUrl, 'raw');
-      tempUploadedUrls.current.delete(usAudioUrl);
-    }
-    setUsAudioUrl('');
-    setUsAudioName('');
-  };
-
-  const handleUkAudioFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      setIsUploadingUk(true);
-      setErrorMessage(null);
-      const res = await uploadService.uploadFile(file);
-
-      // If replacing previously uploaded audio in this session, delete old one
-      if (ukAudioUrl && tempUploadedUrls.current.has(ukAudioUrl)) {
-        uploadService.deleteFile(ukAudioUrl, 'raw');
-        tempUploadedUrls.current.delete(ukAudioUrl);
-      }
-
-      tempUploadedUrls.current.add(res.url);
-      setUkAudioUrl(res.url);
-      setUkAudioName(file.name);
-    } catch (err: any) {
-      setErrorMessage(err?.response?.data?.message || err?.message || 'Failed to upload UK audio to Cloudinary');
-    } finally {
-      setIsUploadingUk(false);
-      if (ukAudioInputRef.current) ukAudioInputRef.current.value = '';
-    }
-  };
-
-  const handleRemoveUkAudio = () => {
-    if (ukAudioUrl && tempUploadedUrls.current.has(ukAudioUrl)) {
-      uploadService.deleteFile(ukAudioUrl, 'raw');
-      tempUploadedUrls.current.delete(ukAudioUrl);
-    }
-    setUkAudioUrl('');
-    setUkAudioName('');
-  };
-
-  // Cloudinary Image Upload handler
-  const handleImageFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      setIsUploadingImage(true);
-      setErrorMessage(null);
-      const res = await uploadService.uploadFile(file);
-
-      // If replacing previously uploaded image in this session, delete old one
-      if (imageUrl && tempUploadedUrls.current.has(imageUrl)) {
-        uploadService.deleteFile(imageUrl);
-        tempUploadedUrls.current.delete(imageUrl);
-      }
-
-      tempUploadedUrls.current.add(res.url);
-      setImageUrl(res.url);
-      setImageName(file.name);
-    } catch (err: any) {
-      setErrorMessage(err?.response?.data?.message || err?.message || 'Failed to upload image to Cloudinary');
-    } finally {
-      setIsUploadingImage(false);
-      if (imageInputRef.current) imageInputRef.current.value = '';
-    }
-  };
-
-  const handleRemoveImage = () => {
-    if (imageUrl && tempUploadedUrls.current.has(imageUrl)) {
-      uploadService.deleteFile(imageUrl);
-      tempUploadedUrls.current.delete(imageUrl);
-    }
-    setImageUrl('');
-    setImageName('');
-  };
-
-  const playAudio = (url?: string) => {
-    if (!url) return;
-    try {
-      const a = new Audio(url);
-      a.play().catch(console.warn);
-    } catch (err) {
-      console.warn(err);
-    }
-  };
-
-  // VALIDATION FUNCTIONS FOR EACH TAB
-  const validateGeneral = (): boolean => {
-    if (!word.trim()) {
-      setErrorMessage(t('err_word_required'));
-      return false;
-    }
-    setErrorMessage(null);
-    return true;
-  };
-
-  const validateMeanings = (): boolean => {
-    if (meanings.length === 0) {
-      setErrorMessage(t('err_meaning_required'));
-      return false;
-    }
-    const hasIncomplete = meanings.some(
-      (m) => !m.english.trim() || !m.vietnamese.trim()
-    );
-    if (hasIncomplete) {
-      setErrorMessage(t('err_meaning_required'));
-      return false;
-    }
-
-    for (const m of meanings) {
-      for (const ex of m.examples) {
-        if (!ex.sentence.trim() || !ex.translation.trim()) {
-          setErrorMessage(t('err_example_incomplete'));
-          return false;
-        }
-      }
-    }
-
-    setErrorMessage(null);
-    return true;
-  };
-
-  // Stepped Navigation Handlers
-  const handleNextFromGeneral = () => {
-    if (validateGeneral()) {
-      setActiveTab('meanings');
-    }
-  };
-
-  const handleNextFromMeanings = () => {
-    if (validateMeanings()) {
-      setActiveTab('media');
-    }
-  };
-
-  const handleTabClick = (targetTab: TabType) => {
-    if (targetTab === activeTab) return;
-
-    if (activeTab === 'general' && (targetTab === 'meanings' || targetTab === 'media')) {
-      if (!validateGeneral()) return;
-    }
-    if (activeTab === 'meanings' && targetTab === 'media') {
-      if (!validateMeanings()) return;
-    }
-
-    setErrorMessage(null);
-    setActiveTab(targetTab);
-  };
-
-
-
-  // Dynamic Meaning Handlers
-  const addMeaning = () => {
-    setErrorMessage(null);
-    setMeanings((prev) => [
-      ...prev,
-      {
-        id: String(Date.now()),
-        partOfSpeech: 'verb',
-        english: '',
-        vietnamese: '',
-        synonyms: '',
-        antonyms: '',
-        examples: [],
-      },
+  const refreshWord = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['words'] }),
+      queryClient.invalidateQueries({ queryKey: ['word-detail', wordId] }),
     ]);
   };
 
-  const removeMeaning = (id: string) => {
-    setErrorMessage(null);
-    setMeanings((prev) => prev.filter((m) => m.id !== id));
-  };
-
-  const updateMeaning = (
-    id: string,
-    field: 'partOfSpeech' | 'english' | 'vietnamese' | 'synonyms' | 'antonyms',
-    value: string
-  ) => {
-    setErrorMessage(null);
-    setMeanings((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, [field]: value } : m))
-    );
-  };
-
-  // Dynamic Example Handlers per Meaning
-  const addExample = (meaningId: string) => {
-    setErrorMessage(null);
-    setMeanings((prev) =>
-      prev.map((m) => {
-        if (m.id !== meaningId) return m;
-        return {
-          ...m,
-          examples: [
-            ...m.examples,
-            { id: String(Date.now()), sentence: '', translation: '' },
-          ],
-        };
-      })
-    );
-  };
-
-  const removeExample = (meaningId: string, exampleId: string) => {
-    setErrorMessage(null);
-    setMeanings((prev) =>
-      prev.map((m) => {
-        if (m.id !== meaningId) return m;
-        return {
-          ...m,
-          examples: m.examples.filter((ex) => ex.id !== exampleId),
-        };
-      })
-    );
-  };
-
-  const updateExample = (
-    meaningId: string,
-    exampleId: string,
-    field: 'sentence' | 'translation',
-    value: string
-  ) => {
-    setErrorMessage(null);
-    setMeanings((prev) =>
-      prev.map((m) => {
-        if (m.id !== meaningId) return m;
-        return {
-          ...m,
-          examples: m.examples.map((ex) =>
-            ex.id === exampleId ? { ...ex, [field]: value } : ex
-          ),
-        };
-      })
-    );
-  };
-
-  const getIndexBadgeColor = (idx: number) => {
-    const colors = [
-      'bg-blue-600 text-white',
-      'bg-emerald-600 text-white',
-      'bg-purple-600 text-white',
-      'bg-amber-600 text-white',
-      'bg-rose-600 text-white',
-    ];
-    return colors[idx % colors.length];
-  };
-
-  // Mutation
-  const updateMutation = useMutation({
-    mutationFn: (payload: UpdateWordDto) => wordService.update(wordId!, payload),
-    onSuccess: () => {
-      // If the word originally had an image or audio on Cloudinary, and it was replaced or removed, delete old asset
-      if (wordDetail?.image && wordDetail.image !== imageUrl && wordDetail.image.includes('cloudinary.com')) {
-        uploadService.deleteFile(wordDetail.image);
-      }
-      if (wordDetail?.audio?.us && wordDetail.audio.us !== usAudioUrl && wordDetail.audio.us.includes('cloudinary.com')) {
-        uploadService.deleteFile(wordDetail.audio.us, 'raw');
-      }
-      if (wordDetail?.audio?.uk && wordDetail.audio.uk !== ukAudioUrl && wordDetail.audio.uk.includes('cloudinary.com')) {
-        uploadService.deleteFile(wordDetail.audio.uk, 'raw');
-      }
-
-      tempUploadedUrls.current.clear();
-      queryClient.invalidateQueries({ queryKey: ['words'] });
-      queryClient.invalidateQueries({ queryKey: ['word-detail', wordId] });
-      setErrorMessage(null);
-      onOpenChange(false);
-    },
-    onError: (err: any) => {
-      const msg =
-        err?.response?.data?.message ||
-        err?.message ||
-        'Failed to update word. Please try again.';
-      setErrorMessage(msg);
-    },
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage(null);
-
-    if (!validateGeneral()) {
-      setActiveTab('general');
-      return;
+  const generate = async (accent: 'us' | 'uk') => {
+    if (!wordId) return;
+    try {
+      setAudioBusy(accent);
+      setError('');
+      await audioService.generateVocabulary(wordId, accent);
+      await refreshWord();
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err?.message || 'Tạo audio thất bại.');
+    } finally {
+      setAudioBusy(null);
     }
-    if (!validateMeanings()) {
-      setActiveTab('meanings');
-      return;
-    }
-
-    const partsMap = new Map<string, WordPartDetail>();
-
-    meanings.forEach((m) => {
-      if (!m.english.trim()) return;
-      const pos = (m.partOfSpeech || 'other').toUpperCase();
-      const translations = m.vietnamese
-        ? m.vietnamese.split(',').map((s) => s.trim()).filter(Boolean)
-        : [];
-      const synonymsList = m.synonyms
-        ? m.synonyms.split(/[,;]+/).map((s) => s.trim()).filter(Boolean)
-        : [];
-      const antonymsList = m.antonyms
-        ? m.antonyms.split(/[,;]+/).map((s) => s.trim()).filter(Boolean)
-        : [];
-
-      const validExamples = m.examples
-        .filter((ex) => ex.sentence.trim() && ex.translation.trim())
-        .map((ex) => ({
-          en: ex.sentence.trim(),
-          vi: ex.translation.trim(),
-        }));
-
-      if (!partsMap.has(pos)) {
-        partsMap.set(pos, {
-          partOfSpeech: pos,
-          meanings: [],
-        });
-      }
-
-      partsMap.get(pos)!.meanings.push({
-        definition: m.english.trim(),
-        translation: translations,
-        synonyms: synonymsList,
-        antonyms: antonymsList,
-        examples: validExamples,
-      });
-    });
-
-    const parsedVariations = variations
-      .split(/[,;]+/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    const parsedRelatedWords = relatedWords
-      .split(/[,;]+/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    const payload: UpdateWordDto = {
-      word: word.trim(),
-      level,
-      ipa: {
-        us: usIpa.trim() || undefined,
-        uk: ukIpa.trim() || undefined,
-      },
-      audio: {
-        us: usAudioUrl.trim() || undefined,
-        uk: ukAudioUrl.trim() || undefined,
-      },
-      image: imageUrl.trim() || undefined,
-      variations: parsedVariations,
-      relatedWords: parsedRelatedWords,
-      parts: Array.from(partsMap.values()),
-      isActive,
-    };
-
-    updateMutation.mutate(payload);
   };
 
-  const validMeaningsCount = meanings.filter(
-    (m) => m.english.trim() && m.vietnamese.trim()
-  ).length;
+  const upload = async (accent: 'us' | 'uk', file?: File) => {
+    if (!wordId || !file) return;
+    try {
+      setAudioBusy(accent);
+      setError('');
+      await audioService.uploadVocabulary(wordId, accent, file);
+      await refreshWord();
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err?.message || 'Upload audio thất bại.');
+    } finally {
+      setAudioBusy(null);
+    }
+  };
+
+  const updateMeaning = (id: string, patch: Partial<MeaningDraft>) => setMeanings((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item));
+
+  const audioCard = (accent: 'us' | 'uk') => {
+    const url = detail?.audio?.[accent];
+    const meta = detail?.audioMeta?.[accent];
+    const label = accent.toUpperCase();
+    const status = meta?.status || (url ? 'READY' : 'NONE');
+    return (
+      <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2"><span className="text-sm font-bold text-slate-900">{label}</span><span className={`rounded px-2 py-0.5 text-[10px] font-bold ${status === 'READY' ? 'bg-emerald-100 text-emerald-700' : status === 'STALE' ? 'bg-amber-100 text-amber-700' : status === 'FAILED' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'}`}>{status}</span></div>
+            <p className="mt-1 text-xs text-slate-500">{meta?.source === 'UPLOAD' ? 'Audio upload' : 'Kokoro TTS'}{meta?.voiceIds?.[0] ? ` · ${meta.voiceIds[0]}` : ''}</p>
+          </div>
+          {url && <button type="button" onClick={() => new Audio(url).play()} className="rounded-md border border-slate-200 p-2 text-blue-600 hover:bg-blue-50"><Volume2 className="h-4 w-4" /></button>}
+        </div>
+        {status === 'STALE' && <p className="text-xs text-amber-700">Nội dung từ đã thay đổi. Nên regenerate audio.</p>}
+        {status === 'FAILED' && meta?.error && <p className="text-xs text-rose-600 line-clamp-2">{meta.error}</p>}
+        <div className="flex flex-wrap gap-2">
+          <button type="button" disabled={!!audioBusy} onClick={() => generate(accent)} className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60">
+            {audioBusy === accent ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <WandSparkles className="h-3.5 w-3.5" />} {url ? 'Regenerate' : 'Generate'}
+          </button>
+          <button type="button" disabled={!!audioBusy} onClick={() => (accent === 'us' ? usInput.current : ukInput.current)?.click()} className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-60"><Upload className="h-3.5 w-3.5" /> Upload</button>
+          <input ref={accent === 'us' ? usInput : ukInput} type="file" accept="audio/*" className="hidden" onChange={(e) => { void upload(accent, e.target.files?.[0]); e.currentTarget.value = ''; }} />
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(v) => {
-        if (!v) cleanupTempUploads();
-        onOpenChange(v);
-      }}
-    >
-      <DialogContent className="max-w-3xl md:max-w-4xl w-full max-h-[92vh] flex flex-col p-0 gap-0 rounded-[6px] border border-slate-200 shadow-none bg-white overflow-hidden">
-        {/* TOP BAR / TITLE */}
-        <div className="px-6 pt-5 pb-3 border-b border-slate-100 bg-white">
-          <div className="flex items-center justify-between pb-3">
-            <DialogTitle className="text-xl font-bold tracking-tight text-slate-900">
-              {t('edit_word_title', { defaultValue: 'Edit Word' })}
-            </DialogTitle>
-          </div>
-
-          {/* TAB NAVIGATION BUTTONS (3 TABS) */}
-          <div className="flex items-center gap-6 text-sm font-medium border-b border-slate-100 -mb-3 pt-1">
-            <button
-              type="button"
-              onClick={() => handleTabClick('general')}
-              className={`pb-3 border-b-2 transition-all cursor-pointer ${
-                activeTab === 'general'
-                  ? 'border-blue-600 text-blue-600 font-semibold'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              {t('tab_general', { defaultValue: 'General' })}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleTabClick('meanings')}
-              className={`pb-3 border-b-2 transition-all cursor-pointer ${
-                activeTab === 'meanings'
-                  ? 'border-blue-600 text-blue-600 font-semibold'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              {t('tab_meanings', { defaultValue: 'Meanings & Examples' })} (
-              {validMeaningsCount || meanings.length})
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleTabClick('media')}
-              className={`pb-3 border-b-2 transition-all cursor-pointer ${
-                activeTab === 'media'
-                  ? 'border-blue-600 text-blue-600 font-semibold'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              {t('tab_media', { defaultValue: 'Media & Images' })}
-            </button>
-          </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl w-full max-h-[92vh] overflow-y-auto p-0 rounded-lg border border-slate-200 bg-white">
+        <div className="sticky top-0 z-10 bg-white border-b border-slate-200 px-6 py-4">
+          <DialogTitle className="text-xl font-bold text-slate-900">Chỉnh sửa từ vựng</DialogTitle>
+          <p className="mt-1 text-sm text-slate-500">Sửa nội dung và quản lý phát âm ngay trong một màn hình.</p>
         </div>
 
-        {/* ERROR MESSAGE ALERT (IF ANY) */}
-        {errorMessage && (
-          <div className="mx-6 mt-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-[6px] font-medium flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
-            <span>{errorMessage}</span>
-          </div>
-        )}
-
-        {/* LOADING INDICATOR */}
-        {isFetching ? (
-          <div className="flex-1 p-12 flex flex-col items-center justify-center gap-3 text-slate-500">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-            <span className="text-sm font-medium">
-              {t('loading_details', { defaultValue: 'Loading word details...' })}
-            </span>
-          </div>
+        {query.isLoading ? (
+          <div className="flex h-56 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-blue-600" /></div>
         ) : (
-          /* TAB CONTENTS */
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            {/* TAB 1: GENERAL */}
-            {activeTab === 'general' && (
-              <div className="space-y-6">
-                {/* Word Information */}
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
-                    <Book className="w-4 h-4 text-blue-600" />
-                    <span>
-                      {t('sec_word_info', { defaultValue: 'Word Information' })}
-                    </span>
-                  </div>
+          <form className="p-6 space-y-6" onSubmit={(e) => { e.preventDefault(); setError(''); updateMutation.mutate(); }}>
+            {error && <div className="rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
 
-                  <div className="space-y-3.5 text-xs">
-                    {/* Word Input */}
-                    <div className="space-y-1">
-                      <label className="font-semibold text-slate-700">
-                        {t('word_field', { defaultValue: 'Word' })}{' '}
-                        <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={word}
-                        onChange={(e) => {
-                          setWord(e.target.value);
-                          setErrorMessage(null);
-                        }}
-                        placeholder="e.g. abandon"
-                        className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-[6px] text-sm text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                      />
-                    </div>
+            <section className="grid grid-cols-1 md:grid-cols-[1fr_140px] gap-4">
+              <label className="space-y-1.5"><span className="text-sm font-semibold text-slate-700">Từ / cụm từ *</span><input value={word} onChange={(e) => setWord(e.target.value)} className="w-full rounded-md border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-blue-500" /></label>
+              <label className="space-y-1.5"><span className="text-sm font-semibold text-slate-700">Level</span><Select value={level} onValueChange={setLevel}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{LEVELS.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent></Select></label>
+            </section>
 
-                    {/* Level & Status */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-                      <div className="space-y-1">
-                        <label className="font-semibold text-slate-700">
-                          {t('level_field', { defaultValue: 'Level' })}{' '}
-                          <span className="text-rose-500">*</span>
-                        </label>
-                        <Select value={level} onValueChange={(val) => setLevel(val)}>
-                        <SelectTrigger className="w-full py-2.5 bg-white border-slate-200 rounded-[6px] text-sm font-semibold text-slate-800">
-                          <SelectValue placeholder="Select level" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-[6px]">
-                          {LEVEL_OPTIONS.map((lvl) => (
-                            <SelectItem key={lvl} value={lvl} className="font-semibold text-sm">
-                              {lvl}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="font-semibold text-slate-700">
-                          {t('status', { defaultValue: 'Status' })}
-                        </label>
-                        <div className="flex items-center gap-3 pt-2">
-                          <button
-                            type="button"
-                            onClick={() => setIsActive(!isActive)}
-                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                              isActive ? 'bg-emerald-500' : 'bg-slate-300'
-                            }`}
-                          >
-                            <span
-                              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white ring-0 transition duration-200 ease-in-out ${
-                                isActive ? 'translate-x-5' : 'translate-x-0'
-                              }`}
-                            />
-                          </button>
-                          <span
-                            className={`text-sm font-semibold ${
-                              isActive ? 'text-emerald-600' : 'text-slate-400'
-                            }`}
-                          >
-                            {isActive
-                              ? t('active', { defaultValue: 'Active' })
-                              : t('inactive', { defaultValue: 'Inactive' })}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Variations (Biến thể từ vựng) */}
-                    <div className="space-y-1.5 pt-2 border-t border-slate-100">
-                      <div className="flex items-center justify-between">
-                        <label className="font-semibold text-slate-700">
-                          {t('variations_label', { defaultValue: 'Biến thể của từ (Variations)' })}
-                        </label>
-                        {variations.trim() && (
-                          <span className="text-[11px] font-medium text-purple-600 bg-purple-50 px-2 py-0.5 rounded-[4px]">
-                            {variations.split(/[,;]+/).map((s) => s.trim()).filter(Boolean).length}{' '}
-                            {t('words_label', { defaultValue: 'từ' })}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-slate-500 leading-normal">
-                        {t('variations_hint', {
-                          defaultValue:
-                            'Các dạng chia thì, số nhiều, V-ing, V-ed (ví dụ: baffles, baffled, baffling)... Phân cách bằng dấu phẩy (,) hoặc chấm phẩy (;)',
-                        })}
-                      </p>
-                      <input
-                        type="text"
-                        value={variations}
-                        onChange={(e) => setVariations(e.target.value)}
-                        placeholder={t('variations_placeholder', {
-                          defaultValue: 'ví dụ: baffles, baffled, baffling...',
-                        })}
-                        className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-[6px] text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-mono"
-                      />
-                    </div>
-
-                    {/* Related Words (Từ liên quan) */}
-                    <div className="space-y-1.5 pt-2">
-                      <div className="flex items-center justify-between">
-                        <label className="font-semibold text-slate-700">
-                          {t('related_words_label', { defaultValue: 'Từ liên quan (Related Words)' })}
-                        </label>
-                        {relatedWords.trim() && (
-                          <span className="text-[11px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-[4px]">
-                            {relatedWords.split(/[,;]+/).map((s) => s.trim()).filter(Boolean).length}{' '}
-                            {t('words_label', { defaultValue: 'từ' })}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-slate-500 leading-normal">
-                        {t('related_words_hint', {
-                          defaultValue:
-                            'Các từ cùng họ từ hoặc viết tắt liên quan (ví dụ: bafflement, baffling, AM)... Phân cách bằng dấu phẩy (,) hoặc chấm phẩy (;)',
-                        })}
-                      </p>
-                      <input
-                        type="text"
-                        value={relatedWords}
-                        onChange={(e) => setRelatedWords(e.target.value)}
-                        placeholder={t('related_words_placeholder', {
-                          defaultValue: 'ví dụ: bafflement, baffling, AM...',
-                        })}
-                        className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-[6px] text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-mono"
-                      />
-                    </div>
-                  </div>
+            <section className="space-y-3">
+              <div className="flex items-center justify-between"><div><h3 className="text-sm font-bold text-slate-900">Nghĩa</h3><p className="text-xs text-slate-500">Quản lý các nghĩa chính, ví dụ và từ liên quan.</p></div><button type="button" onClick={() => setMeanings((items) => [...items, newMeaning()])} className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-3 py-2 text-xs font-semibold"><Plus className="h-3.5 w-3.5" /> Thêm nghĩa</button></div>
+              {meanings.map((meaning, index) => (
+                <div key={meaning.id} className="rounded-lg border border-slate-200 bg-slate-50/40 p-4 space-y-3">
+                  <div className="flex items-center justify-between"><div className="flex items-center gap-2"><span className="flex h-6 w-6 items-center justify-center rounded bg-blue-600 text-xs font-bold text-white">{index + 1}</span><Select value={meaning.partOfSpeech} onValueChange={(value) => updateMeaning(meaning.id, { partOfSpeech: value })}><SelectTrigger className="w-[170px] bg-white"><SelectValue /></SelectTrigger><SelectContent>{POS.map((item) => <SelectItem key={item} value={item}>{item.replace('_', ' ')}</SelectItem>)}</SelectContent></Select></div>{meanings.length > 1 && <button type="button" onClick={() => setMeanings((items) => items.filter((item) => item.id !== meaning.id))} className="p-2 text-slate-400 hover:text-rose-600"><Trash2 className="h-4 w-4" /></button>}</div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3"><input value={meaning.translation} onChange={(e) => updateMeaning(meaning.id, { translation: e.target.value })} placeholder="Nghĩa tiếng Việt" className="rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm" /><input value={meaning.definition} onChange={(e) => updateMeaning(meaning.id, { definition: e.target.value })} placeholder="English definition" className="rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm" /></div>
+                  {advanced && <div className="grid grid-cols-1 md:grid-cols-2 gap-3"><input value={meaning.synonyms} onChange={(e) => updateMeaning(meaning.id, { synonyms: e.target.value })} placeholder="Synonyms" className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm" /><input value={meaning.antonyms} onChange={(e) => updateMeaning(meaning.id, { antonyms: e.target.value })} placeholder="Antonyms" className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm" /><input value={meaning.exampleEn} onChange={(e) => updateMeaning(meaning.id, { exampleEn: e.target.value })} placeholder="Example sentence" className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm" /><input value={meaning.exampleVi} onChange={(e) => updateMeaning(meaning.id, { exampleVi: e.target.value })} placeholder="Dịch câu ví dụ" className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm" /></div>}
                 </div>
+              ))}
+            </section>
 
-                <hr className="border-slate-100" />
+            <section>
+              <div className="mb-3 flex items-center gap-2"><Volume2 className="h-4 w-4 text-blue-600" /><div><h3 className="text-sm font-bold text-slate-900">Audio pronunciation</h3><p className="text-xs text-slate-500">Generate bằng Kokoro hoặc upload file riêng. File được lưu local.</p></div></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{audioCard('us')}{audioCard('uk')}</div>
+            </section>
 
-                {/* Pronunciation: Cloudinary Upload Audio for US and UK */}
-                <div className="space-y-3.5">
-                  <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
-                    <Volume2 className="w-4 h-4 text-blue-600" />
-                    <span>
-                      {t('sec_pronunciation', {
-                        defaultValue: 'Pronunciation',
-                      })}
-                    </span>
-                  </div>
+            <button type="button" onClick={() => setAdvanced((value) => !value)} className="flex w-full items-center justify-between rounded-lg border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"><span>Thông tin nâng cao</span>{advanced ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</button>
+            {advanced && <section className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-lg border border-slate-200 p-4"><label className="space-y-1"><span className="text-xs font-semibold text-slate-600">IPA US</span><input value={usIpa} onChange={(e) => setUsIpa(e.target.value)} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" /></label><label className="space-y-1"><span className="text-xs font-semibold text-slate-600">IPA UK</span><input value={ukIpa} onChange={(e) => setUkIpa(e.target.value)} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" /></label><label className="space-y-1"><span className="text-xs font-semibold text-slate-600">Biến thể</span><input value={variations} onChange={(e) => setVariations(e.target.value)} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" /></label><label className="space-y-1"><span className="text-xs font-semibold text-slate-600">Từ liên quan</span><input value={relatedWords} onChange={(e) => setRelatedWords(e.target.value)} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" /></label><label className="space-y-1 md:col-span-2"><span className="text-xs font-semibold text-slate-600">Image URL</span><input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" /></label><label className="inline-flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} /> Kích hoạt</label></section>}
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                    {/* US Pronunciation Card */}
-                    <div className="p-4 rounded-[6px] border border-slate-200 bg-slate-50/50 space-y-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="font-bold text-slate-800 text-xs flex items-center gap-1.5 whitespace-nowrap">
-                          <span className="px-1.5 py-0.5 rounded-[4px] bg-blue-100 text-blue-700 text-[10px] font-black uppercase">
-                            US
-                          </span>
-                          <span className="whitespace-nowrap">
-                            {t('us_label', { defaultValue: 'US Pronunciation' })}
-                          </span>
-                        </span>
-
-                        <button
-                          type="button"
-                          disabled={isUploadingUs}
-                          onClick={() => usAudioInputRef.current?.click()}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] border border-blue-200 bg-white hover:bg-blue-50 text-blue-700 text-xs font-semibold shadow-none transition-colors cursor-pointer shrink-0 whitespace-nowrap disabled:opacity-50"
-                        >
-                          {isUploadingUs ? (
-                            <Loader2 className="w-3.5 h-3.5 text-blue-600 animate-spin" />
-                          ) : (
-                            <UploadCloud className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                          )}
-                          <span className="whitespace-nowrap">
-                            {isUploadingUs
-                              ? t('uploading_cloudinary')
-                              : t('upload_audio_us', { defaultValue: 'Upload US Audio' })}
-                          </span>
-                        </button>
-                        <input
-                          type="file"
-                          ref={usAudioInputRef}
-                          accept="audio/*"
-                          className="hidden"
-                          onChange={handleUsAudioFile}
-                        />
-                      </div>
-
-                      {/* IPA Input */}
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-semibold text-slate-600">
-                          IPA (US)
-                        </label>
-                        <input
-                          type="text"
-                          value={usIpa}
-                          onChange={(e) => setUsIpa(e.target.value)}
-                          placeholder="/əˈbændən/"
-                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-[6px] text-sm font-mono text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                        />
-                      </div>
-
-                      {/* Audio Preview or URL */}
-                      {usAudioUrl ? (
-                        <div className="flex items-center justify-between p-2 rounded-[6px] bg-white border border-blue-200 text-xs">
-                          <div className="flex items-center gap-2 truncate pr-2">
-                            <button
-                              type="button"
-                              onClick={() => playAudio(usAudioUrl)}
-                              className="w-7 h-7 rounded-[4px] bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center shrink-0 cursor-pointer"
-                              title="Play Audio"
-                            >
-                              <Volume2 className="w-3.5 h-3.5" />
-                            </button>
-                            <span className="text-slate-700 font-medium truncate text-[11px]">
-                              {usAudioName || usAudioUrl}
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={handleRemoveUsAudio}
-                            className="text-rose-400 hover:text-rose-600 p-1 shrink-0 cursor-pointer"
-                            title="Remove"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ) : (
-                        <input
-                          type="text"
-                          value={usAudioUrl}
-                          onChange={(e) => {
-                            setUsAudioUrl(e.target.value);
-                            setUsAudioName('');
-                          }}
-                          placeholder={t('or_paste_audio', { defaultValue: 'or paste audio URL' })}
-                          className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-[6px] text-xs text-slate-600 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                        />
-                      )}
-                    </div>
-
-                    {/* UK Pronunciation Card */}
-                    <div className="p-4 rounded-[6px] border border-slate-200 bg-slate-50/50 space-y-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="font-bold text-slate-800 text-xs flex items-center gap-1.5 whitespace-nowrap">
-                          <span className="px-1.5 py-0.5 rounded-[4px] bg-blue-100 text-blue-700 text-[10px] font-black uppercase">
-                            UK
-                          </span>
-                          <span className="whitespace-nowrap">
-                            {t('uk_label', { defaultValue: 'UK Pronunciation' })}
-                          </span>
-                        </span>
-
-                        <button
-                          type="button"
-                          disabled={isUploadingUk}
-                          onClick={() => ukAudioInputRef.current?.click()}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] border border-blue-200 bg-white hover:bg-blue-50 text-blue-700 text-xs font-semibold shadow-none transition-colors cursor-pointer shrink-0 whitespace-nowrap disabled:opacity-50"
-                        >
-                          {isUploadingUk ? (
-                            <Loader2 className="w-3.5 h-3.5 text-blue-600 animate-spin" />
-                          ) : (
-                            <UploadCloud className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                          )}
-                          <span className="whitespace-nowrap">
-                            {isUploadingUk
-                              ? t('uploading_cloudinary')
-                              : t('upload_audio_uk', { defaultValue: 'Upload UK Audio' })}
-                          </span>
-                        </button>
-                        <input
-                          type="file"
-                          ref={ukAudioInputRef}
-                          accept="audio/*"
-                          className="hidden"
-                          onChange={handleUkAudioFile}
-                        />
-                      </div>
-
-                      {/* IPA Input */}
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-semibold text-slate-600">
-                          IPA (UK)
-                        </label>
-                        <input
-                          type="text"
-                          value={ukIpa}
-                          onChange={(e) => setUkIpa(e.target.value)}
-                          placeholder="/əˈbændən/"
-                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-[6px] text-sm font-mono text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                        />
-                      </div>
-
-                      {/* Audio Preview or URL */}
-                      {ukAudioUrl ? (
-                        <div className="flex items-center justify-between p-2 rounded-[6px] bg-white border border-blue-200 text-xs">
-                          <div className="flex items-center gap-2 truncate pr-2">
-                            <button
-                              type="button"
-                              onClick={() => playAudio(ukAudioUrl)}
-                              className="w-7 h-7 rounded-[4px] bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center shrink-0 cursor-pointer"
-                              title="Play Audio"
-                            >
-                              <Volume2 className="w-3.5 h-3.5" />
-                            </button>
-                            <span className="text-slate-700 font-medium truncate text-[11px]">
-                              {ukAudioName || ukAudioUrl}
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={handleRemoveUkAudio}
-                            className="text-rose-400 hover:text-rose-600 p-1 shrink-0 cursor-pointer"
-                            title="Remove"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ) : (
-                        <input
-                          type="text"
-                          value={ukAudioUrl}
-                          onChange={(e) => {
-                            setUkAudioUrl(e.target.value);
-                            setUkAudioName('');
-                          }}
-                          placeholder={t('or_paste_audio', { defaultValue: 'or paste audio URL' })}
-                          className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-[6px] text-xs text-slate-600 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                        />
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* TAB 2: MEANINGS & EXAMPLES (MERGED) */}
-            {activeTab === 'meanings' && (
-              <div className="space-y-5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
-                    <BookOpen className="w-4 h-4 text-blue-600" />
-                    <span>{t('sec_meanings', { defaultValue: 'Meanings & Examples' })}</span>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={addMeaning}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-[6px] border border-blue-200 transition-colors cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>
-                      {t('btn_add_meaning', { defaultValue: 'Add Meaning' })}
-                    </span>
-                  </button>
-                </div>
-
-                <div className="space-y-4 text-xs">
-                  {meanings.map((m, idx) => (
-                    <div
-                      key={m.id}
-                      className="p-4 rounded-[6px] border border-slate-200 bg-slate-50/40 hover:bg-slate-50/70 transition-all space-y-3.5"
-                    >
-                      {/* Header: Meaning number, POS, remove meaning */}
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2.5">
-                          <span
-                            className={`w-6 h-6 rounded-[4px] flex items-center justify-center text-xs font-bold shrink-0 ${getIndexBadgeColor(
-                              idx
-                            )}`}
-                          >
-                            {idx + 1}
-                          </span>
-                          <div className="w-36 shrink-0">
-                            <Select
-                              value={m.partOfSpeech}
-                              onValueChange={(val) =>
-                                updateMeaning(m.id, 'partOfSpeech', val)
-                              }
-                            >
-                              <SelectTrigger className="h-8 px-2.5 py-1 text-xs font-semibold text-slate-800 rounded-[6px] border-slate-200 bg-white">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent className="rounded-[6px]">
-                                {availablePosOptions.map((pos) => (
-                                  <SelectItem key={pos.value} value={pos.value} className="text-xs font-semibold">
-                                    {pos.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-
-                        {meanings.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeMeaning(m.id)}
-                            className="p-1.5 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-[6px] transition-colors cursor-pointer shrink-0"
-                            title="Remove meaning"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Meaning definitions: English & Vietnamese */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <label className="text-[11px] font-semibold text-slate-600">
-                            {t('col_english', { defaultValue: 'English definition' })}{' '}
-                            <span className="text-rose-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            value={m.english}
-                            onChange={(e) =>
-                              updateMeaning(m.id, 'english', e.target.value)
-                            }
-                            placeholder="e.g. to leave completely"
-                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-[6px] text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                          />
-                        </div>
-
-                        <div className="space-y-1">
-                          <label className="text-[11px] font-semibold text-slate-600">
-                            {t('col_vietnamese', { defaultValue: 'Vietnamese translation' })}{' '}
-                            <span className="text-rose-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            value={m.vietnamese}
-                            onChange={(e) =>
-                              updateMeaning(m.id, 'vietnamese', e.target.value)
-                            }
-                            placeholder="e.g. từ bỏ, bỏ rơi"
-                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-[6px] text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Synonyms & Antonyms */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <label className="text-[11px] font-semibold text-slate-600 flex items-center justify-between">
-                            <span>{t('synonyms_label', 'Từ đồng nghĩa (Synonyms)')}</span>
-                            <span className="text-[10px] text-slate-400 font-normal">
-                              {t('comma_separated_hint', 'Phân cách bởi dấu phẩy')}
-                            </span>
-                          </label>
-                          <input
-                            type="text"
-                            value={m.synonyms}
-                            onChange={(e) =>
-                              updateMeaning(m.id, 'synonyms', e.target.value)
-                            }
-                            placeholder={t('synonyms_placeholder', 'ví dụ: quick, fast, rapid')}
-                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-[6px] text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                          />
-                        </div>
-
-                        <div className="space-y-1">
-                          <label className="text-[11px] font-semibold text-slate-600 flex items-center justify-between">
-                            <span>{t('antonyms_label', 'Từ trái nghĩa (Antonyms)')}</span>
-                            <span className="text-[10px] text-slate-400 font-normal">
-                              {t('comma_separated_hint', 'Phân cách bởi dấu phẩy')}
-                            </span>
-                          </label>
-                          <input
-                            type="text"
-                            value={m.antonyms}
-                            onChange={(e) =>
-                              updateMeaning(m.id, 'antonyms', e.target.value)
-                            }
-                            placeholder={t('antonyms_placeholder', 'ví dụ: slow, sluggish')}
-                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-[6px] text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                          />
-                        </div>
-                      </div>
-
-                      {/* NESTED EXAMPLES FOR THIS SPECIFIC MEANING */}
-                      <div className="pt-2 border-t border-slate-200/70 space-y-2.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
-                            <Quote className="w-3.5 h-3.5 text-blue-500" />
-                            <span>{t('sec_examples', { defaultValue: 'Associated Examples' })}</span>
-                            <span className="text-slate-400 font-normal">
-                              ({m.examples.length})
-                            </span>
-                          </span>
-
-                          <button
-                            type="button"
-                            onClick={() => addExample(m.id)}
-                            className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 bg-white hover:bg-blue-50 px-2.5 py-1 rounded-[6px] border border-blue-200 transition-colors cursor-pointer inline-flex items-center gap-1"
-                          >
-                            <Plus className="w-3 h-3" />
-                            <span>{t('btn_add_example', { defaultValue: '+ Add Example' })}</span>
-                          </button>
-                        </div>
-
-                        {m.examples.length > 0 && (
-                          <div className="space-y-2 pt-1">
-                            {m.examples.map((ex, exIdx) => (
-                              <div
-                                key={ex.id}
-                                className="flex items-center gap-2 p-2.5 rounded-[6px] bg-white border border-slate-200 shadow-none"
-                              >
-                                <span className="w-5 h-5 rounded-[4px] bg-slate-100 text-slate-600 text-[10px] font-bold flex items-center justify-center shrink-0">
-                                  {exIdx + 1}
-                                </span>
-
-                                <div className="flex-1">
-                                  <input
-                                    type="text"
-                                    value={ex.sentence}
-                                    onChange={(e) =>
-                                      updateExample(m.id, ex.id, 'sentence', e.target.value)
-                                    }
-                                    placeholder={t('col_sentence', { defaultValue: 'English sentence' })}
-                                    className="w-full px-2.5 py-1.5 bg-slate-50/50 hover:bg-white border border-slate-200 rounded-[6px] text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                                  />
-                                </div>
-
-                                <div className="flex-1">
-                                  <input
-                                    type="text"
-                                    value={ex.translation}
-                                    onChange={(e) =>
-                                      updateExample(m.id, ex.id, 'translation', e.target.value)
-                                    }
-                                    placeholder={t('col_translation', { defaultValue: 'Vietnamese translation' })}
-                                    className="w-full px-2.5 py-1.5 bg-slate-50/50 hover:bg-white border border-slate-200 rounded-[6px] text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                                  />
-                                </div>
-
-                                <button
-                                  type="button"
-                                  onClick={() => removeExample(m.id, ex.id)}
-                                  className="p-1 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-[6px] transition-colors cursor-pointer shrink-0"
-                                  title="Remove example"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* TAB 3: MEDIA (IMAGE PREVIEW & CLOUDINARY UPLOAD) */}
-            {activeTab === 'media' && (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
-                  <Radio className="w-4 h-4 text-blue-600" />
-                  <span>
-                    {t('sec_audio_media', { defaultValue: 'Word Image' })}
-                  </span>
-                </div>
-
-                {/* Image Preview & Upload Box */}
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-slate-600">
-                    {t('image_upload_title', {
-                      defaultValue: 'Word Image (optional)',
-                    })}
-                  </label>
-
-                  {/* Hidden input for selecting image */}
-                  <input
-                    type="file"
-                    ref={imageInputRef}
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleImageFile}
-                  />
-
-                  {imageUrl ? (
-                    /* IMAGE PREVIEW CARD */
-                    <div className="rounded-[6px] border border-slate-200 bg-slate-50/50 p-4 flex flex-col items-center gap-3">
-                      <div className="relative group max-h-64 flex items-center justify-center bg-white rounded-[6px] border border-slate-200 p-2 overflow-hidden shadow-none">
-                        <img
-                          src={imageUrl}
-                          alt={word || 'Preview'}
-                          className="max-h-56 max-w-full rounded-[4px] object-contain"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src =
-                              'https://placehold.co/400x300?text=Invalid+Image+URL';
-                          }}
-                        />
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <button
-                          type="button"
-                          disabled={isUploadingImage}
-                          onClick={() => imageInputRef.current?.click()}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 rounded-[6px] text-xs font-semibold text-slate-700 shadow-none transition-colors cursor-pointer disabled:opacity-50"
-                        >
-                          {isUploadingImage ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
-                          ) : (
-                            <UploadCloud className="w-3.5 h-3.5 text-blue-600" />
-                          )}
-                          <span>{t('change_image', { defaultValue: 'Change image' })}</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={handleRemoveImage}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-[6px] text-xs font-semibold text-rose-700 transition-colors cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                          <span>{t('remove_image', { defaultValue: 'Remove image' })}</span>
-                        </button>
-                      </div>
-
-                      <div className="w-full text-center">
-                        <input
-                          type="text"
-                          value={imageUrl}
-                          onChange={(e) => {
-                            setImageUrl(e.target.value);
-                            setImageName('');
-                          }}
-                          placeholder="Image URL"
-                          className="w-full max-w-md px-3 py-1 text-xs bg-white border border-slate-200 rounded-[6px] text-slate-600 font-mono text-center"
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    /* DROPZONE / FILE SELECTOR */
-                    <div
-                      onClick={() => !isUploadingImage && imageInputRef.current?.click()}
-                      className="border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-[6px] p-8 text-center flex flex-col items-center justify-center gap-2 bg-slate-50/40 hover:bg-blue-50/20 transition-all cursor-pointer"
-                    >
-                      <div className="w-12 h-12 rounded-[6px] bg-blue-50 text-blue-600 flex items-center justify-center">
-                        {isUploadingImage ? (
-                          <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
-                        ) : (
-                          <ImageIcon className="w-6 h-6" />
-                        )}
-                      </div>
-                      <div className="text-xs font-semibold text-slate-700">
-                        {isUploadingImage
-                          ? t('uploading_cloudinary', { defaultValue: 'Uploading to Cloudinary...' })
-                          : t('image_upload_hint', { defaultValue: 'Click to select image' })}
-                      </div>
-                      <div className="text-[11px] text-slate-400">
-                        {t('image_upload_sub', {
-                          defaultValue: 'Auto-uploaded to Cloudinary (JPG, PNG, WebP)',
-                        })}
-                      </div>
-                      <input
-                        type="text"
-                        value={imageUrl}
-                        onClick={(e) => e.stopPropagation()}
-                        onChange={(e) => {
-                          setImageUrl(e.target.value);
-                          setImageName('');
-                        }}
-                        placeholder="or paste image URL directly"
-                        className="w-full max-w-sm mt-3 px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-[6px] text-slate-700 text-center"
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+            <div className="sticky bottom-0 -mx-6 -mb-6 flex justify-end gap-3 border-t border-slate-200 bg-white px-6 py-4"><button type="button" onClick={() => onOpenChange(false)} className="rounded-md border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700">Hủy</button><button type="submit" disabled={updateMutation.isPending} className="inline-flex min-w-[130px] items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{updateMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />} Lưu thay đổi</button></div>
+          </form>
         )}
-
-        {/* MODAL BOTTOM ACTION BUTTONS */}
-        <div className="p-4 px-6 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
-          <button
-            type="button"
-            onClick={() => {
-              cleanupTempUploads();
-              onOpenChange(false);
-            }}
-            className="px-4 py-2 border border-slate-200 hover:bg-white rounded-[6px] text-sm font-semibold text-slate-600 transition-colors cursor-pointer"
-          >
-            {t('cancel', { defaultValue: 'Cancel' })}
-          </button>
-
-          <div className="flex items-center gap-2.5">
-            {/* Back button (for tabs > general) */}
-            {activeTab !== 'general' && (
-              <button
-                type="button"
-                onClick={() => {
-                  setErrorMessage(null);
-                  if (activeTab === 'media') setActiveTab('meanings');
-                  else if (activeTab === 'meanings') setActiveTab('general');
-                }}
-                className="px-4 py-2 border border-slate-200 bg-white hover:bg-slate-100 rounded-[6px] text-sm font-semibold text-slate-700 inline-flex items-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span>{t('btn_back', { defaultValue: 'Back' })}</span>
-              </button>
-            )}
-
-            {/* Next button (for tab general) */}
-            {activeTab === 'general' && (
-              <button
-                type="button"
-                onClick={handleNextFromGeneral}
-                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-[6px] text-sm font-semibold inline-flex items-center gap-1.5 shadow-none transition-all cursor-pointer"
-              >
-                <span>{t('btn_next', { defaultValue: 'Next' })}</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            )}
-
-            {/* Next button (for tab meanings) */}
-            {activeTab === 'meanings' && (
-              <button
-                type="button"
-                onClick={handleNextFromMeanings}
-                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-[6px] text-sm font-semibold inline-flex items-center gap-1.5 shadow-none transition-all cursor-pointer"
-              >
-                <span>{t('btn_next', { defaultValue: 'Next' })}</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            )}
-
-            {/* Submit button (for tab media) */}
-            {activeTab === 'media' && (
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={updateMutation.isPending || isUploadingImage || isUploadingUs || isUploadingUk}
-                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 text-white rounded-[6px] text-sm font-semibold inline-flex items-center gap-2 shadow-none transition-all cursor-pointer"
-              >
-                {updateMutation.isPending && (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                )}
-                <span>
-                  {t('btn_update_word', { defaultValue: 'Save Changes' })}
-                </span>
-              </button>
-            )}
-          </div>
-        </div>
       </DialogContent>
     </Dialog>
   );

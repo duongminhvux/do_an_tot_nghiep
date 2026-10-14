@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import { GeneratedAudioMetadata, GeneratedAudioMetadataSchema } from '../../../common/media/generated-audio.schema.js';
 
 export type WordDocument = HydratedDocument<Word>;
 
@@ -30,6 +31,17 @@ export class WordAudio {
 }
 
 export const WordAudioSchema = SchemaFactory.createForClass(WordAudio);
+@Schema({ _id: false })
+export class WordAudioMetadata {
+  @Prop({ type: GeneratedAudioMetadataSchema, default: {} })
+  us?: GeneratedAudioMetadata;
+
+  @Prop({ type: GeneratedAudioMetadataSchema, default: {} })
+  uk?: GeneratedAudioMetadata;
+}
+
+export const WordAudioMetadataSchema = SchemaFactory.createForClass(WordAudioMetadata);
+
 
 /**
  * Example
@@ -130,6 +142,9 @@ export class Word {
     default: {},
   })
   audio: WordAudio;
+
+  @Prop({ type: WordAudioMetadataSchema, default: {} })
+  audioMeta: WordAudioMetadata;
 
   @Prop()
   image?: string;

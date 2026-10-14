@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import { wordService, lessonService } from '@/services/vocabulary.service';
+import { audioService } from '@/services/audio.service';
 import { WordListItem } from '@/types/vocabulary';
 import { Pagination } from '@/components/ui/pagination';
 import { WordDetailDialog } from '@/components/vocabulary/word-detail-dialog';
@@ -29,6 +30,8 @@ import {
   Loader2,
   Plus,
   CheckCircle2,
+  WandSparkles,
+  CircleAlert,
 } from 'lucide-react';
 
 const LEVEL_OPTIONS = ['All levels', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
@@ -74,6 +77,8 @@ export default function WordsPage() {
   const queryClient = useQueryClient();
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [isBulking, setIsBulking] = useState(false);
+  const [audioJobId, setAudioJobId] = useState<string | null>(null);
+  const [audioJobError, setAudioJobError] = useState('');
 
   const toggleActiveMutation = useMutation({
     mutationFn: ({ id, nextActive }: { id: string; nextActive: boolean }) =>
@@ -112,6 +117,34 @@ export default function WordsPage() {
     if (selectedIds.length === 0) return;
     bulkActiveMutation.mutate({ ids: selectedIds, nextActive });
   };
+
+  const bulkAudioMutation = useMutation({
+    mutationFn: (accent: 'us' | 'uk' | 'both') => audioService.bulkVocabulary(selectedIds, accent),
+    onSuccess: (response: any) => {
+      const jobId = response?.data?.jobId || response?.jobId;
+      if (jobId) setAudioJobId(jobId);
+      setAudioJobError('');
+    },
+    onError: (err: any) => setAudioJobError(err?.response?.data?.message || err?.message || 'Không thể tạo audio hàng loạt.'),
+  });
+
+  const audioJobQuery = useQuery({
+    queryKey: ['audio-job', audioJobId],
+    queryFn: () => audioService.getJob(audioJobId!),
+    enabled: !!audioJobId,
+    refetchInterval: (query) => {
+      const state = (query.state.data as any)?.data?.state || (query.state.data as any)?.state;
+      return state === 'completed' || state === 'failed' ? false : 1000;
+    },
+  });
+
+  useEffect(() => {
+    const payload: any = audioJobQuery.data;
+    const state = payload?.data?.state || payload?.state;
+    if (state === 'completed') {
+      queryClient.invalidateQueries({ queryKey: ['words'] });
+    }
+  }, [audioJobQuery.data, queryClient]);
 
   // Debounce search input
   useEffect(() => {
@@ -247,10 +280,10 @@ export default function WordsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900">
-            {t('words_title')}
+            {locale === 'en' ? 'Dictionary' : 'Từ điển'}
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            {t('words_subtitle')}
+            {locale === 'en' ? 'Manage reusable vocabulary, pronunciation and lesson usage.' : 'Quản lý kho từ dùng chung, phát âm và nội dung học.'}
           </p>
         </div>
 
@@ -438,6 +471,23 @@ export default function WordsPage() {
 
             <button
               type="button"
+              disabled={bulkAudioMutation.isPending}
+              onClick={() => bulkAudioMutation.mutate('us')}
+              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold rounded-[6px] transition-colors cursor-pointer inline-flex items-center gap-1.5"
+            >
+              <WandSparkles className="w-3.5 h-3.5" /> US audio
+            </button>
+            <button
+              type="button"
+              disabled={bulkAudioMutation.isPending}
+              onClick={() => bulkAudioMutation.mutate('uk')}
+              className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-semibold rounded-[6px] transition-colors cursor-pointer inline-flex items-center gap-1.5"
+            >
+              <WandSparkles className="w-3.5 h-3.5" /> UK audio
+            </button>
+
+            <button
+              type="button"
               onClick={() => setSelectedIds([])}
               className="px-2.5 py-1.5 text-xs text-slate-500 hover:text-slate-800 font-medium cursor-pointer"
             >
@@ -446,6 +496,29 @@ export default function WordsPage() {
           </div>
         </div>
       )}
+
+      {audioJobId && (() => {
+        const payload: any = audioJobQuery.data;
+        const job = payload?.data || payload;
+        const progress = job?.progress || {};
+        const total = Number(progress.total || 0);
+        const processed = Number(progress.processed || 0);
+        const percent = total > 0 ? Math.round((processed / total) * 100) : 0;
+        return (
+          <div className="rounded-lg border border-blue-200 bg-blue-50/70 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold text-blue-900">Audio queue · {job?.state || 'waiting'}</p>
+                <p className="text-xs text-blue-700 mt-0.5">{processed}/{total || '?'} · thành công {progress.succeeded || 0} · lỗi {progress.failed || 0}</p>
+              </div>
+              <span className="text-sm font-bold text-blue-700">{percent}%</span>
+            </div>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-blue-100"><div className="h-full bg-blue-600 transition-all" style={{ width: `${percent}%` }} /></div>
+            {job?.state === 'failed' && <p className="mt-2 text-xs text-rose-600">{job.failedReason}</p>}
+          </div>
+        );
+      })()}
+      {audioJobError && <div className="flex items-center gap-2 rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"><CircleAlert className="h-4 w-4" />{audioJobError}</div>}
 
       {/* TABLE CONTAINER */}
       <div className="bg-white rounded-[6px] border border-slate-200 overflow-hidden">
@@ -463,6 +536,7 @@ export default function WordsPage() {
                 </th>
                 <th className="py-4 px-4 min-w-[140px]">{t('th_word')}</th>
                 <th className="py-4 px-4 min-w-[200px]">{t('th_phonetic')}</th>
+                <th className="py-4 px-4 min-w-[170px]">Audio</th>
                 <th className="py-4 px-4 min-w-[260px]">{t('th_meanings')}</th>
                 <th className="py-4 px-4 min-w-[100px] text-center">{t('th_level')}</th>
                 <th className="py-4 px-4 min-w-[120px] text-center">{t('th_status')}</th>
@@ -473,7 +547,7 @@ export default function WordsPage() {
             <tbody className="divide-y divide-slate-100 text-sm">
               {isLoading ? (
                 <tr>
-                  <td colSpan={7} className="py-20 text-center text-slate-400">
+                  <td colSpan={8} className="py-20 text-center text-slate-400">
                     <div className="flex flex-col items-center justify-center gap-3">
                       <Loader2 className="w-7 h-7 animate-spin text-blue-600" />
                       <span className="text-sm">{t('loading_words')}</span>
@@ -482,7 +556,7 @@ export default function WordsPage() {
                 </tr>
               ) : wordList.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-16 text-center text-slate-400">
+                  <td colSpan={8} className="py-16 text-center text-slate-400">
                     <p className="text-base font-medium text-slate-600">
                       {t('no_words_found')}
                     </p>
@@ -555,6 +629,22 @@ export default function WordsPage() {
                           {!item.ipa?.us && !item.ipa?.uk && (
                             <span className="text-slate-400">—</span>
                           )}
+                        </div>
+                      </td>
+
+                      <td className="py-4 px-4">
+                        <div className="space-y-1.5">
+                          {(['us', 'uk'] as const).map((accent) => {
+                            const meta = item.audioMeta?.[accent];
+                            const status = meta?.status || (item.audio?.[accent] ? 'READY' : 'NONE');
+                            return (
+                              <div key={accent} className="flex items-center gap-2 text-xs">
+                                <button type="button" disabled={!item.audio?.[accent]} onClick={() => playAudio(item.audio?.[accent])} className="text-blue-600 disabled:text-slate-300"><Volume2 className="h-3.5 w-3.5" /></button>
+                                <span className="w-5 font-semibold uppercase text-slate-500">{accent}</span>
+                                <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${status === 'READY' ? 'bg-emerald-100 text-emerald-700' : status === 'STALE' ? 'bg-amber-100 text-amber-700' : status === 'FAILED' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-500'}`}>{status}</span>
+                              </div>
+                            );
+                          })}
                         </div>
                       </td>
 

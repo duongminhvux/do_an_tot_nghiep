@@ -8,10 +8,12 @@ import { useTranslation } from 'react-i18next';
 import {
   vocabularyGroupService,
   collectionService,
+  lessonService,
 } from '@/services/vocabulary.service';
 import {
   VocabularyGroupItem,
   CollectionItem,
+  LessonItem,
 } from '@/types/vocabulary';
 import { CreateGroupDialog } from '@/components/vocabulary/create-group-dialog';
 import { EditGroupDialog } from '@/components/vocabulary/edit-group-dialog';
@@ -28,7 +30,6 @@ import {
   MoreVertical,
   Pencil,
   Trash2,
-  ChevronLeft,
   ChevronRight,
   Info,
   Lightbulb,
@@ -104,6 +105,7 @@ export default function VocabularyGroupsPage() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(urlGroupId);
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
 
   // Active dropdown menu trackers
   const [groupHeaderMenuOpen, setGroupHeaderMenuOpen] = useState(false);
@@ -171,6 +173,31 @@ export default function VocabularyGroupsPage() {
     return collectionsResponse?.data?.data || selectedGroup?.collections || [];
   }, [collectionsResponse, selectedGroup]);
 
+  useEffect(() => {
+    if (!collections.length) {
+      setSelectedCollectionId(null);
+      return;
+    }
+    if (!selectedCollectionId || !collections.some((collection) => collection._id === selectedCollectionId)) {
+      setSelectedCollectionId(collections[0]!._id);
+    }
+  }, [collections, selectedCollectionId]);
+
+  const selectedCollection = useMemo(() =>
+    collections.find((collection) => collection._id === selectedCollectionId) || null,
+  [collections, selectedCollectionId]);
+
+  const { data: lessonsResponse, isLoading: isLessonsLoading } = useQuery({
+    queryKey: ['lessons', 'curriculum', selectedCollectionId],
+    queryFn: () => lessonService.getAll(selectedCollectionId || undefined),
+    enabled: !!selectedCollectionId,
+  });
+
+  const lessons: LessonItem[] = useMemo(() => {
+    const payload: any = lessonsResponse;
+    return Array.isArray(payload?.data) ? payload.data : [];
+  }, [lessonsResponse]);
+
   // Filter groups by search query
   const filteredGroups: VocabularyGroupItem[] = useMemo(() => {
     if (!searchQuery.trim()) return groups;
@@ -198,6 +225,7 @@ export default function VocabularyGroupsPage() {
 
   const selectGroup = (id: string) => {
     setSelectedGroupId(id);
+    setSelectedCollectionId(null);
     const newParams = new URLSearchParams(searchParams.toString());
     newParams.set('groupId', id);
     router.replace(`/${locale}/vocabulary/groups?${newParams.toString()}`);
@@ -271,15 +299,24 @@ export default function VocabularyGroupsPage() {
       <header className='flex items-center justify-between pb-6'>
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900">
-            {t('groups_page_header_title', { defaultValue: 'Nhóm từ vựng' })}
+            {locale === 'en' ? 'Vocabulary curriculum' : 'Chương trình học từ vựng'}
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
             {t('groups_page_header_desc', {
               defaultValue:
-                'Quản lý nhóm và phân loại các bộ sưu tập theo mục tiêu học tập, chứng chỉ hoặc giáo trình',
+                'Quản lý theo cấu trúc Nhóm → Bộ sưu tập → Bài học → Section. Chọn ở cột trái để thao tác theo đúng ngữ cảnh.',
             })}
           </p>
         </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => router.push(`/${locale}/vocabulary/words`)}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-[6px] border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold transition-colors cursor-pointer shrink-0"
+          >
+            <BookOpen className="w-4 h-4" />
+            <span>{locale === 'en' ? 'Dictionary' : 'Mở từ điển'}</span>
+          </button>
         <button
           type="button"
           onClick={() => setCreateGroupOpen(true)}
@@ -289,6 +326,7 @@ export default function VocabularyGroupsPage() {
           <Plus className="w-3 h-3" />
           <span>{t('groups_add_btn', 'Thêm nhóm')}</span>
         </button>
+        </div>
       </header>
       {/* Main 2-Column Responsive Workspace */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -472,17 +510,7 @@ export default function VocabularyGroupsPage() {
         <div className="lg:col-span-7 xl:col-span-8 space-y-3.5 border p-4 rounded-[6px] border-slate-200 bg-white">
           {selectedGroup ? (
             <>
-              {/* Back to Collections Navigation Link */}
-              <div>
-                <Link
-                  href={`/${locale}/vocabulary/collections`}
-                  className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-800 transition-colors"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                  <span>{t('group_back_to_collections', 'Thư viện từ vựng')}</span>
-                </Link>
-              </div>
-
+              {/* Selected curriculum group */}
               {/* Group Hero Header */}
               <div className="bg-white rounded-[6px] border border-slate-200 p-4 space-y-3">
                 <div className="flex items-center justify-between gap-4">
@@ -648,7 +676,12 @@ export default function VocabularyGroupsPage() {
                     {collections.map((col: CollectionItem) => (
                       <div
                         key={col._id}
-                        className="group bg-white rounded-[6px] border border-slate-200 p-3 hover:border-slate-300 transition-colors flex items-center justify-between gap-3"
+                        onClick={() => setSelectedCollectionId(col._id)}
+                        className={`group rounded-[6px] border p-3 transition-colors flex items-center justify-between gap-3 cursor-pointer ${
+                          selectedCollectionId === col._id
+                            ? 'border-blue-400 bg-blue-50/60'
+                            : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50'
+                        }`}
                       >
                         {/* Left: Thumbnail & Info */}
                         <div className="flex items-center gap-3 min-w-0">
@@ -670,10 +703,7 @@ export default function VocabularyGroupsPage() {
                           {/* Info */}
                           <div className="min-w-0">
                             <h4
-                              onClick={() =>
-                                router.push(`/${locale}/vocabulary/collections?collectionId=${col._id}`)
-                              }
-                              className="text-sm font-bold text-slate-900 hover:text-blue-600 transition-colors truncate cursor-pointer"
+                              className={`text-sm font-bold transition-colors truncate ${selectedCollectionId === col._id ? 'text-blue-700' : 'text-slate-900'}`}
                             >
                               {col.name}
                             </h4>
@@ -701,9 +731,10 @@ export default function VocabularyGroupsPage() {
                           {/* "Quản lý" Button */}
                           <Link
                             href={`/${locale}/vocabulary/collections?collectionId=${col._id}`}
+                            onClick={(event) => event.stopPropagation()}
                             className="px-3.5 py-1 rounded-[6px] text-xs font-medium text-blue-600 bg-white hover:bg-blue-50 border border-blue-200 transition-colors"
                           >
-                            {t('group_btn_manage', 'Quản lý')}
+                            {t('group_btn_manage', 'Chi tiết')}
                           </Link>
 
                           {/* Subtle Three dots dropdown for secondary actions */}
@@ -757,18 +788,61 @@ export default function VocabularyGroupsPage() {
                 )}
               </div>
 
-              {/* Bottom Lightbulb Tip Box (Exactly as shown in screenshot) */}
-              <div className="rounded-[6px] p-3 bg-[#F4F9FF] border border-blue-100 flex items-start gap-2.5">
-                <div className="w-4 h-4 text-blue-600 shrink-0 mt-0.5 flex items-center justify-center">
-                  <Lightbulb className="w-4 h-4" />
+              {/* Selected collection quick workspace */}
+              {selectedCollection && (
+                <div className="rounded-[6px] border border-slate-200 bg-slate-50/40 overflow-hidden">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{locale === 'en' ? 'Selected collection' : 'Bộ sưu tập đang chọn'}</p>
+                      <h3 className="mt-0.5 truncate text-sm font-bold text-slate-900">{selectedCollection.name}</h3>
+                      <p className="mt-0.5 text-xs text-slate-500">{lessons.length} {locale === 'en' ? 'lessons' : 'bài học'} · {selectedCollection.wordsCount || 0} {locale === 'en' ? 'words' : 'từ'}</p>
+                    </div>
+                    <Link
+                      href={`/${locale}/vocabulary/collections?collectionId=${selectedCollection._id}`}
+                      className="inline-flex items-center justify-center rounded-[6px] bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+                    >
+                      {locale === 'en' ? 'Manage lessons & sections' : 'Quản lý lesson & section'}
+                    </Link>
+                  </div>
+
+                  <div className="p-3">
+                    {isLessonsLoading ? (
+                      <div className="space-y-2">{[1, 2, 3].map((item) => <div key={item} className="h-14 animate-pulse rounded-[6px] border border-slate-200 bg-white" />)}</div>
+                    ) : lessons.length === 0 ? (
+                      <div className="rounded-[6px] border border-dashed border-slate-300 bg-white px-4 py-8 text-center">
+                        <GraduationCap className="mx-auto h-6 w-6 text-slate-300" />
+                        <p className="mt-2 text-sm font-semibold text-slate-700">{locale === 'en' ? 'No lessons yet' : 'Chưa có bài học'}</p>
+                        <p className="mt-1 text-xs text-slate-500">{locale === 'en' ? 'Open collection management to create the first lesson.' : 'Mở quản lý bộ sưu tập để tạo lesson đầu tiên.'}</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {lessons.map((lesson, index) => (
+                          <Link
+                            key={lesson._id}
+                            href={`/${locale}/vocabulary/collections?collectionId=${selectedCollection._id}&lessonId=${lesson._id}`}
+                            className="flex items-center justify-between gap-3 rounded-[6px] border border-slate-200 bg-white px-3 py-2.5 hover:border-blue-300 hover:bg-blue-50/30 transition-colors"
+                          >
+                            <div className="flex min-w-0 items-center gap-3">
+                              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-slate-100 text-xs font-bold text-slate-500">{index + 1}</span>
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-semibold text-slate-800">{lesson.title}</p>
+                                <p className="mt-0.5 text-[11px] text-slate-500">{lesson.sectionsCount || 0} section · {lesson.wordsCount || 0} {locale === 'en' ? 'words' : 'từ'}{lesson.isActive === false ? ` · ${locale === 'en' ? 'inactive' : 'đang tắt'}` : ''}</p>
+                              </div>
+                            </div>
+                            <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
+              )}
+
+              <div className="rounded-[6px] p-3 bg-[#F4F9FF] border border-blue-100 flex items-start gap-2.5">
+                <Lightbulb className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
                 <div className="text-xs leading-relaxed text-slate-700">
-                  <p className="font-semibold text-slate-900">
-                    {t('group_tip_title', 'Để xem và quản lý các bài học, phần học, từ vựng chi tiết:')}
-                  </p>
-                  <p className="text-slate-600 text-[11px] mt-0.5">
-                    {t('group_tip_desc', '→ Nhấn vào bộ sưu tập, sau đó bạn có thể thêm từ, tạo phần học, nhập từ vựng...')}
-                  </p>
+                  <p className="font-semibold text-slate-900">{locale === 'en' ? 'Simpler workflow' : 'Luồng quản lý gọn hơn'}</p>
+                  <p className="text-slate-600 text-[11px] mt-0.5">{locale === 'en' ? 'Choose a group, choose a collection, then open the lesson you need. Dictionary is separated for reusable words.' : 'Chọn Nhóm → Bộ sưu tập → Lesson ngay tại đây. Từ điển được tách riêng để quản lý kho từ dùng chung.'}</p>
                 </div>
               </div>
             </>

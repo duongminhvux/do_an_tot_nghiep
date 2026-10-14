@@ -764,27 +764,17 @@ export default function CreateQuestionPage() {
       return;
     }
 
-    // Part 1: Bắt buộc phải có cả hình ảnh và file audio
+    // Part 1: hình ảnh vẫn bắt buộc; audio có thể generate Kokoro sau khi tạo câu hỏi.
     if (part === 1) {
       if (!imageUrl || !imageUrl.trim()) {
         showError(t('createQuestionPage.msgPart1ImageRequired'));
         setAttachmentTab('image');
         return;
       }
-      if (!audioUrl || !audioUrl.trim()) {
-        showError(t('createQuestionPage.msgPart1AudioRequired'));
-        setAttachmentTab('audio');
-        return;
-      }
     }
 
-    // Part 2: Bắt buộc phải có file audio
+    // Part 2: audio không bắt buộc khi tạo; admin có thể generate Kokoro sau.
     if (part === 2) {
-      if (!audioUrl || !audioUrl.trim()) {
-        showError(t('createQuestionPage.msgPart2AudioRequired'));
-        setAttachmentTab('audio');
-        return;
-      }
       if (!optionA.trim() || !optionB.trim() || !optionC.trim()) {
         showError(t('createQuestionPage.msgPart2OptionsRequired'));
         return;
@@ -867,13 +857,13 @@ export default function CreateQuestionPage() {
       return;
     }
 
-    // Validation Part 3 & 4: Audio bắt buộc
+    // Part 3 & 4: cần transcript hoặc audio. Nếu chỉ có transcript, Kokoro có thể generate sau.
     if (groupType === 'AUDIO') {
-      if (!groupAudioUrl || !groupAudioUrl.trim()) {
-        showError(t('createQuestionPage.msgAudioRequired'));
+      if (!groupAudioUrl?.trim() && !groupContent.trim()) {
+        showError('Vui lòng nhập transcript hoặc tải audio cho Part 3/4.');
         return;
       }
-      if (!isValidHttpUrl(groupAudioUrl)) {
+      if (groupAudioUrl && !isValidHttpUrl(groupAudioUrl)) {
         showError('Đường dẫn âm thanh không hợp lệ (URL phải bắt đầu bằng http:// hoặc https://).');
         return;
       }
@@ -1291,7 +1281,7 @@ export default function CreateQuestionPage() {
                 {groupType === 'AUDIO' && (
                   <div className="space-y-3 pt-2">
                     <label className="text-xs font-semibold text-slate-800">
-                      {t('createQuestionPage.uploadAudioLabel')} <span className="text-red-500">*</span>
+                      {t('createQuestionPage.uploadAudioLabel')} <span className="text-slate-400 font-normal">(tùy chọn nếu có transcript)</span>
                     </label>
 
                     <input
@@ -1381,7 +1371,7 @@ export default function CreateQuestionPage() {
                     {/* Lời thoại / Script (tùy chọn) */}
                     <div className="space-y-1.5 pt-2">
                       <label className="text-xs font-semibold text-slate-800">
-                        {t('createQuestionPage.transcriptLabel')} <span className="text-slate-400 font-normal">{t('createQuestionPage.transcriptOptional')}</span>
+                        {t('createQuestionPage.transcriptLabel')} <span className="text-slate-400 font-normal">(dùng để Kokoro generate nếu chưa upload audio)</span>
                       </label>
                       <textarea
                         rows={3}
@@ -1946,7 +1936,7 @@ export default function CreateQuestionPage() {
                         >
                           <Volume2 className="h-3.5 w-3.5 text-blue-600" />
                           <span>{t('createQuestionPage.tabAudioQuestion')}</span>
-                          {(part === 1 || part === 2) && <span className="text-red-500">*</span>}
+                          <span className="text-[10px] font-normal text-slate-400">(tùy chọn · có thể TTS sau)</span>
                           {audioUrl && <Check className="h-3 w-3 text-emerald-600 ml-0.5" />}
                         </button>
                       </div>

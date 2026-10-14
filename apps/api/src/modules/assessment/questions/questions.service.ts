@@ -11,6 +11,8 @@ import { Passage, PassageDocument } from './schemas/passage.schema.js';
 import { CreateQuestionDto } from './dto/create-question.dto.js';
 import { UpdateQuestionDto } from './dto/update-question.dto.js';
 import { CloudinaryService } from '../../upload/cloudinary.service.js';
+import { AudioGenerationStatus } from '../../../common/media/generated-audio.schema.js';
+import { MediaStorageService } from '../../../common/media/media-storage.service.js';
 
 @Injectable()
 export class QuestionsService {
@@ -26,9 +28,18 @@ export class QuestionsService {
     @InjectModel(Passage.name)
     private readonly passageModel: Model<PassageDocument>,
     private readonly cloudinaryService: CloudinaryService,
+    private readonly mediaStorage: MediaStorageService,
     @InjectModel(Exam.name)
     private readonly examModel?: Model<ExamDocument>,
   ) {}
+
+  private async deleteLocalAudio(url?: string, storageKey?: string) {
+    const key = storageKey || this.mediaStorage.storageKeyFromPublicUrl(url);
+    if (!key) return;
+    await this.mediaStorage.delete(key).catch((error) => {
+      this.logger.warn(`Could not clean up local audio ${key}`, error);
+    });
+  }
 
   private async deleteUnusedImage(url?: string) {
     if (!url || !this.cloudinaryService.extractCloudinaryPublicId(url)) return;
@@ -247,6 +258,7 @@ export class QuestionsService {
       throw new NotFoundException('PassageGroup not found');
     }
     const groupId = new Types.ObjectId(id);
+    const passagesToDelete = await this.passageModel.find({ passageGroupId: groupId }).lean().exec();
 
     await this.passageModel.deleteMany({ passageGroupId: groupId }).exec();
     const deletedQuestions = await this.questionModel.deleteMany({
@@ -254,6 +266,7 @@ export class QuestionsService {
     }).exec();
 
     await this.passageGroupModel.findByIdAndDelete(id).exec();
+    await Promise.all(passagesToDelete.map((passage: any) => this.deleteLocalAudio(passage.audioUrl, passage.audioMeta?.storageKey)));
     return { deleted: true, deletedQuestionsCount: deletedQuestions.deletedCount || 0 };
   }
 
@@ -280,6 +293,14 @@ export class QuestionsService {
       const group = await this.passageGroupModel.findById(isPassage.passageGroupId).exec();
       this.validateReadingPassage(group?.part, { ...isPassage.toObject(), ...data });
       const { title, ...passageFields } = data;
+      if (
+        [3, 4].includes(Number(group?.part)) &&
+        data.content !== undefined &&
+        data.content !== isPassage.content &&
+        isPassage.audioMeta?.status === AudioGenerationStatus.READY
+      ) {
+        (passageFields as Record<string, any>)['audioMeta.status'] = AudioGenerationStatus.STALE;
+      }
       const updated = await this.passageModel
         .findByIdAndUpdate(id, { $set: passageFields }, { returnDocument: 'after', runValidators: true })
         .lean()
@@ -306,6 +327,7 @@ export class QuestionsService {
     const isPassage = await this.passageModel.findById(id).exec();
     if (isPassage) {
       await this.passageModel.findByIdAndDelete(id).exec();
+      await this.deleteLocalAudio(isPassage.audioUrl, isPassage.audioMeta?.storageKey);
       return { deleted: true, deletedQuestionsCount: 0 };
     }
     return this.removePassageGroup(id);
@@ -341,8 +363,19 @@ export class QuestionsService {
     }
 
     const previous = await this.questionModel.findById(id).lean().exec();
+    const updatePayload: Record<string, any> = { ...updateQuestionDto };
+    const audioInputsChanged = Boolean(
+      previous && [1, 2].includes(Number(previous.part)) && (
+        (updateQuestionDto.content !== undefined && updateQuestionDto.content !== previous.content) ||
+        (updateQuestionDto.options !== undefined && JSON.stringify(updateQuestionDto.options) !== JSON.stringify(previous.options)) ||
+        (updateQuestionDto.part !== undefined && Number(updateQuestionDto.part) !== Number(previous.part))
+      )
+    );
+    if (audioInputsChanged && previous?.audioMeta?.status === AudioGenerationStatus.READY) {
+      updatePayload['audioMeta.status'] = AudioGenerationStatus.STALE;
+    }
     const updated = await this.questionModel
-      .findByIdAndUpdate(id, { $set: updateQuestionDto }, { returnDocument: 'after', runValidators: true })
+      .findByIdAndUpdate(id, { $set: updatePayload }, { returnDocument: 'after', runValidators: true })
       .lean()
       .exec();
 
@@ -361,7 +394,8 @@ export class QuestionsService {
     if (!Types.ObjectId.isValid(id)) {
       throw new NotFoundException('Question not found');
     }
-    await this.questionModel.findByIdAndDelete(id).exec();
+    const question = await this.questionModel.findByIdAndDelete(id).lean().exec();
+    if (question) await this.deleteLocalAudio(question.audioUrl, question.audioMeta?.storageKey);
     return { deleted: true };
   }
 

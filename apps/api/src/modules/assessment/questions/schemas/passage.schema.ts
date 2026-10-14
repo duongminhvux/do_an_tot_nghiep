@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
+import { GeneratedAudioMetadata, GeneratedAudioMetadataSchema } from '../../../../common/media/generated-audio.schema.js';
 
 export type PassageDocument = HydratedDocument<Passage>;
 
@@ -42,6 +43,9 @@ export class Passage {
     trim: true,
   })
   audioUrl?: string;
+
+  @Prop({ type: GeneratedAudioMetadataSchema, default: {} })
+  audioMeta?: GeneratedAudioMetadata;
 
   @Prop({
     trim: true,

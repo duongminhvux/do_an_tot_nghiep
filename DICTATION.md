@@ -33,11 +33,11 @@ Admin transcript
   -> Kokoro synthesizes EACH segment independently in memory
   -> Kokoro appends the generated arrays + configured silence
   -> Kokoro returns one WAV + exact start/end metadata for every segment
-  -> NestJS uploads only the final WAV to Cloudinary
+  -> NestJS stores only the final WAV in local media storage
   -> MongoDB stores segment timestamps
 ```
 
-No sentence WAV is uploaded anymore. There is therefore nothing to clean up per sentence in the normal flow. Legacy per-segment Cloudinary assets are deleted the next time an old lesson is regenerated.
+No sentence WAV is persisted anymore. There is therefore nothing to clean up per sentence in the normal flow. Legacy per-segment Cloudinary assets remain cleanup-compatible, while all newly generated lesson audio is written to local media storage.
 
 Kokoro returns a compact `X-Segment-Timings-Ms` header in the form:
 

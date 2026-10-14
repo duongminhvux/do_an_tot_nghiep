@@ -92,6 +92,9 @@ export class DictationLesson {
   fullAudioUrl!: string;
 
   @Prop({ trim: true, default: '' })
+  fullAudioStorageKey!: string;
+
+  @Prop({ trim: true, default: '' })
   fullAudioPublicId!: string;
 
   @Prop({ trim: true, default: '' })

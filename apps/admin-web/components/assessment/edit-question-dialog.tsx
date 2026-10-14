@@ -4,9 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { examService } from '@/services/assessment.service';
+import { audioService } from '@/services/audio.service';
 import { useDraftUploads } from '@/hooks/use-draft-uploads';
 import { ImageUploadField } from './image-upload-field';
-import { QuestionItem, PassageItem } from '@/types';
+import { QuestionItem, PassageItem, GeneratedAudioMeta } from '@/types';
 import {
   Dialog,
   DialogContent,
@@ -14,7 +15,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Upload, Volume2, RefreshCw, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 interface EditQuestionDialogProps {
   open: boolean;
@@ -43,6 +44,9 @@ export function EditQuestionDialog({
   const [explanation, setExplanation] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [audioUrl, setAudioUrl] = useState('');
+  const [audioMeta, setAudioMeta] = useState<GeneratedAudioMeta | undefined>();
+  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
+  const [isUploadingAudio, setIsUploadingAudio] = useState(false);
   const [order, setOrder] = useState<number>(1);
   const [isActive, setIsActive] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -74,6 +78,7 @@ export function EditQuestionDialog({
       setExplanation(question.explanation || '');
       setImageUrl(question.imageUrl || '');
       setAudioUrl(question.audioUrl || '');
+      setAudioMeta(question.audioMeta);
       setOrder(Number(question.order) || 1);
       const activeState = question.isActive ?? true;
       setIsActive(activeState);
@@ -170,17 +175,9 @@ export function EditQuestionDialog({
         setErrorMessage(t('createQuestionPage.msgPart1ImageRequired'));
         return;
       }
-      if (!audioUrl.trim()) {
-        setErrorMessage(t('createQuestionPage.msgPart1AudioRequired'));
-        return;
-      }
       payload.imageUrl = imageUrl.trim();
       payload.audioUrl = audioUrl.trim();
     } else if (part === 2) {
-      if (!audioUrl.trim()) {
-        setErrorMessage(t('createQuestionPage.msgPart2AudioRequired'));
-        return;
-      }
       payload.audioUrl = audioUrl.trim();
     } else if (part === 7) {
       payload.imageUrl = imageUrl.trim();
@@ -188,6 +185,61 @@ export function EditQuestionDialog({
 
     updateMutation.mutate(payload);
   };
+
+  const unwrapAudioResult = (value: any) => value?.data?.data ?? value?.data ?? value;
+
+  const handleGenerateAudio = async () => {
+    if (!question?._id || ![1, 2].includes(part)) return;
+    setErrorMessage(null);
+    setIsGeneratingAudio(true);
+    try {
+      const optionsForAudio = [
+        { key: 'A', text: optionA.trim() },
+        { key: 'B', text: optionB.trim() },
+        { key: 'C', text: optionC.trim() },
+        ...(part === 2 ? [] : [{ key: 'D', text: optionD.trim() }]),
+      ];
+      await examService.updateQuestion(question._id, {
+        content: content.trim(),
+        options: optionsForAudio,
+        correctAnswer,
+        explanation: explanation.trim(),
+        order: Number(order) || 1,
+        isActive,
+        ...(part === 1 ? { imageUrl: imageUrl.trim() } : {}),
+      });
+      const response = await audioService.generateToeicQuestion(question._id);
+      const updated = unwrapAudioResult(response);
+      if (updated?.audioUrl) setAudioUrl(updated.audioUrl);
+      if (updated?.audioMeta) setAudioMeta(updated.audioMeta);
+      await queryClient.invalidateQueries({ queryKey: ['admin-exam-questions', examId] });
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Không thể tạo audio bằng Kokoro.';
+      showError(Array.isArray(msg) ? msg.join(', ') : msg);
+    } finally {
+      setIsGeneratingAudio(false);
+    }
+  };
+
+  const handleUploadAudio = async (file?: File) => {
+    if (!question?._id || !file) return;
+    setErrorMessage(null);
+    setIsUploadingAudio(true);
+    try {
+      const response = await audioService.uploadToeicQuestion(question._id, file);
+      const updated = unwrapAudioResult(response);
+      if (updated?.audioUrl) setAudioUrl(updated.audioUrl);
+      if (updated?.audioMeta) setAudioMeta(updated.audioMeta);
+      await queryClient.invalidateQueries({ queryKey: ['admin-exam-questions', examId] });
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Không thể tải audio lên.';
+      showError(Array.isArray(msg) ? msg.join(', ') : msg);
+    } finally {
+      setIsUploadingAudio(false);
+    }
+  };
+
+  const audioStatus = audioMeta?.status || (audioUrl ? 'READY' : 'NONE');
 
   if (!question) return null;
 
@@ -405,31 +457,78 @@ export function EditQuestionDialog({
                     onError={setErrorMessage} disabled={updateMutation.isPending || isUploading} />
                 )}
 
-                {/* Audio URL only for Listening parts (Part 1, 2) */}
+                {/* Audio for Listening parts (Part 1, 2) */}
                 {(part === 1 || part === 2) && (
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-medium text-slate-600">
-                      Link audio câu hỏi (Audio URL)
-                    </label>
-                    <input
-                      type="url"
-                      value={audioUrl}
-                      onChange={(e) => setAudioUrl(e.target.value)}
-                      placeholder="https://example.com/audio.mp3"
-                      className="w-full h-8 px-2.5 rounded border border-slate-200 bg-white text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                    {audioUrl && (
-                      <div className="p-1.5 border rounded border-slate-200 bg-slate-50 space-y-1">
-                        <audio controls src={audioUrl} className="w-full h-7" />
-                        <div className="flex justify-end">
-                          <button
-                            type="button"
-                            onClick={() => setAudioUrl('')}
-                            className="text-[11px] text-red-500 hover:text-red-700 font-semibold cursor-pointer"
-                          >
-                            {t('createQuestionPage.deleteBtn')}
-                          </button>
+                  <div className="space-y-2 rounded border border-slate-200 bg-slate-50/70 p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-800">
+                          <Volume2 className="h-3.5 w-3.5 text-blue-600" />
+                          Audio Listening
                         </div>
+                        <p className="mt-0.5 text-[11px] text-slate-500">
+                          Part {part === 1 ? '1 đọc A–D bằng 1 giọng' : '2 dùng giọng hỏi + giọng đáp'}.
+                        </p>
+                      </div>
+                      <span className={`rounded px-2 py-0.5 text-[10px] font-bold ${
+                        audioStatus === 'READY' ? 'bg-emerald-100 text-emerald-700' :
+                        audioStatus === 'STALE' ? 'bg-amber-100 text-amber-700' :
+                        audioStatus === 'FAILED' ? 'bg-red-100 text-red-700' :
+                        'bg-slate-200 text-slate-600'
+                      }`}>
+                        {audioStatus}
+                      </span>
+                    </div>
+
+                    {audioMeta?.status === 'STALE' && (
+                      <div className="flex items-center gap-1.5 rounded bg-amber-50 px-2 py-1.5 text-[11px] text-amber-800">
+                        <AlertTriangle className="h-3.5 w-3.5" /> Nội dung đã đổi, nên generate lại audio.
+                      </div>
+                    )}
+
+                    {audioUrl && <audio controls src={audioUrl} className="w-full h-8" />}
+
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={handleGenerateAudio}
+                        disabled={isGeneratingAudio || updateMutation.isPending}
+                        className="inline-flex items-center gap-1.5 rounded bg-blue-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                      >
+                        {isGeneratingAudio ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : audioStatus === 'READY' ? <RefreshCw className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+                        {audioStatus === 'READY' || audioStatus === 'STALE' ? 'Regenerate Kokoro' : 'Generate Kokoro'}
+                      </button>
+                      <label className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50">
+                        {isUploadingAudio ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                        Upload audio
+                        <input
+                          type="file"
+                          accept="audio/*"
+                          className="hidden"
+                          disabled={isUploadingAudio || updateMutation.isPending}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            void handleUploadAudio(file);
+                            e.currentTarget.value = '';
+                          }}
+                        />
+                      </label>
+                    </div>
+
+                    <details className="text-[11px] text-slate-500">
+                      <summary className="cursor-pointer font-medium">URL thủ công / tương thích dữ liệu cũ</summary>
+                      <input
+                        type="text"
+                        value={audioUrl}
+                        onChange={(e) => setAudioUrl(e.target.value)}
+                        placeholder="/media/... hoặc https://..."
+                        className="mt-1.5 h-8 w-full rounded border border-slate-200 bg-white px-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    </details>
+                    {audioMeta?.source && (
+                      <div className="flex items-center gap-1 text-[10px] text-slate-500">
+                        {audioStatus === 'READY' && <CheckCircle2 className="h-3 w-3 text-emerald-600" />}
+                        Source: {audioMeta.source}{audioMeta.voiceIds?.length ? ` · ${audioMeta.voiceIds.join(', ')}` : ''}
                       </div>
                     )}
                   </div>

@@ -11,7 +11,7 @@
 
 ## Changed
 
-- Kokoro no longer uploads one Cloudinary file per sentence.
+- Kokoro no longer persists one audio file per sentence.
 - Kokoro synthesizes each segment independently in memory, concatenates them once, and returns exact segment timing metadata.
 - Only one final TTS WAV is persisted per lesson.
 - Uploaded audio is kept as one file; Faster Whisper timestamps are used for sentence playback.
@@ -19,4 +19,4 @@
 
 ## Compatibility
 
-Legacy segment `audioUrl/audioPublicId` fields remain temporarily in the Mongo schema only for cleanup/backward compatibility. Regenerating an old TTS lesson migrates it to the new one-audio architecture and removes its old per-sentence Cloudinary assets.
+Legacy segment `audioUrl/audioPublicId` fields remain temporarily in the Mongo schema only for cleanup/backward compatibility. Regenerating an old TTS lesson migrates it to the new one-audio architecture; new final audio is stored locally while legacy Cloudinary cleanup remains supported for older records.

@@ -1,12 +1,19 @@
 services:
   redis:
-      image: redis:7-alpine
-      container_name: vocalearn-redis
-      restart: unless-stopped
-      ports:
-        - "6379:6379"
-      volumes:
-        - redis_data:/data
+    image: redis:7-alpine
+    container_name: vocalearn-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - toeic-network
 
   mongo:
     image: mongo:8.0
@@ -73,6 +80,25 @@ services:
       NODE_ENV: ${DOCKER_NODE_ENV:-production}
       PORT: ${PORT:-5000}
       MONGO_URI: ${DOCKER_MONGO_URI:-mongodb://mongo:27017/english-platform}
+      REDIS_URL: ${DOCKER_REDIS_URL:-redis://redis:6379}
+      MEDIA_STORAGE_PATH: ${DOCKER_MEDIA_STORAGE_PATH:-/app/storage}
+      MEDIA_PUBLIC_BASE_URL: ${MEDIA_PUBLIC_BASE_URL:-http://localhost:5000/media}
+      AUDIO_QUEUE_CONCURRENCY: ${AUDIO_QUEUE_CONCURRENCY:-1}
+
+      VOCAB_TTS_US_VOICE: ${VOCAB_TTS_US_VOICE:-af_heart}
+      VOCAB_TTS_UK_VOICE: ${VOCAB_TTS_UK_VOICE:-bf_emma}
+      VOCAB_TTS_SPEED: ${VOCAB_TTS_SPEED:-1}
+      TOEIC_TTS_SPEED: ${TOEIC_TTS_SPEED:-1}
+      TOEIC_TTS_OPTION_PAUSE_MS: ${TOEIC_TTS_OPTION_PAUSE_MS:-650}
+      TOEIC_TTS_TURN_PAUSE_MS: ${TOEIC_TTS_TURN_PAUSE_MS:-350}
+      TOEIC_TTS_SENTENCE_PAUSE_MS: ${TOEIC_TTS_SENTENCE_PAUSE_MS:-260}
+      TOEIC_P1_VOICE: ${TOEIC_P1_VOICE:-af_heart}
+      TOEIC_P2_PROMPT_VOICE: ${TOEIC_P2_PROMPT_VOICE:-am_adam}
+      TOEIC_P2_RESPONSE_VOICE: ${TOEIC_P2_RESPONSE_VOICE:-af_heart}
+      TOEIC_P3_SPEAKER_A_VOICE: ${TOEIC_P3_SPEAKER_A_VOICE:-am_adam}
+      TOEIC_P3_SPEAKER_B_VOICE: ${TOEIC_P3_SPEAKER_B_VOICE:-af_heart}
+      TOEIC_P3_SPEAKER_C_VOICE: ${TOEIC_P3_SPEAKER_C_VOICE:-bm_george}
+      TOEIC_P4_VOICE: ${TOEIC_P4_VOICE:-bf_emma}
 
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
       JWT_ACCESS_TOKEN_EXPIRES: ${JWT_ACCESS_TOKEN_EXPIRES:-15m}
@@ -110,10 +136,14 @@ services:
       DICTATION_SEGMENT_END_PADDING_MS: ${DICTATION_SEGMENT_END_PADDING_MS:-150}
       DICTATION_MAX_ATTEMPTS_BEFORE_REVEAL: ${DICTATION_MAX_ATTEMPTS_BEFORE_REVEAL:-3}
       DICTATION_AUTO_NEXT_DELAY_MS: ${DICTATION_AUTO_NEXT_DELAY_MS:-700}
+    volumes:
+      - ./storage:/app/storage
     ports:
       - "${PORT:-5000}:${PORT:-5000}"
     depends_on:
       mongo:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       tts-service:
         condition: service_started

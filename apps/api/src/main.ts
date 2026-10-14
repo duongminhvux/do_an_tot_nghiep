@@ -7,11 +7,14 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
 import { HttpExceptionFilter } from './common/filters/http-exception.filter.js';
 import { I18nService, I18nValidationExceptionFilter, I18nValidationPipe } from 'nestjs-i18n';
 import { RedisIoAdapter } from './common/socket/redis-io.adapter.js';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { MediaStorageService } from './common/media/media-storage.service.js';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const configService = app.get(ConfigService);
   const i18nService = app.get(I18nService);
+  const mediaStorage = app.get(MediaStorageService);
   const PORT = configService.get<number>('PORT') || 5000;
 
   app.use(json({ limit: '50mb' }))
@@ -29,6 +32,7 @@ async function bootstrap() {
   });
 
   app.use(cookieParser());
+  app.useStaticAssets(mediaStorage.rootPath, { prefix: '/media/' });
   app.setGlobalPrefix('api');
   app.useGlobalPipes(
     new I18nValidationPipe({

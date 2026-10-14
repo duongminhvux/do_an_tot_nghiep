@@ -7,7 +7,6 @@ import { useTranslation } from 'react-i18next';
 import {
   Shield,
   LayoutDashboard,
-  FolderKanban,
   BookOpen,
   FileText,
   Layers,
@@ -75,6 +74,7 @@ export function AppSidebar() {
   const isCollectionsActive =
     pathname === `/${locale}/vocabulary/collections` ||
     pathname?.startsWith(`/${locale}/vocabulary/collections/`);
+  const isCurriculumActive = isGroupsActive || isCollectionsActive;
   const isWordsActive =
     pathname === `/${locale}/vocabulary/words` ||
     pathname?.startsWith(`/${locale}/vocabulary/words/`);
@@ -209,47 +209,24 @@ export function AppSidebar() {
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <SidebarMenuSub className="pl-4 ml-3.5 border-l border-slate-200 space-y-1 mt-1">
-                      {/* Sub-item: Groups */}
+                      {/* Curriculum workspace */}
                       <SidebarMenuSubItem>
                         <SidebarMenuSubButton
                           asChild
-                          isActive={isGroupsActive}
+                          isActive={isCurriculumActive}
                           className={cn(
                             'h-8 px-2 rounded-md text-xs font-medium transition-all text-slate-600 hover:text-blue-600 hover:bg-blue-50',
-                            isGroupsActive && 'bg-blue-50 text-blue-600 font-semibold'
+                            isCurriculumActive && 'bg-blue-50 text-blue-600 font-semibold'
                           )}
                         >
-                          <Link
-                            href={`/${locale}/vocabulary/groups`}
-                            className="flex items-center gap-2"
-                          >
+                          <Link href={`/${locale}/vocabulary/groups`} className="flex items-center gap-2">
                             <Layers className="h-3.5 w-3.5 shrink-0" />
-                            <span>{t('nav.groups', locale === 'en' ? 'Groups' : 'Nhóm từ vựng')}</span>
+                            <span>{locale === 'en' ? 'Curriculum' : 'Chương trình học'}</span>
                           </Link>
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
 
-                      {/* Sub-item: Collections */}
-                      <SidebarMenuSubItem>
-                        <SidebarMenuSubButton
-                          asChild
-                          isActive={isCollectionsActive}
-                          className={cn(
-                            'h-8 px-2 rounded-md text-xs font-medium transition-all text-slate-600 hover:text-blue-600 hover:bg-blue-50',
-                            isCollectionsActive && 'bg-blue-50 text-blue-600 font-semibold'
-                          )}
-                        >
-                          <Link
-                            href={`/${locale}/vocabulary/collections`}
-                            className="flex items-center gap-2"
-                          >
-                            <FolderKanban className="h-3.5 w-3.5 shrink-0" />
-                            <span>{t('nav.collections', locale === 'en' ? 'Collections' : 'Bộ sưu tập')}</span>
-                          </Link>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-
-                      {/* Sub-item: Words */}
+                      {/* Dictionary */}
                       <SidebarMenuSubItem>
                         <SidebarMenuSubButton
                           asChild
@@ -259,12 +236,9 @@ export function AppSidebar() {
                             isWordsActive && 'bg-blue-50 text-blue-600 font-semibold'
                           )}
                         >
-                          <Link
-                            href={`/${locale}/vocabulary/words`}
-                            className="flex items-center gap-2"
-                          >
+                          <Link href={`/${locale}/vocabulary/words`} className="flex items-center gap-2">
                             <BookOpen className="h-3.5 w-3.5 shrink-0" />
-                            <span>{t('nav.words', locale === 'en' ? 'Words' : 'Từ mới')}</span>
+                            <span>{locale === 'en' ? 'Dictionary' : 'Từ điển'}</span>
                           </Link>
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
