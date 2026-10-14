@@ -14,18 +14,27 @@ export interface Response<T> {
 }
 
 @Injectable()
-export class TransformInterceptor<T>
-  implements NestInterceptor<T, Response<T>> {
+export class TransformInterceptor<T> implements NestInterceptor<
+  T,
+  Response<T> | T
+> {
   intercept(
     context: ExecutionContext,
     next: CallHandler,
-  ): Observable<Response<T>> {
+  ): Observable<Response<T> | T> {
+    // Socket acknowledgements must retain their original shape and have no HTTP response.
+    if (context.getType() !== 'http') return next.handle();
     const response = context.switchToHttp().getResponse();
     const statusCode = response.statusCode;
 
     return next.handle().pipe(
       map((data) => {
-        if (data && typeof data === 'object' && 'message' in data && Object.keys(data).length === 1) {
+        if (
+          data &&
+          typeof data === 'object' &&
+          'message' in data &&
+          Object.keys(data).length === 1
+        ) {
           return {
             statusCode,
             message: data.message,
@@ -38,7 +47,10 @@ export class TransformInterceptor<T>
           return {
             statusCode,
             message,
-            data: Object.keys(rest).length === 1 && 'data' in rest ? rest.data : rest,
+            data:
+              Object.keys(rest).length === 1 && 'data' in rest
+                ? rest.data
+                : rest,
           };
         }
 
