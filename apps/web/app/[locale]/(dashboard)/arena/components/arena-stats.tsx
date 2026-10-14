@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  ArrowDown,
-  ArrowUp,
-  BarChart3,
-  Flame,
-  Target,
-  Trophy,
-} from "lucide-react";
+import { BarChart3, Flame, Target, Trophy } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -58,15 +51,15 @@ export function ArenaStats({ text, number, profile }: Props) {
 
     {
       title: text("Điểm xếp hạng", "Rating"),
-      value: number(rating),
+      value: profile ? `${number(rating)} Elo` : "—",
       icon: Trophy,
       color: "text-amber-500 bg-amber-50",
-      note: text(
-        `${
-          todayRatingChange > 0 ? "+" : ""
-        }${number(todayRatingChange)} hôm nay`,
-        `${todayRatingChange > 0 ? "+" : ""}${number(todayRatingChange)} today`,
-      ),
+      note: profile
+        ? text(
+            `Hôm nay: ${todayRatingChange > 0 ? "+" : ""}${number(todayRatingChange)} Elo`,
+            `Today: ${todayRatingChange > 0 ? "+" : ""}${number(todayRatingChange)} Elo`,
+          )
+        : text("Đang tải Elo…", "Loading Elo…"),
       ratingChange: todayRatingChange,
     },
 
@@ -144,22 +137,6 @@ export function ArenaStats({ text, number, profile }: Props) {
                 >
                   {stat.value}
                 </p>
-
-                {stat.ratingChange !== undefined && stat.ratingChange !== 0 && (
-                  <span
-                    className={cn(
-                      "flex items-center rounded px-1 py-0.5 text-[9px] font-semibold",
-                      isPositive && "bg-emerald-50 text-emerald-600",
-                      isNegative && "bg-red-50 text-red-600",
-                    )}
-                  >
-                    {isPositive && <ArrowUp className="size-3" />}
-
-                    {isNegative && <ArrowDown className="size-3" />}
-
-                    {Math.abs(stat.ratingChange)}
-                  </span>
-                )}
               </div>
 
               {stat.progress ? (
