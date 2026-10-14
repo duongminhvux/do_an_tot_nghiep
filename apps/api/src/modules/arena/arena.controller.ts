@@ -7,11 +7,15 @@ import {
   DefaultValuePipe,
   ParseIntPipe,
   Post,
+  Param,
 } from '@nestjs/common';
 import { ArenaService } from './arena.service.js';
+import { ArenaFriendlyService } from './friendly/arena-friendly.service.js';
+import { ArenaFriendMode } from './schemas/arena-match.schema.js';
 import { ArenaReadService } from './arena-read.service.js';
-import { ArenaMatchService } from './matches/arena-match.service.js';
+import { ArenaGateway } from './gateways/arena.gateway.js';
 import { ArenaRoomService } from './rooms/arena-room.service.js';
+import { ArenaPresenceService } from './presence/arena-presence.service.js';
 import {
   CreateArenaRoomDto,
   CreateFriendMatchDto,
@@ -23,11 +27,28 @@ type ArenaRequest = { user: { _id: string } };
 @Controller('arena')
 export class ArenaController {
   constructor(
+    private readonly presence: ArenaPresenceService,
+    private readonly friendly: ArenaFriendlyService,
     private readonly arenaService: ArenaService,
     private readonly arenaReadService: ArenaReadService,
-    private readonly arenaMatchService: ArenaMatchService,
+    private readonly arenaGateway: ArenaGateway,
     private readonly arenaRoomService: ArenaRoomService,
   ) {}
+
+  @Get('presence')
+  getPresence() {
+    return this.presence.overview();
+  }
+
+  @Post('matches/:matchId/leave')
+  leaveMatch(@Req() req: ArenaRequest, @Param('matchId') matchId: string) {
+    return this.arenaGateway.leaveMatch(String(req.user._id), matchId);
+  }
+
+  @Get('friend/players')
+  getFriendlyPlayers(@Req() req: ArenaRequest, @Query('search') search = '') {
+    return this.friendly.candidates(String(req.user._id), search);
+  }
 
   /** Trả về tổng quan Arena của người dùng đã đăng nhập. */
   @Get('profile')
@@ -64,9 +85,10 @@ export class ArenaController {
     @Req() req: ArenaRequest,
     @Body() body: CreateFriendMatchDto,
   ) {
-    return this.arenaMatchService.createFriendMatch(
+    return this.arenaGateway.inviteUser(
       String(req.user._id),
       body.opponentId,
+      body.mode ?? ArenaFriendMode.CLASSIC,
     );
   }
 

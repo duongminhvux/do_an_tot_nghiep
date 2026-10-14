@@ -2,7 +2,12 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { WsException } from '@nestjs/websockets';
 import { Model, Types } from 'mongoose';
-import { ArenaMatch, ArenaMatchStatus } from '../schemas/arena-match.schema.js';
+import {
+  ArenaMatch,
+  ArenaMatchStatus,
+  ArenaFriendMode,
+  ArenaMatchType,
+} from '../schemas/arena-match.schema.js';
 import {
   ArenaMatchQuestion,
   ArenaMatchQuestionDocument,
@@ -87,6 +92,8 @@ export class ArenaRoundService {
     // Không cho phép gửi đáp án vào trận đã kết thúc hoặc chưa bắt đầu.
     if (!match || match.status !== ArenaMatchStatus.PLAYING)
       throw new WsException('Match is not playing');
+    if (match.friendMode === ArenaFriendMode.WORD_CHAIN)
+      throw new WsException('Use Word Chain submissions');
 
     // Chỉ câu hỏi đang được chọn và đã bắt đầu mới nhận đáp án.
     if (
@@ -322,7 +329,7 @@ export class ArenaRoundService {
       }
     }
 
-          // Một request cạnh tranh đã resolve câu này trước thì không phát event trùng.
+    // Một request cạnh tranh đã resolve câu này trước thì không phát event trùng.
     if (!applied) return [];
 
     const updated = await this.players.find({ matchId: question.matchId });
@@ -370,6 +377,7 @@ export class ArenaRoundService {
   async tick(): Promise<{ matchId: string; events: ArenaRoundEvent[] }[]> {
     const matches = await this.matches.find({
       status: ArenaMatchStatus.PLAYING,
+      friendMode: { $ne: ArenaFriendMode.WORD_CHAIN },
     });
     const batches: { matchId: string; events: ArenaRoundEvent[] }[] = [];
     for (const match of matches) {
@@ -400,7 +408,37 @@ export class ArenaRoundService {
     if (match.status === ArenaMatchStatus.FINISHED)
       return [await this.finishedEvent(matchId)];
 
-    return this.advance(matchId);
+    const events = await this.advance(matchId);
+    const question = await this.questions.findOne({
+      matchId: match._id,
+      order: match.currentQuestionIndex ?? 1,
+    });
+    if (
+      question?.resolvedAt &&
+      !events.some((e) => e.event === 'match:question-resolved')
+    ) {
+      const players = await this.players.find({ matchId: match._id });
+      events.push({
+        event: 'match:question-resolved',
+        data: {
+          matchId,
+          questionId: String(question._id),
+          winnerId: question.winnerId ? String(question.winnerId) : null,
+          timedOut: !question.winnerId,
+          correctAnswer: question.correctAnswer,
+          explanation: question.explanation,
+          example: question.example,
+          translation: question.translation,
+          type: question.wordType,
+          players: players.map((p) => ({
+            userId: String(p.userId),
+            score: p.score,
+            streak: p.currentStreak,
+          })),
+        },
+      });
+    }
+    return events;
   }
 
   /**
@@ -531,19 +569,36 @@ export class ArenaRoundService {
       this.matches.findById(this.id(matchId)),
       this.players.find({ matchId: this.id(matchId) }),
     ]);
+    if (match?.status === ArenaMatchStatus.CANCELLED)
+      return {
+        event: 'friend:cancelled',
+        data: { matchId, message: match.cancelReason },
+      };
     return {
-      event: 'match:finished',
+      event:
+        match?.type === ArenaMatchType.FRIEND
+          ? 'friend:match-finished'
+          : 'match:finished',
       data: {
         matchId,
         winnerId: match?.winnerId ? String(match.winnerId) : null,
         isDraw: match?.isDraw ?? true,
         finishReason: match?.finishReason ?? 'NORMAL',
+        mode: match?.friendMode,
+        turnCount: match?.turnCount ?? 0,
+        requiredLetter: match?.requiredLetter ?? '',
+        startedAt: match?.startedAt?.toISOString(),
+        finishedAt: match?.finishedAt?.toISOString(),
         players: players.map((player) => ({
           userId: String(player.userId),
           score: player.score,
-          ratingBefore: player.ratingBefore,
-          ratingAfter: player.ratingAfter,
-          ratingChange: player.ratingChange,
+          ...(match?.type === ArenaMatchType.RANK
+            ? {
+                ratingBefore: player.ratingBefore,
+                ratingAfter: player.ratingAfter,
+                ratingChange: player.ratingChange,
+              }
+            : {}),
         })),
       },
     };

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module.js';
 
 import { ArenaGateway } from './gateways/arena.gateway.js';
+import { ArenaFriendlyService } from './friendly/arena-friendly.service.js';
 import { ArenaMatchmakingService } from './matchmaking/arena-matchmaking.service.js';
 import { ArenaPresenceService } from './presence/arena-presence.service.js';
 import { ArenaRoomService } from './rooms/arena-room.service.js';
@@ -60,6 +61,7 @@ import { ArenaRatingService } from './rating/arena-rating.service.js';
     ]),
   ],
   providers: [
+    ArenaFriendlyService,
     ArenaGateway,
     ArenaMatchmakingService,
     ArenaRoomService,

@@ -9,6 +9,11 @@ export enum ArenaMatchType {
   ROOM = 'ROOM',
 }
 
+export enum ArenaFriendMode {
+  CLASSIC = 'CLASSIC',
+  WORD_CHAIN = 'WORD_CHAIN',
+}
+
 export enum ArenaMatchStatus {
   WAITING = 'WAITING',
   COUNTDOWN = 'COUNTDOWN',
@@ -19,6 +24,7 @@ export enum ArenaMatchStatus {
 }
 
 export enum ArenaMatchFinishReason {
+  TURN_TIMEOUT = 'TURN_TIMEOUT',
   NORMAL = 'NORMAL',
   PLAYER_LEFT = 'PLAYER_LEFT',
   DISCONNECT_TIMEOUT = 'DISCONNECT_TIMEOUT',
@@ -37,6 +43,36 @@ export enum ArenaQuestionMode {
 })
 /** Trạng thái tổng quát và cấu hình của một trận Arena. */
 export class ArenaMatch {
+  @Prop({ type: String, enum: Object.values(ArenaFriendMode), default: null })
+  friendMode?: ArenaFriendMode | null;
+
+  @Prop({ type: Types.ObjectId, ref: 'User', default: null })
+  hostId?: Types.ObjectId | null;
+
+  @Prop({ type: Types.ObjectId, ref: 'User', default: null })
+  currentTurnUserId?: Types.ObjectId | null;
+
+  @Prop({ default: '' })
+  currentWord: string;
+
+  @Prop({ default: '' })
+  requiredLetter: string;
+
+  @Prop({ type: Date, default: null })
+  turnStartedAt?: Date | null;
+
+  @Prop({ type: Date, default: null })
+  turnDeadline?: Date | null;
+
+  @Prop({ type: Date, default: null })
+  chainPausedAt?: Date | null;
+
+  @Prop({ type: [String], default: [] })
+  usedWords: string[];
+
+  @Prop({ default: 0 })
+  turnCount: number;
+
   @Prop({
     type: String,
     enum: Object.values(ArenaMatchType),

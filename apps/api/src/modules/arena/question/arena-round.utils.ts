@@ -42,21 +42,15 @@ export function arenaHintLetters(
   const chars = Array.from(answer);
   const order = arenaHintOrder(answer);
   const maxHints = Math.floor(order.length * 0.3);
-  // Giới hạn hint tối đa 30%, bắt đầu sau một giây và mở đủ trong năm giây.
-  const hintEndMs = Math.min(5000, limitMs);
-  const hintStartMs = Math.min(1000, hintEndMs);
+  const remainingMs = limitMs - elapsedMs;
+  // Hints exist only while 5 < remaining seconds < 20; never expose over 30%.
   const count =
-    elapsedMs < hintStartMs
-      ? 0
-      : Math.min(
+    remainingMs > 5000 && remainingMs < 20000
+      ? Math.min(
           maxHints,
-          1 +
-            Math.floor(
-              ((elapsedMs - hintStartMs) /
-                Math.max(1, hintEndMs - hintStartMs)) *
-                Math.max(0, maxHints - 1),
-            ),
-        );
+          Math.ceil((maxHints * (20000 - remainingMs)) / 15000),
+        )
+      : 0;
   const revealed = new Set(order.slice(0, count));
   return chars.map((char, index) =>
     revealed.has(index) || !/[\p{L}\p{N}]/u.test(char) ? char : null,

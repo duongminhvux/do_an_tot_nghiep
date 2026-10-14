@@ -11,40 +11,57 @@ import {
   ArenaRatingHistoryDocument,
 } from './schemas/arena-rating-history.schema.js';
 
+export function arenaTodayRange(now = new Date()) {
+  const local = new Date(now.getTime() + 7 * 3600000);
+  local.setUTCHours(0, 0, 0, 0);
+  const start = new Date(local.getTime() - 7 * 3600000);
+  return { start, end: new Date(start.getTime() + 24 * 3600000) };
+}
+
 @Injectable()
 export class ArenaService {
   constructor(
     private readonly arenaReadService: ArenaReadService,
     @InjectModel(ArenaProfile.name)
     private readonly arenaProfileModel: Model<ArenaProfileDocument>,
-
     @InjectModel(ArenaRatingHistory.name)
-    private readonly arenaRatingHistoryModel: Model<ArenaRatingHistoryDocument>,
+    private readonly ratingHistory: Model<ArenaRatingHistoryDocument>,
   ) {}
 
-  /** Tổng hợp profile, thứ hạng và thống kê ranked của người dùng hiện tại. */
+  /** Elo hiện tại cùng tổng thay đổi trong ngày và thống kê ranked của chính người dùng. */
   async getMyArenaOverview(userId: string) {
     const profile = await this.getOrCreateProfile(userId);
-    const [rankings, ranked, todayRatingChange] = await Promise.all([
-      this.arenaReadService.getLeaderboard(userId, 'all', 1),
+    const { start, end } = arenaTodayRange();
+    const [ranked, leaderboard, changes] = await Promise.all([
       this.arenaReadService.getRankedStatistics(userId),
-      this.getTodayRatingChange(new Types.ObjectId(userId)),
+      this.arenaReadService.getLeaderboard(userId, 'all', 1),
+      this.ratingHistory.aggregate<{ total: number }>([
+        {
+          $match: {
+            userId: new Types.ObjectId(userId),
+            createdAt: { $gte: start, $lt: end },
+          },
+        },
+        { $group: { _id: null, total: { $sum: '$change' } } },
+      ]),
     ]);
     return {
-      userId: profile.userId.toString(),
+      userId: String(profile.userId),
       rating: profile.rating,
+      todayRatingChange: changes[0]?.total ?? 0,
       leaderboard: {
-        position: rankings.me?.position ?? null,
+        position: leaderboard.me?.position ?? null,
         topPercent:
-          rankings.me && rankings.totalPlayers > 0
+          leaderboard.me && leaderboard.totalPlayers > 0
             ? Math.max(
                 1,
-                Math.ceil((rankings.me.position / rankings.totalPlayers) * 100),
+                Math.ceil(
+                  (leaderboard.me.position / leaderboard.totalPlayers) * 100,
+                ),
               )
             : null,
-        totalPlayers: rankings.totalPlayers,
+        totalPlayers: leaderboard.totalPlayers,
       },
-      todayRatingChange,
       ranked,
     };
   }
@@ -84,35 +101,5 @@ export class ArenaService {
     return this.arenaProfileModel.findOne({
       userId,
     });
-  }
-
-  /** Cộng toàn bộ thay đổi rating được ghi nhận từ đầu ngày đến hiện tại. */
-  private async getTodayRatingChange(userId: Types.ObjectId): Promise<number> {
-    const startOfToday = new Date();
-
-    startOfToday.setHours(0, 0, 0, 0);
-
-    const result = await this.arenaRatingHistoryModel.aggregate<{
-      total: number;
-    }>([
-      {
-        $match: {
-          userId,
-          createdAt: {
-            $gte: startOfToday,
-          },
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          total: {
-            $sum: '$change',
-          },
-        },
-      },
-    ]);
-
-    return result[0]?.total ?? 0;
   }
 }

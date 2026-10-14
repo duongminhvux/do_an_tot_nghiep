@@ -3,6 +3,7 @@ import {
   MessageBody,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
@@ -19,6 +20,15 @@ import { ArenaMatchService } from '../matches/arena-match.service.js';
 import { Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ArenaRoundService } from '../question/arena-round.service.js';
 import { ArenaMatchFinishReason } from '../schemas/arena-match.schema.js';
+import {
+  ArenaFriendMode,
+  ArenaMatchType,
+  ArenaMatchStatus,
+} from '../schemas/arena-match.schema.js';
+import {
+  ArenaFriendlyService,
+  FriendlyDelivery,
+} from '../friendly/arena-friendly.service.js';
 
 @ConnectionAuthenticated()
 @WebSocketGateway({
@@ -32,6 +42,7 @@ export class ArenaGateway
   implements
     OnGatewayConnection,
     OnGatewayDisconnect,
+    OnGatewayInit,
     OnModuleInit,
     OnModuleDestroy
 {
@@ -42,6 +53,7 @@ export class ArenaGateway
   server: Server;
 
   constructor(
+    private readonly friendly: ArenaFriendlyService,
     private readonly matchmakingService: ArenaMatchmakingService,
     private readonly arenaMatchService: ArenaMatchService,
     private readonly presenceService: ArenaPresenceService,
@@ -49,6 +61,10 @@ export class ArenaGateway
     private readonly arenaRoundService: ArenaRoundService,
   ) {
     console.log('[ArenaGateway] initialized');
+  }
+
+  afterInit(server: Server) {
+    this.presenceService.bindServer(server);
   }
 
   /** Khởi động clock server để xử lý timeout và chuyển vòng định kỳ. */
@@ -69,6 +85,8 @@ export class ArenaGateway
     if (this.ticking || !this.server) return;
     this.ticking = true;
     try {
+      for (const event of await this.friendly.tick())
+        await this.deliverFriendly(event);
       for (const matchId of await this.arenaMatchService.processLifecycle()) {
         const event = await this.arenaRoundService.finishedEvent(matchId);
         this.server.to(`match:${matchId}`).emit(event.event, event.data);
@@ -109,6 +127,14 @@ export class ArenaGateway
       client.data.userId = userId;
 
       await this.presenceService.connect(userId, client.id);
+      for (const invite of await this.friendly.pending(userId)) {
+        client.emit(
+          invite.receiverId === userId
+            ? 'friend:invite-received'
+            : 'friend:invite-sent',
+          invite,
+        );
+      }
       client.emit('arena:authenticated');
 
       console.log('[Arena] Connected:', {
@@ -118,6 +144,15 @@ export class ArenaGateway
     } catch {
       client.disconnect();
     }
+  }
+
+  /** Gia hạn presence để socket mất đột ngột không bị giữ trạng thái online. */
+  @SubscribeMessage('arena:presence-heartbeat')
+  async presenceHeartbeat(@ConnectedSocket() client: Socket) {
+    const userId = client.data.userId;
+    if (typeof userId !== 'string') return;
+
+    await this.presenceService.touch(userId, client.id);
   }
 
   /** Xóa socket khỏi presence khi client ngắt kết nối. */
@@ -130,7 +165,26 @@ export class ArenaGateway
 
     const result = await this.presenceService.disconnect(userId, client.id);
 
-    if (!result.online) await this.arenaMatchService.markDisconnected(userId);
+    const active = await this.arenaMatchService.findActiveMatchForUser(userId);
+    if (
+      active?.status === ArenaMatchStatus.PLAYING &&
+      (client.data.activeMatchId === String(active._id) || !result.online)
+    ) {
+      await this.leaveMatch(userId, String(active._id));
+    }
+
+    if (!result.online) {
+      await this.matchmakingService.leaveQueue(userId);
+      await this.arenaMatchService.markDisconnected(userId);
+      const match = await this.arenaMatchService.findActiveMatchForUser(userId);
+      if (match?.type === ArenaMatchType.FRIEND) {
+        this.server.to(`match:${String(match._id)}`).emit('friend:connection', {
+          matchId: String(match._id),
+          userId,
+          disconnectedAt: new Date().toISOString(),
+        });
+      }
+    }
 
     console.log('[Arena] Disconnected:', result);
   }
@@ -138,6 +192,20 @@ export class ArenaGateway
   /** Ghép user vào queue, tạo match và thông báo cho cả hai người chơi. */
   @SubscribeMessage('ranked:join-queue')
   async joinQueue(@ConnectedSocket() client: Socket) {
+    try {
+      return await this.joinRanked(client);
+    } catch (error) {
+      return {
+        matched: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Unable to join ranked queue',
+      };
+    }
+  }
+
+  private async joinRanked(client: Socket) {
     const userId = this.getUserId(client);
 
     console.log('[Arena] Join ranked queue:', {
@@ -245,7 +313,11 @@ export class ArenaGateway
   ) {
     const userId = this.getUserId(client);
     await this.arenaRoundService.assertMember(payload.matchId, userId);
+    const active = await this.arenaMatchService.findActiveMatchForUser(userId);
+    if (active?.type === ArenaMatchType.FRIEND)
+      throw new WsException('Use the Friendly lobby to ready and start');
     await client.join(`match:${payload.matchId}`);
+    client.data.activeMatchId = payload.matchId;
     await this.arenaMatchService.markReconnected(payload.matchId, userId);
     const existing = await this.arenaRoundService.snapshot(payload.matchId);
     // Client reload giữa trận sẽ nhận lại event hiện tại thay vì ready lại.
@@ -300,26 +372,36 @@ export class ArenaGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: { matchId: string },
   ) {
-    const userId = this.getUserId(client);
-    await this.arenaRoundService.assertMember(payload.matchId, userId);
+    return this.friendlyAction(() =>
+      this.leaveMatch(this.getUserId(client), payload.matchId),
+    );
+  }
+
+  async leaveMatch(userId: string, matchId: string) {
+    await this.arenaRoundService.assertMember(matchId, userId);
     const match = await this.arenaMatchService.findActiveMatchForUser(userId);
-    if (!match || String(match._id) !== payload.matchId)
-      throw new WsException('Match is not active');
+    if (!match || String(match._id) !== matchId) return { success: true };
+    if (match.type === ArenaMatchType.FRIEND) {
+      for (const event of await this.friendly.leave(matchId, userId))
+        this.server.to(`match:${matchId}`).emit(event.event, event.data);
+      return { success: true };
+    }
+    if (match.status !== ArenaMatchStatus.PLAYING) return { success: true };
     const opponentUserId = await this.arenaMatchService.getOpponentUserId(
-      payload.matchId,
+      matchId,
       userId,
     );
     if (!opponentUserId) throw new WsException('Opponent not found');
 
     const finished = await this.arenaMatchService.finishRankedMatch(
-      payload.matchId,
+      matchId,
       ArenaMatchFinishReason.PLAYER_LEFT,
       opponentUserId,
     );
     if (finished) {
-      const event = await this.arenaRoundService.snapshot(payload.matchId);
+      const event = await this.arenaRoundService.snapshot(matchId);
       for (const item of event)
-        this.server.to(`match:${payload.matchId}`).emit(item.event, item.data);
+        this.server.to(`match:${matchId}`).emit(item.event, item.data);
     }
     return { success: true };
   }
@@ -334,5 +416,251 @@ export class ArenaGateway
     }
 
     return userId;
+  }
+
+  private async deliverFriendly(item: FriendlyDelivery) {
+    if (item.users) {
+      const ids = (
+        await Promise.all(
+          item.users.map((id) => this.presenceService.getSocketIds(id)),
+        )
+      ).flat();
+      if (
+        item.event === 'friend:match-created' &&
+        typeof item.data.matchId === 'string'
+      ) {
+        await this.server.in(ids).socketsJoin(`match:${item.data.matchId}`);
+      }
+      this.server.to(ids).emit(item.event, item.data);
+    } else if (item.matchId) {
+      this.server.to(`match:${item.matchId}`).emit(item.event, item.data);
+    }
+  }
+
+  private async friendlyAction(action: () => Promise<unknown>) {
+    try {
+      return { success: true, data: await action() };
+    } catch (error) {
+      return {
+        success: false,
+        message:
+          error instanceof Error ? error.message : 'Friendly action failed',
+      };
+    }
+  }
+
+  @SubscribeMessage('friend:invite')
+  inviteFriend(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { friendId: string; mode: ArenaFriendMode },
+  ) {
+    return this.friendlyAction(() =>
+      this.inviteUser(this.getUserId(client), payload.friendId, payload.mode),
+    );
+  }
+
+  async inviteUser(userId: string, friendId: string, mode: ArenaFriendMode) {
+    const data = await this.friendly.invite(userId, friendId, mode);
+    await this.deliverFriendly({
+      users: [data.receiverId],
+      event: 'friend:invite-received',
+      data,
+    });
+    await this.deliverFriendly({
+      users: [data.senderId],
+      event: 'friend:invite-sent',
+      data,
+    });
+    return data;
+  }
+
+  @SubscribeMessage('friend:invite-accept')
+  acceptFriend(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { inviteId: string },
+  ) {
+    return this.friendlyAction(async () => {
+      const event = await this.friendly.respond(
+        this.getUserId(client),
+        payload.inviteId,
+        true,
+      );
+      await this.deliverFriendly(event);
+      return event.data;
+    });
+  }
+
+  @SubscribeMessage('friend:invite-decline')
+  declineFriend(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { inviteId: string },
+  ) {
+    return this.friendlyAction(async () => {
+      const event = await this.friendly.respond(
+        this.getUserId(client),
+        payload.inviteId,
+        false,
+      );
+      await this.deliverFriendly(event);
+      return event.data;
+    });
+  }
+
+  @SubscribeMessage('friend:invite-cancel')
+  cancelFriend(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { inviteId: string },
+  ) {
+    return this.friendlyAction(async () => {
+      await this.deliverFriendly(
+        await this.friendly.cancel(this.getUserId(client), payload.inviteId),
+      );
+    });
+  }
+
+  @SubscribeMessage('friend:join')
+  joinFriend(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { matchId: string },
+  ) {
+    return this.friendlyAction(async () => {
+      const userId = this.getUserId(client);
+      await this.friendly.member(payload.matchId, userId);
+      await this.arenaMatchService.markReconnected(payload.matchId, userId);
+      await client.join(`match:${payload.matchId}`);
+      client.data.activeMatchId = payload.matchId;
+      this.server.to(`match:${payload.matchId}`).emit('friend:connection', {
+        matchId: payload.matchId,
+        userId,
+        disconnectedAt: null,
+      });
+      const data = await this.friendly.snapshot(payload.matchId, userId);
+      client.emit('friend:snapshot', data);
+      for (const event of await this.friendly.gameSnapshot(payload.matchId))
+        this.server
+          .to(`match:${payload.matchId}`)
+          .emit(event.event, event.data);
+      return data;
+    });
+  }
+
+  @SubscribeMessage('friend:ready')
+  readyFriend(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { matchId: string },
+  ) {
+    return this.friendlyAction(async () => {
+      const userId = this.getUserId(client);
+      await this.friendly.ready(payload.matchId, userId);
+      this.server.to(`match:${payload.matchId}`).emit('friend:ready-update', {
+        matchId: payload.matchId,
+        userId,
+        isReady: true,
+      });
+    });
+  }
+
+  @SubscribeMessage('friend:mode')
+  modeFriend(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { matchId: string; mode: ArenaFriendMode },
+  ) {
+    return this.friendlyAction(async () => {
+      const userId = this.getUserId(client);
+      await this.friendly.setMode(payload.matchId, userId, payload.mode);
+      this.server
+        .to(`match:${payload.matchId}`)
+        .emit(
+          'friend:snapshot',
+          await this.friendly.snapshot(payload.matchId, userId),
+        );
+    });
+  }
+
+  @SubscribeMessage('friend:start')
+  startFriend(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { matchId: string },
+  ) {
+    return this.friendlyAction(async () => {
+      for (const event of await this.friendly.start(
+        payload.matchId,
+        this.getUserId(client),
+      ))
+        await this.deliverFriendly({ matchId: payload.matchId, ...event });
+    });
+  }
+
+  @SubscribeMessage('word-chain:submit')
+  submitWord(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { matchId: string; word: string },
+  ) {
+    return this.friendlyAction(async () => {
+      for (const event of await this.friendly.submit(
+        payload.matchId,
+        this.getUserId(client),
+        payload.word,
+      )) {
+        if (event.event === 'word-chain:invalid')
+          client.emit(event.event, event.data);
+        else await this.deliverFriendly({ matchId: payload.matchId, ...event });
+      }
+    });
+  }
+
+  @SubscribeMessage('friend:leave')
+  leaveFriend(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { matchId: string },
+  ) {
+    return this.friendlyAction(async () => {
+      for (const event of await this.friendly.leave(
+        payload.matchId,
+        this.getUserId(client),
+      ))
+        await this.deliverFriendly({ matchId: payload.matchId, ...event });
+      await client.leave(`match:${payload.matchId}`);
+    });
+  }
+
+  @SubscribeMessage('friend:rematch-request')
+  rematchFriend(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { matchId: string },
+  ) {
+    return this.friendlyAction(async () => {
+      const data = await this.friendly.rematch(
+        payload.matchId,
+        this.getUserId(client),
+      );
+      await this.deliverFriendly({
+        users: [data.receiverId],
+        event: 'friend:invite-received',
+        data,
+      });
+      await this.deliverFriendly({
+        users: [data.senderId],
+        event: 'friend:invite-sent',
+        data,
+      });
+      return data;
+    });
+  }
+
+  @SubscribeMessage('friend:rematch-accept')
+  acceptRematch(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { inviteId: string },
+  ) {
+    return this.acceptFriend(client, payload);
+  }
+
+  @SubscribeMessage('friend:rematch-decline')
+  declineRematch(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { inviteId: string },
+  ) {
+    return this.declineFriend(client, payload);
   }
 }

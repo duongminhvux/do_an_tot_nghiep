@@ -10,6 +10,8 @@ import {
 vi.mock('../schemas/arena-match.schema.js', () => ({
   ArenaMatch: class {},
   ArenaMatchStatus: { PLAYING: 'PLAYING', FINISHED: 'FINISHED' },
+  ArenaFriendMode: { WORD_CHAIN: 'WORD_CHAIN', CLASSIC: 'CLASSIC' },
+  ArenaMatchType: { RANK: 'RANK', FRIEND: 'FRIEND' },
 }));
 vi.mock('../schemas/arena-match-question.schema.js', () => ({
   ArenaMatchQuestion: class {},
@@ -350,7 +352,7 @@ describe('Arena progressive hints', () => {
       null,
     ]);
     expect(arenaHintLetters('thumb', 6000, 30000)).toEqual([
-      't',
+      null,
       null,
       null,
       null,
@@ -364,7 +366,7 @@ describe('Arena progressive hints', () => {
       null,
     ]);
     expect(arenaHintLetters('thumb', 28500, 30000)).toEqual([
-      't',
+      null,
       null,
       null,
       null,
@@ -372,22 +374,32 @@ describe('Arena progressive hints', () => {
     ]);
     expect(arenaHintLetters('ice-cream', 0, 30000)[3]).toBe('-');
   });
-  it('opens the entire 30% hint allowance by five seconds regardless of question duration', () => {
+  it('reveals hints only with strictly between 20 and 5 seconds remaining', () => {
     const word = 'abcdefghij';
     expect(
-      arenaHintLetters(word, 999, 30000).filter((char) => char !== null),
+      arenaHintLetters(word, 10000, 30000).filter((char) => char !== null),
     ).toEqual([]);
     expect(
-      arenaHintLetters(word, 1000, 30000).filter((char) => char !== null),
+      arenaHintLetters(word, 10001, 30000).filter((char) => char !== null),
     ).toEqual(['a']);
     expect(
-      arenaHintLetters(word, 3000, 30000).filter((char) => char !== null),
+      arenaHintLetters(word, 17500, 30000).filter((char) => char !== null),
     ).toEqual(['a', 'j']);
-    for (const limit of [5000, 15000, 30000, 60000]) {
-      const hints = arenaHintLetters(word, 5000, limit);
+    for (const limit of [15000, 30000, 60000]) {
+      const hints = arenaHintLetters(word, limit - 5001, limit);
       expect(hints.filter((char) => char !== null)).toEqual(['a', 'e', 'j']);
-      expect(arenaHintLetters(word, 20000, limit)).toEqual(hints);
+      expect(
+        arenaHintLetters(word, limit - 5000, limit).filter(
+          (char) => char !== null,
+        ),
+      ).toEqual([]);
+      expect(
+        arenaHintLetters(word, limit, limit).filter((char) => char !== null),
+      ).toEqual([]);
     }
+    expect(
+      arenaHintLetters(word, 0, 5000).filter((char) => char !== null),
+    ).toEqual([]);
   });
   it('never reveals more than 30% of letters, including short words and expired clocks', () => {
     for (let length = 1; length <= 30; length++) {
@@ -399,7 +411,7 @@ describe('Arena progressive hints', () => {
         expect(revealed).toBeLessThanOrEqual(Math.floor(length * 0.3));
       }
     }
-    expect(arenaHintLetters('abcdefghij', 28500, 30000)).toEqual([
+    expect(arenaHintLetters('abcdefghij', 24000, 30000)).toEqual([
       'a',
       null,
       null,
@@ -411,7 +423,7 @@ describe('Arena progressive hints', () => {
       null,
       'j',
     ]);
-    expect(arenaHintLetters('ice-cream', 28500, 30000)).toEqual([
+    expect(arenaHintLetters('ice-cream', 24000, 30000)).toEqual([
       'i',
       null,
       null,

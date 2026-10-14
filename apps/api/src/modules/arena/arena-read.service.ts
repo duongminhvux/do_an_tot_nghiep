@@ -26,7 +26,7 @@ export type ArenaRecentMatch = {
   avatarUrl?: string;
   score: [number, number];
   result: 'WIN' | 'LOSS' | 'DRAW';
-  mode: 'rank' | 'friend' | 'room';
+  mode: 'rank' | 'friend' | 'word-chain' | 'room';
   points: number;
   finishedAt: Date;
 };
@@ -161,6 +161,15 @@ export class ArenaReadService {
                 {
                   case: { $eq: ['$match.type', ArenaMatchType.RANK] },
                   then: 'rank',
+                },
+                {
+                  case: {
+                    $and: [
+                      { $eq: ['$match.type', ArenaMatchType.FRIEND] },
+                      { $eq: ['$match.friendMode', 'WORD_CHAIN'] },
+                    ],
+                  },
+                  then: 'word-chain',
                 },
                 {
                   case: { $eq: ['$match.type', ArenaMatchType.FRIEND] },

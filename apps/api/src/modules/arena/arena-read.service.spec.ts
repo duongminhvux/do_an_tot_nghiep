@@ -1,6 +1,6 @@
 import { Types } from 'mongoose';
 import { ArenaReadService, arenaPeriodStart } from './arena-read.service.js';
-import { ArenaService } from './arena.service.js';
+import { ArenaService, arenaTodayRange } from './arena.service.js';
 
 vi.mock('./schemas/arena-match.schema.js', () => ({
   ArenaMatch: class {},
@@ -147,12 +147,14 @@ describe('Arena DB reads', () => {
     ).toEqual(arenaPeriodStart('month'));
   });
 
-  it('keeps profile position unranked even if profile counters claim matches', async () => {
-    const read = {
-      getLeaderboard: vi.fn().mockResolvedValue({ me: null, totalPlayers: 0 }),
-      getRankedStatistics: vi
-        .fn()
-        .mockResolvedValue({
+  it.each([24, -16, 0])(
+    'profile returns current Elo separately from today change %s',
+    async (change) => {
+      const read = {
+        getLeaderboard: vi
+          .fn()
+          .mockResolvedValue({ me: { position: 2 }, totalPlayers: 10 }),
+        getRankedStatistics: vi.fn().mockResolvedValue({
           matches: 0,
           wins: 0,
           losses: 0,
@@ -161,32 +163,84 @@ describe('Arena DB reads', () => {
           currentWinStreak: 0,
           bestWinStreak: 0,
         }),
-    };
-    const profiles = {
-      findOneAndUpdate: vi
-        .fn()
-        .mockResolvedValue({
-          userId: new Types.ObjectId(userId),
-          rating: 1000,
-          rankedMatches: 99,
-        }),
-    };
+      };
+      const service = new ArenaService(
+        read as never,
+        {
+          findOneAndUpdate: vi
+            .fn()
+            .mockResolvedValue({
+              userId: new Types.ObjectId(userId),
+              rating: 1240,
+            }),
+        } as never,
+        { aggregate: vi.fn().mockResolvedValue([{ total: change }]) } as never,
+      );
+      const result = await service.getMyArenaOverview(userId);
+      expect(result).toEqual({
+        userId,
+        rating: 1240,
+        todayRatingChange: change,
+        leaderboard: { position: 2, topPercent: 20, totalPlayers: 10 },
+        ranked: {
+          matches: 0,
+          wins: 0,
+          losses: 0,
+          draws: 0,
+          winRate: 0,
+          currentWinStreak: 0,
+          bestWinStreak: 0,
+        },
+      });
+      expect(read.getRankedStatistics).toHaveBeenCalledWith(userId);
+    },
+  );
+  it('limits signed Elo history to this user and today, with zero for no matches', async () => {
+    const aggregate = vi.fn().mockResolvedValue([]);
     const service = new ArenaService(
-      read as never,
-      profiles as never,
-      { aggregate: vi.fn().mockResolvedValue([]) } as never,
+      {
+        getRankedStatistics: vi.fn().mockResolvedValue({ matches: 0 }),
+        getLeaderboard: vi
+          .fn()
+          .mockResolvedValue({ me: null, totalPlayers: 0 }),
+      } as never,
+      {
+        findOneAndUpdate: vi
+          .fn()
+          .mockResolvedValue({
+            userId: new Types.ObjectId(userId),
+            rating: 1000,
+          }),
+      } as never,
+      { aggregate } as never,
     );
-    const result = await service.getMyArenaOverview(userId);
-    expect(result.leaderboard).toEqual({
-      position: null,
-      topPercent: null,
-      totalPlayers: 0,
+    expect(await service.getMyArenaOverview(userId)).toMatchObject({
+      rating: 1000,
+      todayRatingChange: 0,
+      leaderboard: { position: null },
     });
-    expect(result.ranked.matches).toBe(0);
+    const { start, end } = arenaTodayRange();
+    expect(aggregate).toHaveBeenCalledWith([
+      {
+        $match: {
+          userId: new Types.ObjectId(userId),
+          createdAt: { $gte: start, $lt: end },
+        },
+      },
+      { $group: { _id: null, total: { $sum: '$change' } } },
+    ]);
   });
 });
 
 describe('Arena calendar periods in Vietnam', () => {
+  it('changes the Elo day at Vietnamese midnight instead of the host timezone', () => {
+    expect(
+      arenaTodayRange(new Date('2026-10-14T16:59:59Z')).start.toISOString(),
+    ).toBe('2026-10-13T17:00:00.000Z');
+    const range = arenaTodayRange(new Date('2026-10-14T17:00:00Z'));
+    expect(range.start.toISOString()).toBe('2026-10-14T17:00:00.000Z');
+    expect(range.end.toISOString()).toBe('2026-10-15T17:00:00.000Z');
+  });
   it('starts the week on Monday at local midnight, including UTC Sunday', () => {
     expect(
       arenaPeriodStart('week', new Date('2026-10-11T18:00:00Z'))?.toISOString(),

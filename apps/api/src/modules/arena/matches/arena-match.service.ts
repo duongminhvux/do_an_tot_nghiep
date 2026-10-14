@@ -9,6 +9,7 @@ import {
   ArenaMatchStatus,
   ArenaMatchType,
   ArenaQuestionMode,
+  ArenaFriendMode,
 } from '../schemas/arena-match.schema.js';
 
 import {
@@ -27,6 +28,8 @@ import {
   ArenaRatingHistoryDocument,
 } from '../schemas/arena-rating-history.schema.js';
 import { ArenaRatingService } from '../rating/arena-rating.service.js';
+import { RedisService } from '../../../common/redis/redis.service.js';
+import { randomUUID } from 'node:crypto';
 
 export type ArenaStartResult =
   | { shouldStart: false; alreadyStarted: true }
@@ -42,6 +45,7 @@ export type ArenaStartResult =
 @Injectable()
 export class ArenaMatchService {
   constructor(
+    private readonly redisService: RedisService,
     @InjectModel(ArenaMatch.name)
     private readonly arenaMatchModel: Model<ArenaMatchDocument>,
 
@@ -62,12 +66,40 @@ export class ArenaMatchService {
   async createMatch(
     playerAId: string,
     playerBId: string,
+    options: Parameters<ArenaMatchService['createUnlockedMatch']>[2] = {},
+  ) {
+    const redis = this.redisService.getClient();
+    const token = randomUUID();
+    const keys = [...new Set([playerAId, playerBId])]
+      .sort()
+      .map((id) => `arena:create-match:${id}`);
+    const held: string[] = [];
+    try {
+      for (const key of keys) {
+        if (!(await redis.set(key, token, { NX: true, PX: 30000 })))
+          throw new WsException('Player is joining another match; try again');
+        held.push(key);
+      }
+      return await this.createUnlockedMatch(playerAId, playerBId, options);
+    } finally {
+      for (const key of held)
+        await redis.eval(
+          "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
+          { keys: [key], arguments: [token] },
+        );
+    }
+  }
+
+  private async createUnlockedMatch(
+    playerAId: string,
+    playerBId: string,
     options: {
       type?: ArenaMatchType;
       questionMode?: ArenaQuestionMode;
       questionCount?: number;
       secondsPerQuestion?: number;
       roomId?: Types.ObjectId | null;
+      friendMode?: ArenaFriendMode;
     } = {},
   ) {
     if (playerAId === playerBId)
@@ -99,7 +131,12 @@ export class ArenaMatchService {
 
     const match = await this.arenaMatchModel.create({
       type: options.type ?? ArenaMatchType.RANK,
-      status: ArenaMatchStatus.COUNTDOWN,
+      status:
+        options.type === ArenaMatchType.FRIEND
+          ? ArenaMatchStatus.WAITING
+          : ArenaMatchStatus.COUNTDOWN,
+      friendMode: options.friendMode ?? null,
+      hostId: options.type === ArenaMatchType.FRIEND ? playerAObjectId : null,
 
       roomId: options.roomId ?? null,
 
@@ -163,9 +200,15 @@ export class ArenaMatchService {
   }
 
   /** Tạo duel bạn bè trên cùng lifecycle với ranked nhưng không đổi Elo. */
-  async createFriendMatch(playerAId: string, playerBId: string) {
+  async createFriendMatch(
+    playerAId: string,
+    playerBId: string,
+    mode = ArenaFriendMode.CLASSIC,
+  ) {
     return this.createMatch(playerAId, playerBId, {
       type: ArenaMatchType.FRIEND,
+      friendMode: mode,
+      questionMode: ArenaQuestionMode.MEANING_TO_WORD,
       questionCount: 10,
       secondsPerQuestion: 30,
     });
@@ -180,10 +223,21 @@ export class ArenaMatchService {
     matchId: string,
     finishReason: ArenaMatchFinishReason = ArenaMatchFinishReason.NORMAL,
     winnerUserId?: string,
+    expectedTurnCount?: number,
   ) {
     const objectId = new Types.ObjectId(matchId);
     const match = await this.arenaMatchModel.findOneAndUpdate(
-      { _id: objectId, status: ArenaMatchStatus.PLAYING },
+      {
+        _id: objectId,
+        status: ArenaMatchStatus.PLAYING,
+        ...(expectedTurnCount !== undefined
+          ? {
+              turnCount: expectedTurnCount,
+              chainPausedAt: null,
+              turnDeadline: { $lte: new Date() },
+            }
+          : {}),
+      },
       { $set: { status: ArenaMatchStatus.FINISHING, finishReason } },
       { new: true },
     );
@@ -329,15 +383,15 @@ export class ArenaMatchService {
 
   /** Trả về trận COUNTDOWN/PLAYING hiện tại của người dùng nếu có. */
   async findActiveMatchForUser(userId: string) {
-    const player = await this.arenaMatchPlayerModel.findOne({
+    const matchIds = await this.arenaMatchPlayerModel.distinct('matchId', {
       userId: new Types.ObjectId(userId),
       status: { $in: ['PLAYING', 'DISCONNECTED'] },
     });
-    if (!player) return null;
     return this.arenaMatchModel.findOne({
-      _id: player.matchId,
+      _id: { $in: matchIds },
       status: {
         $in: [
+          ArenaMatchStatus.WAITING,
           ArenaMatchStatus.COUNTDOWN,
           ArenaMatchStatus.PLAYING,
           ArenaMatchStatus.FINISHING,
@@ -348,8 +402,25 @@ export class ArenaMatchService {
 
   /** Đánh dấu disconnect sau khi xác nhận user không còn socket Arena nào. */
   async markDisconnected(userId: string) {
+    const match = await this.findActiveMatchForUser(userId);
+    if (!match) return;
+    if (
+      match.friendMode === ArenaFriendMode.WORD_CHAIN &&
+      match.status === ArenaMatchStatus.PLAYING
+    ) {
+      await this.arenaMatchModel.updateOne(
+        {
+          _id: match._id,
+          status: ArenaMatchStatus.PLAYING,
+          chainPausedAt: null,
+          turnDeadline: { $gt: new Date() },
+        },
+        { $set: { chainPausedAt: new Date() } },
+      );
+    }
     return this.arenaMatchPlayerModel.updateOne(
       {
+        matchId: match._id,
         userId: new Types.ObjectId(userId),
         status: 'PLAYING',
       },
@@ -359,7 +430,17 @@ export class ArenaMatchService {
 
   /** Khôi phục player sau khi socket mới xác thực và vào lại trận. */
   async markReconnected(matchId: string, userId: string) {
-    return this.arenaMatchPlayerModel.updateOne(
+    const player = await this.arenaMatchPlayerModel.findOne({
+      matchId: new Types.ObjectId(matchId),
+      userId: new Types.ObjectId(userId),
+      status: 'DISCONNECTED',
+    });
+    if (
+      player?.disconnectedAt &&
+      Date.now() - player.disconnectedAt.getTime() >= 20000
+    )
+      throw new WsException('Reconnect grace period expired');
+    const result = await this.arenaMatchPlayerModel.updateOne(
       {
         matchId: new Types.ObjectId(matchId),
         userId: new Types.ObjectId(userId),
@@ -367,6 +448,34 @@ export class ArenaMatchService {
       },
       { $set: { status: 'PLAYING', disconnectedAt: null } },
     );
+    const match = await this.arenaMatchModel.findById(matchId);
+    if (
+      match?.chainPausedAt &&
+      match.turnDeadline &&
+      !(await this.arenaMatchPlayerModel.exists({
+        matchId: match._id,
+        status: 'DISCONNECTED',
+      }))
+    ) {
+      await this.arenaMatchModel.updateOne(
+        {
+          _id: match._id,
+          status: ArenaMatchStatus.PLAYING,
+          chainPausedAt: match.chainPausedAt,
+        },
+        {
+          $set: {
+            turnDeadline: new Date(
+              match.turnDeadline.getTime() +
+                Date.now() -
+                match.chainPausedAt.getTime(),
+            ),
+            chainPausedAt: null,
+          },
+        },
+      );
+    }
+    return result;
   }
 
   /**
@@ -377,10 +486,11 @@ export class ArenaMatchService {
     const readyDeadline = new Date(now.getTime() - 30_000);
     const countdownMatches = await this.arenaMatchModel.find({
       status: ArenaMatchStatus.COUNTDOWN,
+      type: { $ne: ArenaMatchType.FRIEND },
       createdAt: { $lte: readyDeadline },
     });
     for (const match of countdownMatches) {
-      await this.arenaMatchModel.updateOne(
+      const cancelled = await this.arenaMatchModel.updateOne(
         { _id: match._id, status: ArenaMatchStatus.COUNTDOWN },
         {
           $set: {
@@ -389,6 +499,11 @@ export class ArenaMatchService {
           },
         },
       );
+      if (cancelled.modifiedCount)
+        await this.arenaMatchPlayerModel.updateMany(
+          { matchId: match._id },
+          { $set: { status: 'LEFT' } },
+        );
     }
 
     const disconnected = await this.arenaMatchPlayerModel.find({
@@ -399,9 +514,26 @@ export class ArenaMatchService {
     for (const player of disconnected) {
       const match = await this.arenaMatchModel.findOne({
         _id: player.matchId,
-        status: ArenaMatchStatus.PLAYING,
+        status: { $in: [ArenaMatchStatus.PLAYING, ArenaMatchStatus.WAITING] },
       });
       if (!match) continue;
+      if (match.status === ArenaMatchStatus.WAITING) {
+        await this.arenaMatchModel.updateOne(
+          { _id: match._id, status: ArenaMatchStatus.WAITING },
+          {
+            $set: {
+              status: ArenaMatchStatus.CANCELLED,
+              cancelReason: 'Reconnect timeout in lobby',
+            },
+          },
+        );
+        await this.arenaMatchPlayerModel.updateMany(
+          { matchId: match._id },
+          { $set: { status: 'LEFT' } },
+        );
+        finished.push(String(match._id));
+        continue;
+      }
       const opponent = await this.getOpponentUserId(
         String(match._id),
         String(player.userId),
@@ -442,6 +574,8 @@ export class ArenaMatchService {
     if (!match) {
       throw new WsException('Match not found');
     }
+    if (match.type === ArenaMatchType.FRIEND)
+      throw new WsException('Friendly matches require host Start');
 
     const member = await this.arenaMatchPlayerModel.exists({
       matchId: matchObjectId,
@@ -527,6 +661,7 @@ export class ArenaMatchService {
         _id: new Types.ObjectId(matchId),
 
         status: ArenaMatchStatus.COUNTDOWN,
+        type: { $ne: ArenaMatchType.FRIEND },
       },
       {
         $set: {

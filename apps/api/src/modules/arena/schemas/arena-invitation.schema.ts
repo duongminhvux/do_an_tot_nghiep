@@ -1,11 +1,21 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
+import { ArenaFriendMode } from './arena-match.schema.js';
 
 export type ArenaInvitationDocument = HydratedDocument<ArenaInvitation>;
 
 @Schema({ timestamps: true })
 /** Lời mời người chơi tham gia một trận hoặc phòng Arena. */
 export class ArenaInvitation {
+  @Prop({
+    type: String,
+    enum: Object.values(ArenaFriendMode),
+    default: ArenaFriendMode.CLASSIC,
+  })
+  mode: ArenaFriendMode;
+
+  @Prop({ type: Types.ObjectId, ref: 'ArenaMatch', default: null })
+  rematchOf?: Types.ObjectId | null;
   @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
   senderId: Types.ObjectId;
 
@@ -20,11 +30,19 @@ export class ArenaInvitation {
 
   @Prop({
     type: String,
-    enum: ['PENDING', 'ACCEPTED', 'REJECTED', 'CANCELLED', 'EXPIRED'],
+    enum: [
+      'PENDING',
+      'ACCEPTED',
+      'DECLINED',
+      'REJECTED',
+      'CANCELLED',
+      'EXPIRED',
+    ],
     default: 'PENDING',
     index: true,
   })
-  status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED' | 'EXPIRED';
+  status:
+    'PENDING' | 'ACCEPTED' | 'DECLINED' | 'REJECTED' | 'CANCELLED' | 'EXPIRED';
 
   @Prop({ type: Date })
   expiresAt?: Date;
@@ -35,6 +53,14 @@ export class ArenaInvitation {
 
 export const ArenaInvitationSchema =
   SchemaFactory.createForClass(ArenaInvitation);
+
+ArenaInvitationSchema.index(
+  { senderId: 1, type: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { status: 'PENDING', type: 'DUEL' },
+  },
+);
 
 // Only remove expired invitations; accepted/rejected invitations remain available.
 ArenaInvitationSchema.index(

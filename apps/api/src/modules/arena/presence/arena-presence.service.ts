@@ -1,66 +1,52 @@
 import { Injectable } from '@nestjs/common';
-
-import { RedisService } from '../../../common/redis/redis.service.js';
+import type { Server } from 'socket.io';
 
 @Injectable()
 export class ArenaPresenceService {
-  constructor(private readonly redisService: RedisService) {}
+  private server?: Pick<Server, 'fetchSockets'>;
 
-  /** Lưu socket đang hoạt động của user để gửi event tới mọi thiết bị của họ. */
+  bindServer(server: Pick<Server, 'fetchSockets'>) {
+    this.server = server;
+  }
+
+  // fetchSockets also covers other nodes when the Socket.IO Redis adapter is enabled.
+  // Redis sets left behind by an API restart are never treated as live connections.
+  private async sockets() {
+    const sockets = (await this.server?.fetchSockets()) ?? [];
+    return sockets.filter(
+      (socket) => typeof socket.data.userId === 'string' && socket.data.userId,
+    );
+  }
+
   async connect(userId: string, socketId: string) {
-    const redis = this.redisService.getClient();
-    const userSocketsKey = `arena:user:sockets:${userId}`;
-    const socketUserKey = `arena:socket:user:${socketId}`;
-
-    await Promise.all([
-      redis.sAdd(userSocketsKey, socketId),
-      redis.set(socketUserKey, userId),
-    ]);
-
-    return {
-      userId,
-      socketId,
-      online: true,
-    };
+    return { userId, socketId, online: await this.isOnline(userId) };
   }
 
-  /** Xóa socket đã ngắt và chỉ đánh dấu offline khi user không còn socket nào. */
+  async touch(userId: string, socketId: string) {
+    return (await this.getSocketIds(userId)).includes(socketId);
+  }
+
   async disconnect(userId: string, socketId: string) {
-    const redis = this.redisService.getClient();
-    const userSocketsKey = `arena:user:sockets:${userId}`;
-    const socketUserKey = `arena:socket:user:${socketId}`;
-
-    await Promise.all([
-      redis.sRem(userSocketsKey, socketId),
-      redis.del(socketUserKey),
-    ]);
-
-    const remainingSockets = await redis.sCard(userSocketsKey);
-
-    // Xóa set rỗng để Redis không lưu key không còn giá trị.
-    if (remainingSockets === 0) {
-      await redis.del(userSocketsKey);
-    }
-
-    return {
-      userId,
-      socketId,
-      online: remainingSockets > 0,
-    };
+    const remaining = (await this.getSocketIds(userId)).filter(
+      (id) => id !== socketId,
+    );
+    return { userId, socketId, online: remaining.length > 0 };
   }
 
-  /** Kiểm tra user có ít nhất một kết nối Arena đang hoạt động hay không. */
   async isOnline(userId: string) {
-    const redis = this.redisService.getClient();
-    const count = await redis.sCard(`arena:user:sockets:${userId}`);
-
-    return count > 0;
+    return (await this.getSocketIds(userId)).length > 0;
   }
 
-  /** Lấy toàn bộ socket ID của user để broadcast event. */
   async getSocketIds(userId: string) {
-    const redis = this.redisService.getClient();
+    return (await this.sockets())
+      .filter((socket) => socket.data.userId === userId)
+      .map((socket) => socket.id);
+  }
 
-    return redis.sMembers(`arena:user:sockets:${userId}`);
+  async overview() {
+    const users = new Set(
+      (await this.sockets()).map((socket) => socket.data.userId as string),
+    );
+    return { onlineCount: users.size };
   }
 }

@@ -1,6 +1,17 @@
-import { IsMongoId, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsEnum,
+  IsMongoId,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
+import { ArenaFriendMode } from '../schemas/arena-match.schema.js';
 
 export class CreateFriendMatchDto {
+  @IsOptional()
+  @IsEnum(ArenaFriendMode)
+  mode?: ArenaFriendMode;
   @IsMongoId()
   opponentId: string;
 }

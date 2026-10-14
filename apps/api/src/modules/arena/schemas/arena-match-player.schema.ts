@@ -1,11 +1,14 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
+import { ArenaFriendMode } from './arena-match.schema.js';
 
 export type ArenaMatchPlayerDocument = HydratedDocument<ArenaMatchPlayer>;
 
 @Schema({ timestamps: true })
 /** Điểm số, trạng thái ready và kết quả của một người trong trận. */
 export class ArenaMatchPlayer {
+  @Prop({ type: String, enum: Object.values(ArenaFriendMode), default: null })
+  readyMode?: ArenaFriendMode | null;
   @Prop({
     type: Types.ObjectId,
     ref: 'ArenaMatch',

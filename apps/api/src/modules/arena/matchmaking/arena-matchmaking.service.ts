@@ -7,6 +7,9 @@ import { RedisService } from '../../../common/redis/redis.service.js';
 import { ArenaService } from '../arena.service.js';
 import { ArenaMatchService } from '../matches/arena-match.service.js';
 import { User } from '../../users/schema/user.schema.js';
+import { ArenaPresenceService } from '../presence/arena-presence.service.js';
+import { randomUUID } from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
 
 export type RankedPlayer = {
   userId: string;
@@ -28,6 +31,7 @@ export class ArenaMatchmakingService {
   private readonly queueKey = 'arena:matchmaking:queue';
 
   constructor(
+    private readonly presence: ArenaPresenceService,
     private readonly redisService: RedisService,
     private readonly arenaProfileService: ArenaService,
     private readonly arenaMatchService: ArenaMatchService,
@@ -38,6 +42,31 @@ export class ArenaMatchmakingService {
   /** Thêm người chơi vào queue và ghép với đối thủ có rating tương đương. */
   async joinQueue(userId: string): Promise<ArenaQueueResult> {
     const redis = this.redisService.getClient();
+    const lockKey = `${this.queueKey}:lock`;
+    const token = randomUUID();
+    let locked = false;
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      if (await redis.set(lockKey, token, { NX: true, PX: 30000 })) {
+        locked = true;
+        break;
+      }
+      await delay(50);
+    }
+    if (!locked) throw new WsException('Matchmaking is busy; please try again');
+    try {
+      return await this.joinLocked(userId);
+    } finally {
+      await redis.eval(
+        "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
+        { keys: [lockKey], arguments: [token] },
+      );
+    }
+  }
+
+  private async joinLocked(userId: string): Promise<ArenaQueueResult> {
+    const redis = this.redisService.getClient();
+    if (!(await this.presence.isOnline(userId)))
+      throw new WsException('Socket is not connected');
 
     const activeMatch =
       await this.arenaMatchService.findActiveMatchForUser(userId);
@@ -79,6 +108,7 @@ export class ArenaMatchmakingService {
       .find({
         _id: { $in: [userId, opponent.userId] },
         isDeleted: { $ne: true },
+        isBanned: { $ne: true },
       })
       .select('_id username avatarUrl')
       .lean();
@@ -88,10 +118,15 @@ export class ArenaMatchmakingService {
 
     // Không tạo trận nếu thiếu dữ liệu tài khoản của một trong hai người.
     if (!playerA || !playerB) {
+      await redis.zRem(this.queueKey, opponent.userId);
       throw new WsException('Arena player not found');
     }
 
-    await redis.zRem(this.queueKey, [userId, opponent.userId]);
+    const claimed = await redis.eval(
+      "if redis.call('zscore', KEYS[1], ARGV[1]) and redis.call('zscore', KEYS[1], ARGV[2]) then redis.call('zrem', KEYS[1], ARGV[1], ARGV[2]); return 1 else return 0 end",
+      { keys: [this.queueKey], arguments: [userId, opponent.userId] },
+    );
+    if (!claimed) return { matched: false, status: 'WAITING', rating };
 
     const { match } = await this.arenaMatchService.createRankedMatch(
       userId,
@@ -142,23 +177,19 @@ export class ArenaMatchmakingService {
       maxRating,
     );
 
-    const opponentId = candidates.find((candidateId) => candidateId !== userId);
-
-    // Danh sách chỉ có chính người dùng thì chưa thể tạo trận.
-    if (!opponentId) {
-      return null;
+    for (const opponentId of candidates) {
+      if (opponentId === userId) continue;
+      if (
+        !(await this.presence.isOnline(opponentId)) ||
+        (await this.arenaMatchService.findActiveMatchForUser(opponentId))
+      ) {
+        await redis.zRem(this.queueKey, opponentId);
+        continue;
+      }
+      const opponentRating = await redis.zScore(this.queueKey, opponentId);
+      if (opponentRating !== null)
+        return { userId: opponentId, rating: opponentRating };
     }
-
-    const opponentRating = await redis.zScore(this.queueKey, opponentId);
-
-    // Đối thủ có thể đã rời queue trước khi đọc được rating.
-    if (opponentRating === null) {
-      return null;
-    }
-
-    return {
-      userId: opponentId,
-      rating: opponentRating,
-    };
+    return null;
   }
 }
