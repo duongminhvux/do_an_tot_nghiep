@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 import type { ArenaController } from "../hooks/use-arena-controller";
 import { QuickMatchPanel } from "./quick-match-panel";
 import { FriendsPanel } from "./friends-panel";
-import { RoomPanel } from "./room-panel";
 import { MatchDetailsPanel } from "./match-details-panel";
 import { DemoGamePanel } from "./demo-game-panel";
 
@@ -65,8 +64,6 @@ export function ArenaDialog(props: ArenaController) {
           <QuickMatchPanel {...props} />
 
           <FriendsPanel {...props} />
-
-          <RoomPanel {...props} />
 
           <MatchDetailsPanel {...props} />
 

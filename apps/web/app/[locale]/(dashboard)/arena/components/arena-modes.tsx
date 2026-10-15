@@ -121,11 +121,15 @@ export function ArenaModes({ text, openPanel, button }: Props) {
           </div>
           <button
             type="button"
-            onClick={() =>
-              mode.key === "friends"
-                ? router.push(`/${locale}/arena/friend`)
-                : openPanel(mode.key)
-            }
+            onClick={() => {
+              if (mode.key === "friends") {
+                router.push(`/${locale}/arena/friend`);
+              } else if (mode.key === "room") {
+                router.push(`/${locale}/arena/group`);
+              } else {
+                openPanel(mode.key);
+              }
+            }}
             className={cn(button, "mt-4 w-full", mode.buttonStyle)}
           >
             {mode.key === "rank" ? (
