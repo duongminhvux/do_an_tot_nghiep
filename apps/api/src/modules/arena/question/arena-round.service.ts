@@ -586,7 +586,11 @@ export class ArenaRoundService {
         finishReason: match?.finishReason ?? 'NORMAL',
         mode: match?.friendMode,
         turnCount: match?.turnCount ?? 0,
-        requiredLetter: match?.requiredLetter ?? '',
+        requiredLetter:
+          match?.friendMode === ArenaFriendMode.WORD_CHAIN
+            ? (match.currentWord ?? '').slice(-2)
+            : (match?.requiredLetter ?? ''),
+        usedWords: match?.usedWords ?? [],
         startedAt: match?.startedAt?.toISOString(),
         finishedAt: match?.finishedAt?.toISOString(),
         players: players.map((player) => ({

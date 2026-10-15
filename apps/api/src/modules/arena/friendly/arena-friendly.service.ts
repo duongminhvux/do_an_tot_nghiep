@@ -245,6 +245,7 @@ export class ArenaFriendlyService {
     return {
       matchId,
       status: match.status,
+      nextMatchId: match.nextMatchId ? String(match.nextMatchId) : null,
       mode: match.friendMode,
       hostId: String(match.hostId),
       serverNow: new Date().toISOString(),
@@ -255,11 +256,103 @@ export class ArenaFriendlyService {
           username: u?.username || 'Player',
           avatarUrl: u?.avatarUrl,
           isReady: p.isReady,
+          returnedToLobby: p.returnedToLobby,
+          leftLobby: p.leftLobby,
           score: p.score,
           disconnectedAt: p.disconnectedAt?.toISOString(),
         };
       }),
     };
+  }
+
+  // Keep the completed match immutable while each player chooses to return.
+  // Only create the next round after both have returned to this same lobby.
+  async returnToLobby(matchId: string, userId: string) {
+    const match = await this.member(matchId, userId);
+    if (match.status !== ArenaMatchStatus.FINISHED)
+      return this.snapshot(matchId, userId);
+    if (match.nextMatchId) {
+      await this.players.updateOne(
+        { matchId: match._id, userId: this.id(userId) },
+        { $set: { returnedToLobby: true, leftLobby: false } },
+      );
+      return this.snapshot(matchId, userId);
+    }
+    if (await this.matchService.findActiveMatchForUser(userId))
+      throw new WsException('Player is already in a match');
+    await this.players.updateOne(
+      { matchId: match._id, userId: this.id(userId) },
+      { $set: { returnedToLobby: true, leftLobby: false, isReady: false } },
+    );
+    const players = await this.players.find({ matchId: match._id });
+    if (
+      players.length !== 2 ||
+      players.some((p) => !p.returnedToLobby || p.leftLobby)
+    )
+      return this.snapshot(matchId, userId);
+    const locked = await this.matches.findOneAndUpdate(
+      {
+        _id: match._id,
+        status: ArenaMatchStatus.FINISHED,
+        nextMatchId: null,
+        lobbyStarting: { $ne: true },
+      },
+      { $set: { lobbyStarting: true } },
+      { new: true },
+    );
+    if (!locked) return this.snapshot(matchId, userId);
+    try {
+      const opponent = players.find(
+        (p) => String(p.userId) !== String(match.hostId),
+      );
+      if (!opponent) throw new WsException('Opponent unavailable');
+      const { match: next } = await this.matchService.createFriendMatch(
+        String(match.hostId),
+        String(opponent.userId),
+        match.friendMode ?? ArenaFriendMode.CLASSIC,
+      );
+      await this.matches.updateOne(
+        { _id: match._id },
+        { $set: { nextMatchId: next._id } },
+      );
+      // A tab can close while the next round is being created.
+      const currentPlayers = await this.players.find({ matchId: match._id });
+      const departed = currentPlayers.find((p) => p.leftLobby);
+      if (departed) await this.leaveResult(matchId, String(departed.userId));
+    } finally {
+      await this.matches.updateOne(
+        { _id: match._id },
+        { $set: { lobbyStarting: false } },
+      );
+    }
+    return this.snapshot(matchId, userId);
+  }
+
+  async leaveResult(
+    matchId: string,
+    userId: string,
+  ): Promise<ArenaRoundEvent[]> {
+    const match = await this.matches.findById(this.id(matchId));
+    if (
+      match?.type !== ArenaMatchType.FRIEND ||
+      match.status !== ArenaMatchStatus.FINISHED
+    )
+      return [];
+    await this.players.updateOne(
+      { matchId: match._id, userId: this.id(userId) },
+      { $set: { returnedToLobby: false, leftLobby: true, isReady: false } },
+    );
+    const next = match.nextMatchId
+      ? await this.matches.findById(match.nextMatchId)
+      : null;
+    const events =
+      next?.status === ArenaMatchStatus.WAITING
+        ? await this.leave(String(next._id), userId)
+        : [];
+    return [
+      ...events,
+      { event: 'friend:snapshot', data: await this.snapshot(matchId, userId) },
+    ];
   }
 
   async ready(matchId: string, userId: string) {
@@ -384,7 +477,7 @@ export class ArenaFriendlyService {
           matchId,
           currentTurnUserId: String(match.currentTurnUserId),
           previousWord: match.currentWord,
-          requiredLetter: match.requiredLetter,
+          requiredLetter: match.currentWord ? match.currentWord.slice(-2) : '',
           turnStartedAt: match.turnStartedAt?.toISOString(),
           turnDeadline: match.turnDeadline?.toISOString(),
           seconds: 20,
@@ -415,8 +508,9 @@ export class ArenaFriendlyService {
     if (!match.turnDeadline || Date.now() >= match.turnDeadline.getTime())
       return invalid('TURN_EXPIRED');
     const word = typeof value === 'string' ? value.trim().toLowerCase() : '';
-    if (!/^[a-z]{1,80}$/.test(word)) return invalid('WORD_NOT_FOUND');
-    if (match.requiredLetter && !word.startsWith(match.requiredLetter))
+    if (!/^[a-z]{2,80}$/.test(word)) return invalid('WORD_NOT_FOUND');
+    const requiredPrefix = match.currentWord ? match.currentWord.slice(-2) : '';
+    if (requiredPrefix && !word.startsWith(requiredPrefix))
       return invalid('INVALID_START_LETTER');
     if (match.usedWords.includes(word)) return invalid('WORD_ALREADY_USED');
     if (
@@ -444,7 +538,7 @@ export class ArenaFriendlyService {
       {
         $set: {
           currentWord: word,
-          requiredLetter: word.slice(-1),
+          requiredLetter: word.slice(-2),
           currentTurnUserId: this.id(opponent),
           turnStartedAt: now,
           turnDeadline: new Date(now.getTime() + 20000),
@@ -501,7 +595,8 @@ export class ArenaFriendlyService {
         (await this.matchService.getOpponentUserId(matchId, userId)) ??
           undefined,
       );
-    return this.gameSnapshot(matchId);
+    const result = await this.gameSnapshot(matchId);
+    return [...result, ...(await this.leaveResult(matchId, userId))];
   }
 
   async rematch(matchId: string, userId: string) {

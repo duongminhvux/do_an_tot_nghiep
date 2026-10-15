@@ -20,6 +20,12 @@ export class ArenaMatchPlayer {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
   userId: Types.ObjectId;
 
+  @Prop({ default: false })
+  returnedToLobby: boolean;
+
+  @Prop({ default: false })
+  leftLobby: boolean;
+
   @Prop({ default: 0 })
   score: number;
 

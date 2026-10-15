@@ -173,6 +173,19 @@ export class ArenaGateway
       await this.leaveMatch(userId, String(active._id));
     }
 
+    if (
+      client.data.activeMatchId &&
+      (!active || String(active._id) !== client.data.activeMatchId)
+    ) {
+      await this.leaveMatch(userId, client.data.activeMatchId);
+    } else if (
+      active?.type === ArenaMatchType.FRIEND &&
+      active.status === ArenaMatchStatus.WAITING &&
+      client.data.activeMatchId === String(active._id)
+    ) {
+      await this.leaveMatch(userId, String(active._id));
+    }
+
     if (!result.online) {
       await this.matchmakingService.leaveQueue(userId);
       await this.arenaMatchService.markDisconnected(userId);
@@ -380,7 +393,11 @@ export class ArenaGateway
   async leaveMatch(userId: string, matchId: string) {
     await this.arenaRoundService.assertMember(matchId, userId);
     const match = await this.arenaMatchService.findActiveMatchForUser(userId);
-    if (!match || String(match._id) !== matchId) return { success: true };
+    if (!match || String(match._id) !== matchId) {
+      for (const event of await this.friendly.leaveResult(matchId, userId))
+        await this.deliverFriendly({ matchId, ...event });
+      return { success: true };
+    }
     if (match.type === ArenaMatchType.FRIEND) {
       for (const event of await this.friendly.leave(matchId, userId))
         this.server.to(`match:${matchId}`).emit(event.event, event.data);
@@ -433,7 +450,11 @@ export class ArenaGateway
       }
       this.server.to(ids).emit(item.event, item.data);
     } else if (item.matchId) {
-      this.server.to(`match:${item.matchId}`).emit(item.event, item.data);
+      const matchId =
+        typeof item.data.matchId === 'string'
+          ? item.data.matchId
+          : item.matchId;
+      this.server.to(`match:${matchId}`).emit(item.event, item.data);
     }
   }
 
@@ -521,7 +542,7 @@ export class ArenaGateway
   @SubscribeMessage('friend:join')
   joinFriend(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { matchId: string },
+    @MessageBody() payload: { matchId: string; returnToLobby?: boolean },
   ) {
     return this.friendlyAction(async () => {
       const userId = this.getUserId(client);
@@ -534,8 +555,14 @@ export class ArenaGateway
         userId,
         disconnectedAt: null,
       });
-      const data = await this.friendly.snapshot(payload.matchId, userId);
-      client.emit('friend:snapshot', data);
+      const data = payload.returnToLobby
+        ? await this.friendly.returnToLobby(payload.matchId, userId)
+        : await this.friendly.snapshot(payload.matchId, userId);
+      if (payload.returnToLobby)
+        this.server
+          .to('match:' + payload.matchId)
+          .emit('friend:snapshot', data);
+      else client.emit('friend:snapshot', data);
       for (const event of await this.friendly.gameSnapshot(payload.matchId))
         this.server
           .to(`match:${payload.matchId}`)

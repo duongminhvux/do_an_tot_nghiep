@@ -34,6 +34,7 @@ function fixture(type = 'RANK', online = false) {
       return match;
     }),
     markDisconnected: vi.fn(),
+    markReconnected: vi.fn(),
   };
   const rounds = {
     assertMember: vi.fn(),
@@ -44,6 +45,15 @@ function fixture(type = 'RANK', online = false) {
       ]),
   };
   const friendly = {
+    leaveResult: vi.fn().mockResolvedValue([]),
+    member: vi.fn(),
+    returnToLobby: vi
+      .fn()
+      .mockResolvedValue({ matchId: 'match-id', status: 'FINISHED' }),
+    snapshot: vi
+      .fn()
+      .mockResolvedValue({ matchId: 'match-id', status: 'FINISHED' }),
+    gameSnapshot: vi.fn().mockResolvedValue([]),
     leave: vi
       .fn()
       .mockResolvedValue([
@@ -118,5 +128,50 @@ describe('Arena leaving an active match', () => {
       'Not a member',
     );
     expect(f.matches.finishRankedMatch).not.toHaveBeenCalled();
+  });
+});
+
+describe('Friendly result and lobby navigation', () => {
+  it('notifies the waiting player when a finished result is left via HTTP or socket', async () => {
+    const f = fixture('FRIEND');
+    f.matches.findActiveMatchForUser.mockResolvedValue(null);
+    f.friendly.leaveResult.mockResolvedValue([
+      { event: 'friend:snapshot', data: { matchId: 'match-id', players: [] } },
+    ] as never);
+    await f.gateway.leaveMatch('user-id', 'match-id');
+    expect(f.friendly.leaveResult).toHaveBeenCalledWith('match-id', 'user-id');
+    expect(f.emit).toHaveBeenCalledWith('friend:snapshot', expect.any(Object));
+    expect(f.matches.finishRankedMatch).not.toHaveBeenCalled();
+  });
+
+  it('closing the result tab marks a departure even when another tab is online', async () => {
+    const f = fixture('FRIEND', true);
+    f.matches.findActiveMatchForUser.mockResolvedValue(null);
+    await f.gateway.handleDisconnect(f.client);
+    expect(f.friendly.leaveResult).toHaveBeenCalledWith('match-id', 'user-id');
+  });
+
+  it('only treats joining the lobby as a return, not reloading the result', async () => {
+    const f = fixture('FRIEND');
+    Object.assign(f.client, { join: vi.fn(), emit: vi.fn() });
+    await f.gateway.joinFriend(f.client, { matchId: 'match-id' });
+    expect(f.friendly.returnToLobby).not.toHaveBeenCalled();
+    expect(f.friendly.snapshot).toHaveBeenCalledWith('match-id', 'user-id');
+    await f.gateway.joinFriend(f.client, {
+      matchId: 'match-id',
+      returnToLobby: true,
+    });
+    expect(f.friendly.returnToLobby).toHaveBeenCalledWith(
+      'match-id',
+      'user-id',
+    );
+    expect(f.emit).toHaveBeenCalledWith(
+      'friend:snapshot',
+      expect.objectContaining({ status: 'FINISHED' }),
+    );
+    expect(f.emit).not.toHaveBeenCalledWith(
+      'friend:match-created',
+      expect.anything(),
+    );
   });
 });

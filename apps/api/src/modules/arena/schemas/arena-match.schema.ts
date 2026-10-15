@@ -46,6 +46,12 @@ export class ArenaMatch {
   @Prop({ type: String, enum: Object.values(ArenaFriendMode), default: null })
   friendMode?: ArenaFriendMode | null;
 
+  @Prop({ type: Types.ObjectId, ref: 'ArenaMatch', default: null })
+  nextMatchId?: Types.ObjectId | null;
+
+  @Prop({ default: false })
+  lobbyStarting: boolean;
+
   @Prop({ type: Types.ObjectId, ref: 'User', default: null })
   hostId?: Types.ObjectId | null;
 

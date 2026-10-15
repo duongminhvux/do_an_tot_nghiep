@@ -38,7 +38,7 @@ function fixture() {
     friendMode: 'WORD_CHAIN',
     currentTurnUserId: new Types.ObjectId(user),
     currentWord: 'apple',
-    requiredLetter: 'e',
+    requiredLetter: 'le',
     usedWords: ['apple'],
     turnCount: 1,
     turnStartedAt: new Date(),
@@ -98,7 +98,23 @@ function fixture() {
   };
   const questions = { createRankedQuestions: vi.fn() };
   const presence = { isOnline: vi.fn(async () => true) };
-  const users = { exists: vi.fn(async () => true) };
+  const users = {
+    exists: vi.fn(async () => true),
+    find: vi.fn(() => ({
+      select: async () => [
+        {
+          _id: new Types.ObjectId(user),
+          username: 'Host',
+          avatarUrl: undefined,
+        },
+        {
+          _id: new Types.ObjectId(opponent),
+          username: 'Guest',
+          avatarUrl: undefined,
+        },
+      ],
+    })),
+  };
   const arena = { getOrCreateProfile: vi.fn() };
   const deps = [
     matches,
@@ -135,11 +151,11 @@ describe('Friendly Word Chain', () => {
     const events = await f.service.submit(
       String(f.match._id),
       f.user,
-      '  ENVIRONMENT  ',
+      '  LEMON  ',
     );
-    expect(f.match.usedWords).toEqual(['apple', 'environment']);
+    expect(f.match.usedWords).toEqual(['apple', 'lemon']);
     expect(String(f.match.currentTurnUserId)).toBe(f.opponent);
-    expect(f.match.requiredLetter).toBe('t');
+    expect(f.match.requiredLetter).toBe('on');
     expect(f.match.turnDeadline.getTime()).toBeGreaterThanOrEqual(
       before + 20000,
     );
@@ -150,12 +166,17 @@ describe('Friendly Word Chain', () => {
   });
   it.each([
     ['house', 'INVALID_START_LETTER'],
+    ['elephant', 'INVALID_START_LETTER'],
+    ['a', 'WORD_NOT_FOUND'],
     ['apple', 'WORD_ALREADY_USED'],
     ['two words', 'WORD_NOT_FOUND'],
     ['', 'WORD_NOT_FOUND'],
   ])('rejects %s without changing the deadline', async (word, reason) => {
     const f = fixture();
-    if (word === 'apple') f.match.requiredLetter = 'a';
+    if (word === 'apple') {
+      f.match.currentWord = 'map';
+      f.match.requiredLetter = 'ap';
+    }
     const deadline = f.match.turnDeadline.getTime();
     expect(
       (await f.service.submit(String(f.match._id), f.user, word))[0]?.data
@@ -164,18 +185,40 @@ describe('Friendly Word Chain', () => {
     expect(f.match.turnDeadline.getTime()).toBe(deadline);
     expect(f.matches.findOneAndUpdate).not.toHaveBeenCalled();
   });
+  it('allows an unrestricted first word of at least two letters', async () => {
+    const f = fixture();
+    f.match.currentWord = '';
+    f.match.requiredLetter = '';
+    f.match.usedWords = [];
+    const events = await f.service.submit(String(f.match._id), f.user, 'Apple');
+    expect(events[0]?.event).toBe('word-chain:accepted');
+    expect(f.match.requiredLetter).toBe('le');
+  });
+  it('derives two letters from the previous word even for an old one-letter snapshot', async () => {
+    const f = fixture();
+    f.match.requiredLetter = 'e';
+    const snapshot = await f.service.gameSnapshot(String(f.match._id));
+    expect(snapshot[0]?.data.requiredLetter).toBe('le');
+    const events = await f.service.submit(
+      String(f.match._id),
+      f.user,
+      'elephant',
+    );
+    expect(events[0]?.data.reason).toBe('INVALID_START_LETTER');
+    expect(f.words.exists).not.toHaveBeenCalled();
+  });
   it('checks the application vocabulary', async () => {
     const f = fixture();
     f.words.exists.mockResolvedValue(false);
     expect(
-      (await f.service.submit(String(f.match._id), f.user, 'elephant'))[0]?.data
+      (await f.service.submit(String(f.match._id), f.user, 'lemon'))[0]?.data
         .reason,
     ).toBe('WORD_NOT_FOUND');
   });
   it('rejects submissions from the other player', async () => {
     const f = fixture();
     expect(
-      (await f.service.submit(String(f.match._id), f.opponent, 'elephant'))[0]
+      (await f.service.submit(String(f.match._id), f.opponent, 'lemon'))[0]
         ?.data.reason,
     ).toBe('NOT_YOUR_TURN');
   });
@@ -186,7 +229,7 @@ describe('Friendly Word Chain', () => {
       return true;
     });
     expect(
-      (await f.service.submit(String(f.match._id), f.user, 'elephant'))[0]?.data
+      (await f.service.submit(String(f.match._id), f.user, 'lemon'))[0]?.data
         .reason,
     ).toBe('TURN_EXPIRED');
     expect(f.match.usedWords).toEqual(['apple']);
@@ -194,8 +237,8 @@ describe('Friendly Word Chain', () => {
   it('accepts only one of two simultaneous submissions for a turn', async () => {
     const f = fixture();
     const results = await Promise.all([
-      f.service.submit(String(f.match._id), f.user, 'elephant'),
-      f.service.submit(String(f.match._id), f.user, 'environment'),
+      f.service.submit(String(f.match._id), f.user, 'lemon'),
+      f.service.submit(String(f.match._id), f.user, 'letter'),
     ]);
     expect(
       results.filter((events) => events[0]?.event === 'word-chain:accepted'),
@@ -343,5 +386,173 @@ describe('Friendly lifecycle', () => {
       'friend:cancelled',
     );
     expect(f.matchService.finishMatch).not.toHaveBeenCalled();
+  });
+});
+
+function resultLobbyFixture() {
+  const f = fixture();
+  const match = Object.assign(f.match, {
+    status: 'FINISHED',
+    nextMatchId: null as Types.ObjectId | null,
+    lobbyStarting: false,
+  });
+  const players = [f.user, f.opponent].map((id) => ({
+    userId: new Types.ObjectId(id),
+    status: 'FINISHED',
+    returnedToLobby: false,
+    leftLobby: false,
+    isReady: false,
+    readyMode: match.friendMode,
+    score: 12,
+    disconnectedAt: null,
+  }));
+  f.players.find.mockImplementation(async () => players);
+  f.players.updateOne.mockImplementation(async (filter, update) => {
+    const player = players.find(
+      (p) => String(p.userId) === String(filter.userId),
+    );
+    if (player) Object.assign(player, update.$set);
+    return { modifiedCount: player ? 1 : 0 };
+  });
+  f.matches.findOneAndUpdate.mockImplementation(async (filter, update) => {
+    if (filter.lobbyStarting && (match.lobbyStarting || match.nextMatchId))
+      return null;
+    Object.assign(match, update.$set);
+    return { ...match };
+  });
+  f.matches.updateOne.mockImplementation(async (...args: unknown[]) => {
+    const [, update] = args as [unknown, { $set: Record<string, unknown> }];
+    Object.assign(match, update.$set);
+    return { modifiedCount: 1 };
+  });
+  const nextId = new Types.ObjectId();
+  f.matchService.createFriendMatch.mockResolvedValue({
+    match: { _id: nextId },
+  });
+  return { ...f, match, resultPlayers: players, nextId };
+}
+
+describe('Returning to the Friendly lobby after a result', () => {
+  it('keeps the opponent on the result while the first player waits in the old lobby', async () => {
+    const f = resultLobbyFixture();
+    const snapshot = await f.service.returnToLobby(String(f.match._id), f.user);
+    expect(snapshot.matchId).toBe(String(f.match._id));
+    expect(snapshot.status).toBe('FINISHED');
+    expect(
+      snapshot.players.find((p) => p.userId === f.user)?.returnedToLobby,
+    ).toBe(true);
+    expect(
+      snapshot.players.find((p) => p.userId === f.opponent)?.returnedToLobby,
+    ).toBe(false);
+    expect(f.matchService.createFriendMatch).not.toHaveBeenCalled();
+    expect(f.match.usedWords).toEqual(['apple']);
+    expect(f.resultPlayers[0]?.score).toBe(12);
+  });
+
+  it('continues with the same host, opponent and mode only after both return', async () => {
+    const f = resultLobbyFixture();
+    await f.service.returnToLobby(String(f.match._id), f.user);
+    const snapshot = await f.service.returnToLobby(
+      String(f.match._id),
+      f.opponent,
+    );
+    expect(f.matchService.createFriendMatch).toHaveBeenCalledExactlyOnceWith(
+      f.user,
+      f.opponent,
+      'WORD_CHAIN',
+    );
+    expect(snapshot.nextMatchId).toBe(String(f.nextId));
+    expect(f.match.status).toBe('FINISHED');
+    expect(f.match.usedWords).toEqual(['apple']);
+    await f.service.returnToLobby(String(f.match._id), f.user);
+    expect(f.matchService.createFriendMatch).toHaveBeenCalledOnce();
+  });
+
+  it('creates a single next round for simultaneous return requests', async () => {
+    const f = resultLobbyFixture();
+    await Promise.all([
+      f.service.returnToLobby(String(f.match._id), f.user),
+      f.service.returnToLobby(String(f.match._id), f.opponent),
+    ]);
+    expect(f.matchService.createFriendMatch).toHaveBeenCalledOnce();
+    expect(String(f.match.nextMatchId)).toBe(String(f.nextId));
+    expect(f.match.lobbyStarting).toBe(false);
+  });
+
+  it('broadcasts that a player left the result without changing the completed match', async () => {
+    const f = resultLobbyFixture();
+    await f.service.returnToLobby(String(f.match._id), f.user);
+    const events = await f.service.leaveResult(String(f.match._id), f.opponent);
+    expect(events[0]?.event).toBe('friend:snapshot');
+    expect(events[0]?.data.players).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          userId: f.opponent,
+          leftLobby: true,
+          returnedToLobby: false,
+        }),
+      ]),
+    );
+    expect(f.match.status).toBe('FINISHED');
+    expect(f.matchService.finishMatch).not.toHaveBeenCalled();
+    expect(f.matchService.createFriendMatch).not.toHaveBeenCalled();
+  });
+
+  it('does not start a completed match while someone is still viewing the result', async () => {
+    const f = resultLobbyFixture();
+    await f.service.returnToLobby(String(f.match._id), f.user);
+    await expect(f.service.start(String(f.match._id), f.user)).rejects.toThrow(
+      'Only the host',
+    );
+    expect(f.questions.createRankedQuestions).not.toHaveBeenCalled();
+  });
+
+  it('releases the lobby lock on failure and allows the return to be retried', async () => {
+    const f = resultLobbyFixture();
+    await f.service.returnToLobby(String(f.match._id), f.user);
+    f.matchService.createFriendMatch.mockRejectedValueOnce(
+      new Error('Try again'),
+    );
+    await expect(
+      f.service.returnToLobby(String(f.match._id), f.opponent),
+    ).rejects.toThrow('Try again');
+    expect(f.match.lobbyStarting).toBe(false);
+    await f.service.returnToLobby(String(f.match._id), f.opponent);
+    expect(String(f.match.nextMatchId)).toBe(String(f.nextId));
+  });
+
+  it('rejects a nonmember and a player who has already joined another match', async () => {
+    const f = resultLobbyFixture();
+    f.rounds.assertMember.mockRejectedValueOnce(new Error('Not a member'));
+    await expect(
+      f.service.returnToLobby(String(f.match._id), f.user),
+    ).rejects.toThrow('Not a member');
+    f.matchService.findActiveMatchForUser.mockResolvedValueOnce({
+      _id: new Types.ObjectId(),
+    } as never);
+    await expect(
+      f.service.returnToLobby(String(f.match._id), f.user),
+    ).rejects.toThrow('already in a match');
+    expect(f.matchService.createFriendMatch).not.toHaveBeenCalled();
+  });
+});
+
+describe('Departures while the next Friendly round is being created', () => {
+  it('cancels the new waiting round if a player closes the tab during creation', async () => {
+    const f = resultLobbyFixture();
+    f.matches.findById.mockImplementation(async (...args: unknown[]) =>
+      String(args[0]) === String(f.nextId)
+        ? { ...f.match, _id: f.nextId, status: 'WAITING' }
+        : { ...f.match },
+    );
+    const leave = vi.spyOn(f.service, 'leave').mockResolvedValue([]);
+    await f.service.returnToLobby(String(f.match._id), f.user);
+    f.matchService.createFriendMatch.mockImplementation(async () => {
+      f.resultPlayers[0]!.leftLobby = true;
+      return { match: { _id: f.nextId } };
+    });
+    await f.service.returnToLobby(String(f.match._id), f.opponent);
+    expect(leave).toHaveBeenCalledWith(String(f.nextId), f.user);
+    expect(f.match.status).toBe('FINISHED');
   });
 });
