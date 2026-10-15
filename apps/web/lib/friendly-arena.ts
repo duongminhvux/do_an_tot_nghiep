@@ -18,12 +18,15 @@ export type FriendPlayer = {
   online?: boolean;
   recent?: boolean;
   isReady?: boolean;
+  returnedToLobby?: boolean;
+  leftLobby?: boolean;
   score?: number;
   disconnectedAt?: string | null;
 };
 export type FriendSnapshot = {
   matchId: string;
   status: string;
+  nextMatchId?: string | null;
   mode: FriendMode;
   hostId: string;
   players: FriendPlayer[];

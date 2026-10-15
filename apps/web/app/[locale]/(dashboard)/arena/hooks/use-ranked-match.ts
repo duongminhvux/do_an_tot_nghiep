@@ -48,6 +48,7 @@ type Finished = {
   matchId: string;
   finishReason?: string;
   turnCount?: number;
+  usedWords?: string[];
   requiredLetter?: string;
   startedAt?: string;
   finishedAt?: string;
