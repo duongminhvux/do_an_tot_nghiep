@@ -3,16 +3,68 @@ export function normalizeArenaAnswer(value: string) {
   return value.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
-/** Che đáp án trong nội dung gợi ý để không làm lộ đáp án trước thời điểm resolve. */
+// Irregular forms cannot be derived from English suffix rules.
+const irregularForms = [
+  ['do', 'does', 'did', 'done', 'doing'],
+  ['be', 'am', 'is', 'are', 'was', 'were', 'been', 'being'],
+  ['have', 'has', 'had', 'having'],
+  ['go', 'goes', 'went', 'gone', 'going'],
+  ['make', 'makes', 'made', 'making'],
+  ['take', 'takes', 'took', 'taken', 'taking'],
+  ['get', 'gets', 'got', 'gotten', 'getting'],
+  ['write', 'writes', 'wrote', 'written', 'writing'],
+  ['run', 'runs', 'ran', 'running'],
+  ['eat', 'eats', 'ate', 'eaten', 'eating'],
+  ['see', 'sees', 'saw', 'seen', 'seeing'],
+];
+
+function arenaAnswerForms(answer: string): string[] {
+  if (!/^[a-z]+$/.test(answer)) return [answer];
+  const irregular = irregularForms.find((forms) => forms.includes(answer));
+  if (irregular) return irregular;
+  const forms = new Set([answer]);
+  forms.add(
+    /[^aeiou]y$/.test(answer)
+      ? `${answer.slice(0, -1)}ies`
+      : /(?:s|x|z|ch|sh|o)$/.test(answer)
+        ? `${answer}es`
+        : `${answer}s`,
+  );
+  if (/[^aeiou]y$/.test(answer)) forms.add(`${answer.slice(0, -1)}ied`);
+  else forms.add(`${answer}${answer.endsWith('e') ? 'd' : 'ed'}`);
+  if (answer.endsWith('ie')) forms.add(`${answer.slice(0, -2)}ying`);
+  else if (answer.endsWith('e') && !answer.endsWith('ee'))
+    forms.add(`${answer.slice(0, -1)}ing`);
+  else forms.add(`${answer}ing`);
+  // Single-syllable consonant-vowel-consonant words: stop -> stopped/stopping.
+  if (/^[^aeiou]*[aeiou][^aeiouwxy]$/.test(answer)) {
+    forms.add(`${answer}${answer.at(-1)}ed`);
+    forms.add(`${answer}${answer.at(-1)}ing`);
+  }
+  return [...forms];
+}
+
+/** Hide complete answer words and their inflections without masking substrings. */
 export function maskArenaAnswer(value: string | undefined, answer: string) {
   if (!value || !answer.trim()) return value;
-  const pattern = answer
+  const pattern = arenaAnswerForms(normalizeArenaAnswer(answer))
+    .sort((a, b) => b.length - a.length)
+    .map((form) =>
+      form
+        .split(/\s+/)
+        .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+        .join('\\s+'),
+    )
+    .join('|');
+  return value
     .normalize('NFKC')
-    .trim()
-    .split(/\s+/)
-    .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-    .join('\\s+');
-  return value.normalize('NFKC').replace(new RegExp(pattern, 'giu'), '_____');
+    .replace(
+      new RegExp(
+        `(?<![\\p{L}\\p{N}_])(?:${pattern})(?![\\p{L}\\p{N}_])`,
+        'giu',
+      ),
+      '_____',
+    );
 }
 
 /** Tạo thứ tự các vị trí chữ cái sẽ được mở dần trong hint. */
