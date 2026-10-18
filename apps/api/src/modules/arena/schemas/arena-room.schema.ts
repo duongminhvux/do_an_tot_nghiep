@@ -57,7 +57,7 @@ export class ArenaRoom {
   @Prop({ default: 15, min: 5 })
   secondsPerQuestion: number;
 
-  @Prop({ default: 8, min: 2, max: 20 })
+  @Prop({ default: 8, min: 3, max: 8, validate: Number.isInteger })
   maxPlayers: number;
 
   @Prop({

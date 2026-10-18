@@ -90,7 +90,7 @@ export class ArenaService {
         },
       },
       {
-        new: true,
+        returnDocument: 'after',
         upsert: true,
       },
     );

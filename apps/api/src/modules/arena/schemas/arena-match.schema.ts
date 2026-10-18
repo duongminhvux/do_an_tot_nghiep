@@ -1,6 +1,13 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 
+export type WordGuessFeedback = 'correct' | 'present' | 'absent';
+export type WordGuessAttempt = {
+  userId: string;
+  word: string;
+  feedback: WordGuessFeedback[];
+};
+
 export type ArenaMatchDocument = HydratedDocument<ArenaMatch>;
 
 export enum ArenaMatchType {
@@ -12,6 +19,7 @@ export enum ArenaMatchType {
 export enum ArenaFriendMode {
   CLASSIC = 'CLASSIC',
   WORD_CHAIN = 'WORD_CHAIN',
+  WORD_GUESS = 'WORD_GUESS',
 }
 
 export enum ArenaMatchStatus {
@@ -76,6 +84,12 @@ export class ArenaMatch {
   @Prop({ type: [String], default: [] })
   usedWords: string[];
 
+  @Prop({ type: String, default: null, select: false }) wordGuessAnswer:
+    string | null;
+  @Prop({ type: [Object], default: [] }) wordGuessAttempts: WordGuessAttempt[];
+  @Prop({ default: 0 }) wordGuessRevision: number;
+  @Prop({ type: String, default: null }) wordGuessSolvedBy: string | null;
+
   @Prop({ default: 0 })
   turnCount: number;
 
@@ -89,7 +103,12 @@ export class ArenaMatch {
 
   @Prop({
     type: Types.ObjectId,
-    ref: 'ArenaRoom',
+    ref: function (this: ArenaMatch) {
+      return this.type === ArenaMatchType.FRIEND ||
+        this.type === ArenaMatchType.ROOM
+        ? 'FriendRoom'
+        : 'ArenaRoom';
+    },
     default: null,
     index: true,
   })
@@ -106,9 +125,17 @@ export class ArenaMatch {
   @Prop({
     type: String,
     enum: Object.values(ArenaQuestionMode),
-    required: true,
+    required: function (this: ArenaMatch) {
+      return (
+        (this.type !== ArenaMatchType.FRIEND &&
+          this.type !== ArenaMatchType.ROOM) ||
+        !this.friendMode ||
+        this.friendMode === ArenaFriendMode.CLASSIC
+      );
+    },
+    default: null,
   })
-  questionMode: ArenaQuestionMode;
+  questionMode: ArenaQuestionMode | null;
 
   @Prop({
     type: Number,
@@ -116,6 +143,11 @@ export class ArenaMatch {
     min: 1,
   })
   questionCount: number;
+
+  @Prop({ type: [Types.ObjectId], default: [] })
+  eliminatedUserIds: Types.ObjectId[];
+
+  @Prop({ default: 0 }) roomRevision: number;
 
   @Prop({ default: 1, min: 1 })
   currentQuestionIndex: number;
@@ -165,6 +197,16 @@ export class ArenaMatch {
     default: null,
   })
   finishReason?: ArenaMatchFinishReason | null;
+
+  @Prop({ default: null, type: String, immutable: true })
+  roomCodeSnapshot?: string | null;
+
+  @Prop({ type: Object, default: null, immutable: true })
+  settingsSnapshot?: {
+    questionCount?: number;
+    timePerQuestion?: number;
+    turnTime?: number;
+  } | null;
 
   createdAt: Date;
   updatedAt: Date;

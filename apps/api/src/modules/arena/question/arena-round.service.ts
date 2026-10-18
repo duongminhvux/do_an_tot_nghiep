@@ -92,8 +92,11 @@ export class ArenaRoundService {
     // Không cho phép gửi đáp án vào trận đã kết thúc hoặc chưa bắt đầu.
     if (!match || match.status !== ArenaMatchStatus.PLAYING)
       throw new WsException('Match is not playing');
-    if (match.friendMode === ArenaFriendMode.WORD_CHAIN)
-      throw new WsException('Use Word Chain submissions');
+    if (
+      match.friendMode === ArenaFriendMode.WORD_CHAIN ||
+      match.friendMode === ArenaFriendMode.WORD_GUESS
+    )
+      throw new WsException('Use the selected game submission event');
 
     // Chỉ câu hỏi đang được chọn và đã bắt đầu mới nhận đáp án.
     if (
@@ -120,7 +123,7 @@ export class ArenaRoundService {
           {
             $set: { resolvedAt: now, winnerId: correct ? userObjectId : null },
           },
-          { new: true },
+          { returnDocument: 'after' },
         )) ??
         (await this.questions.findById(question._id)) ??
         question;
@@ -377,7 +380,9 @@ export class ArenaRoundService {
   async tick(): Promise<{ matchId: string; events: ArenaRoundEvent[] }[]> {
     const matches = await this.matches.find({
       status: ArenaMatchStatus.PLAYING,
-      friendMode: { $ne: ArenaFriendMode.WORD_CHAIN },
+      friendMode: {
+        $nin: [ArenaFriendMode.WORD_CHAIN, ArenaFriendMode.WORD_GUESS],
+      },
     });
     const batches: { matchId: string; events: ArenaRoundEvent[] }[] = [];
     for (const match of matches) {
@@ -465,7 +470,7 @@ export class ArenaRoundService {
         (await this.questions.findOneAndUpdate(
           { _id: question._id, startedAt: null },
           { $set: { startedAt: new Date() } },
-          { new: true },
+          { returnDocument: 'after' },
         )) ?? (await this.questions.findById(question._id));
 
       // Nếu vẫn chưa có thời điểm bắt đầu thì chờ lần tick tiếp theo.
@@ -482,7 +487,7 @@ export class ArenaRoundService {
         (await this.questions.findOneAndUpdate(
           { _id: question._id, resolvedAt: null },
           { $set: { resolvedAt: new Date(), winnerId: null } },
-          { new: true },
+          { returnDocument: 'after' },
         )) ?? (await this.questions.findById(question._id));
 
       // Nếu câu hỏi đã bị xóa hoặc không lấy lại được thì không phát event lỗi.
@@ -576,7 +581,8 @@ export class ArenaRoundService {
       };
     return {
       event:
-        match?.type === ArenaMatchType.FRIEND
+        match?.type === ArenaMatchType.FRIEND ||
+        match?.type === ArenaMatchType.ROOM
           ? 'friend:match-finished'
           : 'match:finished',
       data: {
@@ -588,7 +594,7 @@ export class ArenaRoundService {
         turnCount: match?.turnCount ?? 0,
         requiredLetter:
           match?.friendMode === ArenaFriendMode.WORD_CHAIN
-            ? (match.currentWord ?? '').slice(-2)
+            ? (match.currentWord ?? '').slice(-1)
             : (match?.requiredLetter ?? ''),
         usedWords: match?.usedWords ?? [],
         startedAt: match?.startedAt?.toISOString(),

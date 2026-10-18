@@ -23,6 +23,13 @@ export class ArenaRoomService {
       maxPlayers?: number;
     },
   ) {
+    if (
+      options.maxPlayers !== undefined &&
+      (!Number.isInteger(options.maxPlayers) ||
+        options.maxPlayers < 3 ||
+        options.maxPlayers > 8)
+    )
+      throw new WsException('INVALID_ROOM_CAPACITY');
     const code = await this.generateCode();
     return this.roomModel.create({
       name: options.name.trim(),
@@ -61,7 +68,7 @@ export class ArenaRoomService {
           },
         },
       },
-      { new: true },
+      { returnDocument: 'after' },
     );
     if (!room) throw new WsException('Room is unavailable');
     return room;

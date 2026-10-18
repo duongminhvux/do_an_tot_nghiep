@@ -1,6 +1,16 @@
+vi.mock('../question/arena-question.service.js', () => ({
+  ArenaQuestionService: class {},
+}));
+vi.mock('../rating/arena-rating.service.js', () => ({
+  ArenaRatingService: class {},
+}));
 import { Types } from 'mongoose';
 import { ArenaMatchService } from './arena-match.service.js';
 
+vi.mock('../schemas/friend-room.schema.js', () => ({
+  FriendRoom: class {},
+  FriendRoomStatus: { WAITING: 'WAITING' },
+}));
 vi.mock('../schemas/arena-match.schema.js', () => ({
   ArenaMatch: class {},
   ArenaMatchStatus: {
@@ -9,8 +19,13 @@ vi.mock('../schemas/arena-match.schema.js', () => ({
     FINISHED: 'FINISHED',
     WAITING: 'WAITING',
   },
-  ArenaMatchType: { RANK: 'RANK', FRIEND: 'FRIEND' },
-  ArenaFriendMode: { WORD_CHAIN: 'WORD_CHAIN', CLASSIC: 'CLASSIC' },
+  ArenaMatchType: { RANK: 'RANK', FRIEND: 'FRIEND', ROOM: 'ROOM' },
+  ArenaQuestionMode: { MEANING_TO_WORD: 'MEANING_TO_WORD' },
+  ArenaFriendMode: {
+    WORD_CHAIN: 'WORD_CHAIN',
+    WORD_GUESS: 'WORD_GUESS',
+    CLASSIC: 'CLASSIC',
+  },
   ArenaMatchFinishReason: { NORMAL: 'NORMAL' },
 }));
 vi.mock('../schemas/arena-match-player.schema.js', () => ({
@@ -75,6 +90,7 @@ function fixture() {
       playerB: { ratingAfter: 990, ratingChange: -10 },
     })),
   };
+  const friendRooms = { updateOne: vi.fn(), findOne: vi.fn(async () => null) };
   const deps = [
     {},
     matches,
@@ -83,9 +99,11 @@ function fixture() {
     history,
     {},
     rating,
+    friendRooms,
   ] as unknown as ConstructorParameters<typeof ArenaMatchService>;
   return {
     service: new ArenaMatchService(...deps),
+    friendRooms,
     match,
     players,
     matches,
@@ -108,6 +126,19 @@ describe('Friendly results and reconnect', () => {
     expect(f.playerModel.updateOne.mock.calls[0]?.[1]).toMatchObject({
       $set: { ratingAfter: 1000, ratingChange: 0 },
     });
+  });
+  it('resets the existing room after a Friendly match without changing its settings', async () => {
+    const f = fixture();
+    const roomId = new Types.ObjectId();
+    Object.assign(f.match, { roomId });
+    await f.service.finishMatch(String(f.match._id));
+    expect(f.friendRooms.updateOne).toHaveBeenCalledWith(
+      { _id: roomId, currentMatchId: f.match._id },
+      {
+        $set: { status: 'WAITING', currentMatchId: null, guestReady: false },
+        $inc: { revision: 1 },
+      },
+    );
   });
   it('equal Classic scores produce a draw', async () => {
     const f = fixture();
@@ -164,5 +195,178 @@ describe('Friendly results and reconnect', () => {
       ),
     ).rejects.toThrow('expired');
     expect(f.playerModel.updateOne).not.toHaveBeenCalled();
+  });
+});
+
+describe('Room match results and turns', () => {
+  it('finishes every player and honors a winner outside the first two without Elo changes', async () => {
+    const f = fixture();
+    f.match.type = 'ROOM';
+    f.players.push({
+      _id: new Types.ObjectId(),
+      userId: new Types.ObjectId(),
+      score: 60,
+      ratingBefore: 1200,
+    });
+    const third = f.players[2]!;
+    const result = await f.service.finishMatch(
+      String(f.match._id),
+      undefined,
+      String(third.userId),
+    );
+    expect(String(result?.winnerId)).toBe(String(third.userId));
+    expect(f.playerModel.updateOne).toHaveBeenCalledTimes(3);
+    expect(f.rating.calculateMatch).not.toHaveBeenCalled();
+    expect(f.history.updateOne).not.toHaveBeenCalled();
+    expect(f.profiles.updateOne).not.toHaveBeenCalled();
+  });
+  it('rotates turns through all members and skips eliminated players', async () => {
+    const f = fixture();
+    f.match.type = 'ROOM';
+    f.players.push({
+      _id: new Types.ObjectId(),
+      userId: new Types.ObjectId(),
+      score: 0,
+      ratingBefore: 1000,
+    });
+    const ids = f.players.map((p) => String(p.userId));
+    expect(await f.service.nextRoomPlayer(String(f.match._id), ids[0]!)).toBe(
+      ids[1],
+    );
+    expect(await f.service.nextRoomPlayer(String(f.match._id), ids[1]!)).toBe(
+      ids[2],
+    );
+    expect(await f.service.nextRoomPlayer(String(f.match._id), ids[2]!)).toBe(
+      ids[0],
+    );
+    Object.assign(f.match, { eliminatedUserIds: [f.players[1]!.userId] });
+    expect(await f.service.nextRoomPlayer(String(f.match._id), ids[0]!)).toBe(
+      ids[2],
+    );
+  });
+  it('eliminates a timed-out player and continues until only one survivor remains', async () => {
+    const f = fixture();
+    f.match.type = 'ROOM';
+    f.players.push({
+      _id: new Types.ObjectId(),
+      userId: new Types.ObjectId(),
+      score: 0,
+      ratingBefore: 1000,
+    });
+    Object.assign(f.match, {
+      currentTurnUserId: f.players[0]!.userId,
+      turnCount: 0,
+      eliminatedUserIds: [],
+    });
+    await f.service.dropRoomPlayer(
+      String(f.match._id),
+      String(f.players[0]!.userId),
+      'TURN_TIMEOUT' as never,
+    );
+    expect(f.match.status).toBe('PLAYING');
+    expect((f.match as any).turnCount).toBe(0);
+    expect(String((f.match as any).currentTurnUserId)).toBe(
+      String(f.players[1]!.userId),
+    );
+    const survivor = String(f.players[2]!.userId);
+    const result = await f.service.dropRoomPlayer(
+      String(f.match._id),
+      String(f.players[1]!.userId),
+      'TURN_TIMEOUT' as never,
+    );
+    expect(result?.status).toBe('FINISHED');
+    expect(String(result?.winnerId)).toBe(survivor);
+  });
+});
+
+describe('Room match creation', () => {
+  it('reserves and persists every participant, including the third player', async () => {
+    const ids = Array.from({ length: 3 }, () => String(new Types.ObjectId()));
+    const redis = {
+      set: vi.fn(
+        async (_key: string, _token: string, _options: unknown) => 'OK',
+      ),
+      eval: vi.fn(async () => 1),
+    };
+    const matches = {
+      create: vi.fn(async (values) => ({
+        _id: new Types.ObjectId(),
+        ...values,
+      })),
+    };
+    const players = { insertMany: vi.fn(async (values) => values) };
+    const profiles = { findOne: vi.fn(async () => ({ rating: 1000 })) };
+    const rooms = { findOne: vi.fn(async (_filter: unknown) => null) };
+    const deps = [
+      { getClient: () => redis },
+      matches,
+      players,
+      profiles,
+      {},
+      {},
+      {},
+      rooms,
+    ] as unknown as ConstructorParameters<typeof ArenaMatchService>;
+    const service = new ArenaMatchService(...deps);
+    vi.spyOn(service, 'findActiveMatchForUser').mockResolvedValue(null);
+    const created = await service.createMatch(ids[0]!, ids[1]!, {
+      type: 'ROOM' as never,
+      additionalPlayerIds: [ids[2]!],
+      roomId: new Types.ObjectId(),
+      settingsSnapshot: { questionCount: 10, timePerQuestion: 15 },
+      questionMode: 'MEANING_TO_WORD' as never,
+    });
+    expect(created.players.map((p: any) => String(p.userId))).toEqual(ids);
+    expect(redis.set.mock.calls.map((call) => call[0])).toEqual(
+      [...ids].sort().map((id) => `arena:create-match:${id}`),
+    );
+    expect(redis.eval).toHaveBeenCalledTimes(3);
+    expect(profiles.findOne).toHaveBeenCalledTimes(3);
+    expect(created.match.type).toBe('ROOM');
+    expect(String(created.match.hostId)).toBe(ids[0]);
+    expect(rooms.findOne.mock.calls[0]?.[0]).toMatchObject({
+      $or: expect.arrayContaining([
+        { 'members.userId': { $in: ids.map((id) => new Types.ObjectId(id)) } },
+      ]),
+    });
+  });
+});
+
+describe('Word Guess room departures', () => {
+  it('finishes a draw if the remaining players already exhausted their guesses', async () => {
+    const f = fixture();
+    f.match.type = 'ROOM';
+    f.match.friendMode = 'WORD_GUESS';
+    f.players.push({
+      _id: new Types.ObjectId(),
+      userId: new Types.ObjectId(),
+      score: 0,
+      ratingBefore: 1000,
+    });
+    f.players.forEach((p) => (p.score = 0));
+    Object.assign(f.match, {
+      turnCount: 0,
+      roomRevision: 0,
+      eliminatedUserIds: [],
+      wordGuessAttempts: f.players
+        .slice(1)
+        .flatMap((p) =>
+          Array.from({ length: 5 }, () => ({
+            userId: String(p.userId),
+            word: 'crane',
+            feedback: [],
+          })),
+        ),
+    });
+    const result = await f.service.dropRoomPlayer(
+      String(f.match._id),
+      String(f.players[0]!.userId),
+      'PLAYER_LEFT' as never,
+    );
+    expect(result).toMatchObject({
+      status: 'FINISHED',
+      isDraw: true,
+      winnerId: null,
+    });
   });
 });

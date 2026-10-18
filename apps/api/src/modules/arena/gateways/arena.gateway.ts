@@ -1,3 +1,5 @@
+import { ArenaFriendRoomService } from '../friendly/arena-friend-room.service.js';
+import { FriendRoomSettings } from '../schemas/friend-room.schema.js';
 import {
   ConnectedSocket,
   MessageBody,
@@ -59,6 +61,7 @@ export class ArenaGateway
     private readonly presenceService: ArenaPresenceService,
     private readonly authService: AuthService,
     private readonly arenaRoundService: ArenaRoundService,
+    private readonly friendRooms: ArenaFriendRoomService,
   ) {
     console.log('[ArenaGateway] initialized');
   }
@@ -85,6 +88,8 @@ export class ArenaGateway
     if (this.ticking || !this.server) return;
     this.ticking = true;
     try {
+      for (const event of await this.friendRooms.tick())
+        await this.deliverFriendly(event);
       for (const event of await this.friendly.tick())
         await this.deliverFriendly(event);
       for (const matchId of await this.arenaMatchService.processLifecycle()) {
@@ -126,6 +131,10 @@ export class ArenaGateway
 
       client.data.userId = userId;
 
+      if (!(await this.presenceService.isOnline(userId))) {
+        const expired = await this.friendRooms.expireBeforeReconnect(userId);
+        if (expired) await this.deliverFriendly(expired);
+      }
       await this.presenceService.connect(userId, client.id);
       for (const invite of await this.friendly.pending(userId)) {
         client.emit(
@@ -135,7 +144,20 @@ export class ArenaGateway
           invite,
         );
       }
+      const room = await this.friendRooms.connection(userId, true);
+      if (room) {
+        await client.join(`friend-room:${room.roomId}`);
+        client.emit('friend-room:update', room);
+      }
+      // Only authenticated sockets can observe player presence.
+      if (!client.connected) return;
+      await client.join('arena:presence');
+      if (!client.connected) return;
       client.emit('arena:authenticated');
+      this.server.to('arena:presence').emit('arena:presence-changed', {
+        userId,
+        online: true,
+      });
 
       console.log('[Arena] Connected:', {
         userId,
@@ -164,33 +186,30 @@ export class ArenaGateway
     }
 
     const result = await this.presenceService.disconnect(userId, client.id);
+    if (!result.online) {
+      this.server.to('arena:presence').emit('arena:presence-changed', {
+        userId,
+        online: false,
+      });
+    }
 
     const active = await this.arenaMatchService.findActiveMatchForUser(userId);
     if (
-      active?.status === ArenaMatchStatus.PLAYING &&
+      active?.type === ArenaMatchType.RANK &&
+      active.status === ArenaMatchStatus.PLAYING &&
       (client.data.activeMatchId === String(active._id) || !result.online)
-    ) {
+    )
       await this.leaveMatch(userId, String(active._id));
-    }
-
-    if (
-      client.data.activeMatchId &&
-      (!active || String(active._id) !== client.data.activeMatchId)
-    ) {
-      await this.leaveMatch(userId, client.data.activeMatchId);
-    } else if (
-      active?.type === ArenaMatchType.FRIEND &&
-      active.status === ArenaMatchStatus.WAITING &&
-      client.data.activeMatchId === String(active._id)
-    ) {
-      await this.leaveMatch(userId, String(active._id));
-    }
 
     if (!result.online) {
+      await this.friendRooms.connection(userId, false);
       await this.matchmakingService.leaveQueue(userId);
       await this.arenaMatchService.markDisconnected(userId);
       const match = await this.arenaMatchService.findActiveMatchForUser(userId);
-      if (match?.type === ArenaMatchType.FRIEND) {
+      if (
+        match?.type === ArenaMatchType.FRIEND ||
+        match?.type === ArenaMatchType.ROOM
+      ) {
         this.server.to(`match:${String(match._id)}`).emit('friend:connection', {
           matchId: String(match._id),
           userId,
@@ -226,6 +245,8 @@ export class ArenaGateway
       socketId: client.id,
     });
 
+    if (await this.friendRooms.active(userId))
+      throw new WsException('ALREADY_IN_ROOM');
     const result = await this.matchmakingService.joinQueue(userId);
 
     // Chưa tìm được đối thủ
@@ -327,7 +348,10 @@ export class ArenaGateway
     const userId = this.getUserId(client);
     await this.arenaRoundService.assertMember(payload.matchId, userId);
     const active = await this.arenaMatchService.findActiveMatchForUser(userId);
-    if (active?.type === ArenaMatchType.FRIEND)
+    if (
+      active?.type === ArenaMatchType.FRIEND ||
+      active?.type === ArenaMatchType.ROOM
+    )
       throw new WsException('Use the Friendly lobby to ready and start');
     await client.join(`match:${payload.matchId}`);
     client.data.activeMatchId = payload.matchId;
@@ -393,12 +417,30 @@ export class ArenaGateway
   async leaveMatch(userId: string, matchId: string) {
     await this.arenaRoundService.assertMember(matchId, userId);
     const match = await this.arenaMatchService.findActiveMatchForUser(userId);
+    const completedRoomMatch =
+      !match || String(match._id) !== matchId
+        ? await this.friendly.member(matchId, userId).catch(() => null)
+        : null;
+    const roomId =
+      String(match?._id) === matchId &&
+      (match?.type === ArenaMatchType.FRIEND ||
+        match?.type === ArenaMatchType.ROOM)
+        ? match.roomId
+        : completedRoomMatch?.roomId;
+    if (roomId) {
+      if (await this.friendRooms.active(userId))
+        await this.leaveRoom(String(roomId), userId);
+      return { success: true };
+    }
     if (!match || String(match._id) !== matchId) {
       for (const event of await this.friendly.leaveResult(matchId, userId))
         await this.deliverFriendly({ matchId, ...event });
       return { success: true };
     }
-    if (match.type === ArenaMatchType.FRIEND) {
+    if (
+      match.type === ArenaMatchType.FRIEND ||
+      match.type === ArenaMatchType.ROOM
+    ) {
       for (const event of await this.friendly.leave(matchId, userId))
         this.server.to(`match:${matchId}`).emit(event.event, event.data);
       return { success: true };
@@ -443,12 +485,42 @@ export class ArenaGateway
         )
       ).flat();
       if (
-        item.event === 'friend:match-created' &&
+        ['friend:match-created', 'friend-room:started'].includes(item.event) &&
         typeof item.data.matchId === 'string'
       ) {
         await this.server.in(ids).socketsJoin(`match:${item.data.matchId}`);
       }
+      if (
+        (item.event === 'friend-room:closed' ||
+          (item.event === 'friend:invite-accepted' &&
+            Array.isArray(item.data.players) &&
+            item.data.players.length >= Number(item.data.maxPlayers ?? 2))) &&
+        typeof item.data.roomId === 'string'
+      )
+        for (const event of await this.friendly.cancelRoomInvites(
+          item.data.roomId,
+        ))
+          await this.deliverFriendly(event);
+      if (
+        item.event === 'friend:invite-accepted' &&
+        typeof item.data.roomId === 'string'
+      ) {
+        await this.server
+          .in(ids)
+          .socketsJoin(`friend-room:${item.data.roomId}`);
+        this.server
+          .to(`friend-room:${item.data.roomId}`)
+          .emit('friend-room:update', item.data);
+      }
       this.server.to(ids).emit(item.event, item.data);
+      if (
+        item.event === 'friend-room:closed' &&
+        typeof item.data.roomId === 'string'
+      ) {
+        await this.server
+          .in(`friend-room:${item.data.roomId}`)
+          .socketsLeave(`friend-room:${item.data.roomId}`);
+      }
     } else if (item.matchId) {
       const matchId =
         typeof item.data.matchId === 'string'
@@ -470,18 +542,221 @@ export class ArenaGateway
     }
   }
 
-  @SubscribeMessage('friend:invite')
-  inviteFriend(
+  @SubscribeMessage('friend-room:create')
+  createFriendRoom(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { friendId: string; mode: ArenaFriendMode },
+    @MessageBody()
+    payload: {
+      mode?: ArenaFriendMode;
+      settings?: FriendRoomSettings;
+      maxPlayers?: number;
+    },
   ) {
+    return this.friendlyAction(async () => {
+      const userId = this.getUserId(client);
+      await this.matchmakingService.leaveQueue(userId);
+      const data = await this.friendRooms.create(
+        userId,
+        payload.mode,
+        payload.settings,
+        payload.maxPlayers,
+      );
+      await client.join(`friend-room:${data.roomId}`);
+      client.emit('friend-room:created', data);
+      return data;
+    });
+  }
+  @SubscribeMessage('friend-room:join')
+  joinFriendRoom(
+    @ConnectedSocket() client: Socket,
+    @MessageBody()
+    payload: { code?: string; roomId?: string; roomType?: 'FRIEND' | 'ROOM' },
+  ) {
+    return this.friendlyAction(async () => {
+      const userId = this.getUserId(client);
+      if (
+        (payload.roomType !== undefined &&
+          payload.roomType !== 'FRIEND' &&
+          payload.roomType !== 'ROOM') ||
+        (!payload.roomId && !payload.roomType)
+      )
+        throw new WsException('INVALID_ROOM_TYPE');
+      const existing = await this.friendRooms.active(userId);
+      if (
+        existing &&
+        payload.roomType &&
+        (existing.maxPlayers > 2 ? 'ROOM' : 'FRIEND') !== payload.roomType &&
+        existing.code === payload.code?.trim().toUpperCase()
+      )
+        throw new WsException('ROOM_TYPE_MISMATCH');
+      const data = payload.roomId
+        ? await this.friendRooms.snapshot(payload.roomId, userId)
+        : existing && existing.code === payload.code?.trim().toUpperCase()
+          ? await this.friendRooms.snapshot(String(existing._id), userId)
+          : await this.friendRooms.join(
+              userId,
+              payload.code!,
+              payload.roomType,
+            );
+      if (
+        payload.roomType &&
+        (data.maxPlayers > 2 ? 'ROOM' : 'FRIEND') !== payload.roomType
+      )
+        throw new WsException('ROOM_TYPE_MISMATCH');
+      await this.matchmakingService.leaveQueue(userId);
+      await client.join(`friend-room:${data.roomId}`);
+      if (data.players.length >= data.maxPlayers)
+        for (const event of await this.friendly.cancelRoomInvites(data.roomId))
+          await this.deliverFriendly(event);
+      this.server
+        .to(`friend-room:${data.roomId}`)
+        .emit('friend-room:update', data);
+      return data;
+    });
+  }
+  @SubscribeMessage('friend-room:current')
+  currentFriendRoom(@ConnectedSocket() client: Socket) {
+    return this.friendlyAction(async () => {
+      const userId = this.getUserId(client);
+      const room = await this.friendRooms.active(userId);
+      return room ? this.friendRooms.snapshot(String(room._id), userId) : null;
+    });
+  }
+  @SubscribeMessage('friend-room:settings-update')
+  updateFriendRoom(
+    @ConnectedSocket() client: Socket,
+    @MessageBody()
+    payload: {
+      roomId: string;
+      mode: ArenaFriendMode;
+      settings: FriendRoomSettings;
+      maxPlayers?: number;
+    },
+  ) {
+    return this.friendlyAction(async () => {
+      const data = await this.friendRooms.update(
+        payload.roomId,
+        this.getUserId(client),
+        payload.mode,
+        payload.settings,
+        payload.maxPlayers,
+      );
+      if (data.players.length >= data.maxPlayers)
+        for (const event of await this.friendly.cancelRoomInvites(data.roomId))
+          await this.deliverFriendly(event);
+      this.server
+        .to(`friend-room:${payload.roomId}`)
+        .emit('friend-room:update', data);
+      return data;
+    });
+  }
+  @SubscribeMessage('friend-room:ready')
+  readyFriendRoom(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { roomId: string; ready: boolean },
+  ) {
+    return this.friendlyAction(async () => {
+      const data = await this.friendRooms.ready(
+        payload.roomId,
+        this.getUserId(client),
+        payload.ready,
+      );
+      this.server
+        .to(`friend-room:${payload.roomId}`)
+        .emit('friend-room:update', data);
+      return data;
+    });
+  }
+  @SubscribeMessage('friend-room:start')
+  startFriendRoom(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { roomId: string },
+  ) {
+    return this.friendlyAction(async () => {
+      const started = await this.friendRooms.start(
+        payload.roomId,
+        this.getUserId(client),
+      );
+      await this.deliverFriendly({
+        users: started.users,
+        event: 'friend-room:started',
+        data: started,
+      });
+      return started;
+    });
+  }
+  private async leaveRoom(roomId: string, userId: string) {
+    const room = await this.friendRooms.member(roomId, userId);
+    const event = await this.friendRooms.leave(roomId, userId);
+    if (room.currentMatchId && room.maxPlayers > 2)
+      await this.deliverFriendly({
+        matchId: String(room.currentMatchId),
+        event: 'friend:snapshot',
+        data: await this.friendly.snapshot(String(room.currentMatchId), userId),
+      });
+    if (room.currentMatchId)
+      for (const update of await this.friendly.gameSnapshot(
+        String(room.currentMatchId),
+      ))
+        await this.deliverFriendly({
+          matchId: String(room.currentMatchId),
+          ...update,
+        });
+    await this.deliverFriendly(event);
+    const departingSockets = await this.presenceService.getSocketIds(userId);
+    if (departingSockets.length)
+      await this.server
+        .in(departingSockets)
+        .socketsLeave(`friend-room:${roomId}`);
+  }
+
+  @SubscribeMessage('friend-room:leave')
+  leaveFriendRoom(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { roomId: string },
+  ) {
+    return this.friendlyAction(async () => {
+      await this.leaveRoom(payload.roomId, this.getUserId(client));
+      await client.leave(`friend-room:${payload.roomId}`);
+    });
+  }
+
+  @SubscribeMessage('friend:invite-pending')
+  pendingFriendInvites(@ConnectedSocket() client: Socket) {
     return this.friendlyAction(() =>
-      this.inviteUser(this.getUserId(client), payload.friendId, payload.mode),
+      this.friendly.pending(this.getUserId(client)),
     );
   }
 
-  async inviteUser(userId: string, friendId: string, mode: ArenaFriendMode) {
-    const data = await this.friendly.invite(userId, friendId, mode);
+  @SubscribeMessage('friend:invite')
+  inviteFriend(
+    @ConnectedSocket() client: Socket,
+    @MessageBody()
+    payload: { friendId: string; mode: ArenaFriendMode; roomId?: string },
+  ) {
+    return this.friendlyAction(() =>
+      this.inviteUser(
+        this.getUserId(client),
+        payload.friendId,
+        payload.mode,
+        payload.roomId,
+      ),
+    );
+  }
+
+  async inviteUser(
+    userId: string,
+    friendId: string,
+    mode: ArenaFriendMode,
+    roomId?: string,
+  ) {
+    const data = await this.friendly.invite(
+      userId,
+      friendId,
+      mode,
+      undefined,
+      roomId,
+    );
     await this.deliverFriendly({
       users: [data.receiverId],
       event: 'friend:invite-received',
@@ -506,6 +781,8 @@ export class ArenaGateway
         payload.inviteId,
         true,
       );
+      if (event.event === 'friend:invite-accepted')
+        await this.matchmakingService.leaveQueue(this.getUserId(client));
       await this.deliverFriendly(event);
       return event.data;
     });
@@ -618,6 +895,33 @@ export class ArenaGateway
     });
   }
 
+  @SubscribeMessage('word-guess:state')
+  wordGuessState(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { matchId: string },
+  ) {
+    return this.friendlyAction(() =>
+      this.friendly.wordGuessSnapshot(payload.matchId, this.getUserId(client)),
+    );
+  }
+
+  @SubscribeMessage('word-guess:submit')
+  submitWordGuess(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { matchId: string; word: string },
+  ) {
+    return this.friendlyAction(async () => {
+      const result = await this.friendly.submitWordGuess(
+        payload.matchId,
+        this.getUserId(client),
+        payload.word,
+      );
+      for (const event of await this.friendly.gameSnapshot(payload.matchId))
+        await this.deliverFriendly({ matchId: payload.matchId, ...event });
+      return result;
+    });
+  }
+
   @SubscribeMessage('word-chain:submit')
   submitWord(
     @ConnectedSocket() client: Socket,
@@ -642,11 +946,7 @@ export class ArenaGateway
     @MessageBody() payload: { matchId: string },
   ) {
     return this.friendlyAction(async () => {
-      for (const event of await this.friendly.leave(
-        payload.matchId,
-        this.getUserId(client),
-      ))
-        await this.deliverFriendly({ matchId: payload.matchId, ...event });
+      await this.leaveMatch(this.getUserId(client), payload.matchId);
       await client.leave(`match:${payload.matchId}`);
     });
   }

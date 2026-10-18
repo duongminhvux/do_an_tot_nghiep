@@ -1,3 +1,5 @@
+import { FriendRoom, FriendRoomSchema } from './schemas/friend-room.schema.js';
+import { ArenaFriendRoomService } from './friendly/arena-friend-room.service.js';
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module.js';
 
@@ -48,6 +50,7 @@ import { ArenaRatingService } from './rating/arena-rating.service.js';
   imports: [
     AuthModule,
     MongooseModule.forFeature([
+      { name: FriendRoom.name, schema: FriendRoomSchema },
       { name: Word.name, schema: WordSchema },
       { name: User.name, schema: UserSchema },
       { name: ArenaProfile.name, schema: ArenaProfileSchema },
@@ -61,6 +64,7 @@ import { ArenaRatingService } from './rating/arena-rating.service.js';
     ]),
   ],
   providers: [
+    ArenaFriendRoomService,
     ArenaFriendlyService,
     ArenaGateway,
     ArenaMatchmakingService,
