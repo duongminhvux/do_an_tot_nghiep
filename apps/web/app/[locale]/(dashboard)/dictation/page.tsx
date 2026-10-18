@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslation } from 'react-i18next';
+
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
@@ -19,6 +21,7 @@ function levelLabel(levels: string[]) {
 }
 
 export default function DictationTopicsPage() {
+  const { t } = useTranslation('dictation');
   const params = useParams();
   const locale = (params?.locale as string) || 'vi';
   const [search, setSearch] = useState('');
@@ -42,24 +45,24 @@ export default function DictationTopicsPage() {
             <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
               <Headphones className="h-3.5 w-3.5" /> Dictation
             </div>
-            <h1 className="mt-3 text-3xl font-bold tracking-tight text-slate-900">Chọn chủ đề luyện nghe</h1>
+            <h1 className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{t('title')}</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-              Mỗi Topic được chia thành nhiều Section và Lesson. Trong mỗi Lesson bạn sẽ nghe và gõ lại từng câu một.
+              {t('description')}
             </p>
           </div>
           <div className="relative w-full sm:w-80">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tìm Topic..." className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('search_topics')} className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10" />
           </div>
         </div>
 
         {isLoading ? (
-          <div className="flex h-64 items-center justify-center text-slate-500"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Đang tải Topic...</div>
+          <div className="flex h-64 items-center justify-center text-slate-500"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> {t('loading_topics')}</div>
         ) : filtered.length === 0 ? (
           <div className="flex h-64 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white text-center">
             <BookOpenText className="h-10 w-10 text-slate-300" />
-            <p className="mt-3 font-semibold text-slate-700">Chưa có Topic Dictation</p>
-            <p className="mt-1 text-sm text-slate-400">Admin cần tạo Topic, Section và publish ít nhất một Lesson.</p>
+            <p className="mt-3 font-semibold text-slate-700">{t('empty_topics')}</p>
+            <p className="mt-1 text-sm text-slate-400">{t('empty_topics_description')}</p>
           </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -76,9 +79,9 @@ export default function DictationTopicsPage() {
                   </div>
                   <div className="min-w-0 flex-1 py-1">
                     <h2 className="truncate text-lg font-bold text-slate-900 group-hover:text-blue-600">{topic.title}</h2>
-                    <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">{topic.description || 'Luyện nghe theo từng câu với nhiều bài học được sắp xếp theo Section.'}</p>
+                    <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">{topic.description || t('topic_description')}</p>
                     <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-medium text-slate-400">
-                      <span>Levels: {levelLabel(topic.levels)}</span><span>•</span><span>{topic.lessonCount} lessons</span><span>•</span><span>{topic.sectionCount} sections</span>
+                      <span>{t('levels')} {levelLabel(topic.levels)}</span><span>•</span><span>{topic.lessonCount} {t('lessons')}</span><span>•</span><span>{topic.sectionCount} {t('sections')}</span>
                     </div>
                     {completedPercent > 0 && (
                       <div className="mt-3 flex items-center gap-2">

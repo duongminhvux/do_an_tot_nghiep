@@ -350,6 +350,8 @@
     "no_due_desc": "Tất cả các từ vựng đã được ôn tập đúng hạn. Hãy tiếp tục học bài mới hoặc quay lại vào ngày mai!",
     "completed_title": "Hoàn thành phiên ôn tập! 🎉",
     "completed_desc": "Bạn vừa ôn tập xuất sắc {{count}} từ vựng. Trí nhớ dài hạn của bạn đang ngày càng vững chắc hơn!",
-    "back_to_catalog": "Về kho từ vựng"
-  }
+    "back_to_catalog": "Về kho từ vựng",
+    "more_words": "+{{count}} từ khác"
+  },
+  "words": "từ"
 }

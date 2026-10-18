@@ -81,7 +81,7 @@ interface ExamLeaderboardProps {
 }
 
 export function ExamLeaderboard({ rawAttempts }: ExamLeaderboardProps) {
-  const { t } = useTranslation('toeic');
+  const { t, i18n } = useTranslation('toeic');
   const [leaderboardTab, setLeaderboardTab] = useState<'ranking' | 'history'>('ranking');
 
   return (
@@ -93,7 +93,7 @@ export function ExamLeaderboard({ rawAttempts }: ExamLeaderboardProps) {
           </div>
           <div>
             <h2 className="text-base font-bold text-slate-900">{t('exam_detail.leaderboard_title')}</h2>
-            <p className="text-xs text-slate-500">Bảng xếp hạng điểm cao và lịch sử làm bài</p>
+            <p className="text-xs text-slate-500">{t('pages.ranking_history')}</p>
           </div>
         </div>
 
@@ -235,7 +235,7 @@ export function ExamLeaderboard({ rawAttempts }: ExamLeaderboardProps) {
                         {att.durationSpent ? `${Math.round(att.durationSpent / 60)} phút` : '—'}
                       </td>
                       <td className="px-4 py-3.5 text-right text-xs text-slate-400">
-                        {att.completedAt ? new Date(att.completedAt).toLocaleDateString('vi-VN') : '—'}
+                        {att.completedAt ? new Date(att.completedAt).toLocaleDateString(i18n.language === 'en' ? 'en-US' : 'vi-VN') : '—'}
                       </td>
                     </tr>
                   ))}

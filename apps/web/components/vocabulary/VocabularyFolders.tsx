@@ -368,7 +368,7 @@ export function VocabularyFolders({
                         {t("folders.word_count", { count: item.count })}
                         {"createdAt" in item && item.createdAt && (
                           <span className="ml-2 text-xs text-slate-400">
-                            · {new Date(item.createdAt).toLocaleDateString()}
+                            · {new Date(item.createdAt).toLocaleDateString(locale === 'en' ? 'en-US' : 'vi-VN')}
                           </span>
                         )}
                       </p>

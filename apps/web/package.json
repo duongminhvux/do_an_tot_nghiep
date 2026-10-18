@@ -8,6 +8,7 @@
     "build": "node ../../scripts/run-next-with-root-env.mjs build",
     "start": "node ../../scripts/run-next-with-root-env.mjs start --port 3000",
     "lint": "eslint --max-warnings 0",
+    "check:i18n": "node ../../scripts/check-web-i18n.mjs",
     "check-types": "next typegen && tsc --noEmit"
   },
   "dependencies": {

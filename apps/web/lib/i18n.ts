@@ -1,6 +1,9 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
+import viDictation from '../locales/vi/dictation.json';
+import enDictation from '../locales/en/dictation.json';
+
 import viCommon from '../locales/vi/common.json';
 import viAuth from '../locales/vi/auth.json';
 import viVocabulary from '../locales/vi/vocabulary.json';
@@ -17,6 +20,7 @@ import enHome from '../locales/en/home.json';
 const resources = {
   vi: {
     common: viCommon,
+    dictation: viDictation,
     auth: viAuth,
     vocabulary: viVocabulary,
     progress: viProgress,
@@ -25,6 +29,7 @@ const resources = {
   },
   en: {
     common: enCommon,
+    dictation: enDictation,
     auth: enAuth,
     vocabulary: enVocabulary,
     progress: enProgress,

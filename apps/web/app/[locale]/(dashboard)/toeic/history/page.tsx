@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslation } from 'react-i18next';
+
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -24,6 +26,7 @@ function unwrap<T>(value: any): T {
 }
 
 export default function ToeicHistoryPage() {
+  const { t } = useTranslation('toeic');
   const params = useParams();
   const locale = (params?.locale as string) || 'vi';
 
@@ -63,13 +66,13 @@ export default function ToeicHistoryPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
-              <History className="h-3.5 w-3.5" /> Luyện thi TOEIC
+              <History className="h-3.5 w-3.5" /> {t('pages.practice')}
             </div>
             <h1 className="mt-2 text-2xl font-black text-slate-900 tracking-tight sm:text-3xl">
-              Lịch sử làm bài
+              {t('pages.history_title')}
             </h1>
             <p className="mt-1 text-sm text-slate-500">
-              Xem lại danh sách tất cả các bài thi thử TOEIC bạn đã thực hiện và theo dõi điểm số.
+              {t('pages.history_description')}
             </p>
           </div>
           <Link
@@ -77,7 +80,7 @@ export default function ToeicHistoryPage() {
             className="inline-flex items-center gap-2 rounded bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition"
           >
             <GraduationCap className="h-4 w-4" />
-            Làm đề mới
+            {t('pages.new_test')}
           </Link>
         </div>
 
@@ -86,7 +89,7 @@ export default function ToeicHistoryPage() {
           <div className="rounded border border-slate-200 bg-white p-5 shadow-xs">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500">Tổng lượt thi</p>
+                <p className="text-xs font-medium text-slate-500">{t('pages.total_attempts')}</p>
                 <p className="mt-1 text-2xl font-bold text-slate-900">{stats.total}</p>
               </div>
               <div className="flex h-10 w-10 items-center justify-center rounded bg-blue-50 text-blue-600">
@@ -98,7 +101,7 @@ export default function ToeicHistoryPage() {
           <div className="rounded border border-slate-200 bg-white p-5 shadow-xs">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500">Điểm cao nhất</p>
+                <p className="text-xs font-medium text-slate-500">{t('pages.highest_score')}</p>
                 <p className="mt-1 text-2xl font-bold text-blue-600">
                   {stats.highest > 0 ? `${stats.highest}/990` : '—'}
                 </p>
@@ -112,7 +115,7 @@ export default function ToeicHistoryPage() {
           <div className="rounded border border-slate-200 bg-white p-5 shadow-xs">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500">Điểm trung bình</p>
+                <p className="text-xs font-medium text-slate-500">{t('pages.average_score')}</p>
                 <p className="mt-1 text-2xl font-bold text-slate-900">
                   {stats.avg > 0 ? `${stats.avg}/990` : '—'}
                 </p>
@@ -126,7 +129,7 @@ export default function ToeicHistoryPage() {
           <div className="rounded border border-slate-200 bg-white p-5 shadow-xs">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500">Tổng câu đúng</p>
+                <p className="text-xs font-medium text-slate-500">{t('pages.total_correct')}</p>
                 <p className="mt-1 text-2xl font-bold text-slate-900">{stats.totalCorrect}</p>
               </div>
               <div className="flex h-10 w-10 items-center justify-center rounded bg-purple-50 text-purple-600">
@@ -139,29 +142,29 @@ export default function ToeicHistoryPage() {
         {/* Attempt History List */}
         <div className="rounded border border-slate-200 bg-white shadow-xs overflow-hidden">
           <div className="border-b border-slate-100 px-6 py-4 flex items-center justify-between">
-            <h2 className="text-sm font-bold text-slate-900">Danh sách bài đã hoàn thành</h2>
-            <span className="text-xs font-medium text-slate-400">{attempts.length} lượt thi</span>
+            <h2 className="text-sm font-bold text-slate-900">{t('pages.completed_tests')}</h2>
+            <span className="text-xs font-medium text-slate-400">{attempts.length} {t('pages.attempts')}</span>
           </div>
 
           {isLoading ? (
             <div className="flex min-h-[220px] items-center justify-center text-slate-500">
               <Loader2 className="mr-2 h-5 w-5 animate-spin text-blue-600" />
-              <span className="text-sm font-medium">Đang tải lịch sử...</span>
+              <span className="text-sm font-medium">{t('pages.loading_history')}</span>
             </div>
           ) : attempts.length === 0 ? (
             <div className="p-12 text-center">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded bg-blue-50 text-blue-600">
                 <History className="h-6 w-6" />
               </div>
-              <p className="mt-3 text-sm font-bold text-slate-800">Chưa có lịch sử làm bài</p>
+              <p className="mt-3 text-sm font-bold text-slate-800">{t('pages.empty_history')}</p>
               <p className="mt-1 text-xs text-slate-500 max-w-sm mx-auto">
-                Bạn chưa hoàn thành bài thi thử TOEIC nào. Hãy bắt đầu một đề thi ngay hôm nay!
+                {t('pages.empty_history_description')}
               </p>
               <Link
                 href={`/${locale}/toeic`}
                 className="mt-4 inline-flex items-center gap-1.5 rounded bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition"
               >
-                Bắt đầu làm bài thi →
+                {t('pages.start_test')}
               </Link>
             </div>
           ) : (
@@ -171,11 +174,11 @@ export default function ToeicHistoryPage() {
                   typeof attempt.examId === 'object' && attempt.examId
                     ? (attempt.examId as ToeicExamSummary)
                     : null;
-                const examTitle = exam?.name || 'Đề thi TOEIC';
+                const examTitle = exam?.name || t('pages.test');
                 const examCode = 'TOEIC';
                 const dateStr = attempt.completedAt || attempt.createdAt;
                 const formattedDate = dateStr
-                  ? new Date(dateStr).toLocaleDateString('vi-VN', {
+                  ? new Date(dateStr).toLocaleDateString(locale === 'en' ? 'en-US' : 'vi-VN', {
                       year: 'numeric',
                       month: 'short',
                       day: 'numeric',
@@ -203,21 +206,21 @@ export default function ToeicHistoryPage() {
                         {attempt.durationSpent && (
                           <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
-                            {Math.round(attempt.durationSpent / 60)} phút
+                            {Math.round(attempt.durationSpent / 60)} {t('pages.minutes')}
                           </span>
                         )}
                       </div>
                     </div>
 
                     <div>
-                      <p className="text-[11px] font-medium text-slate-400">Số câu đúng</p>
+                      <p className="text-[11px] font-medium text-slate-400">{t('pages.correct_answers')}</p>
                       <p className="mt-0.5 text-sm font-bold text-slate-700">
                         {attempt.totalCorrect || 0}/{attempt.totalQuestions || 200}
                       </p>
                     </div>
 
                     <div>
-                      <p className="text-[11px] font-medium text-slate-400">Listening / Reading</p>
+                      <p className="text-[11px] font-medium text-slate-400">{t('pages.listening_reading')}</p>
                       <div className="mt-0.5 flex items-center gap-2 text-xs font-semibold text-slate-700">
                         <span className="flex items-center gap-1 text-blue-600">
                           <Headphones className="h-3 w-3" /> {attempt.listeningScore || 0}
@@ -237,9 +240,9 @@ export default function ToeicHistoryPage() {
                         <span className="text-[10px] text-slate-400 block -mt-1">/990</span>
                       </div>
                       <Link
-                        href={`/${locale}/toeic/history/${attempt._id}`}
+                        href={exam?.groupId && exam.slug ? `/${locale}/toeic/${typeof exam.groupId === 'object' ? exam.groupId.slug || exam.groupId._id : exam.groupId}/${exam.slug}` : `/${locale}/toeic`}
                         className="rounded-lg p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition"
-                        title="Xem chi tiết kết quả"
+                        title={t('pages.view_result')}
                       >
                         <ArrowRight className="h-4 w-4" />
                       </Link>

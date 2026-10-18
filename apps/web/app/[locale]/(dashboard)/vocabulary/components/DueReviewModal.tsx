@@ -129,7 +129,7 @@ export function DueReviewModal({
               ))}
               {dueCount > previewWords.length && (
                 <span className="text-xs font-semibold text-blue-700">
-                  +{dueCount - previewWords.length} từ khác
+                  {t('review.more_words', { count: dueCount - previewWords.length })}
                 </span>
               )}
             </div>

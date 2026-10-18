@@ -157,7 +157,7 @@ export function ExamComments({ currentUser }: ExamCommentsProps) {
           </div>
           <div>
             <h2 className="text-base font-bold text-slate-900">{t('exam_detail.comments_title')}</h2>
-            <p className="text-xs text-slate-500">{comments.length} bình luận & thảo luận từ cộng đồng</p>
+            <p className="text-xs text-slate-500">{t('pages.community_comments', { count: comments.length })}</p>
           </div>
         </div>
 
@@ -197,7 +197,7 @@ export function ExamComments({ currentUser }: ExamCommentsProps) {
             />
             <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border-t border-slate-100">
               <span className="text-[11px] text-slate-400">
-                Nhấn Gửi để đóng góp ý kiến
+                {t('pages.comment_help')}
               </span>
               <button
                 type="submit"
@@ -267,7 +267,7 @@ export function ExamComments({ currentUser }: ExamCommentsProps) {
                         type="text"
                         value={replyInput}
                         onChange={(e) => setReplyInput(e.target.value)}
-                        placeholder="Viết câu trả lời..."
+                        placeholder={t('pages.reply_placeholder')}
                         className="flex-1 rounded border border-slate-200 px-3 py-1.5 text-xs text-slate-800 outline-none focus:border-blue-500"
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
@@ -282,7 +282,7 @@ export function ExamComments({ currentUser }: ExamCommentsProps) {
                         disabled={!replyInput.trim()}
                         className="rounded bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-40 transition cursor-pointer"
                       >
-                        Gửi
+                        {t('pages.send')}
                       </button>
                     </div>
                   </div>
