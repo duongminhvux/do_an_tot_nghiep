@@ -614,7 +614,7 @@ export class DictationService {
       update.processingError = '';
     }
 
-    return this.lessonModel.findByIdAndUpdate(id, update, { new: true }).lean();
+    return this.lessonModel.findByIdAndUpdate(id, update, { returnDocument: 'after' }).lean();
   }
 
   async publish(id: string) {
