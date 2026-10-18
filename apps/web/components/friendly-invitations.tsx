@@ -42,26 +42,29 @@ export function FriendlyInvitations() {
       );
     const closed = (data: { inviteId: string }) =>
       setInvites((items) => items.filter((i) => i.inviteId !== data.inviteId));
-    const created = (data: { matchId: string; inviteId: string }) => {
+    const created = (data: {
+      code: string;
+      inviteId: string;
+      maxPlayers: number;
+    }) => {
       closed(data);
-      const lobbyPath = `/${locale}/arena/friend`;
-      const target = `${lobbyPath}?matchId=${encodeURIComponent(data.matchId)}`;
-      if (pathname === lobbyPath) router.replace(target);
-      else router.push(target);
+      router.push(
+        `/${locale}/arena/${data.maxPlayers > 2 ? "group" : "friend"}/room/${data.code}`,
+      );
     };
 
     arenaSocket.on("friend:invite-received", received);
     arenaSocket.on("friend:invite-expired", closed);
     arenaSocket.on("friend:invite-cancelled", closed);
     arenaSocket.on("friend:invite-declined", closed);
-    arenaSocket.on("friend:match-created", created);
+    arenaSocket.on("friend:invite-accepted", created);
 
     return () => {
       arenaSocket.off("friend:invite-received", received);
       arenaSocket.off("friend:invite-expired", closed);
       arenaSocket.off("friend:invite-cancelled", closed);
       arenaSocket.off("friend:invite-declined", closed);
-      arenaSocket.off("friend:match-created", created);
+      arenaSocket.off("friend:invite-accepted", created);
     };
   }, [locale, pathname, router]);
 
@@ -207,13 +210,17 @@ export function FriendlyInvitations() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-black text-slate-800">
-                    {isClassic
+                    {invite.mode === "WORD_GUESS"
                       ? vi
-                        ? "Từ vựng Cổ điển (Classic)"
-                        : "Classic Vocabulary"
-                      : vi
-                        ? "Nối từ nhanh (Word Chain)"
-                        : "Word Chain Duel"}
+                        ? "Đoán từ (5 ký tự)"
+                        : "Word guess (5 letters)"
+                      : isClassic
+                        ? vi
+                          ? "Từ vựng Cổ điển (Classic)"
+                          : "Classic Vocabulary"
+                        : vi
+                          ? "Nối từ nhanh (Word Chain)"
+                          : "Word Chain Duel"}
                   </span>
                   <span
                     className={cn(
@@ -227,13 +234,17 @@ export function FriendlyInvitations() {
                   </span>
                 </div>
                 <p className="mt-0.5 text-[11px] text-slate-500 line-clamp-1">
-                  {isClassic
+                  {invite.mode === "WORD_GUESS"
                     ? vi
-                      ? "10 câu hỏi trắc nghiệm tốc độ và kiến thức"
-                      : "10 speed questions testing vocabulary & reflexes"
-                    : vi
-                      ? "Nối từ tiếp sức không ngừng theo chữ cái cuối"
-                      : "Rapid word chaining with consecutive letters"}
+                      ? "Tìm từ bí mật trong tối đa 5 lượt đoán"
+                      : "Find the secret word in up to 5 guesses"
+                    : isClassic
+                      ? vi
+                        ? "Đọc nghĩa tiếng Việt và nhập từ tiếng Anh"
+                        : "Read the meaning and type the English word"
+                      : vi
+                        ? "Nối từ tiếp sức không ngừng theo chữ cái cuối"
+                        : "Rapid word chaining with consecutive letters"}
                 </p>
               </div>
             </div>

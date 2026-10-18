@@ -18,9 +18,14 @@ import {
   UserRound,
   Zap,
 } from "lucide-react";
+import type { FriendPlayer } from "@/lib/friendly-arena";
+import { RoomStandings } from "./room-standings";
 import { cn } from "@/lib/utils";
 
 export interface MatchResultViewProps {
+  standings?: FriendPlayer[];
+  currentUserId?: string;
+  winnerId?: string | null;
   won: boolean;
   isDraw: boolean;
   finishReason?: string;
@@ -48,6 +53,9 @@ export interface MatchResultViewProps {
 }
 
 export function MatchResultView({
+  standings,
+  currentUserId,
+  winnerId,
   won,
   isDraw,
   finishReason,
@@ -104,7 +112,9 @@ export function MatchResultView({
           : "Completed all match questions.";
       default:
         return finishReason
-          ? vi ? "Trận đấu đã kết thúc." : "The match has ended."
+          ? vi
+            ? "Trận đấu đã kết thúc."
+            : "The match has ended."
           : "";
     }
   };
@@ -119,11 +129,7 @@ export function MatchResultView({
           <div
             className={cn(
               "pointer-events-none absolute -top-24 left-1/2 size-72 -translate-x-1/2 rounded-full blur-3xl opacity-35",
-              won
-                ? "bg-amber-400"
-                : isDraw
-                  ? "bg-blue-400"
-                  : "bg-rose-400",
+              won ? "bg-amber-400" : isDraw ? "bg-blue-400" : "bg-rose-400",
             )}
           />
 
@@ -199,124 +205,137 @@ export function MatchResultView({
 
           {/* Versus Score Card */}
           <div className="relative mt-8 overflow-hidden rounded-3xl border border-slate-100 bg-gradient-to-b from-slate-50/80 to-white p-5 shadow-inner sm:p-6">
-            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-6">
-              {/* YOU */}
-              <div className="flex flex-col items-center text-center">
-                <div
-                  className={cn(
-                    "relative size-16 sm:size-20 overflow-hidden rounded-2xl ring-4 shadow-md",
-                    won
-                      ? "ring-amber-400 shadow-amber-200"
-                      : "ring-blue-200 shadow-slate-100",
-                  )}
-                >
-                  {myAvatar ? (
-                    <Image
-                      src={myAvatar}
-                      alt={myName}
-                      width={80}
-                      height={80}
-                      unoptimized
-                      className="size-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex size-full items-center justify-center bg-blue-100 text-blue-600">
-                      <UserRound className="size-8 sm:size-10" />
-                    </div>
-                  )}
-                  {won && (
-                    <span className="absolute bottom-0 inset-x-0 bg-amber-500 text-[9px] font-black text-amber-950 py-0.5 uppercase tracking-wider">
-                      {vi ? "THẮNG" : "WINNER"}
-                    </span>
-                  )}
-                </div>
-
-                <div className="mt-3 flex items-center gap-1">
-                  <span className="truncate max-w-[110px] text-xs font-bold text-slate-800 sm:text-sm">
-                    {myName}
-                  </span>
-                  <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[9px] font-black text-blue-700">
-                    {vi ? "BẠN" : "YOU"}
-                  </span>
-                </div>
-
-                {!isWordChain && (
-                  <p
+            {standings ? (
+              <RoomStandings
+                players={standings}
+                currentUserId={currentUserId}
+                winnerId={winnerId}
+                vi={vi}
+              />
+            ) : (
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-6">
+                {/* YOU */}
+                <div className="flex flex-col items-center text-center">
+                  <div
                     className={cn(
-                      "mt-1 text-3xl font-black tabular-nums sm:text-4xl",
-                      won ? "text-amber-600" : "text-blue-600",
+                      "relative size-16 sm:size-20 overflow-hidden rounded-2xl ring-4 shadow-md",
+                      won
+                        ? "ring-amber-400 shadow-amber-200"
+                        : "ring-blue-200 shadow-slate-100",
                     )}
                   >
-                    {myScore}
-                    <span className="ml-1 text-xs font-medium text-slate-400">
-                      {vi ? "điểm" : "pts"}
-                    </span>
-                  </p>
-                )}
-              </div>
+                    {myAvatar ? (
+                      <Image
+                        src={myAvatar}
+                        alt={myName}
+                        width={80}
+                        height={80}
+                        unoptimized
+                        className="size-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex size-full items-center justify-center bg-blue-100 text-blue-600">
+                        <UserRound className="size-8 sm:size-10" />
+                      </div>
+                    )}
+                    {won && (
+                      <span className="absolute bottom-0 inset-x-0 bg-amber-500 text-[9px] font-black text-amber-950 py-0.5 uppercase tracking-wider">
+                        {vi ? "THẮNG" : "WINNER"}
+                      </span>
+                    )}
+                  </div>
 
-              {/* VS Divider */}
-              <div className="flex flex-col items-center px-2">
-                <span className="text-2xl sm:text-3xl font-black italic tracking-tighter text-slate-300">
-                  VS
-                </span>
-                <span className="mt-1 rounded-full bg-slate-200/70 px-2 py-0.5 text-[10px] font-bold text-slate-600 uppercase tracking-wider">
-                  {isWordChain
-                    ? vi ? "Nối từ" : "Word Chain"
-                    : vi ? "Cổ điển 1v1" : "Classic 1v1"}
-                </span>
-              </div>
-
-              {/* OPPONENT */}
-              <div className="flex flex-col items-center text-center">
-                <div
-                  className={cn(
-                    "relative size-16 sm:size-20 overflow-hidden rounded-2xl ring-4 shadow-md",
-                    !won && !isDraw
-                      ? "ring-amber-400 shadow-amber-200"
-                      : "ring-violet-200 shadow-slate-100",
-                  )}
-                >
-                  {opponentAvatar ? (
-                    <Image
-                      src={opponentAvatar}
-                      alt={opponentName}
-                      width={80}
-                      height={80}
-                      unoptimized
-                      className="size-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex size-full items-center justify-center bg-violet-100 text-violet-600">
-                      <UserRound className="size-8 sm:size-10" />
-                    </div>
-                  )}
-                  {!won && !isDraw && (
-                    <span className="absolute bottom-0 inset-x-0 bg-amber-500 text-[9px] font-black text-amber-950 py-0.5 uppercase tracking-wider">
-                      {vi ? "THẮNG" : "WINNER"}
+                  <div className="mt-3 flex items-center gap-1">
+                    <span className="truncate max-w-[110px] text-xs font-bold text-slate-800 sm:text-sm">
+                      {myName}
                     </span>
+                    <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[9px] font-black text-blue-700">
+                      {vi ? "BẠN" : "YOU"}
+                    </span>
+                  </div>
+
+                  {!isWordChain && (
+                    <p
+                      className={cn(
+                        "mt-1 text-3xl font-black tabular-nums sm:text-4xl",
+                        won ? "text-amber-600" : "text-blue-600",
+                      )}
+                    >
+                      {myScore}
+                      <span className="ml-1 text-xs font-medium text-slate-400">
+                        {vi ? "điểm" : "pts"}
+                      </span>
+                    </p>
                   )}
                 </div>
 
-                <span className="mt-3 truncate max-w-[120px] text-xs font-bold text-slate-800 sm:text-sm">
-                  {opponentName}
-                </span>
+                {/* VS Divider */}
+                <div className="flex flex-col items-center px-2">
+                  <span className="text-2xl sm:text-3xl font-black italic tracking-tighter text-slate-300">
+                    VS
+                  </span>
+                  <span className="mt-1 rounded-full bg-slate-200/70 px-2 py-0.5 text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+                    {isWordChain
+                      ? vi
+                        ? "Nối từ"
+                        : "Word Chain"
+                      : vi
+                        ? "Cổ điển 1v1"
+                        : "Classic 1v1"}
+                  </span>
+                </div>
 
-                {!isWordChain && (
-                  <p
+                {/* OPPONENT */}
+                <div className="flex flex-col items-center text-center">
+                  <div
                     className={cn(
-                      "mt-1 text-3xl font-black tabular-nums sm:text-4xl",
-                      !won && !isDraw ? "text-amber-600" : "text-violet-600",
+                      "relative size-16 sm:size-20 overflow-hidden rounded-2xl ring-4 shadow-md",
+                      !won && !isDraw
+                        ? "ring-amber-400 shadow-amber-200"
+                        : "ring-violet-200 shadow-slate-100",
                     )}
                   >
-                    {opponentScore}
-                    <span className="ml-1 text-xs font-medium text-slate-400">
-                      {vi ? "điểm" : "pts"}
-                    </span>
-                  </p>
-                )}
+                    {opponentAvatar ? (
+                      <Image
+                        src={opponentAvatar}
+                        alt={opponentName}
+                        width={80}
+                        height={80}
+                        unoptimized
+                        className="size-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex size-full items-center justify-center bg-violet-100 text-violet-600">
+                        <UserRound className="size-8 sm:size-10" />
+                      </div>
+                    )}
+                    {!won && !isDraw && (
+                      <span className="absolute bottom-0 inset-x-0 bg-amber-500 text-[9px] font-black text-amber-950 py-0.5 uppercase tracking-wider">
+                        {vi ? "THẮNG" : "WINNER"}
+                      </span>
+                    )}
+                  </div>
+
+                  <span className="mt-3 truncate max-w-[120px] text-xs font-bold text-slate-800 sm:text-sm">
+                    {opponentName}
+                  </span>
+
+                  {!isWordChain && (
+                    <p
+                      className={cn(
+                        "mt-1 text-3xl font-black tabular-nums sm:text-4xl",
+                        !won && !isDraw ? "text-amber-600" : "text-violet-600",
+                      )}
+                    >
+                      {opponentScore}
+                      <span className="ml-1 text-xs font-medium text-slate-400">
+                        {vi ? "điểm" : "pts"}
+                      </span>
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Elo Change Badge (Ranked Mode Only) */}
             {!isFriendly && ratingChange !== undefined && (
@@ -360,7 +379,9 @@ export function MatchResultView({
                         : "bg-slate-100 text-slate-700",
                   )}
                 >
-                  <span>{ratingChange > 0 ? `+${ratingChange}` : ratingChange}</span>
+                  <span>
+                    {ratingChange > 0 ? `+${ratingChange}` : ratingChange}
+                  </span>
                   <span className="text-[10px] font-bold">Elo</span>
                 </div>
               </div>
@@ -423,8 +444,10 @@ export function MatchResultView({
                   <Clock className="size-4" />
                 </div>
                 <span className="mt-2 text-base font-black text-slate-800 tabular-nums">
-                  {Math.floor(durationSeconds / 60)}{vi ? " phút " : "m "}
-                  {durationSeconds % 60}{vi ? " giây" : "s"}
+                  {Math.floor(durationSeconds / 60)}
+                  {vi ? " phút " : "m "}
+                  {durationSeconds % 60}
+                  {vi ? " giây" : "s"}
                 </span>
                 <span className="text-[10px] text-slate-400 font-medium">
                   {vi ? "Thời gian" : "Duration"}

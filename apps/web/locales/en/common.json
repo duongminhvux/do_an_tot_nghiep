@@ -71,10 +71,6 @@
     "profile": "Profile",
     "home": "Home",
     "games": "Games",
-    "game_list": "Game list",
-    "game_list_title": "Game list",
-    "game_list_desc": "Choose a game to practice vocabulary and improve your ranking.",
-    "arena_desc": "Compete and practice vocabulary with your friends.",
     "explore": "Explore",
     "my_words": "My Words",
     "dictation": "Dictation",
@@ -129,5 +125,11 @@
     "confirm_leave": "Leave",
     "min_players_alert": "Need at least 2 players to start the match!",
     "unready_alert": "{{names}} not ready yet!"
+  },
+  "room_closed": {
+    "title": "Room closed",
+    "description": "The room was closed because the host left. You have been returned to the Arena.",
+    "confirm": "Got it",
+    "close": "Close"
   }
 }

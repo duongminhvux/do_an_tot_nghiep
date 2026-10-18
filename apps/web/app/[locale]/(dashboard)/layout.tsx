@@ -4,6 +4,7 @@ import React from 'react';
 import { usePathname, useParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import AuthGuard from '@/components/auth-guard';
+import { RoomClosedNotice } from '@/components/room-closed-notice';
 import { AppSidebar } from '@/components/app-sidebar';
 import {
   SidebarInset,
@@ -55,6 +56,7 @@ export default function DashboardLayout({
 
   return (
       <AuthGuard>
+        <RoomClosedNotice />
         <SidebarProvider>
           <AppSidebar />
           <SidebarInset className="bg-slate-50 min-h-screen flex flex-col">

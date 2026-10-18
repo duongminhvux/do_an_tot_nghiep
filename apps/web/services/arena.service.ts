@@ -47,7 +47,7 @@ export type ArenaRecentMatch = {
   avatarUrl?: string;
   score: [number, number];
   result: "WIN" | "LOSS" | "DRAW";
-  mode: "rank" | "friend" | "word-chain" | "room";
+  mode: "rank" | "friend" | "word-chain" | "word-guess" | "room";
   points: number;
   finishedAt: string;
 };

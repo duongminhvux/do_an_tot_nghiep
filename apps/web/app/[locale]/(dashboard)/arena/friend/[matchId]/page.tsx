@@ -18,10 +18,13 @@ import {
   friendlyRequest,
   type FriendSnapshot,
   type FriendMode,
+  type FriendRoomSnapshot,
 } from "@/lib/friendly-arena";
 import { useRankedMatch } from "../../hooks/use-ranked-match";
 import { useMatchExit } from "../../hooks/use-match-exit";
-import { FriendlyAvatar } from "../page";
+import { FriendlyAvatar } from "../../components/friendly-avatar";
+import { RoomStandings } from "../../components/room-standings";
+import { WordGuessMatch } from "../../components/word-guess-match";
 import { ClassicMatch } from "../../components/classic-match";
 import { MatchExitDialog } from "../../components/match-exit-dialog";
 import { MatchResultView } from "../../components/match-result-view";
@@ -35,6 +38,8 @@ type Turn = {
   turnCount: number;
   usedWords: string[];
   serverNow: string;
+  seconds: number;
+  eliminatedUserIds?: string[];
 };
 
 export default function FriendlyMatchPage() {
@@ -60,13 +65,19 @@ export default function FriendlyMatchPage() {
       behavior: "smooth",
     });
   }, [turn?.turnCount]);
-  useMatchExit(matchId, room?.status === "PLAYING" || game.finished, [
-    `/${locale}/arena/friend?matchId=${encodeURIComponent(matchId)}`,
-  ]);
+  useMatchExit(
+    matchId,
+    room?.status === "PLAYING" || game.finished,
+    [
+      `/${locale}/arena/friend/room/${room?.code || ""}`,
+      `/${locale}/arena/group/room/${room?.code || ""}`,
+    ],
+    true,
+  );
   useEffect(() => {
     if (room?.status === "WAITING") {
       router.replace(
-        `/${locale}/arena/friend?matchId=${encodeURIComponent(matchId)}`,
+        `/${locale}/arena/${room.type === "ROOM" ? "group" : "friend"}/room/${room.code || ""}`,
       );
     }
   }, [room?.status, matchId, locale, router]);
@@ -136,8 +147,8 @@ export default function FriendlyMatchPage() {
       if (data.matchId !== matchId) return;
       const reasons: Record<string, string> = {
         INVALID_START_LETTER: vi
-          ? "Từ phải bắt đầu bằng đúng hai chữ cái được yêu cầu."
-          : "Start with both required letters.",
+          ? "Từ phải bắt đầu bằng chữ cái được yêu cầu."
+          : "Start with the required letter.",
         WORD_ALREADY_USED: vi
           ? "Từ này đã được sử dụng."
           : "This word has already been used.",
@@ -223,20 +234,52 @@ export default function FriendlyMatchPage() {
 
   const executeLeave = async () => {
     setExitDialogOpen(false);
-    if (
-      !room ||
-      game.finished ||
-      room.status === "CANCELLED" ||
-      (await action("friend:leave"))
-    )
+    if (!room || room.status === "CANCELLED" || (await action("friend:leave")))
       router.push(`/${locale}/arena`);
   };
+  const backToRoom = async () => {
+    setBusy(true);
+    try {
+      const latest = await friendlyRequest<FriendRoomSnapshot>(
+        "friend-room:join",
+        { roomId: room?.roomId },
+      );
+      router.push(
+        `/${locale}/arena/${latest.maxPlayers > 2 ? "group" : "friend"}/room/${latest.code}`,
+      );
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        /ROOM_NOT_FOUND|ROOM_CLOSED|NOT_ROOM_GUEST/.test(error.message)
+      )
+        router.replace(
+          `/${locale}/arena?roomType=${room?.type === "ROOM" ? "ROOM" : "FRIEND"}&roomError=ROOM_NOT_FOUND`,
+        );
+      else setNotice(error instanceof Error ? error.message : "Request failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const multiplayer = room?.type === "ROOM";
+  const standings =
+    room?.players.map((p) => ({
+      ...p,
+      eliminated: p.eliminated || turn?.eliminatedUserIds?.includes(p.userId),
+      score:
+        game.finalResult?.players.find((f) => f.userId === p.userId)?.score ??
+        p.score,
+    })) ?? [];
+  const currentPlayer = room?.players.find(
+    (p) => p.userId === turn?.currentTurnUserId,
+  );
   const host = room?.hostId === userId;
   const me = room?.players.find((p) => p.userId === userId);
   const opponent = room?.players.find((p) => p.userId !== userId);
   const chain = room?.mode === "WORD_CHAIN";
   const myTurn = turn?.currentTurnUserId === userId;
-  const disconnected = opponent?.disconnectedAt;
+  const disconnected = multiplayer
+    ? currentPlayer?.disconnectedAt
+    : opponent?.disconnectedAt;
   const displayTime = disconnected ? Date.parse(disconnected) : now + offset;
   const seconds = turn
     ? Math.max(
@@ -251,7 +294,7 @@ export default function FriendlyMatchPage() {
       )
     : 0;
   const usedWords = game.finalResult?.usedWords ?? turn?.usedWords ?? [];
-  const requiredPrefix = turn?.previousWord.slice(-2).toUpperCase() || "";
+  const requiredPrefix = turn?.previousWord.slice(-1).toUpperCase() || "";
   const inputDisabled =
     !myTurn ||
     busy ||
@@ -276,8 +319,8 @@ export default function FriendlyMatchPage() {
     ) {
       setNotice(
         vi
-          ? `Từ phải bắt đầu bằng đúng hai chữ cái ${requiredPrefix}.`
-          : `Start with both letters ${requiredPrefix}.`,
+          ? `Từ phải bắt đầu bằng chữ cái ${requiredPrefix}.`
+          : `Start with the letter ${requiredPrefix}.`,
       );
       return;
     }
@@ -300,6 +343,17 @@ export default function FriendlyMatchPage() {
           ),
         )
       : 0;
+  if (room?.mode === "WORD_GUESS")
+    return (
+      <WordGuessMatch
+        matchId={matchId}
+        userId={userId}
+        room={room}
+        vi={vi}
+        leave={executeLeave}
+        backToRoom={backToRoom}
+      />
+    );
   if (
     room?.mode === "CLASSIC" &&
     (room.status === "PLAYING" || game.finished)
@@ -309,16 +363,14 @@ export default function FriendlyMatchPage() {
         game={game}
         friendly={{
           opponent,
+          players: multiplayer ? standings : undefined,
           leave: executeLeave,
           busy,
           notice:
             disconnected && !game.finished
               ? `${opponent?.username}: ${vi ? "Mất kết nối, chờ kết nối lại" : "Waiting for reconnection"} · ${grace}s`
               : notice,
-          backToRoom: () =>
-            router.push(
-              `/${locale}/arena/friend?matchId=${encodeURIComponent(matchId)}`,
-            ),
+          backToRoom: () => void backToRoom(),
         }}
       />
     );
@@ -327,6 +379,9 @@ export default function FriendlyMatchPage() {
   if (game.finished && final) {
     return (
       <MatchResultView
+        standings={multiplayer ? standings : undefined}
+        winnerId={final.winnerId}
+        currentUserId={userId}
         won={!final.isDraw && final.winnerId === userId}
         isDraw={final.isDraw}
         finishReason={final.finishReason}
@@ -341,13 +396,9 @@ export default function FriendlyMatchPage() {
         durationSeconds={duration}
         isFriendly={true}
         isWordChain={chain}
-        onBackToRoom={() =>
-          router.push(
-            `/${locale}/arena/friend?matchId=${encodeURIComponent(matchId)}`,
-          )
-        }
+        onBackToRoom={() => void backToRoom()}
         resultNotice={notice}
-        onBackToArena={() => router.push(`/${locale}/arena`)}
+        onBackToArena={() => void executeLeave()}
         locale={locale}
       />
     );
@@ -372,8 +423,8 @@ export default function FriendlyMatchPage() {
               <p className="text-sm text-slate-500">
                 {chain
                   ? vi
-                    ? "Nối từ · 2 chữ cái cuối"
-                    : "Word chain · last 2 letters"
+                    ? "Nối từ · chữ cái cuối"
+                    : "Word chain · last letter"
                   : vi
                     ? "Cổ điển · 1v1"
                     : "Classic · 1v1"}
@@ -389,77 +440,95 @@ export default function FriendlyMatchPage() {
             {vi ? "Rời trận" : "Leave match"}
           </button>
         </header>
+        {multiplayer &&
+          turn?.eliminatedUserIds?.includes(userId) &&
+          !game.finished && (
+            <p role="status" className="mb-4 rounded-xl bg-amber-50 p-4">
+              {vi
+                ? "Bạn đã bị loại. Bạn có thể theo dõi đến hết trận hoặc rời phòng."
+                : "You have been eliminated. You can watch the rest of the match or leave."}
+            </p>
+          )}
         <div
           className={`grid gap-4 ${chain ? "lg:grid-cols-[minmax(0,2.2fr)_minmax(280px,1fr)]" : ""}`}
         >
           <div className="min-w-0">
-            <section className="grid grid-cols-[minmax(0,1fr)_48px_minmax(0,1fr)] items-center gap-2 sm:grid-cols-[minmax(0,1fr)_100px_minmax(0,1fr)] sm:gap-4">
-              {[me, opponent].map((p, i) => (
-                <div
-                  key={i}
-                  className={`${i === 1 ? "col-start-3 row-start-1" : ""} flex min-w-0 flex-col items-center gap-3 rounded-2xl border border-white bg-white/70 p-3 shadow-[0_8px_30px_#c4d8ff20] sm:flex-row sm:p-4`}
-                >
+            {multiplayer ? (
+              <RoomStandings
+                players={standings}
+                currentUserId={userId}
+                currentTurnUserId={turn?.currentTurnUserId}
+                vi={vi}
+              />
+            ) : (
+              <section className="grid grid-cols-[minmax(0,1fr)_48px_minmax(0,1fr)] items-center gap-2 sm:grid-cols-[minmax(0,1fr)_100px_minmax(0,1fr)] sm:gap-4">
+                {[me, opponent].map((p, i) => (
                   <div
-                    className={`relative shrink-0 rounded-full p-1 ${i === 0 ? "ring-2 ring-blue-500" : "ring-2 ring-white"}`}
+                    key={i}
+                    className={`${i === 1 ? "col-start-3 row-start-1" : ""} flex min-w-0 flex-col items-center gap-3 rounded-2xl border border-white bg-white/70 p-3 shadow-[0_8px_30px_#c4d8ff20] sm:flex-row sm:p-4`}
                   >
-                    <div className="size-14 overflow-hidden rounded-full sm:size-18">
-                      <FriendlyAvatar
-                        avatar={p?.avatarUrl}
-                        name={p?.username || (vi ? "Người chơi" : "Player")}
+                    <div
+                      className={`relative shrink-0 rounded-full p-1 ${i === 0 ? "ring-2 ring-blue-500" : "ring-2 ring-white"}`}
+                    >
+                      <div className="size-14 overflow-hidden rounded-full sm:size-18">
+                        <FriendlyAvatar
+                          avatar={p?.avatarUrl}
+                          name={p?.username || (vi ? "Người chơi" : "Player")}
+                        />
+                      </div>
+                      <span
+                        aria-label={
+                          p?.disconnectedAt || !p
+                            ? vi
+                              ? "Ngoại tuyến"
+                              : "Offline"
+                            : vi
+                              ? "Trực tuyến"
+                              : "Online"
+                        }
+                        className={`absolute bottom-0 right-0 size-4 rounded-full border-2 border-white ${p?.disconnectedAt || !p ? "bg-slate-300" : "bg-emerald-400"}`}
                       />
                     </div>
-                    <span
-                      aria-label={
-                        p?.disconnectedAt || !p
+                    <div className="min-w-0 text-center sm:text-left">
+                      <strong className="block truncate text-sm sm:text-base">
+                        {p?.username || "…"}
+                      </strong>
+                      <span
+                        className={`mt-1 inline-block rounded-lg px-2 py-0.5 text-xs font-semibold ${i === 0 ? "bg-blue-100 text-blue-600" : "bg-rose-100 text-rose-500"}`}
+                      >
+                        {i === 0
                           ? vi
-                            ? "Ngoại tuyến"
-                            : "Offline"
+                            ? "Bạn"
+                            : "You"
                           : vi
-                            ? "Trực tuyến"
-                            : "Online"
-                      }
-                      className={`absolute bottom-0 right-0 size-4 rounded-full border-2 border-white ${p?.disconnectedAt || !p ? "bg-slate-300" : "bg-emerald-400"}`}
-                    />
-                  </div>
-                  <div className="min-w-0 text-center sm:text-left">
-                    <strong className="block truncate text-sm sm:text-base">
-                      {p?.username || "…"}
-                    </strong>
-                    <span
-                      className={`mt-1 inline-block rounded-lg px-2 py-0.5 text-xs font-semibold ${i === 0 ? "bg-blue-100 text-blue-600" : "bg-rose-100 text-rose-500"}`}
-                    >
-                      {i === 0
-                        ? vi
-                          ? "Bạn"
-                          : "You"
-                        : vi
-                          ? "Đối thủ"
-                          : "Opponent"}
-                    </span>
-                    <p className="mt-1.5 text-xs text-slate-500">
-                      {room?.status === "WAITING"
-                        ? p?.userId === room.hostId
-                          ? vi
-                            ? "Chủ phòng"
-                            : "Host"
-                          : p?.isReady
+                            ? "Đối thủ"
+                            : "Opponent"}
+                      </span>
+                      <p className="mt-1.5 text-xs text-slate-500">
+                        {room?.status === "WAITING"
+                          ? p?.userId === room.hostId
                             ? vi
-                              ? "Sẵn sàng"
-                              : "Ready"
-                            : vi
-                              ? "Chưa sẵn sàng"
-                              : "Not ready"
-                        : chain
-                          ? `${usedWords.filter((_, index) => (index % 2 === 0 ? room?.hostId : room?.players.find((player) => player.userId !== room.hostId)?.userId) === p?.userId).length} ${vi ? "từ đã nối" : "words played"}`
-                          : `${p?.score ?? 0} ${vi ? "điểm" : "points"}`}
-                    </p>
+                              ? "Chủ phòng"
+                              : "Host"
+                            : p?.isReady
+                              ? vi
+                                ? "Sẵn sàng"
+                                : "Ready"
+                              : vi
+                                ? "Chưa sẵn sàng"
+                                : "Not ready"
+                          : chain
+                            ? `${usedWords.filter((_, index) => (index % 2 === 0 ? room?.hostId : room?.players.find((player) => player.userId !== room.hostId)?.userId) === p?.userId).length} ${vi ? "từ đã nối" : "words played"}`
+                            : `${p?.score ?? 0} ${vi ? "điểm" : "points"}`}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
-              <span className="col-start-2 row-start-1 bg-gradient-to-br from-cyan-400 via-blue-500 to-violet-600 bg-clip-text text-center text-3xl font-black italic text-transparent drop-shadow-sm sm:text-6xl">
-                VS
-              </span>
-            </section>
+                ))}
+                <span className="col-start-2 row-start-1 bg-gradient-to-br from-cyan-400 via-blue-500 to-violet-600 bg-clip-text text-center text-3xl font-black italic text-transparent drop-shadow-sm sm:text-6xl">
+                  VS
+                </span>
+              </section>
+            )}
             {(!game.connected || disconnected) && !game.finished && (
               <p className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-800">
                 {!game.connected
@@ -598,7 +667,7 @@ export default function FriendlyMatchPage() {
                     </div>
                     <ArrowDown className="mx-auto my-3 size-7 text-blue-600" />
                     <span className="rounded-lg bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
-                      {vi ? "Hai chữ tiếp theo" : "Next two letters"}
+                      {vi ? "Chữ cái tiếp theo" : "Next letter"}
                     </span>
                     <div className="mx-auto mt-2 flex size-24 items-center justify-center rounded-full border-2 border-emerald-300 bg-emerald-50/90 text-4xl font-black text-emerald-600">
                       {requiredPrefix || "?"}
@@ -686,7 +755,8 @@ export default function FriendlyMatchPage() {
                             strokeWidth="7"
                             strokeDasharray="270.18"
                             strokeDashoffset={
-                              270.18 * (1 - Math.min(seconds / 20, 1))
+                              270.18 *
+                              (1 - Math.min(seconds / (turn?.seconds ?? 20), 1))
                             }
                             className="transition-all duration-300"
                           />
@@ -706,8 +776,8 @@ export default function FriendlyMatchPage() {
                       <ul className="list-disc pl-4">
                         <li>
                           {vi
-                            ? "Bắt đầu bằng đúng 2 chữ cái cuối của từ trước"
-                            : "Start with the last 2 letters of the previous word"}
+                            ? "Bắt đầu bằng đúng chữ cái cuối của từ trước"
+                            : "Start with the last letter of the previous word"}
                         </li>
                         <li>
                           {vi
@@ -789,7 +859,7 @@ export default function FriendlyMatchPage() {
                   <button
                     onClick={() =>
                       router.push(
-                        `/${locale}/arena/friend?matchId=${encodeURIComponent(matchId)}`,
+                        `/${locale}/arena/friend/room/${room?.code || ""}`,
                       )
                     }
                     className="rounded-xl bg-blue-600 px-6 py-3 font-bold text-white disabled:opacity-40"
@@ -807,7 +877,7 @@ export default function FriendlyMatchPage() {
             )}
             {room?.status === "CANCELLED" && (
               <button
-                onClick={() => router.push(`/${locale}/arena/friend`)}
+                onClick={() => router.push(`/${locale}/arena`)}
                 className="mt-5 rounded-xl bg-blue-600 px-6 py-3 text-white"
               >
                 {vi ? "Mời người chơi khác" : "Invite another player"}
@@ -906,16 +976,20 @@ export default function FriendlyMatchPage() {
                 <div className="mt-5 flex items-center gap-3">
                   <div className="size-12 shrink-0 overflow-hidden rounded-full">
                     <FriendlyAvatar
-                      avatar={(myTurn ? me : opponent)?.avatarUrl}
+                      avatar={
+                        (multiplayer ? currentPlayer : myTurn ? me : opponent)
+                          ?.avatarUrl
+                      }
                       name={
-                        (myTurn ? me : opponent)?.username ||
-                        (vi ? "Người chơi" : "Player")
+                        (multiplayer ? currentPlayer : myTurn ? me : opponent)
+                          ?.username || (vi ? "Người chơi" : "Player")
                       }
                     />
                   </div>
                   <div>
                     <p className="text-sm font-medium">
-                      {(myTurn ? me : opponent)?.username || "…"}
+                      {(multiplayer ? currentPlayer : myTurn ? me : opponent)
+                        ?.username || "…"}
                     </p>
                     <p className="mt-1 text-xs leading-5 text-slate-500">
                       {game.finished
@@ -924,8 +998,8 @@ export default function FriendlyMatchPage() {
                           : "View results or return to the room."
                         : myTurn
                           ? vi
-                            ? "Bạn có 20 giây để tìm từ hợp lệ."
-                            : "You have 20 seconds to find a valid word."
+                            ? `Bạn có ${turn?.seconds ?? 20} giây để tìm từ hợp lệ.`
+                            : `You have ${turn?.seconds ?? 20} seconds to find a valid word.`
                           : vi
                             ? "Vui lòng đợi đối thủ hoàn thành lượt."
                             : "Please wait for your opponent to finish their turn."}
