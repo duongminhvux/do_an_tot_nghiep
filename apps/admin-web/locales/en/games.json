@@ -83,5 +83,7 @@
   "meaningDurationSeconds": "Meaning display duration (seconds)",
   "meaningDurationSecondsHint": "From 1 to 30 seconds after a correct word. Applies to new sessions; pausing the game also pauses this timer.",
   "maxLives": "Maximum lives",
-  "maxLivesHint": "From 1 to 10, at least the initial lives. Heart pickups never exceed this limit."
+  "maxLivesHint": "From 1 to 10, at least the initial lives. Heart pickups never exceed this limit.",
+  "hintPercent": "Hint letter percentage",
+  "hintPercentHint": "From 1 to 100%. The first letter is always shown; requesting a hint reveals more letters by this percentage."
 }

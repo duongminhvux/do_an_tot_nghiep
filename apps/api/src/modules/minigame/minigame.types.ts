@@ -1,5 +1,6 @@
 export enum MiniGameType {
   TYPING_RUSH = 'TYPING_RUSH',
+  MEANING_TYPING = 'MEANING_TYPING',
 }
 export enum TypingRushDifficulty {
   EASY = 'EASY',

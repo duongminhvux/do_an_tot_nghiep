@@ -13,6 +13,7 @@ import {
   gamesService,
   type GameDefinition,
   type GameSettings,
+  type MeaningTypingSettings,
   type TypingRushSettings,
 } from "@/services/games.service";
 const settingsFields = [
@@ -88,10 +89,93 @@ function GameConfigForm({
       return (
         <TypingRushConfigForm
           code={code}
-          initial={configuration.settings}
+          initial={configuration.settings as TypingRushSettings}
           onClose={onClose}
         />
       );
+    case "MEANING_TYPING":
+      return (
+        <MeaningTypingConfigForm
+          code={code}
+          initial={configuration.settings as MeaningTypingSettings}
+          onClose={onClose}
+        />
+      );
+  }
+  function MeaningTypingConfigForm({
+    code,
+    initial,
+    onClose,
+  }: {
+    code: string;
+    initial: MeaningTypingSettings;
+    onClose: () => void;
+  }) {
+    const { t } = useTranslation("games");
+    const client = useQueryClient();
+    const [settings, setSettings] = useState({ ...initial });
+    const mutation = useMutation({
+      mutationFn: () => gamesService.saveConfiguration(code, settings),
+      onSuccess: async () => {
+        await client.invalidateQueries({
+          queryKey: ["admin-game-settings", code],
+        });
+        onClose();
+      },
+    });
+    const fields = [
+      ["minWordCount", 1, 500],
+      ["lives", 1, 10],
+      ["maxLives", settings.lives, 10],
+      ["initialFallSpeed", 10, 300],
+      ["spawnInterval", 300, 10000],
+      ["heartEveryWords", 1, 200],
+      ["hintPercent", 1, 100],
+    ] as const;
+    return (
+      <form
+        className="space-y-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          mutation.mutate();
+        }}
+      >
+        <fieldset disabled={mutation.isPending} className="space-y-4">
+          {fields.map(([key, min, max]) => (
+            <label key={key} className="block space-y-2 text-sm">
+              <span className="font-medium text-slate-700">{t(key)}</span>
+              <input
+                required
+                type="number"
+                min={min}
+                max={max}
+                value={settings[key]}
+                onChange={(event) =>
+                  setSettings({ ...settings, [key]: Number(event.target.value) })
+                }
+                className="w-full rounded-lg border border-slate-200 px-3 py-2"
+              />
+              <span className="block text-xs text-slate-500">
+                {t(key + "Hint")}
+              </span>
+            </label>
+          ))}
+          {mutation.isError && (
+            <p role="alert" className="text-sm text-red-600">
+              {t("settingsError")}
+            </p>
+          )}
+          <div className="flex justify-end gap-2">
+            <button type="button" className={button} onClick={onClose}>
+              {t("cancel")}
+            </button>
+            <button type="submit" className={button + " bg-blue-600 text-white"}>
+              {t(mutation.isPending ? "loading" : "save")}
+            </button>
+          </div>
+        </fieldset>
+      </form>
+    );
   }
 }
 function TypingRushConfigForm({

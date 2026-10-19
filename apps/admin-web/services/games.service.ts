@@ -8,9 +8,13 @@ export type TypingRushSettings = {
   heartEveryWords: number;
   meaningDurationSeconds: number;
 };
+export type MeaningTypingSettings = Omit<
+  TypingRushSettings,
+  "meaningDurationSeconds"
+> & { hintPercent: number };
 export type GameSettings = {
-  gameType: "TYPING_RUSH";
-  settings: TypingRushSettings;
+  gameType: "TYPING_RUSH" | "MEANING_TYPING";
+  settings: TypingRushSettings | MeaningTypingSettings;
 };
 export interface GameDefinition {
   _id: string;
@@ -42,7 +46,10 @@ export const gamesService = {
       )
     ).data.data;
   },
-  async saveConfiguration(code: string, settings: TypingRushSettings) {
+  async saveConfiguration(
+    code: string,
+    settings: TypingRushSettings | MeaningTypingSettings,
+  ) {
     return apiClient.patch("/admin/minigames/" + code + "/settings", settings);
   },
   async reorder(items: { id: string; order: number }[]) {

@@ -77,5 +77,11 @@
   "meaning_hint": "Type correctly to see the word meaning.",
   "rule_meaning_duration": "Meaning display",
   "rule_meaning_seconds": "{{count}} seconds",
-  "rule_max_lives": "Maximum lives"
+  "rule_max_lives": "Maximum lives",
+  "meaning_typing_title": "Meaning Typing",
+  "meaning_typing_subtitle": "Read the Vietnamese meaning and type the matching English word.",
+  "meaning_typing_hint": "Type the matching English word · The first letter is always shown",
+  "show_hint": "Show more hint"
+  ,"rule_hint_percent": "Hint percentage"
+  ,"rule_hint_percent_value": "{{count}}% of the letters"
 }

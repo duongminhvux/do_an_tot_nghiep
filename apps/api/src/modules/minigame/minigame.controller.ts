@@ -26,6 +26,15 @@ export class MiniGameController {
     ]);
     return { ...sources, settings };
   }
+  @Get('meaning-typing/vocabulary-sources') async meaningSources(
+    @Req() req: UserRequest,
+  ) {
+    const [sources, settings] = await Promise.all([
+      this.sources.list(String(req.user._id)),
+      this.catalog.meaningTypingSettings(),
+    ]);
+    return { ...sources, settings };
+  }
   @Post('typing-rush/start') async start(
     @Req() req: UserRequest,
     @Body() dto: StartTypingRushDto,
@@ -43,6 +52,23 @@ export class MiniGameController {
         heartEveryWords: settings.heartEveryWords,
         meaningDurationSeconds: settings.meaningDurationSeconds,
       },
+      words: await this.sources.pool(
+        String(req.user._id),
+        dto.sources,
+        settings,
+      ),
+    };
+  }
+  @Post('meaning-typing/start') async startMeaningTyping(
+    @Req() req: UserRequest,
+    @Body() dto: StartTypingRushDto,
+  ) {
+    await this.catalog.assertEnabled('MEANING_TYPING');
+    const settings = await this.catalog.meaningTypingSettings();
+    return {
+      gameType: MiniGameType.MEANING_TYPING,
+      difficulty: dto.difficulty,
+      config: settings,
       words: await this.sources.pool(
         String(req.user._id),
         dto.sources,

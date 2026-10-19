@@ -181,7 +181,7 @@ export class MiniGameWordSourceService {
   async pool(
     userId: string,
     sources: MiniGameSourceDto[],
-    settings: TypingRushSettings = TYPING_RUSH_DEFAULT_SETTINGS,
+    settings: Pick<TypingRushSettings, 'minWordCount'> = TYPING_RUSH_DEFAULT_SETTINGS,
   ) {
     if (
       !sources.length ||

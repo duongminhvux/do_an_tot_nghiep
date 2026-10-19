@@ -83,5 +83,7 @@
   "meaningDurationSeconds": "Thời gian hiển thị nghĩa (giây)",
   "meaningDurationSecondsHint": "Từ 1 đến 30 giây sau khi gõ đúng. Áp dụng cho ván mới; tạm dừng game cũng tạm dừng thời gian này.",
   "maxLives": "Số mạng tối đa",
-  "maxLivesHint": "Từ 1 đến 10 và không nhỏ hơn số mạng ban đầu. Nhận tim không bao giờ vượt giới hạn này."
+  "maxLivesHint": "Từ 1 đến 10 và không nhỏ hơn số mạng ban đầu. Nhận tim không bao giờ vượt giới hạn này.",
+  "hintPercent": "Tỷ lệ chữ gợi ý",
+  "hintPercentHint": "Từ 1 đến 100%. Luôn hiện chữ đầu tiên; khi xin gợi ý sẽ hiện thêm theo tỷ lệ này."
 }

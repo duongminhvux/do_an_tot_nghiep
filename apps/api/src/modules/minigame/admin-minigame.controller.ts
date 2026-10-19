@@ -1,4 +1,5 @@
 import { TypingRushSettingsDto } from './dto/typing-rush-settings.dto.js';
+import { MeaningTypingSettingsDto } from './dto/meaning-typing-settings.dto.js';
 import { Body, Get, Param, Patch, Put, Query } from '@nestjs/common';
 import { AdminController } from '../auth/decorators/admin-controller.decorator.js';
 import { GameCatalogService } from './services/game-catalog.service.js';
@@ -26,7 +27,17 @@ export class AdminMinigameController {
   ) {
     return this.catalog.configuration(gameType);
   }
-  @Patch(':gameType/settings') updateConfiguration(
+  @Patch('TYPING_RUSH/settings') updateTypingRushConfiguration(
+    @Body() dto: TypingRushSettingsDto,
+  ) {
+    return this.catalog.updateConfiguration('TYPING_RUSH', dto);
+  }
+  @Patch('MEANING_TYPING/settings') updateMeaningTypingConfiguration(
+    @Body() dto: MeaningTypingSettingsDto,
+  ) {
+    return this.catalog.updateMeaningTypingConfiguration('MEANING_TYPING', dto);
+  }
+  @Patch(':gameType/settings') configurationUpdateFallback(
     @Param('gameType') gameType: string,
     @Body() dto: TypingRushSettingsDto,
   ) {

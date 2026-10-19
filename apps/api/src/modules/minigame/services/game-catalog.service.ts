@@ -10,11 +10,14 @@ import { Model, Types } from 'mongoose';
 import {
   IMPLEMENTED_GAME_CODES,
   IMPLEMENTED_GAMES,
+  MEANING_TYPING_DEFAULT_SETTINGS,
   TYPING_RUSH_DEFAULT_SETTINGS,
+  type MeaningTypingSettings,
   type TypingRushSettings,
 } from '../game-registry.js';
 import { MiniGameType } from '../minigame.types.js';
 import type { TypingRushSettingsDto } from '../dto/typing-rush-settings.dto.js';
+import type { MeaningTypingSettingsDto } from '../dto/meaning-typing-settings.dto.js';
 import {
   GameCategory,
   GameDefinition,
@@ -42,6 +45,26 @@ export class GameCatalogService implements OnModuleInit {
           settings: { ...TYPING_RUSH_DEFAULT_SETTINGS },
           category: GameCategory.SOLO,
           order: 0,
+          isActive: true,
+        },
+      },
+      { upsert: true },
+    );
+    await this.games.updateOne(
+      { code: 'MEANING_TYPING' },
+      {
+        $set: { destination: IMPLEMENTED_GAMES.MEANING_TYPING.destination },
+        $setOnInsert: {
+          code: 'MEANING_TYPING',
+          name: 'Gõ từ theo nghĩa',
+          nameEn: 'Meaning Typing',
+          description: 'Nhìn nghĩa tiếng Việt và gõ từ tiếng Anh tương ứng.',
+          descriptionEn:
+            'Read the Vietnamese meaning and type the matching English word.',
+          imageUrl: '',
+          settings: { ...MEANING_TYPING_DEFAULT_SETTINGS },
+          category: GameCategory.SOLO,
+          order: 1,
           isActive: true,
         },
       },
@@ -95,13 +118,29 @@ export class GameCatalogService implements OnModuleInit {
         const settings = Object.fromEntries(
           Object.entries(TYPING_RUSH_DEFAULT_SETTINGS).map(([key, value]) => [
             key,
-            game.settings?.[key as keyof TypingRushSettings] ?? value,
+            (game.settings as Partial<TypingRushSettings> | null)?.[
+              key as keyof TypingRushSettings
+            ] ?? value,
           ]),
         ) as TypingRushSettings;
         settings.maxLives =
           game.settings?.maxLives ??
           Math.max(settings.lives, TYPING_RUSH_DEFAULT_SETTINGS.maxLives);
         return { gameType: MiniGameType.TYPING_RUSH, settings };
+      }
+      case MiniGameType.MEANING_TYPING: {
+        const settings = Object.fromEntries(
+          Object.entries(MEANING_TYPING_DEFAULT_SETTINGS).map(([key, value]) => [
+            key,
+            (game.settings as Partial<MeaningTypingSettings> | null)?.[
+              key as keyof MeaningTypingSettings
+            ] ?? value,
+          ]),
+        ) as MeaningTypingSettings;
+        settings.maxLives =
+          game.settings?.maxLives ??
+          Math.max(settings.lives, MEANING_TYPING_DEFAULT_SETTINGS.maxLives);
+        return { gameType: MiniGameType.MEANING_TYPING, settings };
       }
       default:
         throw new NotFoundException('GAME_SETTINGS_NOT_SUPPORTED');
@@ -123,8 +162,32 @@ export class GameCatalogService implements OnModuleInit {
     if (!game) throw new NotFoundException('GAME_NOT_FOUND');
     return this.configuration(code);
   }
+  async updateMeaningTypingConfiguration(
+    code: string,
+    settings: MeaningTypingSettingsDto,
+  ) {
+    if (settings.maxLives < settings.lives)
+      throw new BadRequestException('MINIGAME_INVALID_LIFE_LIMIT');
+    this.requireImplemented(code);
+    if (code !== MiniGameType.MEANING_TYPING)
+      throw new NotFoundException('GAME_SETTINGS_NOT_SUPPORTED');
+    const game = await this.games
+      .findOneAndUpdate(
+        { code },
+        { $set: { settings } },
+        { returnDocument: 'after', runValidators: true },
+      )
+      .lean();
+    if (!game) throw new NotFoundException('GAME_NOT_FOUND');
+    return this.configuration(code);
+  }
   async typingRushSettings(): Promise<TypingRushSettings> {
-    return (await this.configuration(MiniGameType.TYPING_RUSH)).settings;
+    return (await this.configuration(MiniGameType.TYPING_RUSH))
+      .settings as TypingRushSettings;
+  }
+  async meaningTypingSettings(): Promise<MeaningTypingSettings> {
+    return (await this.configuration(MiniGameType.MEANING_TYPING))
+      .settings as MeaningTypingSettings;
   }
   async reorder(dto: ReorderGamesDto) {
     const games = await this.list();

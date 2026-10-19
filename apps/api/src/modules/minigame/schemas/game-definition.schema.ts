@@ -1,4 +1,7 @@
-import type { TypingRushSettings } from '../game-registry.js';
+import type {
+  MeaningTypingSettings,
+  TypingRushSettings,
+} from '../game-registry.js';
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 export enum GameCategory {
   SOLO = 'SOLO',
@@ -6,7 +9,8 @@ export enum GameCategory {
 }
 @Schema({ timestamps: true, versionKey: false })
 export class GameDefinition {
-  @Prop({ type: Object, default: null }) settings: TypingRushSettings | null;
+  @Prop({ type: Object, default: null })
+  settings: TypingRushSettings | MeaningTypingSettings | null;
   @Prop({ required: true, unique: true }) code: string;
   @Prop({ required: true, trim: true }) name: string;
   @Prop({ default: '', trim: true }) nameEn: string;

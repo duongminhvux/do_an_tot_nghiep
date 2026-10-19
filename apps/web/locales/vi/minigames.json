@@ -77,5 +77,11 @@
   "meaning_hint": "Gõ đúng để xem nghĩa của từ.",
   "rule_meaning_duration": "Hiển thị nghĩa",
   "rule_meaning_seconds": "{{count}} giây",
-  "rule_max_lives": "Mạng tối đa"
+  "rule_max_lives": "Mạng tối đa",
+  "meaning_typing_title": "Gõ từ theo nghĩa",
+  "meaning_typing_subtitle": "Nhìn nghĩa tiếng Việt và gõ từ tiếng Anh tương ứng.",
+  "meaning_typing_hint": "Gõ từ tiếng Anh tương ứng · Chữ đầu tiên luôn được gợi ý",
+  "show_hint": "Hiện thêm gợi ý"
+  ,"rule_hint_percent": "Tỷ lệ gợi ý"
+  ,"rule_hint_percent_value": "{{count}}% số chữ"
 }
