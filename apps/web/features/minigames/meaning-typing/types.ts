@@ -90,6 +90,5 @@ export type GameState = {
   elapsed: number;
   correct: number;
   wordsAppeared: number;
-  hintTargetId?: string;
   inputError: boolean;
 };

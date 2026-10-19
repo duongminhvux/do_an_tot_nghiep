@@ -62,14 +62,14 @@ export function useTypingRush(session: GameSession) {
       window.removeEventListener("keydown", key);
     };
   }, [engine, pause, resume, countdown]);
-  const submit = (answer: string) => {
-    const hit = engine.submit(answer);
+  const submit = (answer: string, targetId?: string) => {
+    const hit = engine.submit(answer, targetId);
     sync();
     return hit;
   };
   const resize = useCallback(
-    (width: number) => {
-      engine.resize(width);
+    (width: number, height?: number) => {
+      engine.resize(width, height);
       sync();
     },
     [engine, sync],

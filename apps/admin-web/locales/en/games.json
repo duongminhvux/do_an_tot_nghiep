@@ -85,5 +85,11 @@
   "maxLives": "Maximum lives",
   "maxLivesHint": "From 1 to 10, at least the initial lives. Heart pickups never exceed this limit.",
   "hintPercent": "Hint letter percentage",
-  "hintPercentHint": "From 1 to 100%. The first letter is always shown; requesting a hint reveals more letters by this percentage."
+  "hintPercentHint": "From 1 to 100%. The first letter is always visible; more letters are revealed automatically as the word approaches the danger zone, up to this percentage (rounded up).",
+  "wordsPerRound": "Words per round",
+  "wordsPerRoundHint": "Between 2 and 12 targets shown at once.",
+  "roundDurationSeconds": "Round duration (seconds)",
+  "roundDurationSecondsHint": "Between 3 and 120 seconds. A correct shot resets this timer.",
+  "wrongShotPenaltySeconds": "Wrong-shot penalty (seconds)",
+  "wrongShotPenaltySecondsHint": "Between 1 and 60 seconds, less than the round duration. Running out of time ends the game."
 }

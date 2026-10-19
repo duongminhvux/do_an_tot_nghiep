@@ -41,7 +41,7 @@
   "input_placeholder": "Gõ đúng từ, game tự xác nhận…",
   "submit": "Gửi đáp án",
   "input_help": "Gõ đủ từ để tự gửi · Esc để tạm dừng",
-  "typing_hint": "Gõ trực tiếp bằng phím A–Z · Tự tính điểm khi gõ đủ từ · Backspace để xóa hết và chọn từ khác",
+  "typing_hint": "Tự chọn từ theo phần gõ · Ngừng 0,8 giây để chốt từ ngắn trùng tiền tố · Backspace xóa hết · Tab hoặc bấm thẻ nếu muốn tự chọn",
   "wrong_answer": "Chưa khớp với từ đang rơi. Combo đã đặt lại, bạn không mất mạng.",
   "game_over": "Kết thúc lượt chơi",
   "appeared_count": "{{count}} từ đã xuất hiện",
@@ -80,8 +80,21 @@
   "rule_max_lives": "Mạng tối đa",
   "meaning_typing_title": "Gõ từ theo nghĩa",
   "meaning_typing_subtitle": "Nhìn nghĩa tiếng Việt và gõ từ tiếng Anh tương ứng.",
-  "meaning_typing_hint": "Gõ từ tiếng Anh tương ứng · Chữ đầu tiên luôn được gợi ý",
-  "show_hint": "Hiện thêm gợi ý"
-  ,"rule_hint_percent": "Tỷ lệ gợi ý"
-  ,"rule_hint_percent_value": "{{count}}% số chữ"
+  "meaning_typing_hint": "Tự chọn từ theo phần gõ · Ngừng 0,8 giây để chốt từ ngắn · Gợi ý tăng khi gần đáy · Backspace xóa hết",
+  "show_hint": "Hiện thêm gợi ý",
+  "rule_hint_percent": "Tỷ lệ gợi ý",
+  "rule_hint_percent_value": "Tự động hiện dần đến {{count}}% số chữ khi gần vùng nguy hiểm",
+  "shooter_title": "Bắn từ vựng",
+  "shooter_subtitle": "Đọc nghĩa, ngắm đúng từ và bắn trước khi hết giờ.",
+  "shooter_rules": "Mỗi lượt có {{count}} từ và {{seconds}} giây. Bắn đúng được 100 điểm, thay bộ từ và đặt lại thời gian. Bắn sai trừ {{penalty}} giây. Hết giờ sẽ kết thúc.",
+  "shooter_valid_words": "Chỉ sử dụng từ có nghĩa. Các nghĩa giống nhau được gộp để mỗi lượt có một đáp án rõ ràng.",
+  "shooter_minimum_words": "Cần ít nhất {{count}} từ có nghĩa khác nhau trong các nguồn đã chọn.",
+  "shooter_round": "Lượt {{count}}",
+  "shooter_time": "Thời gian còn lại",
+  "shooter_prompt": "Bắn từ tiếng Anh có nghĩa là",
+  "shooter_hit": "Chính xác! +100 điểm · Lượt mới",
+  "shooter_miss": "Bắn sai! −{{seconds}} giây",
+  "shooter_play_hint": "Bấm vào từ để bắn · Đúng: lượt mới và đặt lại giờ · Sai: trừ thời gian · Esc tạm dừng",
+  "shooter_correct": "Đúng: {{count}}",
+  "shooter_wrong": "Sai: {{count}}"
 }

@@ -13,6 +13,7 @@ import {
   gamesService,
   type GameDefinition,
   type GameSettings,
+  type WordShooterSettings,
   type MeaningTypingSettings,
   type TypingRushSettings,
 } from "@/services/games.service";
@@ -85,6 +86,14 @@ function GameConfigForm({
 }) {
   // Each implemented game has a dedicated form and a matching backend validator.
   switch (configuration.gameType) {
+    case "WORD_SHOOTER":
+      return (
+        <WordShooterConfigForm
+          code={code}
+          initial={configuration.settings as WordShooterSettings}
+          onClose={onClose}
+        />
+      );
     case "TYPING_RUSH":
       return (
         <TypingRushConfigForm
@@ -151,7 +160,10 @@ function GameConfigForm({
                 max={max}
                 value={settings[key]}
                 onChange={(event) =>
-                  setSettings({ ...settings, [key]: Number(event.target.value) })
+                  setSettings({
+                    ...settings,
+                    [key]: Number(event.target.value),
+                  })
                 }
                 className="w-full rounded-lg border border-slate-200 px-3 py-2"
               />
@@ -169,7 +181,10 @@ function GameConfigForm({
             <button type="button" className={button} onClick={onClose}>
               {t("cancel")}
             </button>
-            <button type="submit" className={button + " bg-blue-600 text-white"}>
+            <button
+              type="submit"
+              className={button + " bg-blue-600 text-white"}
+            >
               {t(mutation.isPending ? "loading" : "save")}
             </button>
           </div>
@@ -216,6 +231,84 @@ function TypingRushConfigForm({
               type="number"
               step={1}
               min={key === "maxLives" ? settings.lives : min}
+              max={max}
+              value={settings[key]}
+              onChange={(e) =>
+                setSettings({ ...settings, [key]: Number(e.target.value) })
+              }
+              className="w-full rounded-lg border border-slate-200 px-3 py-2"
+            />
+            <span className="block text-xs text-slate-500">
+              {t(key + "Hint")}
+            </span>
+          </label>
+        ))}
+        {mutation.isError && (
+          <p role="alert" className="text-sm text-red-600">
+            {t("settingsError")}
+          </p>
+        )}
+        <div className="flex justify-end gap-2">
+          <button type="button" className={button} onClick={onClose}>
+            {t("cancel")}
+          </button>
+          <button type="submit" className={button + " bg-blue-600 text-white"}>
+            {t(mutation.isPending ? "loading" : "save")}
+          </button>
+        </div>
+      </fieldset>
+    </form>
+  );
+}
+
+function WordShooterConfigForm({
+  code,
+  initial,
+  onClose,
+}: {
+  code: string;
+  initial: WordShooterSettings;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation("games");
+  const client = useQueryClient();
+  const [settings, setSettings] = useState({ ...initial });
+  const mutation = useMutation({
+    mutationFn: () => gamesService.saveConfiguration(code, settings),
+    onSuccess: async () => {
+      await client.invalidateQueries({
+        queryKey: ["admin-game-settings", code],
+      });
+      onClose();
+    },
+  });
+  const fields = [
+    ["wordsPerRound", 2, 12],
+    ["minWordCount", settings.wordsPerRound, 500],
+    ["roundDurationSeconds", 3, 120],
+    [
+      "wrongShotPenaltySeconds",
+      1,
+      Math.min(60, settings.roundDurationSeconds - 1),
+    ],
+  ] as const;
+  return (
+    <form
+      className="space-y-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        mutation.mutate();
+      }}
+    >
+      <fieldset disabled={mutation.isPending} className="space-y-4">
+        {fields.map(([key, min, max]) => (
+          <label key={key} className="block space-y-2 text-sm">
+            <span className="font-medium text-slate-700">{t(key)}</span>
+            <input
+              required
+              type="number"
+              step={1}
+              min={min}
               max={max}
               value={settings[key]}
               onChange={(e) =>

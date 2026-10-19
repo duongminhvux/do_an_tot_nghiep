@@ -32,7 +32,9 @@ export const typingRushService = {
   },
   async stats() {
     return (
-      await apiClient.get<{ data: GameStats }>("/minigames/results/MEANING_TYPING")
+      await apiClient.get<{ data: GameStats }>(
+        "/minigames/results/MEANING_TYPING",
+      )
     ).data.data;
   },
 };

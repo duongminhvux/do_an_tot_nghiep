@@ -49,7 +49,7 @@ function walk(directory) {
   });
 }
 let checkedKeys = 0;
-for (const file of ['app', 'components', 'hooks'].flatMap((directory) => fs.existsSync(path.join(root, directory)) ? walk(path.join(root, directory)) : [])) {
+for (const file of ['app', 'components', 'hooks', 'features'].flatMap((directory) => fs.existsSync(path.join(root, directory)) ? walk(path.join(root, directory)) : [])) {
   const text = fs.readFileSync(file, 'utf8');
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   const relative = path.relative(root, file).replaceAll('\\', '/');

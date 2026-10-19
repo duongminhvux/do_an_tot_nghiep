@@ -85,5 +85,11 @@
   "maxLives": "Số mạng tối đa",
   "maxLivesHint": "Từ 1 đến 10 và không nhỏ hơn số mạng ban đầu. Nhận tim không bao giờ vượt giới hạn này.",
   "hintPercent": "Tỷ lệ chữ gợi ý",
-  "hintPercentHint": "Từ 1 đến 100%. Luôn hiện chữ đầu tiên; khi xin gợi ý sẽ hiện thêm theo tỷ lệ này."
+  "hintPercentHint": "Từ 1 đến 100%. Luôn hiện chữ đầu tiên; khi từ rơi gần vùng nguy hiểm sẽ tự động hiện thêm ký tự đến tỷ lệ này (làm tròn lên).",
+  "wordsPerRound": "Số từ mỗi lượt",
+  "wordsPerRoundHint": "Từ 2 đến 12 mục tiêu xuất hiện cùng lúc.",
+  "roundDurationSeconds": "Thời gian mỗi lượt (giây)",
+  "roundDurationSecondsHint": "Từ 3 đến 120 giây. Bắn đúng sẽ đặt lại thời gian này.",
+  "wrongShotPenaltySeconds": "Thời gian trừ khi bắn sai (giây)",
+  "wrongShotPenaltySecondsHint": "Từ 1 đến 60 giây và phải nhỏ hơn thời gian mỗi lượt. Hết giờ sẽ kết thúc game."
 }

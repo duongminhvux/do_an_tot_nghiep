@@ -75,11 +75,6 @@ export default function GamesPage() {
                     ? game.descriptionEn
                     : game.description}
                 </p>
-                {game.code === "TYPING_RUSH" && (
-                  <p className="mt-4 rounded-lg bg-slate-50 px-3 py-2 text-xs font-medium leading-5 text-slate-500">
-                    {t("games_page.typing_rule")}
-                  </p>
-                )}
               </div>
               <Link
                 href={

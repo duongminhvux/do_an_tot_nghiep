@@ -1,10 +1,40 @@
 import type { FallingWord, GameSession, GameState } from "../types";
-export const FIELD_HEIGHT = 440;
-export const DANGER_Y = 396;
+export const FIELD_HEIGHT = 640;
+export const DANGER_Y = FIELD_HEIGHT - 44;
 export const SPAWN_HORIZONTAL_GAP = 16;
 export const normalizeWord = (value: string) => value.trim().toLowerCase();
 export function hintLength(word: string, percent: number) {
-  return Math.max(1, Math.ceil(normalizeWord(word).length * percent / 100));
+  return Math.max(1, Math.ceil((normalizeWord(word).length * percent) / 100));
+}
+// Reveal progressively, reaching the configured hint amount just before danger.
+export function automaticHintLength(
+  word: string,
+  percent: number,
+  y: number,
+  dangerY = DANGER_Y,
+) {
+  const maximum = Math.min(
+    word.length,
+    hintLength(word, Math.max(1, Math.min(100, percent))),
+  );
+  const progress = Math.max(0, Math.min(1, y / (dangerY * 0.9)));
+  return Math.min(
+    word.length,
+    1 + Math.floor(Math.max(0, maximum - 1) * progress),
+  );
+}
+// Typed letters belong exclusively to the selected card; other cards keep their own hints.
+export function maskedWordCharacters(
+  word: string,
+  answer: string,
+  isTarget: boolean,
+  visibleCount: number,
+) {
+  const typed = isTarget ? answer.toLowerCase() : "";
+  return word.split("").map((character, index) => ({
+    character: typed[index] || (index < visibleCount ? character : "_"),
+    revealed: index < visibleCount || Boolean(typed[index]),
+  }));
 }
 // Prefixes stay targeted while typing; fuzzy matches help recover from typos.
 function inputMatchScore(word: string, input: string) {
@@ -42,6 +72,7 @@ export function findTypingTarget(
 }
 export class MeaningTypingEngine {
   private width: number;
+  private height = FIELD_HEIGHT;
   private serial = 0;
   private wordsSinceHeart = 0;
   private pendingHearts = 0;
@@ -74,7 +105,6 @@ export class MeaningTypingEngine {
       elapsed: 0,
       correct: 0,
       wordsAppeared: 0,
-      hintTargetId: undefined,
       inputError: false,
     };
   }
@@ -87,7 +117,8 @@ export class MeaningTypingEngine {
       meanings: this.state.meanings.map((notice) => ({ ...notice })),
     };
   }
-  resize(width: number) {
+  resize(width: number, height = FIELD_HEIGHT) {
+    this.height = Math.max(100, height);
     this.width = Math.max(240, width);
     for (const word of this.state.words) {
       word.width = this.wordWidth(word.word, word.kind);
@@ -165,7 +196,7 @@ export class MeaningTypingEngine {
     const multiplier = Math.min(2.5, 1 + (this.state.level - 1) * 0.15);
     for (const word of this.state.words)
       word.y += (word.speed * multiplier * dt) / 1000;
-    const missed = this.state.words.filter((w) => w.y >= DANGER_Y);
+    const missed = this.state.words.filter((w) => w.y >= this.height - 44);
     if (missed.length) {
       for (const w of missed) w.status = "MISSED";
       const missedRegular = missed.filter(
@@ -189,10 +220,14 @@ export class MeaningTypingEngine {
         ? Math.max(150, this.session.config.spawnInterval / multiplier)
         : 100;
   }
-  submit(input: string) {
+  submit(input: string, targetId?: string) {
     if (this.state.status !== "RUNNING" || !normalizeWord(input)) return false;
     const target = this.state.words
-      .filter((w) => normalizeWord(w.word) === normalizeWord(input))
+      .filter(
+        (w) =>
+          normalizeWord(w.word) === normalizeWord(input) &&
+          (!targetId || w.instanceId === targetId),
+      )
       .sort((a, b) => b.y - a.y)[0];
     if (!target) {
       this.state.combo = 0;
@@ -237,17 +272,9 @@ export class MeaningTypingEngine {
     this.state.words = this.state.words.filter(
       (w) => w.instanceId !== target.instanceId,
     );
-    this.state.hintTargetId = undefined;
     this.errorUntil = 0;
     this.state.inputError = false;
     return true;
-  }
-  revealHint(instanceId: string) {
-    if (
-      this.state.status === "RUNNING" &&
-      this.state.words.some((word) => word.instanceId === instanceId)
-    )
-      this.state.hintTargetId = instanceId;
   }
   pause() {
     if (this.state.status === "RUNNING") this.state.status = "PAUSED";

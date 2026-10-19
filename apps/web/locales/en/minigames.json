@@ -41,7 +41,7 @@
   "input_placeholder": "Type the word to submit automatically…",
   "submit": "Submit answer",
   "input_help": "Finish the word to submit · Esc to pause",
-  "typing_hint": "Type with A–Z keys · Full words score automatically · Backspace clears typing and releases the target",
+  "typing_hint": "Words are selected automatically as you type · Pause 0.8s to finish a shared-prefix short word · Backspace resets · Tab or click to select manually",
   "wrong_answer": "No matching falling word. Your combo resets, but you keep your lives.",
   "game_over": "Game over",
   "appeared_count": "{{count}} words appeared",
@@ -80,8 +80,21 @@
   "rule_max_lives": "Maximum lives",
   "meaning_typing_title": "Meaning Typing",
   "meaning_typing_subtitle": "Read the Vietnamese meaning and type the matching English word.",
-  "meaning_typing_hint": "Type the matching English word · The first letter is always shown",
-  "show_hint": "Show more hint"
-  ,"rule_hint_percent": "Hint percentage"
-  ,"rule_hint_percent_value": "{{count}}% of the letters"
+  "meaning_typing_hint": "Automatic word selection · Pause 0.8s to finish a short word · More hints near the bottom · Backspace resets",
+  "show_hint": "Show more hint",
+  "rule_hint_percent": "Hint percentage",
+  "rule_hint_percent_value": "Gradually reveal up to {{count}}% of the letters near the danger zone",
+  "shooter_title": "Word Shooter",
+  "shooter_subtitle": "Read the meaning, aim at the matching word, and shoot before time runs out.",
+  "shooter_rules": "Each round has {{count}} words and {{seconds}} seconds. A correct shot earns 100 points, refreshes the words and resets the timer. A wrong shot costs {{penalty}} seconds. Running out of time ends the game.",
+  "shooter_valid_words": "Only words with meanings are used. Identical meanings are combined to keep one clear answer per round.",
+  "shooter_minimum_words": "Select sources with at least {{count}} words with distinct meanings.",
+  "shooter_round": "Round {{count}}",
+  "shooter_time": "Time remaining",
+  "shooter_prompt": "Shoot the English word meaning",
+  "shooter_hit": "Correct! +100 points · New round",
+  "shooter_miss": "Wrong shot! −{{seconds}} seconds",
+  "shooter_play_hint": "Click a word to shoot · Correct: new round and timer reset · Wrong: time penalty · Esc pauses",
+  "shooter_correct": "Correct: {{count}}",
+  "shooter_wrong": "Wrong: {{count}}"
 }

@@ -1,44 +1,131 @@
 import type { FallingWord, GameSession, GameState } from "../types";
-export const FIELD_HEIGHT = 440;
-export const DANGER_Y = 396;
+export const FIELD_HEIGHT = 640;
+export const DANGER_Y = FIELD_HEIGHT - 44;
 export const SPAWN_HORIZONTAL_GAP = 16;
 export const normalizeWord = (value: string) => value.trim().toLowerCase();
-// Prefixes stay targeted while typing; fuzzy matches help recover from typos.
-function inputMatchScore(word: string, input: string) {
-  const text = normalizeWord(word);
-  if (text === input) return 3;
-  if (text.startsWith(input)) return 2;
-  let previous = Array.from({ length: text.length + 1 }, (_, index) => index);
-  for (let i = 1; i <= input.length; i++) {
-    const current = [i];
-    for (let j = 1; j <= text.length; j++)
-      current[j] = Math.min(
-        current[j - 1]! + 1,
-        previous[j]! + 1,
-        previous[j - 1]! + (input[i - 1] === text[j - 1] ? 0 : 1),
-      );
-    previous = current;
-  }
-  return 1 - previous[text.length]! / Math.max(input.length, text.length);
-}
+// Start with a matching prefix and prefer the word nearest the danger line.
 export function findTypingTarget(
   words: FallingWord[],
   input: string,
 ): FallingWord | undefined {
   const normalized = normalizeWord(input);
   return words
-    .filter((word) => word.status === "FALLING")
-    .reduce<FallingWord | undefined>((best, word) => {
-      if (!best) return word;
-      const score = normalized ? inputMatchScore(word.word, normalized) : 0;
-      const bestScore = normalized ? inputMatchScore(best.word, normalized) : 0;
-      return score > bestScore || (score === bestScore && word.y > best.y)
-        ? word
-        : best;
-    }, undefined);
+    .filter(
+      (word) =>
+        word.status === "FALLING" &&
+        normalizeWord(word.word).startsWith(normalized),
+    )
+    .reduce<FallingWord | undefined>(
+      (best, word) => (!best || word.y > best.y ? word : best),
+      undefined,
+    );
+}
+export type TypingProgress = {
+  answer: string;
+  targetId?: string;
+  locked?: boolean;
+};
+export function advanceTypingProgress(
+  words: FallingWord[],
+  progress: TypingProgress,
+  character: string,
+): TypingProgress {
+  const current = words.find(
+    (word) =>
+      word.instanceId === progress.targetId && word.status === "FALLING",
+  );
+  const nextAnswer = (current ? progress.answer : "") + character.toLowerCase();
+  const candidates = words.filter(
+    (word) =>
+      word.status === "FALLING" &&
+      normalizeWord(word.word).startsWith(nextAnswer),
+  );
+  if (current && progress.locked && !candidates.includes(current))
+    return progress;
+  const target =
+    (!progress.locked
+      ? candidates.find((word) => normalizeWord(word.word) === nextAnswer)
+      : undefined) ??
+    candidates.find((word) => word.instanceId === current?.instanceId) ??
+    findTypingTarget(candidates, nextAnswer);
+  if (!target) return current ? progress : { answer: "" };
+  return {
+    answer: nextAnswer,
+    targetId: target.instanceId,
+    ...(current && progress.locked ? { locked: true } : {}),
+  };
+}
+export function cycleTypingTarget(
+  words: FallingWord[],
+  progress: TypingProgress,
+  direction = 1,
+): TypingProgress {
+  const candidates = words
+    .filter(
+      (word) =>
+        word.status === "FALLING" &&
+        normalizeWord(word.word).startsWith(progress.answer),
+    )
+    .sort((a, b) => b.y - a.y);
+  if (!candidates.length) return { answer: "" };
+  const index = candidates.findIndex(
+    (word) => word.instanceId === progress.targetId,
+  );
+  const next =
+    index < 0
+      ? direction > 0
+        ? 0
+        : candidates.length - 1
+      : (index + direction + candidates.length) % candidates.length;
+  return {
+    answer: progress.answer,
+    targetId: candidates[next]!.instanceId,
+    locked: true,
+  };
+}
+export function completedTypingTarget(
+  words: FallingWord[],
+  progress: TypingProgress,
+  confirm = false,
+): FallingWord | undefined {
+  if (!progress.answer) return undefined;
+  const candidates = words.filter(
+    (word) =>
+      word.status === "FALLING" &&
+      normalizeWord(word.word).startsWith(progress.answer),
+  );
+  const exact = candidates.find(
+    (word) =>
+      normalizeWord(word.word) === progress.answer &&
+      (!progress.locked || word.instanceId === progress.targetId),
+  );
+  if (
+    !exact ||
+    (!confirm &&
+      !progress.locked &&
+      candidates.some(
+        (word) => normalizeWord(word.word).length > progress.answer.length,
+      ))
+  )
+    return undefined;
+  return exact;
+}
+// Ambiguous short words settle automatically after a brief pause in typing.
+export const AUTO_COMPLETE_IDLE_MS = 800;
+export function automaticTypingTarget(
+  words: FallingWord[],
+  progress: TypingProgress,
+  idleMs: number,
+) {
+  return completedTypingTarget(
+    words,
+    progress,
+    idleMs >= AUTO_COMPLETE_IDLE_MS,
+  );
 }
 export class TypingRushEngine {
   private width: number;
+  private height = FIELD_HEIGHT;
   private serial = 0;
   private wordsSinceHeart = 0;
   private pendingHearts = 0;
@@ -83,7 +170,8 @@ export class TypingRushEngine {
       meanings: this.state.meanings.map((notice) => ({ ...notice })),
     };
   }
-  resize(width: number) {
+  resize(width: number, height = FIELD_HEIGHT) {
+    this.height = Math.max(100, height);
     this.width = Math.max(240, width);
     for (const word of this.state.words) {
       word.width = this.wordWidth(word.word, word.kind);
@@ -161,7 +249,7 @@ export class TypingRushEngine {
     const multiplier = Math.min(2.5, 1 + (this.state.level - 1) * 0.15);
     for (const word of this.state.words)
       word.y += (word.speed * multiplier * dt) / 1000;
-    const missed = this.state.words.filter((w) => w.y >= DANGER_Y);
+    const missed = this.state.words.filter((w) => w.y >= this.height - 44);
     if (missed.length) {
       for (const w of missed) w.status = "MISSED";
       const missedRegular = missed.filter(
@@ -185,10 +273,14 @@ export class TypingRushEngine {
         ? Math.max(150, this.session.config.spawnInterval / multiplier)
         : 100;
   }
-  submit(input: string) {
+  submit(input: string, targetId?: string) {
     if (this.state.status !== "RUNNING" || !normalizeWord(input)) return false;
     const target = this.state.words
-      .filter((w) => normalizeWord(w.word) === normalizeWord(input))
+      .filter(
+        (w) =>
+          normalizeWord(w.word) === normalizeWord(input) &&
+          (!targetId || w.instanceId === targetId),
+      )
       .sort((a, b) => b.y - a.y)[0];
     if (!target) {
       this.state.combo = 0;

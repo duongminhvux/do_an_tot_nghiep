@@ -1,4 +1,5 @@
 export enum MiniGameType {
+  WORD_SHOOTER = 'WORD_SHOOTER',
   TYPING_RUSH = 'TYPING_RUSH',
   MEANING_TYPING = 'MEANING_TYPING',
 }

@@ -1,3 +1,4 @@
+import { WordShooterSettingsDto } from './dto/word-shooter-settings.dto.js';
 import { TypingRushSettingsDto } from './dto/typing-rush-settings.dto.js';
 import { MeaningTypingSettingsDto } from './dto/meaning-typing-settings.dto.js';
 import { Body, Get, Param, Patch, Put, Query } from '@nestjs/common';
@@ -36,6 +37,11 @@ export class AdminMinigameController {
     @Body() dto: MeaningTypingSettingsDto,
   ) {
     return this.catalog.updateMeaningTypingConfiguration('MEANING_TYPING', dto);
+  }
+  @Patch('WORD_SHOOTER/settings') updateWordShooterConfiguration(
+    @Body() dto: WordShooterSettingsDto,
+  ) {
+    return this.catalog.updateWordShooterConfiguration(dto);
   }
   @Patch(':gameType/settings') configurationUpdateFallback(
     @Param('gameType') gameType: string,

@@ -1,4 +1,5 @@
 import type {
+  WordShooterSettings,
   MeaningTypingSettings,
   TypingRushSettings,
 } from '../game-registry.js';
@@ -10,7 +11,8 @@ export enum GameCategory {
 @Schema({ timestamps: true, versionKey: false })
 export class GameDefinition {
   @Prop({ type: Object, default: null })
-  settings: TypingRushSettings | MeaningTypingSettings | null;
+  settings:
+    TypingRushSettings | MeaningTypingSettings | WordShooterSettings | null;
   @Prop({ required: true, unique: true }) code: string;
   @Prop({ required: true, trim: true }) name: string;
   @Prop({ default: '', trim: true }) nameEn: string;

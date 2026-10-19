@@ -1,3 +1,4 @@
+import type { WordShooterSettingsDto } from '../dto/word-shooter-settings.dto.js';
 import {
   BadRequestException,
   ForbiddenException,
@@ -8,6 +9,8 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import {
+  WORD_SHOOTER_DEFAULT_SETTINGS,
+  type WordShooterSettings,
   IMPLEMENTED_GAME_CODES,
   IMPLEMENTED_GAMES,
   MEANING_TYPING_DEFAULT_SETTINGS,
@@ -70,7 +73,29 @@ export class GameCatalogService implements OnModuleInit {
       },
       { upsert: true },
     );
+    await this.games.updateOne(
+      { code: 'WORD_SHOOTER' },
+      {
+        $set: { destination: IMPLEMENTED_GAMES.WORD_SHOOTER.destination },
+        $setOnInsert: {
+          code: 'WORD_SHOOTER',
+          name: 'Bắn từ vựng',
+          nameEn: 'Word Shooter',
+          description:
+            'Ngắm đúng từ tiếng Anh theo nghĩa và bắn trước khi hết giờ.',
+          descriptionEn:
+            'Shoot the English word matching the meaning before time runs out.',
+          imageUrl: '',
+          settings: { ...WORD_SHOOTER_DEFAULT_SETTINGS },
+          category: GameCategory.SOLO,
+          order: 2,
+          isActive: true,
+        },
+      },
+      { upsert: true },
+    );
   }
+
   list(publicOnly = false) {
     return this.games
       .find({
@@ -114,6 +139,17 @@ export class GameCatalogService implements OnModuleInit {
     const game = await this.games.findOne({ code }).lean();
     if (!game) throw new NotFoundException('GAME_NOT_FOUND');
     switch (code) {
+      case MiniGameType.WORD_SHOOTER: {
+        const settings = Object.fromEntries(
+          Object.entries(WORD_SHOOTER_DEFAULT_SETTINGS).map(([key, value]) => [
+            key,
+            (game.settings as Partial<WordShooterSettings> | null)?.[
+              key as keyof WordShooterSettings
+            ] ?? value,
+          ]),
+        ) as WordShooterSettings;
+        return { gameType: MiniGameType.WORD_SHOOTER, settings };
+      }
       case MiniGameType.TYPING_RUSH: {
         const settings = Object.fromEntries(
           Object.entries(TYPING_RUSH_DEFAULT_SETTINGS).map(([key, value]) => [
@@ -124,21 +160,23 @@ export class GameCatalogService implements OnModuleInit {
           ]),
         ) as TypingRushSettings;
         settings.maxLives =
-          game.settings?.maxLives ??
+          (game.settings as Partial<TypingRushSettings> | null)?.maxLives ??
           Math.max(settings.lives, TYPING_RUSH_DEFAULT_SETTINGS.maxLives);
         return { gameType: MiniGameType.TYPING_RUSH, settings };
       }
       case MiniGameType.MEANING_TYPING: {
         const settings = Object.fromEntries(
-          Object.entries(MEANING_TYPING_DEFAULT_SETTINGS).map(([key, value]) => [
-            key,
-            (game.settings as Partial<MeaningTypingSettings> | null)?.[
-              key as keyof MeaningTypingSettings
-            ] ?? value,
-          ]),
+          Object.entries(MEANING_TYPING_DEFAULT_SETTINGS).map(
+            ([key, value]) => [
+              key,
+              (game.settings as Partial<MeaningTypingSettings> | null)?.[
+                key as keyof MeaningTypingSettings
+              ] ?? value,
+            ],
+          ),
         ) as MeaningTypingSettings;
         settings.maxLives =
-          game.settings?.maxLives ??
+          (game.settings as Partial<TypingRushSettings> | null)?.maxLives ??
           Math.max(settings.lives, MEANING_TYPING_DEFAULT_SETTINGS.maxLives);
         return { gameType: MiniGameType.MEANING_TYPING, settings };
       }
@@ -188,6 +226,26 @@ export class GameCatalogService implements OnModuleInit {
   async meaningTypingSettings(): Promise<MeaningTypingSettings> {
     return (await this.configuration(MiniGameType.MEANING_TYPING))
       .settings as MeaningTypingSettings;
+  }
+  async wordShooterSettings(): Promise<WordShooterSettings> {
+    return (await this.configuration(MiniGameType.WORD_SHOOTER))
+      .settings as WordShooterSettings;
+  }
+  async updateWordShooterConfiguration(settings: WordShooterSettingsDto) {
+    if (
+      settings.minWordCount < settings.wordsPerRound ||
+      settings.wrongShotPenaltySeconds >= settings.roundDurationSeconds
+    )
+      throw new BadRequestException('WORD_SHOOTER_INVALID_SETTINGS');
+    const game = await this.games
+      .findOneAndUpdate(
+        { code: MiniGameType.WORD_SHOOTER },
+        { $set: { settings } },
+        { returnDocument: 'after', runValidators: true },
+      )
+      .lean();
+    if (!game) throw new NotFoundException('GAME_NOT_FOUND');
+    return this.configuration(MiniGameType.WORD_SHOOTER);
   }
   async reorder(dto: ReorderGamesDto) {
     const games = await this.list();

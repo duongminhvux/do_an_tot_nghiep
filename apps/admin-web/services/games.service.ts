@@ -12,9 +12,15 @@ export type MeaningTypingSettings = Omit<
   TypingRushSettings,
   "meaningDurationSeconds"
 > & { hintPercent: number };
+export type WordShooterSettings = {
+  minWordCount: number;
+  wordsPerRound: number;
+  roundDurationSeconds: number;
+  wrongShotPenaltySeconds: number;
+};
 export type GameSettings = {
-  gameType: "TYPING_RUSH" | "MEANING_TYPING";
-  settings: TypingRushSettings | MeaningTypingSettings;
+  gameType: "TYPING_RUSH" | "MEANING_TYPING" | "WORD_SHOOTER";
+  settings: TypingRushSettings | MeaningTypingSettings | WordShooterSettings;
 };
 export interface GameDefinition {
   _id: string;
@@ -48,7 +54,7 @@ export const gamesService = {
   },
   async saveConfiguration(
     code: string,
-    settings: TypingRushSettings | MeaningTypingSettings,
+    settings: TypingRushSettings | MeaningTypingSettings | WordShooterSettings,
   ) {
     return apiClient.patch("/admin/minigames/" + code + "/settings", settings);
   },

@@ -35,8 +35,21 @@ export const MEANING_TYPING_DEFAULT_SETTINGS: MeaningTypingSettings = {
   heartEveryWords: 20,
   hintPercent: 35,
 };
+export type WordShooterSettings = {
+  minWordCount: number;
+  wordsPerRound: number;
+  roundDurationSeconds: number;
+  wrongShotPenaltySeconds: number;
+};
+export const WORD_SHOOTER_DEFAULT_SETTINGS: WordShooterSettings = {
+  minWordCount: 10,
+  wordsPerRound: 6,
+  roundDurationSeconds: 12,
+  wrongShotPenaltySeconds: 2,
+};
 // Register a game only after its frontend implementation and settings validator exist.
 export const IMPLEMENTED_GAMES = {
+  [MiniGameType.WORD_SHOOTER]: { destination: '/games/word-shooter' },
   [MiniGameType.TYPING_RUSH]: { destination: '/games/typing-rush' },
   [MiniGameType.MEANING_TYPING]: { destination: '/games/meaning-typing' },
 } as const;

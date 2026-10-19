@@ -1,5 +1,13 @@
 import { GameCatalogService } from './services/game-catalog.service.js';
-import { Body, Controller, Get, Param, Post, Req } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Req,
+} from '@nestjs/common';
 import { MiniGameWordSourceService } from './services/minigame-word-source.service.js';
 import { MiniGameResultService } from './services/minigame-result.service.js';
 import { StartTypingRushDto } from './dto/start-typing-rush.dto.js';
@@ -74,6 +82,42 @@ export class MiniGameController {
         dto.sources,
         settings,
       ),
+    };
+  }
+  @Get('word-shooter/vocabulary-sources') async wordShooterSources(
+    @Req() req: UserRequest,
+  ) {
+    const [sources, settings] = await Promise.all([
+      this.sources.list(String(req.user._id)),
+      this.catalog.wordShooterSettings(),
+    ]);
+    return { ...sources, settings };
+  }
+  @Post('word-shooter/start') async startWordShooter(
+    @Req() req: UserRequest,
+    @Body() dto: StartTypingRushDto,
+  ) {
+    await this.catalog.assertEnabled(MiniGameType.WORD_SHOOTER);
+    const settings = await this.catalog.wordShooterSettings();
+    const pool = await this.sources.pool(String(req.user._id), dto.sources, {
+      minWordCount: 1,
+    });
+    const meanings = new Set<string>();
+    const words = pool.filter((word) => {
+      const meaning = word.meaning
+        ?.trim()
+        .toLocaleLowerCase('vi')
+        .normalize('NFC');
+      if (!meaning || meanings.has(meaning)) return false;
+      meanings.add(meaning);
+      return true;
+    });
+    if (words.length < Math.max(settings.minWordCount, settings.wordsPerRound))
+      throw new BadRequestException('WORD_SHOOTER_MIN_WORDS');
+    return {
+      gameType: MiniGameType.WORD_SHOOTER,
+      config: { ...settings },
+      words,
     };
   }
   @Post('results') save(

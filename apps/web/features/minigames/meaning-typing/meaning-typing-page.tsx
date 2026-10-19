@@ -72,7 +72,13 @@ export function MeaningTypingPage() {
     }
   };
   return (
-    <main className="w-full min-w-0 space-y-5 p-4 sm:p-6 xl:p-8">
+    <main
+      className={
+        session
+          ? "flex h-[calc(100dvh-3.5rem)] min-h-0 w-full min-w-0 flex-col gap-2 overflow-hidden p-2 sm:p-3"
+          : "w-full min-w-0 space-y-4 p-4 sm:p-6"
+      }
+    >
       {!session && (
         <Link
           href={"/" + locale + "/games"}
@@ -82,15 +88,15 @@ export function MeaningTypingPage() {
           {t("back_games")}
         </Link>
       )}
-      <header className="flex items-start gap-3">
-        <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white">
-          <Keyboard className="size-6" />
+      <header className="flex shrink-0 items-center gap-2">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white">
+          <Keyboard className="size-4" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="text-base font-bold text-slate-900 sm:text-lg">
             {t("meaning_typing_title")}
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="text-xs text-slate-500">
             {t("meaning_typing_subtitle")}
           </p>
         </div>
