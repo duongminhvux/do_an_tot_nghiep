@@ -1,5 +1,7 @@
+import { ArenaSettingsService } from '../admin/arena-settings.service.js';
+import { ARENA_DEFAULTS } from '../admin/arena-settings.defaults.js';
 import { Word } from '../../vocabulary/words/word.schema.js';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { WsException } from '@nestjs/websockets';
 import { Model, Types } from 'mongoose';
@@ -81,6 +83,7 @@ export class ArenaFriendRoomService {
     private readonly arena: ArenaService,
     private readonly redis: RedisService,
     @InjectModel(Word.name) private readonly words: Model<Word>,
+    @Optional() private readonly settings?: ArenaSettingsService,
   ) {}
 
   id(value: string) {
@@ -142,6 +145,11 @@ export class ArenaFriendRoomService {
       (!Number.isInteger(maxPlayers) || maxPlayers < 3 || maxPlayers > 8)
     )
       throw new WsException('INVALID_ROOM_CAPACITY');
+    const config = this.settings
+      ? await this.settings.requireEnabled(maxPlayers ? 'ROOM' : 'FRIEND')
+      : ARENA_DEFAULTS;
+    if (maxPlayers && maxPlayers > config.group.maxPlayers)
+      throw new WsException('INVALID_ROOM_CAPACITY');
     const validated = validateFriendSettings(mode, settings);
     return this.reserve(userId, async () => {
       await this.available(userId);
@@ -158,6 +166,12 @@ export class ArenaFriendRoomService {
             mode,
             settings: validated,
             maxPlayers: maxPlayers ?? 2,
+            runtimePolicy: {
+              reconnectGrace: maxPlayers
+                ? config.group.reconnectGrace
+                : config.friendly.reconnectGrace,
+              idleTimeout: maxPlayers ? config.group.roomIdleTimeout : 1800,
+            },
             members: [],
           });
           return this.snapshot(String(room._id), userId);
@@ -358,6 +372,10 @@ export class ArenaFriendRoomService {
   }
   async start(roomId: string, userId: string) {
     const room = await this.member(roomId, userId);
+    if (this.settings)
+      await this.settings.requireEnabled(
+        room.maxPlayers > 2 ? 'ROOM' : 'FRIEND',
+      );
     if (String(room.hostId) !== userId) throw new WsException('NOT_ROOM_HOST');
     const userIds = this.participants(room);
     if (
@@ -613,6 +631,24 @@ export class ArenaFriendRoomService {
       data: await this.snapshot(roomId, String(room.hostId)),
     };
   }
+  async adminCloseWaitingRoom(
+    roomId: string,
+    reason = 'ADMIN_CLOSED',
+    expectedUpdatedAt?: Date,
+  ) {
+    const room = await this.rooms.findOneAndDelete({
+      _id: this.id(roomId),
+      status: FriendRoomStatus.WAITING,
+      currentMatchId: null,
+      ...(expectedUpdatedAt ? { updatedAt: expectedUpdatedAt } : {}),
+    });
+    if (!room) return null;
+    return {
+      users: this.participants(room),
+      event: 'friend-room:closed',
+      data: { roomId, code: room.code, hostId: String(room.hostId), reason },
+    };
+  }
   async expireBeforeReconnect(userId: string) {
     const room = await this.active(userId);
     if (!room || room.status !== FriendRoomStatus.WAITING) return null;
@@ -623,7 +659,11 @@ export class ArenaFriendRoomService {
           ? room.members.find((m) => String(m.userId) === userId)
               ?.disconnectedAt
           : room.guestDisconnectedAt;
-    if (disconnectedAt && Date.now() - disconnectedAt.getTime() >= 20000)
+    if (
+      disconnectedAt &&
+      Date.now() - disconnectedAt.getTime() >=
+        (room.runtimePolicy?.reconnectGrace ?? 20) * 1000
+    )
       return this.leave(String(room._id), userId);
     return null;
   }
@@ -653,10 +693,27 @@ export class ArenaFriendRoomService {
       event: string;
       data: Record<string, unknown>;
     }[] = [];
-    const deadline = new Date(Date.now() - 20000);
+
     for (const room of await this.rooms.find({
       status: FriendRoomStatus.WAITING,
     })) {
+      const deadline = new Date(
+        Date.now() - (room.runtimePolicy?.reconnectGrace ?? 20) * 1000,
+      );
+      if (
+        room.updatedAt &&
+        room.updatedAt.getTime() +
+          (room.runtimePolicy?.idleTimeout ?? 1800) * 1000 <
+          Date.now()
+      ) {
+        const closed = await this.adminCloseWaitingRoom(
+          String(room._id),
+          'IDLE_TIMEOUT',
+          room.updatedAt,
+        );
+        if (closed) events.push(closed);
+        continue;
+      }
       for (const [userId, disconnected] of [
         [room.hostId, room.hostDisconnectedAt],
         ...(room.maxPlayers > 2

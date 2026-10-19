@@ -51,6 +51,12 @@ export enum ArenaQuestionMode {
 })
 /** Trạng thái tổng quát và cấu hình của một trận Arena. */
 export class ArenaMatch {
+  @Prop({ type: Object, default: null, immutable: true })
+  runtimePolicy?: {
+    kFactor?: number;
+    readyTimeout?: number;
+    reconnectGrace?: number;
+  } | null;
   @Prop({ type: String, enum: Object.values(ArenaFriendMode), default: null })
   friendMode?: ArenaFriendMode | null;
 

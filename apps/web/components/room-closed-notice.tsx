@@ -23,6 +23,7 @@ export function RoomClosedNotice() {
   const locale = params.locale === "en" ? "en" : "vi";
   const userId = useAppSelector((state) => state.auth.user?._id);
   const { t } = useTranslation("common");
+  const [reason, setReason] = useState<FriendRoomClosed["reason"]>("HOST_LEFT");
   const [open, setOpen] = useState(false);
   const lastClosedRoom = useRef<string | null>(null);
 
@@ -30,13 +31,13 @@ export function RoomClosedNotice() {
     const closed = (data: FriendRoomClosed) => {
       if (
         !userId ||
-        data.reason !== "HOST_LEFT" ||
-        data.hostId === userId ||
+        (data.reason === "HOST_LEFT" && data.hostId === userId) ||
         data.roomId === lastClosedRoom.current
       )
         return;
 
       lastClosedRoom.current = data.roomId;
+      setReason(data.reason);
       setOpen(true);
       router.replace(`/${locale}/arena`);
     };
@@ -54,7 +55,15 @@ export function RoomClosedNotice() {
         </div>
         <DialogHeader>
           <DialogTitle>{t("room_closed.title")}</DialogTitle>
-          <DialogDescription>{t("room_closed.description")}</DialogDescription>
+          <DialogDescription>
+            {t(
+              reason === "ADMIN_CLOSED"
+                ? "room_closed.admin_description"
+                : reason === "IDLE_TIMEOUT"
+                  ? "room_closed.idle_description"
+                  : "room_closed.description",
+            )}
+          </DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <button

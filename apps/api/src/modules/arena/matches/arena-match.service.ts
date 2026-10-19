@@ -1,9 +1,11 @@
+import { ArenaSettingsService } from '../admin/arena-settings.service.js';
+import { ARENA_DEFAULTS } from '../admin/arena-settings.defaults.js';
 import {
   FriendRoom,
   FriendRoomStatus,
   FriendRoomSettings,
 } from '../schemas/friend-room.schema.js';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 
@@ -67,6 +69,7 @@ export class ArenaMatchService {
     private readonly arenaRatingService: ArenaRatingService,
     @InjectModel(FriendRoom.name)
     private readonly friendRooms: Model<FriendRoom>,
+    @Optional() private readonly settings?: ArenaSettingsService,
   ) {}
 
   /** Tạo một match 1v1 dùng chung cho rank, friend và room. */
@@ -178,7 +181,22 @@ export class ArenaMatchService {
     if (profiles.some((profile) => !profile))
       throw new Error('Arena profile not found');
 
+    const type = options.type ?? ArenaMatchType.RANK;
+    const config = this.settings
+      ? await this.settings.requireEnabled(type)
+      : ARENA_DEFAULTS;
+    const runtimePolicy = {
+      kFactor: config.ranked.kFactor,
+      readyTimeout: config.ranked.readyTimeout,
+      reconnectGrace:
+        type === ArenaMatchType.RANK
+          ? config.ranked.reconnectGrace
+          : type === ArenaMatchType.ROOM
+            ? config.group.reconnectGrace
+            : config.friendly.reconnectGrace,
+    };
     const match = await this.arenaMatchModel.create({
+      runtimePolicy,
       type: options.type ?? ArenaMatchType.RANK,
       status:
         (options.type === ArenaMatchType.FRIEND ||
@@ -202,9 +220,10 @@ export class ArenaMatchService {
         options.friendMode === ArenaFriendMode.WORD_GUESS
           ? null
           : (options.questionMode ?? ArenaQuestionMode.MEANING_TO_WORD),
-      questionCount: options.questionCount ?? 10,
+      questionCount: options.questionCount ?? config.ranked.questionCount,
       currentQuestionIndex: 1,
-      secondsPerQuestion: options.secondsPerQuestion ?? 30,
+      secondsPerQuestion:
+        options.secondsPerQuestion ?? config.ranked.timePerQuestion,
 
       startedAt: null,
       finishedAt: null,
@@ -324,6 +343,7 @@ export class ArenaMatchService {
             playerA.ratingBefore,
             playerB.ratingBefore,
             winner,
+            match.runtimePolicy?.kFactor,
           )
         : {
             playerA: {
@@ -563,13 +583,19 @@ export class ArenaMatchService {
    * Trả về các match vừa được finalize để gateway broadcast kết quả.
    */
   async processLifecycle(now = new Date()): Promise<string[]> {
-    const readyDeadline = new Date(now.getTime() - 30_000);
+    const readyDeadline = new Date(now.getTime() - 5_000);
     const countdownMatches = await this.arenaMatchModel.find({
       status: ArenaMatchStatus.COUNTDOWN,
       type: ArenaMatchType.RANK,
       createdAt: { $lte: readyDeadline },
     });
     for (const match of countdownMatches) {
+      if (
+        match.createdAt.getTime() +
+          (match.runtimePolicy?.readyTimeout ?? 30) * 1000 >
+        now.getTime()
+      )
+        continue;
       const cancelled = await this.arenaMatchModel.updateOne(
         { _id: match._id, status: ArenaMatchStatus.COUNTDOWN },
         {
@@ -588,7 +614,7 @@ export class ArenaMatchService {
 
     const disconnected = await this.arenaMatchPlayerModel.find({
       status: 'DISCONNECTED',
-      disconnectedAt: { $lte: new Date(now.getTime() - 20_000) },
+      disconnectedAt: { $lte: new Date(now.getTime() - 5_000) },
     });
     const finished: string[] = [];
     for (const player of disconnected) {
@@ -597,6 +623,13 @@ export class ArenaMatchService {
         status: { $in: [ArenaMatchStatus.PLAYING, ArenaMatchStatus.WAITING] },
       });
       if (!match || match.type === ArenaMatchType.ROOM) continue;
+      if (
+        player.disconnectedAt &&
+        player.disconnectedAt.getTime() +
+          (match.runtimePolicy?.reconnectGrace ?? 20) * 1000 >
+          now.getTime()
+      )
+        continue;
       if (match.status === ArenaMatchStatus.WAITING) {
         await this.arenaMatchModel.updateOne(
           { _id: match._id, status: ArenaMatchStatus.WAITING },

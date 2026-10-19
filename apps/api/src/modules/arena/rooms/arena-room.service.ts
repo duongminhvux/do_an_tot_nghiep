@@ -1,4 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { ArenaSettingsService } from '../admin/arena-settings.service.js';
+import { ARENA_DEFAULTS } from '../admin/arena-settings.defaults.js';
+import { Injectable, Optional, ForbiddenException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { WsException } from '@nestjs/websockets';
 import { Model, Types } from 'mongoose';
@@ -9,6 +11,7 @@ export class ArenaRoomService {
   constructor(
     @InjectModel(ArenaRoom.name)
     private readonly roomModel: Model<ArenaRoomDocument>,
+    @Optional() private readonly settings?: ArenaSettingsService,
   ) {}
 
   /** Tạo phòng chờ dùng chung cho friend và room match. */
@@ -30,6 +33,13 @@ export class ArenaRoomService {
         options.maxPlayers > 8)
     )
       throw new WsException('INVALID_ROOM_CAPACITY');
+    const config = this.settings
+      ? await this.settings.current()
+      : ARENA_DEFAULTS;
+    if (config.maintenance || !config.group.enabled)
+      throw new ForbiddenException('ARENA_UNAVAILABLE');
+    if (options.maxPlayers && options.maxPlayers > config.group.maxPlayers)
+      throw new WsException('INVALID_ROOM_CAPACITY');
     const code = await this.generateCode();
     return this.roomModel.create({
       name: options.name.trim(),
@@ -39,7 +49,7 @@ export class ArenaRoomService {
       questionMode: options.questionMode ?? 'MIXED',
       questionCount: options.questionCount ?? 20,
       secondsPerQuestion: options.secondsPerQuestion ?? 15,
-      maxPlayers: options.maxPlayers ?? 8,
+      maxPlayers: options.maxPlayers ?? config.group.maxPlayers,
       members: [
         {
           userId: new Types.ObjectId(ownerId),

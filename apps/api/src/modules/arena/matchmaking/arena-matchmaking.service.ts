@@ -1,4 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { ArenaSettingsService } from '../admin/arena-settings.service.js';
+import { ARENA_DEFAULTS } from '../admin/arena-settings.defaults.js';
+import { Injectable, Optional } from '@nestjs/common';
 import { WsException } from '@nestjs/websockets';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -37,10 +39,12 @@ export class ArenaMatchmakingService {
     private readonly arenaMatchService: ArenaMatchService,
     @InjectModel(User.name)
     private readonly userModel: Model<User>,
+    @Optional() private readonly settings?: ArenaSettingsService,
   ) {}
 
   /** Thêm người chơi vào queue và ghép với đối thủ có rating tương đương. */
   async joinQueue(userId: string): Promise<ArenaQueueResult> {
+    if (this.settings) await this.settings.requireEnabled('RANK');
     const redis = this.redisService.getClient();
     const lockKey = `${this.queueKey}:lock`;
     const token = randomUUID();
@@ -168,8 +172,11 @@ export class ArenaMatchmakingService {
   private async findOpponent(userId: string, rating: number) {
     const redis = this.redisService.getClient();
 
-    const minRating = rating - 100;
-    const maxRating = rating + 100;
+    const config = this.settings
+      ? await this.settings.current()
+      : ARENA_DEFAULTS;
+    const minRating = rating - config.ranked.ratingRange;
+    const maxRating = rating + config.ranked.ratingRange;
 
     const candidates = await redis.zRangeByScore(
       this.queueKey,

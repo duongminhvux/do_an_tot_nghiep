@@ -1,3 +1,11 @@
+import { ArenaAdminController } from './admin/arena-admin.controller.js';
+import { ArenaAdminService } from './admin/arena-admin.service.js';
+import { ArenaSettingsService } from './admin/arena-settings.service.js';
+import {
+  ArenaSettings,
+  ArenaSettingsSchema,
+} from './admin/arena-settings.schema.js';
+import { ActivityLogsModule } from '../activity-logs/activity-logs.module.js';
 import { FriendRoom, FriendRoomSchema } from './schemas/friend-room.schema.js';
 import { ArenaFriendRoomService } from './friendly/arena-friend-room.service.js';
 import { Module } from '@nestjs/common';
@@ -49,7 +57,9 @@ import { ArenaRatingService } from './rating/arena-rating.service.js';
 @Module({
   imports: [
     AuthModule,
+    ActivityLogsModule,
     MongooseModule.forFeature([
+      { name: ArenaSettings.name, schema: ArenaSettingsSchema },
       { name: FriendRoom.name, schema: FriendRoomSchema },
       { name: Word.name, schema: WordSchema },
       { name: User.name, schema: UserSchema },
@@ -64,6 +74,8 @@ import { ArenaRatingService } from './rating/arena-rating.service.js';
     ]),
   ],
   providers: [
+    ArenaSettingsService,
+    ArenaAdminService,
     ArenaFriendRoomService,
     ArenaFriendlyService,
     ArenaGateway,
@@ -78,7 +90,7 @@ import { ArenaRatingService } from './rating/arena-rating.service.js';
     ArenaRoundService,
     ArenaRatingService,
   ],
-  controllers: [ArenaController],
+  controllers: [ArenaController, ArenaAdminController],
   exports: [
     ArenaMatchmakingService,
     ArenaRoomService,

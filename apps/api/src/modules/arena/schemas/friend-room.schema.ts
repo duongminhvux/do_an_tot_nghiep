@@ -22,6 +22,10 @@ export class FriendRoomMember {
 const FriendRoomMemberSchema = SchemaFactory.createForClass(FriendRoomMember);
 @Schema({ timestamps: true })
 export class FriendRoom {
+  @Prop({ type: Object, default: null })
+  runtimePolicy?: { reconnectGrace: number; idleTimeout: number } | null;
+  createdAt: Date;
+  updatedAt: Date;
   @Prop({ required: true, unique: true }) code: string;
   @Prop({ type: Types.ObjectId, required: true, ref: 'User', index: true })
   hostId: Types.ObjectId;

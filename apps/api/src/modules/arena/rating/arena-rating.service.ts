@@ -14,10 +14,11 @@ export class ArenaRatingService {
     rating: number,
     opponentRating: number,
     result: 0 | 0.5 | 1,
+    kFactor = this.K_FACTOR,
   ) {
     const expected = this.calculateExpected(rating, opponentRating);
 
-    const change = Math.round(this.K_FACTOR * (result - expected));
+    const change = Math.round(kFactor * (result - expected));
 
     return {
       ratingBefore: rating,
@@ -33,15 +34,26 @@ export class ArenaRatingService {
     playerARating: number,
     playerBRating: number,
     winner: 'A' | 'B' | 'DRAW',
+    kFactor = this.K_FACTOR,
   ) {
     const resultA = winner === 'A' ? 1 : winner === 'B' ? 0 : 0.5;
 
     const resultB = winner === 'B' ? 1 : winner === 'A' ? 0 : 0.5;
 
     return {
-      playerA: this.calculateNewRating(playerARating, playerBRating, resultA),
+      playerA: this.calculateNewRating(
+        playerARating,
+        playerBRating,
+        resultA,
+        kFactor,
+      ),
 
-      playerB: this.calculateNewRating(playerBRating, playerARating, resultB),
+      playerB: this.calculateNewRating(
+        playerBRating,
+        playerARating,
+        resultB,
+        kFactor,
+      ),
     };
   }
 }

@@ -1,6 +1,8 @@
+import { ArenaSettingsService } from '../admin/arena-settings.service.js';
+import { ARENA_DEFAULTS } from '../admin/arena-settings.defaults.js';
 import { gradeWordGuess } from './word-guess.utils.js';
 import { ArenaFriendRoomService } from './arena-friend-room.service.js';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { WsException } from '@nestjs/websockets';
 import { Model, Types } from 'mongoose';
@@ -47,6 +49,7 @@ export class ArenaFriendlyService {
     private readonly presence: ArenaPresenceService,
     private readonly arena: ArenaService,
     private readonly friendRooms: ArenaFriendRoomService,
+    @Optional() private readonly settings?: ArenaSettingsService,
   ) {}
 
   private id(value: string) {
@@ -161,6 +164,11 @@ export class ArenaFriendlyService {
       })
     )
       throw new WsException('You already have a pending invitation');
+    const config = this.settings
+      ? await this.settings.requireEnabled(
+          room.maxPlayers > 2 ? 'ROOM' : 'FRIEND',
+        )
+      : ARENA_DEFAULTS;
     const invite = await this.invites.create({
       senderId: this.id(senderId),
       receiverId: this.id(receiverId),
@@ -168,7 +176,7 @@ export class ArenaFriendlyService {
       roomId: room._id,
       mode: room.mode,
       rematchOf: rematchOf ? this.id(rematchOf) : null,
-      expiresAt: new Date(Date.now() + 10000),
+      expiresAt: new Date(Date.now() + config.friendly.inviteTimeout * 1000),
     });
     return this.inviteData(invite);
   }
@@ -721,13 +729,20 @@ export class ArenaFriendlyService {
     }
     for (const player of await this.players.find({
       status: 'DISCONNECTED',
-      disconnectedAt: { $lte: new Date(Date.now() - 20000) },
+      disconnectedAt: { $lte: new Date(Date.now() - 5000) },
     })) {
       const match = await this.matches.findById(player.matchId);
       if (
         !match ||
         match.type !== ArenaMatchType.ROOM ||
         match.status !== ArenaMatchStatus.PLAYING
+      )
+        continue;
+      if (
+        player.disconnectedAt &&
+        player.disconnectedAt.getTime() +
+          (match.runtimePolicy?.reconnectGrace ?? 20) * 1000 >
+          Date.now()
       )
         continue;
       await this.matchService.dropRoomPlayer(

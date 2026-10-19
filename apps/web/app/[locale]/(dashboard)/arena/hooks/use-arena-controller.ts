@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useParams, useRouter } from "next/navigation";
@@ -36,6 +37,7 @@ export type RankedMatchFoundPayload = {
 export type RankedStatus = "IDLE" | "SEARCHING" | "FOUND";
 
 export function useArenaController() {
+  const { t } = useTranslation("common");
   const params = useParams();
   const router = useRouter();
 
@@ -329,11 +331,13 @@ export function useArenaController() {
          */
         if (failure || response?.error) {
           setRankedError(
-            response?.error ||
-              text(
-                "Máy chủ chưa phản hồi. Hãy thử lại.",
-                "The server did not respond. Please retry.",
-              ),
+            response?.error === "ARENA_UNAVAILABLE"
+              ? t("arena_controls.unavailable")
+              : response?.error ||
+                  text(
+                    "Máy chủ chưa phản hồi. Hãy thử lại.",
+                    "The server did not respond. Please retry.",
+                  ),
           );
 
           setRankedStatus("IDLE");

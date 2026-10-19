@@ -477,6 +477,10 @@ export class ArenaGateway
     return userId;
   }
 
+  async deliverAdminEvent(item: FriendlyDelivery) {
+    if (!this.server) return;
+    return this.deliverFriendly(item);
+  }
   private async deliverFriendly(item: FriendlyDelivery) {
     if (item.users) {
       const ids = (
