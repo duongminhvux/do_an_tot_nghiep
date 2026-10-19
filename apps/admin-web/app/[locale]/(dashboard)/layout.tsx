@@ -23,6 +23,8 @@ export default function DashboardLayout({
   const { t } = useTranslation('common');
 
   const getPageTitle = () => {
+    if (pathname?.includes('/arena')) return t('nav.arena');
+    if (pathname?.includes('/games')) return t('nav.games');
     const isEn = locale === 'en';
     const vocabTitle = t('nav.vocabulary', isEn ? 'Vocabulary' : 'Từ vựng');
 

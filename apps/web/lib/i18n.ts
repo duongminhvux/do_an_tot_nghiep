@@ -1,3 +1,5 @@
+import viMinigames from '../locales/vi/minigames.json';
+import enMinigames from '../locales/en/minigames.json';
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
@@ -20,6 +22,7 @@ import enHome from '../locales/en/home.json';
 const resources = {
   vi: {
     common: viCommon,
+    minigames: viMinigames,
     dictation: viDictation,
     auth: viAuth,
     vocabulary: viVocabulary,
@@ -29,6 +32,7 @@ const resources = {
   },
   en: {
     common: enCommon,
+    minigames: enMinigames,
     dictation: enDictation,
     auth: enAuth,
     vocabulary: enVocabulary,

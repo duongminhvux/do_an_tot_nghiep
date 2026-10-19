@@ -78,7 +78,8 @@ export function AppSidebar() {
     (pathname?.startsWith(`/${locale}/dictation/`) && !pathname?.startsWith(`/${locale}/dictation/progress`));
   const isProgressActive = pathname?.startsWith(`/${locale}/dictation/progress`);
   const isArenaActive = pathname === `/${locale}/arena` || pathname?.startsWith(`/${locale}/arena/`);
-  const isGamesSectionActive = isArenaActive;
+  const isGamesListActive = pathname === `/${locale}/games` || pathname?.startsWith(`/${locale}/games/`);
+  const isGamesSectionActive = isArenaActive || isGamesListActive;
 
   const isToeicExamsActive =
     pathname === `/${locale}/toeic` ||
@@ -241,7 +242,7 @@ export function AppSidebar() {
                 </div>
               </SidebarMenuItem>
 
-              {/* 3. Trò chơi (Collapsible with Vocabulary Arena) */}
+              {/* 3. Trò chơi (Collapsible with Vocabulary Arena & Game List) */}
               <SidebarMenuItem>
                 <div>
                   <button
@@ -291,6 +292,24 @@ export function AppSidebar() {
                           )}
                         />
                         <span>{t('nav.arena', 'Đấu trường từ vựng')}</span>
+                      </Link>
+
+                      <Link
+                        href={`/${locale}/games`}
+                        className={cn(
+                          'flex items-center gap-2.5 px-3 py-2 rounded text-sm font-medium transition-all',
+                          isGamesListActive
+                            ? 'bg-blue-50 text-blue-600 font-semibold'
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                        )}
+                      >
+                        <Gamepad2
+                          className={cn(
+                            'w-4 h-4 shrink-0',
+                            isGamesListActive ? 'text-blue-600' : 'text-slate-400'
+                          )}
+                        />
+                        <span>{t('nav.game_list', 'Danh sách trò chơi')}</span>
                       </Link>
 
 

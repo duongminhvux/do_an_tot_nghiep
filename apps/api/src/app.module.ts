@@ -1,3 +1,4 @@
+import { MiniGameModule } from './modules/minigame/minigame.module.js';
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
@@ -83,6 +84,7 @@ const isDev = process.env.NODE_ENV !== 'production';
     MediaStorageModule,
     AudioProcessingModule,
     ArenaModule,
+    MiniGameModule,
   ],
   controllers: [AppController],
   providers: [AppService],

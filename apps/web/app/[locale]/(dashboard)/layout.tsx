@@ -26,6 +26,12 @@ export default function DashboardLayout({
   const getPageTitle = () => {
     const isEn = locale === 'en';
 
+    if (pathname === `/${locale}/games/typing-rush`) return t('minigames:title');
+
+    if (pathname === `/${locale}/games` || pathname?.startsWith(`/${locale}/games/`)) {
+      return t('nav.game_list_title');
+    }
+
     if (pathname?.includes('/arena')) {
       return t('nav.arena', isEn ? 'Vocabulary Arena' : 'Đấu trường từ vựng');
     }

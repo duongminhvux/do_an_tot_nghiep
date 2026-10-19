@@ -2,7 +2,6 @@
 const nextConfig = {
   async redirects() {
     return [
-      { source: '/:locale(vi|en)/games', destination: '/:locale/arena', permanent: false },
       { source: '/:locale(vi|en)/arena/friend', destination: '/:locale/arena', permanent: false },
       { source: '/:locale(vi|en)/arena/group', destination: '/:locale/arena', permanent: false },
       { source: '/:locale(vi|en)/arena/group/:matchId', destination: '/:locale/arena/friend/:matchId', permanent: false },

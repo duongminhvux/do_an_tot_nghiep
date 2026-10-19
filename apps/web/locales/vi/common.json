@@ -78,7 +78,11 @@
     "toeic": "TOEIC",
     "toeic_exams": "Đề thi",
     "toeic_history": "Lịch sử làm bài",
-    "toeic_stats": "Thống kê"
+    "toeic_stats": "Thống kê",
+    "game_list": "Danh sách trò chơi",
+    "game_list_title": "Danh sách trò chơi",
+    "game_list_desc": "Chọn một trò chơi để luyện tập từ vựng và cải thiện thứ hạng của bạn.",
+    "arena_desc": "Thi đấu và luyện tập từ vựng cùng bạn bè."
   },
   "group_arena": {
     "title": "Phòng chơi nhóm",
@@ -130,6 +134,33 @@
     "title": "Phòng đã đóng",
     "description": "Phòng đã đóng do chủ phòng thoát. Bạn đã được đưa về Đấu trường.",
     "confirm": "Đã hiểu",
-    "close": "Đóng"
+    "close": "Đóng",
+    "admin_description": "Phòng đã được quản trị viên đóng. Bạn đã quay lại đấu trường.",
+    "idle_description": "Phòng đã đóng do không có hoạt động trong thời gian dài."
+  },
+  "games_page": {
+    "description": "Luyện từ vựng và phản xạ gõ tiếng Anh với bộ từ bạn chọn.",
+    "typing_title": "Luyện Gõ – Typing Rush",
+    "typing_description": "Gõ các từ tiếng Anh đang rơi trước khi chúng chạm đáy. Chơi một mình với bộ từ bạn chọn.",
+    "typing_rule": "Chọn bộ từ · Gõ từ rơi · Lưu điểm cá nhân.",
+    "play_solo": "Chơi ngay",
+    "banner_title": "Trò chơi từ vựng",
+    "banner_subtitle": "Vui chơi · Ôn tập hiệu quả · Ghi nhớ lâu hơn",
+    "banner_practice": "Luyện tập mỗi ngày",
+    "banner_practice_desc": "Rèn gõ nhanh, chính xác",
+    "banner_memory": "Ghi nhớ từ vựng",
+    "banner_memory_desc": "Vừa chơi vừa học",
+    "banner_progress": "Theo dõi tiến bộ",
+    "banner_progress_desc": "Lưu lại điểm của bạn",
+    "loading": "Đang tải trò chơi...",
+    "load_error": "Không tải được danh sách trò chơi.",
+    "retry": "Thử lại",
+    "empty": "Hiện chưa có trò chơi đang mở.",
+    "solo": "Chơi đơn",
+    "multiplayer": "Nhiều người",
+    "play": "Chơi ngay"
+  },
+  "arena_controls": {
+    "unavailable": "Chế độ này đang tạm đóng hoặc Arena đang bảo trì. Vui lòng thử lại sau."
   }
 }
