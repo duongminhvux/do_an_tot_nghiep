@@ -1,4 +1,5 @@
 .git
+.local
 .gitignore
 **/node_modules
 **/.next

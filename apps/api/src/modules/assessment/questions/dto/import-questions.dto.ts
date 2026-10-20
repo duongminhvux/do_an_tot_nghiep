@@ -102,6 +102,9 @@ export class ImportSingleQuestionDto {
 }
 
 export class ImportQuestionsDto {
+  @IsBoolean()
+  @IsOptional()
+  preserveSourceOrder?: boolean;
   @IsEnum(['LISTENING', 'READING'])
   @IsOptional()
   section?: 'LISTENING' | 'READING';

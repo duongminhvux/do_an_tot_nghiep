@@ -8,7 +8,7 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { examService, examGroupService } from '@/services/assessment.service';
 import { ExamGroupItem, ExamItem, ExamStatus } from '@/types';
-import { CreateExamDialog } from '@/components/assessment/create-exam-dialog';
+import { CreateExamChoiceDialog } from '@/components/assessment/create-exam-choice-dialog';
 import { EditExamDialog } from '@/components/assessment/edit-exam-dialog';
 import { DeleteExamDialog } from '@/components/assessment/delete-exam-dialog';
 import { ViewExamDialog } from '@/components/assessment/view-exam-dialog';
@@ -42,8 +42,13 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
   Loader2,
 } from 'lucide-react';
+
+const sortFields = ['name', 'totalQuestions', 'durationMinutes', 'order', 'isActive'] as const;
+type SortField = typeof sortFields[number];
 
 export default function AssessmentPage() {
   const params = useParams();
@@ -64,6 +69,21 @@ export default function AssessmentPage() {
   // Pagination states
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [pageSize, setPageSize] = useState<number>(initialLimit);
+  const requestedSort = searchParams?.get('sortBy') as SortField;
+  const [sortBy, setSortBy] = useState<SortField | undefined>(sortFields.includes(requestedSort) ? requestedSort : undefined);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(searchParams?.get('sortOrder') === 'desc' ? 'desc' : 'asc');
+  const changeSort = (field: SortField) => {
+    setSortOrder(sortBy === field && sortOrder === 'asc' ? 'desc' : 'asc');
+    setSortBy(field);
+    setCurrentPage(1);
+  };
+  const sortHeading = (field: SortField, label: string) => {
+    const Icon = sortBy === field ? (sortOrder === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown;
+    return <button type="button" onClick={() => changeSort(field)} className="inline-flex items-center gap-1 hover:text-blue-600 focus-visible:outline-2 focus-visible:outline-blue-600">
+      {label}<Icon aria-hidden="true" className={`h-3 w-3 ${sortBy === field ? 'text-blue-600' : 'text-slate-400'}`} />
+    </button>;
+  };
+  const ariaSort = (field: SortField) => sortBy === field ? (sortOrder === 'asc' ? 'ascending' as const : 'descending' as const) : 'none' as const;
 
   // Debounced search term for 'q' param
   const debouncedQ = useDebounce(searchTerm, 400);
@@ -96,8 +116,15 @@ export default function AssessmentPage() {
     } else {
       url.searchParams.delete('limit');
     }
+    if (sortBy) {
+      url.searchParams.set('sortBy', sortBy);
+      url.searchParams.set('sortOrder', sortOrder);
+    } else {
+      url.searchParams.delete('sortBy');
+      url.searchParams.delete('sortOrder');
+    }
     window.history.replaceState(null, '', url.pathname + url.search);
-  }, [debouncedQ, currentPage, pageSize]);
+  }, [debouncedQ, currentPage, pageSize, sortBy, sortOrder]);
 
   // Dialog states
   const [createOpen, setCreateOpen] = useState(false);
@@ -108,7 +135,7 @@ export default function AssessmentPage() {
 
   // Fetch paginated exams with debounced q param
   const { data: response, isLoading, isFetching } = useQuery({
-    queryKey: ['admin-exams', debouncedQ, statusFilter, groupFilter, currentPage, pageSize],
+    queryKey: ['admin-exams', debouncedQ, statusFilter, groupFilter, currentPage, pageSize, sortBy, sortOrder],
     queryFn: async () => {
       const res = await examService.getAll({
         q: debouncedQ.trim() || undefined,
@@ -117,6 +144,8 @@ export default function AssessmentPage() {
         groupId: groupFilter === 'ALL' ? undefined : groupFilter,
         page: currentPage,
         limit: pageSize,
+        sortBy,
+        sortOrder: sortBy ? sortOrder : undefined,
       });
       return res.data;
     },
@@ -250,13 +279,13 @@ export default function AssessmentPage() {
           </p>
         </div>
 
-        <Link
-          href={`/${locale}/assessment/create`}
+        <button
+          onClick={() => setCreateOpen(true)}
           className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold rounded shadow-xs transition-colors cursor-pointer shrink-0"
         >
           <Plus className="h-4 w-4" />
           <span>{t('createExam')}</span>
-        </Link>
+        </button>
       </div>
 
       {/* 4 Stat Cards Row - Calculated strictly from DB */}
@@ -417,13 +446,13 @@ export default function AssessmentPage() {
               {t('empty.noExamsDesc')}
             </p>
             <div className="flex items-center justify-center">
-              <Link
-                href={`/${locale}/assessment/create`}
+              <button
+                onClick={() => setCreateOpen(true)}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold cursor-pointer inline-flex items-center gap-1.5 shadow-sm"
               >
                 <Plus className="h-4 w-4" />
                 <span>{t('createExam')}</span>
-              </Link>
+              </button>
             </div>
           </div>
         ) : exams.length === 0 ? (
@@ -453,22 +482,22 @@ export default function AssessmentPage() {
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/50 text-[11px] font-bold text-slate-500">
                   <th className="py-3 px-3.5 w-10 text-center">
-                    <span className="inline-flex items-center gap-0.5"># <ArrowUpDown className="h-3 w-3 text-slate-400" /></span>
+                    #
                   </th>
-                  <th className="py-3 px-3.5">
-                    <span className="inline-flex items-center gap-0.5">{t('table.name')} <ArrowUpDown className="h-3 w-3 text-slate-400" /></span>
+                  <th className="py-3 px-3.5" aria-sort={ariaSort('name')}>
+                    {sortHeading('name', t('table.name'))}
                   </th>
-                  <th className="py-3 px-3.5 text-center w-32">
-                    <span className="inline-flex items-center gap-0.5">{t('table.totalQuestions')} <ArrowUpDown className="h-3 w-3 text-slate-400" /></span>
+                  <th className="py-3 px-3.5 text-center w-32" aria-sort={ariaSort('totalQuestions')}>
+                    {sortHeading('totalQuestions', t('table.questions'))}
                   </th>
-                  <th className="py-3 px-3.5 text-center w-28">
-                    <span className="inline-flex items-center gap-0.5">{t('table.duration')} <ArrowUpDown className="h-3 w-3 text-slate-400" /></span>
+                  <th className="py-3 px-3.5 text-center w-28" aria-sort={ariaSort('durationMinutes')}>
+                    {sortHeading('durationMinutes', t('table.duration'))}
                   </th>
-                  <th className="py-3 px-3.5 text-center w-20">
-                    <span className="inline-flex items-center gap-0.5">{t('table.order')} <ArrowUpDown className="h-3 w-3 text-slate-400" /></span>
+                  <th className="py-3 px-3.5 text-center w-20" aria-sort={ariaSort('order')}>
+                    {sortHeading('order', t('table.order'))}
                   </th>
-                  <th className="py-3 px-3.5 text-center w-36">
-                    <span className="inline-flex items-center gap-0.5">{t('table.status')} <ArrowUpDown className="h-3 w-3 text-slate-400" /></span>
+                  <th className="py-3 px-3.5 text-center w-36" aria-sort={ariaSort('isActive')}>
+                    {sortHeading('isActive', t('table.status'))}
                   </th>
                   <th className="py-3 px-3.5 text-center w-20">
                     {t('table.actions')}
@@ -535,7 +564,11 @@ export default function AssessmentPage() {
 
                       {/* Thứ tự */}
                       <td className="py-3 px-3.5 text-center font-medium text-slate-700">
-                        {exam.order !== undefined ? exam.order : globalIdx}
+                        <button type="button" onClick={() => { setSelectedExam(exam); setEditOpen(true); }}
+                          className="rounded border border-slate-200 px-3 py-1 hover:border-blue-400 hover:text-blue-600"
+                          aria-label={`${t('table.order')}: ${exam.name}`}>
+                          {exam.order !== undefined ? exam.order : globalIdx}
+                        </button>
                       </td>
 
                       {/* Trạng thái */}
@@ -728,9 +761,10 @@ export default function AssessmentPage() {
       </div>
 
       {/* Dialogs */}
-      <CreateExamDialog
+      <CreateExamChoiceDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
+        locale={locale}
       />
 
       <EditExamDialog

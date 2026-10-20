@@ -161,7 +161,7 @@ test("option E stays visible and blocks a four-choice question", () => {
   assert.ok(validateImportDraft(draft, 5).some((i) => i.severity === "error"));
 });
 
-test("Part 1 requires both image and audio, Part 2 and 3 require audio, Part 6 and 7 require passage content", () => {
+test("Part 1 requires an image, missing audio is a draft warning, reading requires passage content", () => {
   // Part 1 missing image
   const p1NoImg = parseImportText(
     "1. Look at picture\nAudio: https://example.com/audio.mp3\nA. A\nB. B\nC. C\nD. D\nAnswer: A",
@@ -180,7 +180,7 @@ test("Part 1 requires both image and audio, Part 2 and 3 require audio, Part 6 a
   );
   assert.ok(
     validateImportDraft(p1NoAudio, 1).some(
-      (i) => i.severity === "error" && i.message.includes("audio"),
+      (i) => i.severity === "warning" && i.message.includes("audio"),
     ),
   );
 
@@ -191,7 +191,7 @@ test("Part 1 requires both image and audio, Part 2 and 3 require audio, Part 6 a
   );
   assert.ok(
     validateImportDraft(p2NoAudio, 2).some(
-      (i) => i.severity === "error" && i.message.includes("audio"),
+      (i) => i.severity === "warning" && i.message.includes("audio"),
     ),
   );
 
@@ -202,7 +202,7 @@ test("Part 1 requires both image and audio, Part 2 and 3 require audio, Part 6 a
   );
   assert.ok(
     validateImportDraft(p3NoAudio, 3).some(
-      (i) => i.severity === "error" && i.message.includes("audio"),
+      (i) => i.severity === "warning" && i.message.includes("audio"),
     ),
   );
 
@@ -216,5 +216,33 @@ test("Part 1 requires both image and audio, Part 2 and 3 require audio, Part 6 a
       (i) => i.severity === "error" && i.message.includes("nội dung"),
     ),
   );
+});
+
+test("Part 1/2 can save letter-only choices while keeping correct keys and answer validation", () => {
+  for (const part of [1,2]) {
+    const q={order:part===1?1:7,content:'',imageUrl:part===1?'https://example.com/photo.jpg':'',correctAnswer:'B',options:[...(part===2?'ABC':'ABCD')].map(key=>({key,text:''}))};
+    const draft={groups:[],questions:[q]};
+    assert.equal(validateImportDraft(draft,part).filter(i=>i.severity==='error').length,0);
+    assert.ok(validateImportDraft(draft,part).some(i=>i.severity==='warning'&&i.message.includes('audio')));
+    assert.ok(validateImportDraft({groups:[],questions:[{...q,options:q.options.slice(1)}]},part).some(i=>i.severity==='error'));
+    assert.ok(validateImportDraft({groups:[],questions:[{...q,correctAnswer:''}]},part).some(i=>i.severity==='error'));
+  }
+  const reading={groups:[],questions:[{order:101,content:'Printed question',correctAnswer:'A',options:[...'ABCD'].map(key=>({key,text:''}))}]};
+  assert.equal(validateImportDraft(reading,5).filter(i=>i.severity==='error').length,4);
+});
+
+test("Part 6/7 image questions still require written choices and valid source links", () => {
+  for (const part of [6, 7]) {
+    const q = {order: part === 6 ? 131 : 161, content: '', imageUrl: 'https://example.com/stem.jpg', passageGroupTempId: 'g', correctAnswer: 'C', options: [...'ABCD'].map(key => ({key, text: `Choice ${key}`}))};
+    const groups = [{id: 'g', tempId: 'g', passages: [{id: 'p', tempId: 'p', type: 'TEXT', inputMode: 'IMAGE', content: '', imageUrl: 'https://example.com/passage.jpg'}]}];
+    const errors = draft => validateImportDraft(draft, part).filter(i => i.severity === 'error');
+    assert.equal(errors({groups, questions: [q]}).length, 0);
+    assert.ok(errors({groups, questions: [{...q, imageUrl: ''}]}).some(i => i.message.includes('nội dung')));
+    assert.ok(errors({groups, questions: [{...q, options: q.options.map(o => ({...o, text: ''}))}]}).length >= 4);
+    const roundtrip = parseImportText(serializeImportDraft({groups, questions: [q]}), part);
+    assert.equal(roundtrip.questions[0].imageUrl, q.imageUrl);
+    assert.equal(roundtrip.questions[0].correctAnswer, 'C');
+    assert.equal(errors(roundtrip).length, 0);
+  }
 });
 

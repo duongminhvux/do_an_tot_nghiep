@@ -243,9 +243,21 @@ export class AudioProcessingService {
     const pause = Math.max(0, this.envNumber('TOEIC_TTS_OPTION_PAUSE_MS', 650));
     const primary = primaryVoice || this.configService.get<string>(part === 2 ? 'TOEIC_P2_PROMPT_VOICE' : 'TOEIC_P1_VOICE') || (part === 2 ? 'am_adam' : 'af_heart');
     const secondary = secondaryVoice || this.configService.get<string>('TOEIC_P2_RESPONSE_VOICE') || 'af_heart';
+    const content = question.content?.trim() || '';
+    const labels = [...content.matchAll(/(?:^|\n)[ \t]*\(?([A-D])\)[ \t]*/g)];
+    const scriptOptions = labels.map((label, i) => ({
+      key: label[1],
+      text: content.slice(label.index! + label[0].length, labels[i + 1]?.index ?? content.length).trim(),
+    }));
+    if (labels.length) {
+      const expected = part === 2 ? 'ABC' : 'ABCD';
+      if (scriptOptions.map(o => o.key).join('') !== expected || scriptOptions.some(o => !o.text)) {
+        throw new BadRequestException(`Part ${part} script must contain ${expected.split('').join('/')} statements.`);
+      }
+    }
 
     if (part === 1) {
-      const options = (question.options || []).filter((item) => item.text?.trim());
+      const options = labels.length ? scriptOptions : (question.options || []).filter((item) => item.text?.trim());
       if (!options.length) throw new BadRequestException('Part 1 question has no statements to synthesize.');
       return options.map((option, index) => ({
         text: option.text.trim(),
@@ -259,9 +271,11 @@ export class AudioProcessingService {
 
     if (part === 2) {
       if (!question.content?.trim()) throw new BadRequestException('Part 2 question text is empty.');
-      const responses = (question.options || []).filter((item) => item.text?.trim());
+      const responses = labels.length ? scriptOptions : (question.options || []).filter((item) => item.text?.trim());
+      const prompt = labels.length ? content.slice(0, labels[0]!.index).trim() : content;
+      if (!prompt) throw new BadRequestException('Part 2 question text is empty.');
       return [
-        { text: question.content.trim(), speaker: 'Prompt', voiceId: primary, language: 'en-US', speed, pauseAfterMs: pause },
+        { text: prompt, speaker: 'Prompt', voiceId: primary, language: 'en-US', speed, pauseAfterMs: pause },
         ...responses.map((option, index) => ({
           text: option.text.trim(),
           speaker: 'Response',

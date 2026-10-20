@@ -9,6 +9,9 @@ export interface ImportQuestion {
   explanation?: string;
   order?: number;
   sourceLine?: number;
+  sourcePages?: number[];
+  scriptPages?: number[];
+  answerEvidence?: string;
   passageGroupTempId?: string;
   passageTempId?: string;
   imageUrl?: string;

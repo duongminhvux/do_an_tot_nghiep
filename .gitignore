@@ -35,6 +35,8 @@ yarn-error.log*
 
 # Misc
 .DS_Store
+__pycache__/
+*.pyc
 *.pem
 .vscode/
 .pnpm-store/
@@ -45,3 +47,5 @@ repomix-output.xml
 # Generated/local media
 storage/*
 !storage/.gitkeep
+# Local correction corpus (source PDFs, gold labels and evaluation reports).
+.local/

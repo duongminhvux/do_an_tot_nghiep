@@ -35,7 +35,10 @@ export class Question {
   part: number;
 
   @Prop({
-    required: true,
+    required: function (this: any) {
+      return !([6, 7].includes(this.get('part')) && /^https?:\/\//i.test(this.get('imageUrl') || ''));
+    },
+    default: '',
     trim: true,
   })
   content: string;
@@ -50,12 +53,18 @@ export class Question {
         },
         text: {
           type: String,
-          required: true,
+          default: '',
           trim: true,
         },
       },
     ],
     required: true,
+    validate: {
+      validator: function (this: any, options: Array<{ text?: string }>) {
+        return [1, 2].includes(this.get('part')) || options.every((option) => Boolean(option.text?.trim()));
+      },
+      message: 'Part 3–7 requires text for every answer option.',
+    },
   })
   options: {
     key: 'A' | 'B' | 'C' | 'D';
@@ -90,6 +99,9 @@ export class Question {
 
   @Prop()
   importFingerprint?: string;
+
+  @Prop()
+  sourceOrder?: number;
 
   @Prop({
     default: 0,

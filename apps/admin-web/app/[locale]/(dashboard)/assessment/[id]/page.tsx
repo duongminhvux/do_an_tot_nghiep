@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { examService } from '@/services/assessment.service';
@@ -39,6 +39,9 @@ import {
 export default function ExamDetailPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
+  const editQuestionOrder = Number(searchParams.get('editQuestion'));
+  const openedQuestionLink = useRef('');
   const locale = (params?.locale as string) || 'vi';
   const examId = params?.id as string;
   const { t } = useTranslation('assessment');
@@ -119,6 +122,16 @@ export default function ExamDetailPage() {
     if (Array.isArray(raw?.items)) return raw.items;
     return [];
   }, [questionsResponse]);
+  useEffect(() => {
+    const key = `${examId}:${editQuestionOrder}`;
+    if (!Number.isInteger(editQuestionOrder) || editQuestionOrder < 1 || openedQuestionLink.current === key) return;
+    const target = questionsList.find(q => q.order === editQuestionOrder);
+    if (!target) return;
+    openedQuestionLink.current = key;
+    setActiveTab('questions');
+    setSelectedPartPill(target.part);
+    setSelectedQuestionForEdit(target);
+  }, [examId, editQuestionOrder, questionsList]);
 
   // 3. Query Real Passages of this exam from MongoDB
   const { data: passagesResponse } = useQuery({

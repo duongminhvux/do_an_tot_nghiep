@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger, Optional } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { parseOffice } from 'officeparser';
@@ -13,12 +13,29 @@ import { UpdateQuestionDto } from './dto/update-question.dto.js';
 import { CloudinaryService } from '../../upload/cloudinary.service.js';
 import { AudioGenerationStatus } from '../../../common/media/generated-audio.schema.js';
 import { MediaStorageService } from '../../../common/media/media-storage.service.js';
+import { PdfAiLearningService } from './pdf-ai-learning.service.js';
 
 @Injectable()
 export class QuestionsService {
   private readonly logger = new Logger(QuestionsService.name);
   private readonly inFlightCreates = new Set<string>();
   private readonly inFlightImports = new Set<string>();
+
+  private async captureGroupEdit(id: string, before: any) {
+    if (!this.learning) return undefined;
+    try {
+      const linked = await this.questionModel.find({ passageGroupId: new Types.ObjectId(id) }).sort({ order: 1 }).lean().exec();
+      const source = linked.find(q => this.learning!.sourceJob(q.importBatchId));
+      if (!source) return undefined;
+      const group = await this.passageGroupModel.findById(id).lean().exec();
+      const passages = await this.passageModel.find({ passageGroupId: new Types.ObjectId(id) }).sort({ order: 1 }).lean().exec();
+      return this.learning.enqueue({ kind: 'group', jobId: this.learning.sourceJob(source.importBatchId), examId: String(source.examId),
+        number: source.sourceOrder ?? source.order, part: source.part, before, after: { ...group, passages }, reason: 'saved-passage-edit' });
+    } catch (error) {
+      this.logger.error('Could not capture passage correction', error);
+      return { status: 'failed', message: 'Đề đã lưu nhưng chưa ghi được mẫu sửa bài đọc/lời thoại.' };
+    }
+  }
 
   constructor(
     @InjectModel(Question.name)
@@ -31,6 +48,7 @@ export class QuestionsService {
     private readonly mediaStorage: MediaStorageService,
     @InjectModel(Exam.name)
     private readonly examModel?: Model<ExamDocument>,
+    @Optional() private readonly learning?: PdfAiLearningService,
   ) {}
 
   private async deleteLocalAudio(url?: string, storageKey?: string) {
@@ -250,7 +268,8 @@ export class QuestionsService {
     }
 
     for (const passage of previousPassages) await this.deleteUnusedImage(passage.imageUrl);
-    return updated as PassageGroup;
+    const learning = await this.captureGroupEdit(id, { ...existingGroup.toObject(), passages: previousPassages });
+    return { ...updated, learning } as PassageGroup;
   }
 
   async removePassageGroup(id: string): Promise<{ deleted: boolean; deletedQuestionsCount: number }> {
@@ -291,6 +310,7 @@ export class QuestionsService {
     const isPassage = await this.passageModel.findById(id).exec();
     if (isPassage) {
       const group = await this.passageGroupModel.findById(isPassage.passageGroupId).exec();
+      const beforePassages = this.learning ? await this.passageModel.find({ passageGroupId: isPassage.passageGroupId }).sort({ order: 1 }).lean().exec() : [];
       this.validateReadingPassage(group?.part, { ...isPassage.toObject(), ...data });
       const { title, ...passageFields } = data;
       if (
@@ -315,7 +335,8 @@ export class QuestionsService {
       if (updated && data.imageUrl !== undefined && data.imageUrl !== isPassage.imageUrl) {
         await this.deleteUnusedImage(isPassage.imageUrl);
       }
-      return updated;
+      const learning = group ? await this.captureGroupEdit(String(group._id), { ...group.toObject(), passages: beforePassages }) : undefined;
+      return { ...updated, learning };
     }
     return this.updatePassageGroup(id, data);
   }
@@ -364,6 +385,12 @@ export class QuestionsService {
 
     const previous = await this.questionModel.findById(id).lean().exec();
     const updatePayload: Record<string, any> = { ...updateQuestionDto };
+    // Query validators need the effective Part when validating question script/options.
+    if (previous) updatePayload.part = updateQuestionDto.part ?? previous.part;
+    if (previous && [6, 7].includes(Number(updatePayload.part))) {
+      updatePayload.content = updateQuestionDto.content ?? previous.content;
+      updatePayload.imageUrl = updateQuestionDto.imageUrl ?? previous.imageUrl;
+    }
     const audioInputsChanged = Boolean(
       previous && [1, 2].includes(Number(previous.part)) && (
         (updateQuestionDto.content !== undefined && updateQuestionDto.content !== previous.content) ||
@@ -387,6 +414,12 @@ export class QuestionsService {
       await this.deleteUnusedImage(previous?.imageUrl);
     }
 
+    const jobId = this.learning?.sourceJob(previous?.importBatchId);
+    if (previous && jobId) {
+      const learning = await this.learning!.enqueue({ kind: 'question', jobId, examId: String(previous.examId), questionId: id,
+        number: previous.sourceOrder ?? previous.order, before: previous, after: updated, reason: 'saved-question-edit' });
+      return { ...updated, learning } as Question;
+    }
     return updated as Question;
   }
 
@@ -489,9 +522,16 @@ export class QuestionsService {
     const errors = validateImportDraft({ groups, questions }, part).filter((issue) => issue.severity === 'error');
     if (errors.length) throw new BadRequestException(errors.map((issue) => issue.message));
     const batchId = body.batchId;
+    const preserveSourceOrder = body.preserveSourceOrder === true;
+    if (body.preserveSourceOrder !== undefined && typeof body.preserveSourceOrder !== 'boolean') throw new BadRequestException('preserveSourceOrder phải là boolean.');
+    if (preserveSourceOrder) {
+      const ranges = [[1, 6], [7, 31], [32, 70], [71, 100], [101, 130], [131, 146], [147, 200]];
+      const [first, last] = ranges[part - 1];
+      if (questions.some((q: any) => q.order < first || q.order > last)) throw new BadRequestException(`Số câu Part ${part} phải từ ${first} đến ${last}.`);
+    }
     if (batchId !== undefined && (typeof batchId !== 'string' || !/^[a-zA-Z0-9-]{16,80}$/.test(batchId))) throw new BadRequestException('Mã lượt import không hợp lệ.');
-    const fingerprint = createHash('sha256').update(JSON.stringify({ part, groups, questions })).digest('hex');
-    const importLockKey = batchId ? `${examId}:${batchId}` : `${examId}:${fingerprint}`;
+    const fingerprint = createHash('sha256').update(JSON.stringify({ part, groups, questions, ...(preserveSourceOrder ? { preserveSourceOrder: true } : {}) })).digest('hex');
+    const importLockKey = preserveSourceOrder ? `${examId}:source-part:${part}` : batchId ? `${examId}:${batchId}` : `${examId}:${fingerprint}`;
     if (this.inFlightImports.has(importLockKey)) {
       throw new BadRequestException('Lượt import này đang được xử lý, vui lòng đợi trong giây lát và không bấm gửi lại.');
     }
@@ -505,7 +545,14 @@ export class QuestionsService {
         return { importedCount: saved.length, passageGroupsCount: new Set(saved.map((q) => q.passageGroupId?.toString()).filter(Boolean)).size, data: saved };
       };
       const savedBatch = await findSavedBatch();
-      if (savedBatch) return savedBatch;
+      if (savedBatch) {
+        const jobId = this.learning?.sourceJob(batchId);
+        const learning = jobId ? await this.learning!.enqueue({ kind: 'part', jobId, examId, after: { part, groups, questions }, reason: 'saved-ai-import' }) : undefined;
+        return { ...savedBatch, learning };
+      }
+      if (preserveSourceOrder && await this.questionModel.findOne({ examId: new Types.ObjectId(examId), order: { $in: questions.map((q: any) => q.order) } }).lean().exec()) {
+        throw new BadRequestException('Đề đã có số câu trong Part này. Không thể ghi đè; hãy kiểm tra nội dung đã lưu.');
+      }
       // Validate every document before writing groups, including Mongoose field constraints.
       for (const q of questions) {
         await new this.questionModel({ ...q, examId: new Types.ObjectId(examId), section, part }).validate();
@@ -532,11 +579,14 @@ export class QuestionsService {
           passageGroupId: groupMap.get(q.passageGroupTempId) || passageMap.get(q.passageTempId),
           content: q.content.trim(), options: q.options.map((o: any) => ({ key: o.key, text: o.text.trim() })), correctAnswer: q.correctAnswer,
           explanation: q.explanation?.trim() || '', imageUrl: q.imageUrl?.trim(), audioUrl: q.audioUrl?.trim(),
-          order: (highest?.order || 0) + i + 1, isActive: q.isActive ?? true,
+          order: preserveSourceOrder ? q.order : (highest?.order || 0) + i + 1, isActive: q.isActive ?? true,
           ...(batchId ? { importBatchId: batchId, importIndex: i, importFingerprint: fingerprint } : {}),
+          ...(preserveSourceOrder ? { sourceOrder: q.order } : {}),
         }));
         const inserted = await this.questionModel.insertMany(docs, { ordered: true });
-        return { importedCount: inserted.length, passageGroupsCount: createdGroupIds.length, data: inserted };
+        const jobId = this.learning?.sourceJob(batchId);
+        const learning = jobId ? await this.learning!.enqueue({ kind: 'part', jobId, examId, after: { part, groups, questions }, reason: 'saved-ai-import' }) : undefined;
+        return { importedCount: inserted.length, passageGroupsCount: createdGroupIds.length, data: inserted, learning };
       } catch (error) {
         // Remove only IDs allocated by this request; no existing exam data is touched.
         try {

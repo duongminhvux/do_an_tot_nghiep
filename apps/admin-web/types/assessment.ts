@@ -71,6 +71,8 @@ export interface CreateExamDto {
 export interface UpdateExamDto extends Partial<CreateExamDto> {}
 
 export interface QueryExamDto {
+  sortBy?: 'name' | 'totalQuestions' | 'durationMinutes' | 'order' | 'isActive';
+  sortOrder?: 'asc' | 'desc';
   search?: string;
   q?: string;
   type?: ExamType;

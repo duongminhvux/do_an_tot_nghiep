@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
+import { CreateExamChoiceDialog } from './create-exam-choice-dialog';
 import { useParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -40,6 +40,7 @@ export function AddExamToGroupDialog({
   const queryClient = useQueryClient();
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [createChoiceOpen, setCreateChoiceOpen] = useState(false);
   const [selectedExamIds, setSelectedExamIds] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -96,6 +97,7 @@ export function AddExamToGroupDialog({
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl bg-white p-6 rounded shadow-xl border border-slate-200 flex flex-col max-h-[85vh]">
         <DialogHeader className="space-y-1.5 pb-3 border-b border-slate-100 shrink-0">
@@ -113,14 +115,13 @@ export function AddExamToGroupDialog({
                 </DialogDescription>
               </div>
             </div>
-            <Link
-              href={`/${locale}/assessment/create?groupId=${groupId}`}
-              onClick={() => onOpenChange(false)}
+            <button
+              onClick={() => { onOpenChange(false); setCreateChoiceOpen(true); }}
               className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
             >
               <Plus className="h-3 w-3" />
               <span>{t('examGroups.addExamDialog.createNewExam')}</span>
-            </Link>
+            </button>
           </div>
         </DialogHeader>
 
@@ -235,5 +236,7 @@ export function AddExamToGroupDialog({
         </div>
       </DialogContent>
     </Dialog>
+    <CreateExamChoiceDialog open={createChoiceOpen} onOpenChange={setCreateChoiceOpen} locale={locale} groupId={groupId} />
+    </>
   );
 }

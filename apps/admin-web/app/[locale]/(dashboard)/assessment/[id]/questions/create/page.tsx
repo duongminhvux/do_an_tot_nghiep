@@ -759,7 +759,7 @@ export default function CreateQuestionPage() {
   const handleSingleSubmit = async (asDraft: boolean = false) => {
     if (uploadInProgress.current || submitInProgress.current || isSubmitting) return;
     setErrorMessage(null);
-    if (!content.trim()) {
+    if (![1, 2].includes(part) && !content.trim()) {
       showError(t('createQuestionPage.msgInputQuestionContent'));
       return;
     }
@@ -773,13 +773,8 @@ export default function CreateQuestionPage() {
       }
     }
 
-    // Part 2: audio không bắt buộc khi tạo; admin có thể generate Kokoro sau.
-    if (part === 2) {
-      if (!optionA.trim() || !optionB.trim() || !optionC.trim()) {
-        showError(t('createQuestionPage.msgPart2OptionsRequired'));
-        return;
-      }
-    } else {
+    // Part 1/2 choices are spoken in the audio; written option text is optional.
+    if (![1, 2].includes(part)) {
       if (!optionA.trim() || !optionB.trim() || !optionC.trim() || !optionD.trim()) {
         showError(t('createQuestionPage.msgOptionsRequired'));
         return;

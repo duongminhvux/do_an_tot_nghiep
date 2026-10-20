@@ -32,7 +32,7 @@ export function EditQuestionDialog({
   passagesList,
   examId,
 }: EditQuestionDialogProps) {
-  const { t } = useTranslation('assessment');
+  const { t, i18n } = useTranslation('assessment');
   const queryClient = useQueryClient();
 
   const [content, setContent] = useState('');
@@ -98,8 +98,12 @@ export function EditQuestionDialog({
         draftUploads.finishSaving();
       }
     },
-    onSuccess: () => {
+    onSuccess: (res: any) => {
       queryClient.invalidateQueries({ queryKey: ['admin-exam-questions', examId] });
+      if (res?.data?.learning?.status === 'failed') {
+        showError(res.data.learning.message);
+        return;
+      }
       onOpenChange(false);
     },
     onError: (err: any) => {
@@ -134,17 +138,12 @@ export function EditQuestionDialog({
     if (isUploading || updateMutation.isPending) return;
     setErrorMessage(null);
 
-    if (!content.trim()) {
+    if (![1, 2].includes(part) && !content.trim() && !([6, 7].includes(part) && imageUrl.trim())) {
       showError(t('createQuestionPage.msgInputQuestionContent'));
       return;
     }
 
-    if (part === 2) {
-      if (!optionA.trim() || !optionB.trim() || !optionC.trim()) {
-        showError(t('createQuestionPage.msgPart2OptionsRequired'));
-        return;
-      }
-    } else {
+    if (![1, 2].includes(part)) {
       if (!optionA.trim() || !optionB.trim() || !optionC.trim() || !optionD.trim()) {
         showError(t('createQuestionPage.msgOptionsRequired'));
         return;
@@ -179,7 +178,7 @@ export function EditQuestionDialog({
       payload.audioUrl = audioUrl.trim();
     } else if (part === 2) {
       payload.audioUrl = audioUrl.trim();
-    } else if (part === 7) {
+    } else if ([6, 7].includes(part)) {
       payload.imageUrl = imageUrl.trim();
     }
 
@@ -322,7 +321,7 @@ export function EditQuestionDialog({
           {/* Question Content */}
           <div className="space-y-1 text-xs">
             <label className="font-semibold text-slate-700">
-              {t('createQuestionPage.questionContentLabel')} <span className="text-red-500">*</span>
+              {part === 1 || part === 2 ? (i18n.language.startsWith('vi') ? 'Script câu hỏi và lựa chọn' : 'Listening question and answer script') : t('createQuestionPage.questionContentLabel')} <span className="text-red-500">*</span>
             </label>
             <textarea
               rows={part === 5 ? 4 : 3}
@@ -443,7 +442,7 @@ export function EditQuestionDialog({
           </div>
 
           {/* Media Links (Image / Audio) - STRICTLY CONDITIONAL: Part 5 NEVER renders this! */}
-          {part !== 5 && (part === 1 || part === 2 || part === 7) && (
+          {part !== 5 && (part === 1 || part === 2 || part === 6 || part === 7) && (
             <div className="space-y-2 pt-1 border-t border-slate-100">
               <label className="text-xs font-semibold text-slate-700">
                 {t('createQuestionPage.questionResourcesCardTitle')}
@@ -451,7 +450,7 @@ export function EditQuestionDialog({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 {/* Image URL only for Part 1 or Part 7 */}
-                {(part === 1 || part === 7) && (
+                {(part === 1 || part === 6 || part === 7) && (
                   <ImageUploadField value={imageUrl} onChange={setImageUrl}
                     onUploaded={draftUploads.track} onBusyChange={setIsUploading}
                     onError={setErrorMessage} disabled={updateMutation.isPending || isUploading} />

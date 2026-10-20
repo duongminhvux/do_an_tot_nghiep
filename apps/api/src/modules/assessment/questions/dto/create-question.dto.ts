@@ -7,7 +7,6 @@ export class QuestionOptionDto {
   key: 'A' | 'B' | 'C' | 'D';
 
   @IsString()
-  @IsNotEmpty()
   text: string;
 }
 
@@ -33,7 +32,6 @@ export class CreateQuestionDto {
   part: number;
 
   @IsString()
-  @IsNotEmpty()
   content: string;
 
   @ValidateNested({ each: true })

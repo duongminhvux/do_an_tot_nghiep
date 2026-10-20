@@ -297,7 +297,12 @@ export function validateImportDraft(
       : `Câu ${q?.order || i + 1}`;
     const add = (vi, english) =>
       issue(`${label}: ${vi}`, `${label}: ${english}`, target);
-    if (!hasText(q?.content)) add("thiếu nội dung.", "content is missing.");
+    if (!hasText(q?.content)) {
+      if ([1, 2].includes(part))
+        add("thiếu script câu hỏi và các lựa chọn được đọc.", "question script and spoken choices are missing.");
+      else if (!([6, 7].includes(part) && hasText(q?.imageUrl) && validUrl(q.imageUrl)))
+        add("thiếu nội dung.", "content is missing.");
+    }
     for (const field of ["explanation", "audioUrl", "imageUrl"])
       if (q?.[field] !== undefined && typeof q[field] !== "string")
         add(`${field} phải là văn bản.`, `${field} must be a string.`);
@@ -327,7 +332,9 @@ export function validateImportDraft(
       );
     }
     for (const opt of options)
-      if (!hasText(opt?.text))
+      if (typeof opt?.text !== "string")
+        add(`lựa chọn ${opt?.key || "?"} phải là văn bản.`, `option ${opt?.key || "?"} must be a string.`);
+      else if (![1, 2].includes(part) && !hasText(opt.text))
         add(
           `lựa chọn ${opt?.key || "?"} chưa có nội dung.`,
           `option ${opt?.key || "?"} is empty.`,
@@ -380,13 +387,6 @@ export function validateImportDraft(
       issue(
         `${label}: chưa có ảnh (Part 1 bắt buộc phải có hình ảnh).`,
         `${label}: image is missing (Part 1 requires an image).`,
-        target,
-        "error",
-      );
-    if ([1, 2].includes(part) && !hasText(q?.audioUrl))
-      issue(
-        `${label}: chưa có audio (Part ${part} bắt buộc phải có audio).`,
-        `${label}: audio is missing (Part ${part} requires an audio file).`,
         target,
         "error",
       );
@@ -473,17 +473,17 @@ export function validateImportDraft(
       }
       if ([3, 4].includes(part) && !hasText(p.audioUrl))
         issue(
-          "Bài nghe chưa có audio (Part 3 & 4 bắt buộc phải có audio).",
-          "Listening exercise has no audio (Part 3 & 4 require an audio file).",
+          "Bài nghe chưa có audio — có thể bổ sung sau khi lưu.",
+          "Listening exercise has no audio — can be added later.",
           pt,
-          "error",
+          "warning",
         );
       if ([3, 4].includes(part) && !hasText(p.audioUrl) && !hasText(p.content))
         issue(
-          "Bài nghe cần audio hoặc transcript.",
-          "Listening exercise needs audio or a transcript.",
+          "Bài nghe chưa có audio hoặc transcript — có thể bổ sung sau.",
+          "Listening exercise needs audio or a transcript — can be added later.",
           pt,
-          "error",
+          "warning",
         );
       for (const field of ["imageUrl", "audioUrl"])
         if (hasText(p[field]) && !validUrl(p[field]))

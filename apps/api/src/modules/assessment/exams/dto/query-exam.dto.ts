@@ -1,8 +1,16 @@
-import { IsBoolean, IsEnum, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsBoolean, IsEnum, IsNumber, IsOptional, IsString, Min, IsIn } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { ExamType } from './create-exam.dto.js';
 
 export class QueryExamDto {
+  @IsOptional()
+  @IsIn(['name', 'totalQuestions', 'durationMinutes', 'order', 'isActive'])
+  sortBy?: 'name' | 'totalQuestions' | 'durationMinutes' | 'order' | 'isActive';
+
+  @IsOptional()
+  @IsIn(['asc', 'desc'])
+  sortOrder?: 'asc' | 'desc';
+
   @IsString()
   @IsOptional()
   search?: string;

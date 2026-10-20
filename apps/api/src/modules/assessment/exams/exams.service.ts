@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -13,6 +14,29 @@ import { QueryExamDto } from './dto/query-exam.dto.js';
 
 @Injectable()
 export class ExamsService {
+  private orderQueue: Promise<unknown> = Promise.resolve();
+
+  private ordered<T>(work: () => Promise<T>): Promise<T> {
+    const pending = this.orderQueue.then(work);
+    this.orderQueue = pending.catch(() => undefined);
+    return pending;
+  }
+
+  private async normalizeOrders(moveId?: string, position?: number) {
+    const rows = await this.examModel.find({ isDeleted: { $ne: true } })
+      .sort({ order: 1, createdAt: -1, _id: 1 }).select('_id order').lean().exec();
+    if (moveId) {
+      const index = rows.findIndex(row => String(row._id) === moveId);
+      if (index < 0) throw new NotFoundException('Exam not found');
+      const [moved] = rows.splice(index, 1);
+      rows.splice(Math.max(0, Math.min(rows.length, (position || rows.length + 1) - 1)), 0, moved);
+    }
+    const operations = rows.flatMap((row, index) => row.order === index + 1 ? [] : [{
+      updateOne: { filter: { _id: row._id, isDeleted: { $ne: true } }, update: { $set: { order: index + 1 } } },
+    }]);
+    if (operations.length) await this.examModel.bulkWrite(operations);
+    return rows.map((row, index) => ({ id: String(row._id), order: index + 1 }));
+  }
   constructor(
     @InjectModel(Exam.name)
     private readonly examModel: Model<ExamDocument>,
@@ -37,6 +61,10 @@ export class ExamsService {
   }
 
   async create(createExamDto: CreateExamDto): Promise<Exam> {
+    return this.ordered(() => this.createOrdered(createExamDto));
+  }
+
+  private async createOrdered(createExamDto: CreateExamDto): Promise<Exam> {
     const lang = this.getLang();
     const trimmedName = createExamDto.name.trim();
 
@@ -61,9 +89,9 @@ export class ExamsService {
     }
 
     let order = createExamDto.order;
-    if (order === undefined || order === null || order < 0) {
-      const count = await this.examModel.countDocuments({ isDeleted: { $ne: true } });
-      order = count + 1;
+    if (order === undefined || order === null || order <= 0) {
+      const highest = await this.examModel.findOne({ isDeleted: { $ne: true } }).sort({ order: -1 }).select('order').lean().exec();
+      order = (highest?.order || 0) + 1;
     }
 
     const durationMinutes =
@@ -91,7 +119,10 @@ export class ExamsService {
       groupId,
     });
 
-    return createdExam.save();
+    const saved = await createdExam.save();
+    const ranks = await this.normalizeOrders(String(saved._id), createExamDto.order);
+    saved.order = ranks.find(row => row.id === String(saved._id))!.order;
+    return saved;
   }
 
   async findAll(query: QueryExamDto): Promise<{ data: Exam[]; total: number; page: number; limit: number }> {
@@ -127,12 +158,18 @@ export class ExamsService {
     }
 
     const skip = (page - 1) * limit;
+    const sortable = ['name', 'totalQuestions', 'durationMinutes', 'order', 'isActive'];
+    const field = query.sortBy && sortable.includes(query.sortBy) ? query.sortBy : undefined;
+    const sort: Record<string, 1 | -1> = field
+      ? { [field]: query.sortOrder === 'desc' ? -1 : 1, _id: 1 }
+      : { order: 1, createdAt: -1, _id: 1 };
 
     const [data, total] = await Promise.all([
       this.examModel
         .find(filter)
         .populate('groupId', 'name slug')
-        .sort({ order: 1, createdAt: -1 })
+        .collation({ locale: 'vi', numericOrdering: true })
+        .sort(sort)
         .skip(skip)
         .limit(limit)
         .lean()
@@ -171,6 +208,10 @@ export class ExamsService {
   }
 
   async update(id: string, updateExamDto: UpdateExamDto): Promise<Exam> {
+    return this.ordered(() => this.updateOrdered(id, updateExamDto));
+  }
+
+  private async updateOrdered(id: string, updateExamDto: UpdateExamDto): Promise<Exam> {
     const lang = this.getLang();
     if (!Types.ObjectId.isValid(id)) {
       throw new NotFoundException(
@@ -178,7 +219,7 @@ export class ExamsService {
       );
     }
 
-    const { groupId, ...restDto } = updateExamDto;
+    const { groupId, order, ...restDto } = updateExamDto;
     const updateData: Record<string, any> = { ...restDto };
 
     if (updateExamDto.name) {
@@ -233,6 +274,10 @@ export class ExamsService {
       );
     }
 
+    if (order !== undefined) {
+      const ranks = await this.normalizeOrders(id, order);
+      updatedExam.order = ranks.find(row => row.id === id)!.order;
+    }
     return updatedExam;
   }
 
@@ -259,6 +304,10 @@ export class ExamsService {
   }
 
   async remove(id: string): Promise<Exam> {
+    return this.ordered(() => this.removeOrdered(id));
+  }
+
+  private async removeOrdered(id: string): Promise<Exam> {
     const lang = this.getLang();
     if (!Types.ObjectId.isValid(id)) {
       throw new NotFoundException(
@@ -283,10 +332,15 @@ export class ExamsService {
       )
       .exec();
 
+    await this.normalizeOrders();
     return deletedExam!;
   }
 
   async restore(id: string): Promise<Exam> {
+    return this.ordered(() => this.restoreOrdered(id));
+  }
+
+  private async restoreOrdered(id: string): Promise<Exam> {
     const lang = this.getLang();
     if (!Types.ObjectId.isValid(id)) {
       throw new NotFoundException(
@@ -304,21 +358,25 @@ export class ExamsService {
       );
     }
 
+    const ranks = await this.normalizeOrders(id, 0);
+    restored.order = ranks.find(row => row.id === id)!.order;
     return restored;
   }
 
   async reorderExams(items: { id: string; order: number }[]): Promise<void> {
-    const operations = items
-      .filter((item) => Types.ObjectId.isValid(item.id))
-      .map((item) => ({
-        updateOne: {
-          filter: { _id: new Types.ObjectId(item.id) },
-          update: { $set: { order: item.order } },
-        },
-      }));
-
-    if (operations.length > 0) {
-      await this.examModel.bulkWrite(operations);
-    }
+    await this.ordered(async () => {
+      if (!Array.isArray(items)) throw new BadRequestException('Danh sách thứ tự không hợp lệ.');
+      if (!items.length) { await this.normalizeOrders(); return; }
+      const rows = await this.examModel.find({ isDeleted: { $ne: true } }).select('_id').lean().exec();
+      const ids = new Set(rows.map(row => String(row._id)));
+      if (items.length !== ids.size || new Set(items.map(item => item?.id)).size !== ids.size ||
+          new Set(items.map(item => item?.order)).size !== ids.size || items.some(item => !ids.has(item?.id) ||
+            !Number.isInteger(item?.order) || item.order < 1 || item.order > ids.size)) {
+        throw new BadRequestException('Cần đầy đủ các đề với thứ tự 1 đến tổng số đề, không trùng vị trí.');
+      }
+      await this.examModel.bulkWrite(items.map(item => ({ updateOne: {
+        filter: { _id: new Types.ObjectId(item.id), isDeleted: { $ne: true } }, update: { $set: { order: item.order } },
+      } })));
+    });
   }
 }

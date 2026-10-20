@@ -1,5 +1,102 @@
 # Docker stack for the TOEIC platform
 
+## Local AI: import an existing TOEIC PDF (NVIDIA GPU)
+
+### Create an ETS test from four PDFs
+
+The exam-list **Create exam** button now opens **Manual / Local AI** choices.
+The AI flow accepts separate Listening, Reading, Listening answer-key and Reading
+answer-key PDFs. Select the Test number (1–10) before starting; ETS answer PDFs
+can contain several Tests per page. The importer clips the selected table by its
+PDF coordinates, requires 100 LC plus 100 RC answers, and matches question numbers
+1–100 / 101–200. Answer extraction does not depend on the language model.
+
+Scanned question booklets are OCRed locally with Tesseract. Two-column questions
+are recognized separately to preserve their answer choices. The supplied ETS
+Part 6 layout is read as a full-width passage followed by two answer columns;
+standalone blank numbers and group headers are retained during extraction. The
+layout supports extracting the six Part 1 photographs; rendered source-page
+previews are kept under `storage/pdf-ai/` and served by the API for review.
+Only after recognition finishes can the admin create an inactive exam draft and
+review/save individual Parts. Starting recognition does not create an exam.
+
+The four supplied ETS PDFs contain answer keys, **not Listening audio or
+transcripts**. Unprinted questions/options remain empty; shared Listening groups
+have empty transcripts and require audio to be supplied before saving. The model
+must not manufacture missing listening content. Missing OCR question numbers are
+retained as visibly incomplete draft slots for review.
+
+Inference requests contain at most eight recognized question numbers while keeping
+the full overlapping source window for shared passages. If Ollama reports a
+truncated output (`done_reason=length`), the service automatically retries smaller
+question scopes. It never parses truncated JSON or asks the admin to cut the PDFs.
+If even a single question cannot be read, its omission is reported for review;
+missing text is not invented.
+
+Transient Ollama HTTP 429/500/502/503/504 and transport failures are retried up to
+three attempts per request with short backoff. Persistent failures retain the
+Ollama error detail rather than returning only a generic HTTP status. Invalid
+requests and missing models fail immediately; partial responses are never saved.
+The model is kept loaded for five minutes between requests (override with
+`PDF_AI_KEEP_ALIVE` in the PDF service environment), avoiding rapid unload/reload
+cycles during long extraction requests.
+Scoped requests also constrain question numbers and array lengths in the JSON
+schema. Each printed Part 7 exercise is sent with its own complete source segment
+and at most one passage group, excluding unrelated exercises from that request.
+
+Part 6's four-blank groups are parsed from the printed layout when all four answer
+blocks can be identified; each question references its numbered blank. Part 7
+inference is scoped to each printed exercise header so unrelated passages are not
+merged. LC/RC question ranges also exclude page-footer numbers from extraction.
+
+The local-AI Compose override mounts `./storage/pdf-ai` into the PDF service.
+Restart/recreate that service after changing the mount. Admin can also run on the
+host with `pnpm --filter admin_web build` then `pnpm --filter admin_web start`;
+keep its Docker container stopped when using the same port 3001.
+
+The optional PDF AI service reads text-based PDFs and uses a local Ollama model to
+extract questions, answer choices and shared passages. It does not train a model
+or send PDF content to a cloud API. Internet access is needed initially to download
+images and the model. The default model is `qwen2.5:7b`; change `OLLAMA_MODEL` in the
+root `.env` if needed. Windows Docker Desktop needs its WSL2 NVIDIA GPU support.
+
+Use the same Compose files for subsequent `up` operations so the API retains its
+`PDF_AI_URL=http://pdf-ai:8003` configuration. In PowerShell, `docker-compose`
+can be used in place of `docker compose` when the CLI plugin is not on the path.
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.ai.yml up -d --build ollama pdf-ai redis
+docker compose -f docker-compose.yml -f docker-compose.ai.yml exec ollama ollama pull qwen2.5:7b
+docker compose -f docker-compose.yml -f docker-compose.ai.yml up -d --build --no-deps api admin-web
+```
+
+In admin, create/open a TOEIC exam, choose **Import questions → AI local · PDF**,
+then upload the exam PDF (up to 25 MB / 150 pages). If answers are in a separate
+PDF, upload that file too. The AI detects Parts, retains original question numbers
+in its draft, and displays progress while processing overlapping page windows.
+Review each detected Part using the existing question editor and save it into the
+exam. Saved questions use the application's existing append/import workflow.
+The operation never overwrites existing questions. Download the JSON result to
+keep a copy; in-memory job results expire after 24 hours or a service restart.
+
+Missing answers stay blank, so the existing validator blocks saving incomplete
+questions. Answer evidence is checked for presence in the source, but must still
+be reviewed for correctness. The single-exam uploader requires selectable text;
+use the four-PDF creation flow for scan OCR and Part 1 image extraction. Importing
+Listening audio is a separate step. Listening PDFs without transcripts/options cannot
+be reconstructed from printed question text alone. Existing image/audio upload
+fields remain available during review. Generation of Listening audio continues
+through the separate Kokoro feature once its source text has been supplied.
+
+Local API development uses `PDF_AI_URL=http://localhost:8003`. PDF text and Ollama
+inference run locally; the PDF AI and Ollama ports bind only to `127.0.0.1`.
+
+```powershell
+# Unit tests (no downloaded model required)
+cd services/pdf-ai
+python -m unittest discover -v
+```
+
 The stack contains six services:
 
 - `web`: Next.js user application on `http://localhost:3000`

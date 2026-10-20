@@ -39,6 +39,7 @@ export function EditExamDialog({
   const [type, setType] = useState<ExamType>('TOEIC');
   const [durationMinutes, setDurationMinutes] = useState<number>(120);
   const [totalQuestions, setTotalQuestions] = useState<number>(200);
+  const [order, setOrder] = useState<number>(1);
   const [description, setDescription] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -57,10 +58,11 @@ export function EditExamDialog({
   useEffect(() => {
     if (exam) {
       setName(exam.name || '');
-      setGroupId((exam.groupId as any) || (exam.group?._id as any) || '');
+      setGroupId(typeof exam.groupId === 'string' ? exam.groupId : (exam.groupId as any)?._id || exam.group?._id || '');
       setType(exam.type || 'TOEIC');
       setDurationMinutes(exam.durationMinutes || 120);
       setTotalQuestions(exam.totalQuestions || 200);
+      setOrder(exam.order || 1);
       setDescription(exam.description || '');
       setIsActive(exam.isActive ?? true);
       setErrorMessage(null);
@@ -102,6 +104,7 @@ export function EditExamDialog({
       type,
       durationMinutes: Number(durationMinutes) || 120,
       totalQuestions: Number(totalQuestions) || 200,
+      ...(order !== exam?.order ? { order } : {}),
       description: description.trim(),
       isActive,
     });
@@ -196,6 +199,11 @@ export function EditExamDialog({
             </div>
           </div>
 
+          <label className="block space-y-1 text-xs font-semibold text-slate-700">
+            <span>{t('table.order')}</span>
+            <input type="number" min={1} step={1} required value={order} onChange={e => setOrder(Number(e.target.value))}
+              className="w-full h-8 px-3 rounded border border-slate-300 text-xs focus:outline-none focus:border-blue-500 text-slate-900" />
+          </label>
           {/* Mô tả */}
           <div className="space-y-1">
             <label className="text-xs font-semibold text-slate-700">

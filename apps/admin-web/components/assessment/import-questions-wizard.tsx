@@ -55,24 +55,39 @@ export function ImportQuestionsWizard({
   locale = "vi",
   onSuccess,
   onBusyChange,
+  initialDraft,
+  initialPart,
+  onImported,
+  initialBatchId,
+  preserveSourceOrder = false,
+  onImportConflict,
+  onDraftChange,
 }: {
   exam: ExamItem;
   locale?: string;
   onSuccess?: () => void;
   onBusyChange?: (busy: boolean) => void;
+  initialDraft?: ImportDraft;
+  initialPart?: number;
+  onImported?: () => void;
+  initialBatchId?: string;
+  preserveSourceOrder?: boolean;
+  onImportConflict?: () => void;
+  onDraftChange?: (draft: ImportDraft, part: number) => void;
 }) {
   const en = locale === "en";
   const tr = (vi: string, english: string) => (en ? english : vi);
   const queryClient = useQueryClient();
   const parts = useMemo(() => getAvailableParts(exam, locale), [exam, locale]);
-  const [partId, setPartId] = useState(() => parts[0]?.id || 1);
+  const [partId, setPartId] = useState(() => initialPart || parts[0]?.id || 1);
   const part = parts.find((p) => p.id === partId) || parts[0];
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(initialDraft ? 3 : 1);
   const [mode, setMode] = useState<"text" | "file">("text");
   const [source, setSource] = useState("");
   const [file, setFile] = useState<File | null>(null);
-  const [draft, setDraft] = useState<ImportDraft>(emptyDraft);
-  const batchId = useMemo(() => crypto.randomUUID(), [draft]);
+  const [draft, setDraft] = useState<ImportDraft>(initialDraft || emptyDraft);
+  useEffect(() => { onDraftChange?.(draft, partId); }, [draft, partId, onDraftChange]);
+  const batchId = useMemo(() => initialBatchId || crypto.randomUUID(), [draft, initialBatchId]);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState<Record<string, boolean>>({});
   const [error, setError] = useState("");
@@ -146,8 +161,8 @@ export function ImportQuestionsWizard({
     document
       .getElementById(
         issue.questionIndex !== undefined
-          ? `import-question-${issue.questionIndex}`
-          : `import-group-${issue.groupId}`,
+          ? `import-question-${partId}-${issue.questionIndex}`
+          : `import-group-${partId}-${issue.groupId}`,
       )
       ?.scrollIntoView({ behavior: "smooth", block: "center" });
 
@@ -248,6 +263,7 @@ export function ImportQuestionsWizard({
         part: part.id,
         section: part.section,
         batchId,
+        ...(preserveSourceOrder ? { preserveSourceOrder: true } : {}),
         passageGroups: draft.groups.map((g) => ({
           tempId: g.id,
           title: g.title,
@@ -274,11 +290,13 @@ export function ImportQuestionsWizard({
       });
       const result = response.data;
       uploads.commit(urls);
+      if (result?.learning?.status === "failed") setError(result.learning.message || "Đề đã lưu nhưng chưa ghi được mẫu sửa lỗi.");
       setSaved(true);
+      onImported?.();
       setNotice(
         tr(
-          `Đã thêm ${result?.importedCount || draft.questions.length} câu hỏi vào cuối đề.`,
-          `Added ${result?.importedCount || draft.questions.length} questions to the end of the exam.`,
+          preserveSourceOrder ? `Đã lưu ${result?.importedCount || draft.questions.length} câu, giữ nguyên số câu trong PDF.` : `Đã thêm ${result?.importedCount || draft.questions.length} câu hỏi vào cuối đề.`,
+          preserveSourceOrder ? `Saved ${result?.importedCount || draft.questions.length} questions with their original PDF numbers.` : `Added ${result?.importedCount || draft.questions.length} questions to the end of the exam.`,
         ),
       );
       await Promise.all(
@@ -288,6 +306,7 @@ export function ImportQuestionsWizard({
       );
     } catch (err) {
       const response = (err as { response?: { status?: number } }).response;
+      if (messageOf(err)?.includes("Lượt import đã tồn tại") || messageOf(err)?.includes("Đề đã có số câu")) onImportConflict?.();
       if (!response || messageOf(err)?.includes("chưa dọn sạch dữ liệu")) {
         // A response can be lost after saving. Preserve assets that may now be referenced.
         uploads.commit(urls);
@@ -452,7 +471,10 @@ export function ImportQuestionsWizard({
     const questionIssues = issues.filter((i) => i.questionIndex === index);
     return (
       <article
-        id={`import-question-${index}`}
+        id={`import-question-${partId}-${index}`}
+        data-import-part={partId}
+        data-question-order={q.order}
+        tabIndex={-1}
         key={index}
         className={`scroll-mt-6 rounded border p-4 space-y-3 ${questionIssues.some((i) => i.severity === "error") ? "border-red-200 bg-red-50/20" : "border-slate-200 bg-white"}`}
       >
@@ -492,15 +514,25 @@ export function ImportQuestionsWizard({
             <Trash2 className="h-4 w-4" />
           </button>
         </div>
-        <label className="block space-y-1 text-xs font-medium text-slate-600">
-          {tr("Nội dung câu hỏi", "Question content")}
+        {q.sourcePages?.length ? <p className="text-xs text-slate-500">{tr("Trang PDF", "PDF pages")}: {q.sourcePages.join(', ')}</p> : null}
+        {q.scriptPages?.length ? <p className="text-xs text-blue-600">{tr("Trang PDF script Listening", "Listening script PDF pages")}: {q.scriptPages.join(', ')}</p> : null}
+        {q.answerEvidence ? <p className="whitespace-pre-wrap rounded bg-slate-50 p-2 text-xs text-slate-600">{tr("Trích dẫn đáp án trong PDF", "Answer key evidence")}: {q.answerEvidence}</p> : null}
+        {[1, 2].includes(part.id) && <p className="rounded bg-blue-50 p-3 text-xs text-blue-800">{tr("Bắt buộc nhập script câu hỏi và các lựa chọn A/B/C/D (Part 1) hoặc A/B/C (Part 2) vào ô nội dung bên dưới. Các ô đáp án chỉ chọn chữ cái đúng.", "Enter the question script and all spoken choices in the content field below. The answer controls only select the correct letter.")}</p>}
+        {[6, 7].includes(part.id) && q.imageUrl && <div className="block space-y-1 text-xs text-slate-600">
+          <p>{tr("Ảnh câu hỏi (thay cho nội dung chữ; đáp án giữ nguyên)", "Question image (replaces question text; choices stay unchanged)")}</p>
+          <ImageUploadField value={q.imageUrl || ""} onChange={(url) => updateQuestion(index, {imageUrl: url, ...(url ? {content: ""} : {})})}
+            onUploaded={uploads.track} onBusyChange={(value) => setUploading((prev) => ({...prev, [`q-${index}`]: value}))}
+            onError={setError} disabled={locked} />
+        </div>}
+        {(![6, 7].includes(part.id) || !q.imageUrl || Boolean(q.content)) && <label className="block space-y-1 text-xs font-medium text-slate-600">
+          {tr([1, 2].includes(part.id) ? "Script câu hỏi và lựa chọn (bắt buộc)" : "Nội dung câu hỏi", [1, 2].includes(part.id) ? "Question and answer script (required)" : "Question content")}
           <AutoResizeTextarea
             minRows={2}
             value={q.content}
             onChange={(e) => updateQuestion(index, { content: e.target.value })}
             className={fieldClass}
           />
-        </label>
+        </label>}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {q.options.map((option, oi) => (
             <label
@@ -509,7 +541,7 @@ export function ImportQuestionsWizard({
             >
               <input
                 type="radio"
-                name={`answer-${index}`}
+                name={`answer-${part.id}-${index}`}
                 aria-label={tr(
                   `Chọn đáp án ${option.key}`,
                   `Select answer ${option.key}`,
@@ -521,7 +553,7 @@ export function ImportQuestionsWizard({
                 className="mt-2 accent-emerald-600"
               />
               <span className="mt-1.5 text-xs font-bold">{option.key}</span>
-              <AutoResizeTextarea
+              {(![1, 2].includes(part.id) || Boolean(option.text)) && <AutoResizeTextarea
                 aria-label={tr(
                   `Nội dung lựa chọn ${option.key}`,
                   `Option ${option.key} content`,
@@ -536,7 +568,7 @@ export function ImportQuestionsWizard({
                   })
                 }
                 className="min-w-0 flex-1 bg-transparent p-1 text-sm focus:outline-none"
-              />
+              />}
               {q.options.filter((o) => o.key === option.key).length > 1 ||
               !optionKeys.includes(option.key) ? (
                 <button
@@ -659,7 +691,7 @@ export function ImportQuestionsWizard({
       />
     )}
     <div aria-busy={busy} className={`w-full min-w-0 max-w-none space-y-5 ${busy ? 'pointer-events-none select-none' : ''}`}>
-      <ol
+      {!preserveSourceOrder && <ol
         className="grid grid-cols-3 gap-2"
         aria-label={tr("Các bước import", "Import steps")}
       >
@@ -676,7 +708,7 @@ export function ImportQuestionsWizard({
             {i + 1}. {label}
           </li>
         ))}
-      </ol>
+      </ol>}
       {error && (
         <div
           id="import-wizard-error-alert"
@@ -1083,7 +1115,7 @@ export function ImportQuestionsWizard({
                 {draft.groups.map((g) => (
                   <section
                     key={g.id}
-                    id={`import-group-${g.id}`}
+                    id={`import-group-${partId}-${g.id}`}
                     className="scroll-mt-6 rounded border border-blue-200 bg-blue-50/40 p-4 space-y-4"
                   >
                     <div className="flex items-center gap-3">
@@ -1199,6 +1231,14 @@ export function ImportQuestionsWizard({
                               </select>
                             </label>
                           )}
+                          {[3, 4].includes(part.id) && <div className="space-y-2 text-xs text-slate-600">
+                            <p className="font-medium">{tr("Hình minh họa chung cho nhóm câu nghe (tùy chọn)", "Shared Listening graphic (optional)")}</p>
+                            <ImageUploadField value={p.imageUrl || ""}
+                              onChange={(url) => updatePassage(g.id, p.id, {imageUrl: url})}
+                              onUploaded={uploads.track}
+                              onBusyChange={(value) => setUploading((prev) => ({...prev, [p.id]: value}))}
+                              onError={setError} disabled={locked} />
+                          </div>}
                           {part.hasAudio && (
                             <label className="block space-y-1 text-xs text-slate-600">
                               Audio URL
@@ -1221,7 +1261,7 @@ export function ImportQuestionsWizard({
                               )}
                             </label>
                           )}
-                          {p.inputMode === "IMAGE" &&
+                          {(p.inputMode || (p.imageUrl ? "IMAGE" : "TEXT")) === "IMAGE" &&
                           [6, 7].includes(part.id) ? (
                             <ImageUploadField
                               value={p.imageUrl || ""}
@@ -1340,7 +1380,7 @@ export function ImportQuestionsWizard({
                 </button>
               </fieldset>
               <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 rounded border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
-                <button
+                {!preserveSourceOrder && <button
                   type="button"
                   disabled={locked}
                   onClick={() => {
@@ -1353,7 +1393,7 @@ export function ImportQuestionsWizard({
                 >
                   <ArrowLeft className="h-4 w-4" />
                   {tr("Quay lại bản soạn", "Back to source")}
-                </button>
+                </button>}
                 <button
                   type="button"
                   disabled={locked || busy}

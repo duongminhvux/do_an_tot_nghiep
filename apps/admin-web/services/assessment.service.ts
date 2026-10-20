@@ -98,6 +98,14 @@ export const examService = {
     return res?.data;
   },
 
+  getSavedImportQuestions: async (examId: string) => {
+    const res = await apiClient.get<ApiResponse<Array<{part: number; order: number; importBatchId?: string}>>>(
+      `/admin/questions/exam/${examId}`,
+    );
+    if (!Array.isArray(res.data.data)) throw new Error("Không kiểm tra được các Part đã lưu.");
+    return res.data.data;
+  },
+
   getPassages: async (examId: string) => {
     const res = await apiClient
       .get<ApiResponse<PassageItem[]>>(
@@ -210,6 +218,7 @@ export const examService = {
     const res = await apiClient.post<
       ApiResponse<{
         importedCount: number;
+        learning?: { status: string; message?: string };
         passageGroupsCount: number;
         passageGroupId?: string;
         passageId?: string;

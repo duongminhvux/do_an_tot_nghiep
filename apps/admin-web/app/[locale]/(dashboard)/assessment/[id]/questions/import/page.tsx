@@ -7,12 +7,16 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import type { ExamItem } from "@/types";
 import { examService } from "@/services/assessment.service";
 import { ImportQuestionsWizard } from "@/components/assessment/import-questions-wizard";
+import { PdfAiImport } from "@/components/assessment/pdf-ai-import";
+import { useState } from "react";
 
 export default function ImportQuestionsPage() {
   const params = useParams();
   const router = useRouter();
   const locale = String(params.locale || "vi");
   const examId = String(params.id || "");
+  const [mode, setMode] = useState<"manual" | "ai">("ai");
+  const [busy, setBusy] = useState(false);
   const {
     data: exam,
     isLoading,
@@ -56,12 +60,41 @@ export default function ImportQuestionsPage() {
         </h1>
         <p className="text-sm text-slate-500">{exam.name}</p>
       </div>
-      <ImportQuestionsWizard
-        key={examId}
-        exam={exam}
-        locale={locale}
-        onSuccess={() => router.push(`/${locale}/assessment/${examId}`)}
-      />
+      <div className="flex gap-2">
+        <button
+          disabled={busy}
+          onClick={() => setMode("ai")}
+          aria-pressed={mode === "ai"}
+          className={`rounded border px-4 py-2 text-sm disabled:opacity-50 ${mode === "ai" ? "border-blue-500 bg-blue-50 text-blue-700" : ""}`}
+        >
+          {en ? "Local AI · PDF" : "AI local · PDF"}
+        </button>
+        <button
+          disabled={busy}
+          onClick={() => setMode("manual")}
+          aria-pressed={mode === "manual"}
+          className={`rounded border px-4 py-2 text-sm disabled:opacity-50 ${mode === "manual" ? "border-blue-500 bg-blue-50 text-blue-700" : ""}`}
+        >
+          {en ? "Import template" : "Import theo mẫu"}
+        </button>
+      </div>
+      <div hidden={mode !== "ai"}>
+        <PdfAiImport
+          exam={exam}
+          locale={locale}
+          onBusyChange={setBusy}
+          onSuccess={() => router.push(`/${locale}/assessment/${examId}`)}
+        />
+      </div>
+      <div hidden={mode !== "manual"}>
+        <ImportQuestionsWizard
+          key={examId}
+          exam={exam}
+          locale={locale}
+          onSuccess={() => router.push(`/${locale}/assessment/${examId}`)}
+          onBusyChange={setBusy}
+        />
+      </div>
     </div>
   );
 }
