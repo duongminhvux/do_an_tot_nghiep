@@ -24,6 +24,8 @@ import {
 import { cn } from "@/lib/utils";
 import { useAppSelector } from "@/redux/hooks";
 import type { useRankedMatch } from "../hooks/use-ranked-match";
+import { RoomStandings } from "./room-standings";
+import type { FriendPlayer } from "@/lib/friendly-arena";
 import { friendlyRequest } from "@/lib/friendly-arena";
 import { MatchExitDialog } from "./match-exit-dialog";
 import { MatchResultView } from "./match-result-view";
@@ -34,6 +36,7 @@ export function ClassicMatch({
 }: {
   game: ReturnType<typeof useRankedMatch>;
   friendly?: {
+    players?: FriendPlayer[];
     opponent?: { username: string; avatarUrl?: string };
     leave: () => Promise<void>;
     backToRoom: () => void;
@@ -195,6 +198,14 @@ export function ClassicMatch({
 
     return (
       <MatchResultView
+        standings={friendly?.players?.map((p) => ({
+          ...p,
+          score:
+            finalResult.players.find((f) => f.userId === p.userId)?.score ??
+            p.score,
+        }))}
+        winnerId={finalResult.winnerId}
+        currentUserId={currentUserId}
         won={won}
         isDraw={finalResult.isDraw}
         finishReason={finalResult.finishReason}
@@ -219,7 +230,10 @@ export function ClassicMatch({
         isWordChain={false}
         onBackToRoom={friendly?.backToRoom}
         resultNotice={friendly?.notice}
-        onBackToArena={() => router.push(`/${locale}/arena`)}
+        onBackToArena={() => {
+          if (friendly) void friendly.leave();
+          else router.push(`/${locale}/arena`);
+        }}
         onFindNextMatch={
           !friendly
             ? () => router.push(`/${locale}/arena?autoRank=1`)
@@ -266,49 +280,57 @@ export function ClassicMatch({
 
       {/* SCOREBOARD */}
 
-      <section className="relative overflow-hidden rounded-2xl border border-blue-100 bg-white px-3 py-2.5 shadow-sm sm:px-4">
-        <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-blue-500 via-blue-100 to-violet-500" />
+      {friendly?.players ? (
+        <RoomStandings
+          players={friendly.players}
+          currentUserId={currentUserId}
+          vi={locale !== "en"}
+        />
+      ) : (
+        <section className="relative overflow-hidden rounded-2xl border border-blue-100 bg-white px-3 py-2.5 shadow-sm sm:px-4">
+          <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-blue-500 via-blue-100 to-violet-500" />
 
-        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-6">
-          <Player
-            name={user?.username || text("Bạn", "You")}
-            avatar={user?.avatarUrl}
-            rating={friendly ? undefined : myRating}
-            friendly={!!friendly}
-            me
-            text={text}
-          />
+          <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-6">
+            <Player
+              name={user?.username || text("Bạn", "You")}
+              avatar={user?.avatarUrl}
+              rating={friendly ? undefined : myRating}
+              friendly={!!friendly}
+              me
+              text={text}
+            />
 
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-2 text-xl font-extrabold tabular-nums sm:gap-3 sm:text-2xl">
-              <span className="text-blue-600">{score.toLocaleString()}</span>
+            <div className="text-center">
+              <div className="flex items-center justify-center gap-2 text-xl font-extrabold tabular-nums sm:gap-3 sm:text-2xl">
+                <span className="text-blue-600">{score.toLocaleString()}</span>
 
-              <span className="text-sm font-medium text-slate-300">:</span>
+                <span className="text-sm font-medium text-slate-300">:</span>
 
-              <span className="text-violet-600">
-                {opponentScore.toLocaleString()}
-              </span>
+                <span className="text-violet-600">
+                  {opponentScore.toLocaleString()}
+                </span>
+              </div>
+
+              <p className="mt-1 text-[9px] font-semibold uppercase tracking-widest text-slate-400">
+                {text("Điểm", "Score")}
+              </p>
             </div>
 
-            <p className="mt-1 text-[9px] font-semibold uppercase tracking-widest text-slate-400">
-              {text("Điểm", "Score")}
-            </p>
+            <Player
+              name={
+                friendly?.opponent?.username ||
+                opponent?.username ||
+                text("Đối thủ", "Opponent")
+              }
+              avatar={friendly?.opponent?.avatarUrl || opponent?.avatar}
+              rating={friendly ? undefined : opponent?.rating}
+              friendly={!!friendly}
+              right
+              text={text}
+            />
           </div>
-
-          <Player
-            name={
-              friendly?.opponent?.username ||
-              opponent?.username ||
-              text("Đối thủ", "Opponent")
-            }
-            avatar={friendly?.opponent?.avatarUrl || opponent?.avatar}
-            rating={friendly ? undefined : opponent?.rating}
-            friendly={!!friendly}
-            right
-            text={text}
-          />
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* ROUND INFO */}
 

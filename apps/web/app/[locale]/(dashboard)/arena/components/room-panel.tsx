@@ -73,7 +73,7 @@ export function RoomPanel({
                   onChange={(event) => setCapacity(event.target.value)}
                   className="mt-2 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm"
                 >
-                  {[2, 4, 6, 8].map((value) => (
+                  {[3, 4, 5, 6, 7, 8].map((value) => (
                     <option key={value} value={value}>
                       {value} {text("người chơi", "players")}
                     </option>

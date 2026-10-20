@@ -1,3 +1,6 @@
+vi.mock('../matches/arena-match.service.js', () => ({
+  ArenaMatchService: class {},
+}));
 import { Types } from 'mongoose';
 import { ArenaRoundService } from './arena-round.service.js';
 import {
@@ -10,8 +13,8 @@ import {
 vi.mock('../schemas/arena-match.schema.js', () => ({
   ArenaMatch: class {},
   ArenaMatchStatus: { PLAYING: 'PLAYING', FINISHED: 'FINISHED' },
-  ArenaFriendMode: { WORD_CHAIN: 'WORD_CHAIN', CLASSIC: 'CLASSIC' },
-  ArenaMatchType: { RANK: 'RANK', FRIEND: 'FRIEND' },
+  ArenaFriendMode: { WORD_CHAIN: 'WORD_CHAIN', WORD_GUESS: 'WORD_GUESS', CLASSIC: 'CLASSIC' },
+  ArenaMatchType: { RANK: 'RANK', FRIEND: 'FRIEND', ROOM: 'ROOM' },
 }));
 vi.mock('../schemas/arena-match-question.schema.js', () => ({
   ArenaMatchQuestion: class {},

@@ -8,7 +8,9 @@
     "build": "node ../../scripts/run-next-with-root-env.mjs build",
     "start": "node ../../scripts/run-next-with-root-env.mjs start --port 3000",
     "lint": "eslint --max-warnings 0",
-    "check-types": "next typegen && tsc --noEmit"
+    "check:i18n": "node ../../scripts/check-web-i18n.mjs",
+    "check-types": "next typegen && tsc --noEmit",
+    "test:typing-rush": "node --test ../../scripts/typing-rush-engine.test.mjs"
   },
   "dependencies": {
     "@radix-ui/react-collapsible": "^1.1.20",

@@ -71,10 +71,6 @@
     "profile": "Profile",
     "home": "Home",
     "games": "Games",
-    "game_list": "Game list",
-    "game_list_title": "Game list",
-    "game_list_desc": "Choose a game to practice vocabulary and improve your ranking.",
-    "arena_desc": "Compete and practice vocabulary with your friends.",
     "explore": "Explore",
     "my_words": "My Words",
     "dictation": "Dictation",
@@ -82,7 +78,11 @@
     "toeic": "TOEIC",
     "toeic_exams": "Exams & Practice",
     "toeic_history": "Test History",
-    "toeic_stats": "Statistics"
+    "toeic_stats": "Statistics",
+    "game_list": "Game list",
+    "game_list_title": "Game list",
+    "game_list_desc": "Choose a game to practice vocabulary and improve your ranking.",
+    "arena_desc": "Compete and practice vocabulary with your friends."
   },
   "group_arena": {
     "title": "Group Lobby",
@@ -129,5 +129,37 @@
     "confirm_leave": "Leave",
     "min_players_alert": "Need at least 2 players to start the match!",
     "unready_alert": "{{names}} not ready yet!"
+  },
+  "room_closed": {
+    "title": "Room closed",
+    "description": "The room was closed because the host left. You have been returned to the Arena.",
+    "confirm": "Got it",
+    "close": "Close",
+    "admin_description": "This room was closed by an administrator. You have returned to Arena.",
+    "idle_description": "This room was closed after being inactive for too long."
+  },
+  "games_page": {
+    "description": "Practice English vocabulary and typing with collections you choose.",
+    "typing_title": "Typing Rush",
+    "typing_description": "Type falling English words before they reach the bottom. Play solo with vocabulary you choose.",
+    "play_solo": "Play now",
+    "banner_title": "Vocabulary games",
+    "banner_subtitle": "Have fun · Practice effectively · Remember longer",
+    "banner_practice": "Daily practice",
+    "banner_practice_desc": "Build speed and accuracy",
+    "banner_memory": "Remember words",
+    "banner_memory_desc": "Learn while you play",
+    "banner_progress": "Track progress",
+    "banner_progress_desc": "Keep your personal scores",
+    "loading": "Loading games...",
+    "load_error": "Unable to load games.",
+    "retry": "Retry",
+    "empty": "No games are currently available.",
+    "solo": "Solo",
+    "multiplayer": "Multiplayer",
+    "play": "Play now"
+  },
+  "arena_controls": {
+    "unavailable": "This mode is temporarily disabled or Arena is under maintenance. Please try again later."
   }
 }

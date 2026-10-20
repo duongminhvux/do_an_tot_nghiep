@@ -4,6 +4,7 @@ import React from 'react';
 import { usePathname, useParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import AuthGuard from '@/components/auth-guard';
+import { RoomClosedNotice } from '@/components/room-closed-notice';
 import { AppSidebar } from '@/components/app-sidebar';
 import {
   SidebarInset,
@@ -24,6 +25,12 @@ export default function DashboardLayout({
 
   const getPageTitle = () => {
     const isEn = locale === 'en';
+
+    if (pathname === `/${locale}/games/typing-rush`) return t('minigames:title');
+
+    if (pathname === `/${locale}/games` || pathname?.startsWith(`/${locale}/games/`)) {
+      return t('nav.game_list_title');
+    }
 
     if (pathname?.includes('/arena')) {
       return t('nav.arena', isEn ? 'Vocabulary Arena' : 'Đấu trường từ vựng');
@@ -55,6 +62,7 @@ export default function DashboardLayout({
 
   return (
       <AuthGuard>
+        <RoomClosedNotice />
         <SidebarProvider>
           <AppSidebar />
           <SidebarInset className="bg-slate-50 min-h-screen flex flex-col">

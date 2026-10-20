@@ -25,7 +25,12 @@ export class ArenaInvitation {
   @Prop({ type: String, enum: ['DUEL', 'ROOM'], required: true })
   type: 'DUEL' | 'ROOM';
 
-  @Prop({ type: Types.ObjectId, ref: 'ArenaRoom' })
+  @Prop({
+    type: Types.ObjectId,
+    ref: function (this: ArenaInvitation) {
+      return this.type === 'DUEL' ? 'FriendRoom' : 'ArenaRoom';
+    },
+  })
   roomId?: Types.ObjectId;
 
   @Prop({

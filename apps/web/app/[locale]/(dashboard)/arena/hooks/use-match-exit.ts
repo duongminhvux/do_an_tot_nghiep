@@ -9,6 +9,7 @@ export function useMatchExit(
   matchId: string,
   active: boolean,
   preserveDestinations: string[] = [],
+  reconnectOnRefresh = false,
 ) {
   const pathname = usePathname();
   const state = useRef({ matchId, active, preserveDestinations });
@@ -38,7 +39,7 @@ export function useMatchExit(
           },
         ).catch(() => {});
     };
-    window.addEventListener("pagehide", leave);
+    if (!reconnectOnRefresh) window.addEventListener("pagehide", leave);
     return () => {
       window.removeEventListener("pagehide", leave);
       // Defer so React's development effect replay cannot forfeit a live match.
@@ -51,5 +52,5 @@ export function useMatchExit(
           leave();
       });
     };
-  }, [matchId, pathname]);
+  }, [matchId, pathname, reconnectOnRefresh]);
 }

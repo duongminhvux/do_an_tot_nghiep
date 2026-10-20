@@ -26,7 +26,7 @@ export type ArenaRecentMatch = {
   avatarUrl?: string;
   score: [number, number];
   result: 'WIN' | 'LOSS' | 'DRAW';
-  mode: 'rank' | 'friend' | 'word-chain' | 'room';
+  mode: 'rank' | 'friend' | 'word-chain' | 'word-guess' | 'room';
   points: number;
   finishedAt: Date;
 };
@@ -158,6 +158,10 @@ export class ArenaReadService {
           mode: {
             $switch: {
               branches: [
+                {
+                  case: { $eq: ['$match.friendMode', 'WORD_GUESS'] },
+                  then: 'word-guess',
+                },
                 {
                   case: { $eq: ['$match.type', ArenaMatchType.RANK] },
                   then: 'rank',

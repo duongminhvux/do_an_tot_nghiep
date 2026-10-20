@@ -1,3 +1,7 @@
+import viArena from '../locales/vi/arena.json';
+import enArena from '../locales/en/arena.json';
+import viGames from '../locales/vi/games.json';
+import enGames from '../locales/en/games.json';
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
@@ -20,6 +24,8 @@ import enActivityLog from '../locales/en/activity-log.json';
 const resources = {
   vi: {
     common: viCommon,
+    games: viGames,
+    arena: viArena,
     auth: viAuth,
     dashboard: viDashboard,
     vocabulary: viVocabulary,
@@ -29,6 +35,8 @@ const resources = {
   },
   en: {
     common: enCommon,
+    games: enGames,
+    arena: enArena,
     auth: enAuth,
     dashboard: enDashboard,
     vocabulary: enVocabulary,

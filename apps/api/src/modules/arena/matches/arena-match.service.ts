@@ -1,4 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { ArenaSettingsService } from '../admin/arena-settings.service.js';
+import { ARENA_DEFAULTS } from '../admin/arena-settings.defaults.js';
+import {
+  FriendRoom,
+  FriendRoomStatus,
+  FriendRoomSettings,
+} from '../schemas/friend-room.schema.js';
+import { Injectable, Optional } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 
@@ -60,6 +67,9 @@ export class ArenaMatchService {
 
     private readonly arenaQuestionService: ArenaQuestionService,
     private readonly arenaRatingService: ArenaRatingService,
+    @InjectModel(FriendRoom.name)
+    private readonly friendRooms: Model<FriendRoom>,
+    @Optional() private readonly settings?: ArenaSettingsService,
   ) {}
 
   /** Tạo một match 1v1 dùng chung cho rank, friend và room. */
@@ -70,7 +80,13 @@ export class ArenaMatchService {
   ) {
     const redis = this.redisService.getClient();
     const token = randomUUID();
-    const keys = [...new Set([playerAId, playerBId])]
+    const keys = [
+      ...new Set([
+        playerAId,
+        playerBId,
+        ...(options.additionalPlayerIds ?? []),
+      ]),
+    ]
       .sort()
       .map((id) => `arena:create-match:${id}`);
     const held: string[] = [];
@@ -94,8 +110,11 @@ export class ArenaMatchService {
     playerAId: string,
     playerBId: string,
     options: {
+      additionalPlayerIds?: string[];
       type?: ArenaMatchType;
-      questionMode?: ArenaQuestionMode;
+      questionMode?: ArenaQuestionMode | null;
+      roomCodeSnapshot?: string;
+      settingsSnapshot?: FriendRoomSettings;
       questionCount?: number;
       secondsPerQuestion?: number;
       roomId?: Types.ObjectId | null;
@@ -104,46 +123,107 @@ export class ArenaMatchService {
   ) {
     if (playerAId === playerBId)
       throw new WsException('Players must be different');
-    const [activeA, activeB] = await Promise.all([
-      this.findActiveMatchForUser(playerAId),
-      this.findActiveMatchForUser(playerBId),
-    ]);
-    if (activeA || activeB)
+    if (
+      (options.type === ArenaMatchType.FRIEND ||
+        options.type === ArenaMatchType.ROOM) &&
+      (!options.roomId || !options.settingsSnapshot)
+    )
+      throw new WsException('Use friend-room:start');
+    const userIds = [
+      playerAId,
+      playerBId,
+      ...(options.additionalPlayerIds ?? []),
+    ];
+    if (
+      new Set(userIds).size !== userIds.length ||
+      (options.type === ArenaMatchType.ROOM
+        ? userIds.length < 3 || userIds.length > 8
+        : userIds.length !== 2)
+    )
+      throw new WsException('INVALID_ROOM_CAPACITY');
+    const active = await Promise.all(
+      userIds.map((id) => this.findActiveMatchForUser(id)),
+    );
+    if (active.some(Boolean))
       throw new WsException('A player already has an active Arena match');
 
+    const occupiedRoom = await this.friendRooms.findOne({
+      ...((options.type === ArenaMatchType.FRIEND ||
+        options.type === ArenaMatchType.ROOM) &&
+      options.roomId
+        ? { _id: { $ne: options.roomId } }
+        : {}),
+      $or: [
+        {
+          'members.userId': {
+            $in: userIds.map((id) => new Types.ObjectId(id)),
+          },
+        },
+        {
+          hostId: {
+            $in: userIds.map((id) => new Types.ObjectId(id)),
+          },
+        },
+        {
+          guestId: {
+            $in: userIds.map((id) => new Types.ObjectId(id)),
+          },
+        },
+      ],
+    });
+    if (occupiedRoom) throw new WsException('ALREADY_IN_ROOM');
     const playerAObjectId = new Types.ObjectId(playerAId);
-    const playerBObjectId = new Types.ObjectId(playerBId);
-
-    const [profileA, profileB] = await Promise.all([
-      this.arenaProfileModel.findOne({
-        userId: playerAObjectId,
-      }),
-
-      this.arenaProfileModel.findOne({
-        userId: playerBObjectId,
-      }),
-    ]);
-
-    // Không thể tạo trận nếu một người chưa có Arena profile.
-    if (!profileA || !profileB) {
+    const profiles = await Promise.all(
+      userIds.map((id) =>
+        this.arenaProfileModel.findOne({ userId: new Types.ObjectId(id) }),
+      ),
+    );
+    if (profiles.some((profile) => !profile))
       throw new Error('Arena profile not found');
-    }
 
+    const type = options.type ?? ArenaMatchType.RANK;
+    const config = this.settings
+      ? await this.settings.requireEnabled(type)
+      : ARENA_DEFAULTS;
+    const runtimePolicy = {
+      kFactor: config.ranked.kFactor,
+      readyTimeout: config.ranked.readyTimeout,
+      reconnectGrace:
+        type === ArenaMatchType.RANK
+          ? config.ranked.reconnectGrace
+          : type === ArenaMatchType.ROOM
+            ? config.group.reconnectGrace
+            : config.friendly.reconnectGrace,
+    };
     const match = await this.arenaMatchModel.create({
+      runtimePolicy,
       type: options.type ?? ArenaMatchType.RANK,
       status:
-        options.type === ArenaMatchType.FRIEND
+        (options.type === ArenaMatchType.FRIEND ||
+          options.type === ArenaMatchType.ROOM) &&
+        !options.roomId
           ? ArenaMatchStatus.WAITING
           : ArenaMatchStatus.COUNTDOWN,
       friendMode: options.friendMode ?? null,
-      hostId: options.type === ArenaMatchType.FRIEND ? playerAObjectId : null,
+      hostId:
+        options.type === ArenaMatchType.FRIEND ||
+        options.type === ArenaMatchType.ROOM
+          ? playerAObjectId
+          : null,
 
       roomId: options.roomId ?? null,
 
-      questionMode: options.questionMode ?? ArenaQuestionMode.MEANING_TO_WORD,
-      questionCount: options.questionCount ?? 10,
+      roomCodeSnapshot: options.roomCodeSnapshot,
+      settingsSnapshot: options.settingsSnapshot,
+      questionMode:
+        options.friendMode === ArenaFriendMode.WORD_CHAIN ||
+        options.friendMode === ArenaFriendMode.WORD_GUESS
+          ? null
+          : (options.questionMode ?? ArenaQuestionMode.MEANING_TO_WORD),
+      questionCount: options.questionCount ?? config.ranked.questionCount,
       currentQuestionIndex: 1,
-      secondsPerQuestion: options.secondsPerQuestion ?? 30,
+      secondsPerQuestion:
+        options.secondsPerQuestion ?? config.ranked.timePerQuestion,
 
       startedAt: null,
       finishedAt: null,
@@ -152,41 +232,21 @@ export class ArenaMatchService {
       isDraw: false,
     });
 
-    const players = await this.arenaMatchPlayerModel.insertMany([
-      {
+    const players = await this.arenaMatchPlayerModel.insertMany(
+      userIds.map((id, index) => ({
         matchId: match._id,
-        userId: playerAObjectId,
-
-        ratingBefore: profileA.rating,
-        ratingAfter: profileA.rating,
+        userId: new Types.ObjectId(id),
+        ratingBefore: profiles[index]!.rating,
+        ratingAfter: profiles[index]!.rating,
         ratingChange: 0,
-
         isReady: false,
         readyAt: null,
-
         score: 0,
         correctAnswers: 0,
         wrongAnswers: 0,
         unanswered: 0,
-      },
-
-      {
-        matchId: match._id,
-        userId: playerBObjectId,
-
-        ratingBefore: profileB.rating,
-        ratingAfter: profileB.rating,
-        ratingChange: 0,
-
-        isReady: false,
-        readyAt: null,
-
-        score: 0,
-        correctAnswers: 0,
-        wrongAnswers: 0,
-        unanswered: 0,
-      },
-    ]);
+      })),
+    );
 
     return {
       match,
@@ -197,21 +257,6 @@ export class ArenaMatchService {
   /** Giữ API tương thích cho matchmaking ranked hiện tại. */
   async createRankedMatch(playerAId: string, playerBId: string) {
     return this.createMatch(playerAId, playerBId);
-  }
-
-  /** Tạo duel bạn bè trên cùng lifecycle với ranked nhưng không đổi Elo. */
-  async createFriendMatch(
-    playerAId: string,
-    playerBId: string,
-    mode = ArenaFriendMode.CLASSIC,
-  ) {
-    return this.createMatch(playerAId, playerBId, {
-      type: ArenaMatchType.FRIEND,
-      friendMode: mode,
-      questionMode: ArenaQuestionMode.MEANING_TO_WORD,
-      questionCount: 10,
-      secondsPerQuestion: 30,
-    });
   }
 
   /**
@@ -239,7 +284,7 @@ export class ArenaMatchService {
           : {}),
       },
       { $set: { status: ArenaMatchStatus.FINISHING, finishReason } },
-      { new: true },
+      { returnDocument: 'after' },
     );
 
     if (!match) {
@@ -263,11 +308,30 @@ export class ArenaMatchService {
       return null;
     }
 
+    if (match.type === ArenaMatchType.ROOM)
+      players.sort(
+        (a, b) =>
+          Number(
+            (match.eliminatedUserIds ?? []).some(
+              (id) => String(id) === String(a.userId),
+            ),
+          ) -
+          Number(
+            (match.eliminatedUserIds ?? []).some(
+              (id) => String(id) === String(b.userId),
+            ),
+          ),
+      );
     const [playerA, playerB] = players;
     const forcedWinner = winnerUserId
       ? players.findIndex((player) => String(player.userId) === winnerUserId)
       : -1;
-    const isDraw = forcedWinner < 0 && playerA.score === playerB.score;
+    const isDraw =
+      forcedWinner < 0 &&
+      playerA.score === playerB.score &&
+      !(match.eliminatedUserIds ?? []).some(
+        (id) => String(id) === String(playerB.userId),
+      );
     const winner: 'A' | 'B' | 'DRAW' = isDraw
       ? 'DRAW'
       : forcedWinner === 1
@@ -279,6 +343,7 @@ export class ArenaMatchService {
             playerA.ratingBefore,
             playerB.ratingBefore,
             winner,
+            match.runtimePolicy?.kFactor,
           )
         : {
             playerA: {
@@ -293,10 +358,23 @@ export class ArenaMatchService {
             },
           };
     const now = new Date();
-    const results = [
-      { player: playerA, rating: rating.playerA, won: winner === 'A' },
-      { player: playerB, rating: rating.playerB, won: winner === 'B' },
-    ];
+    const winningPlayer = isDraw
+      ? null
+      : players[forcedWinner >= 0 ? forcedWinner : 0];
+    const results = players.map((player, index) => ({
+      player,
+      rating:
+        match.type === ArenaMatchType.RANK
+          ? index === 0
+            ? rating.playerA
+            : rating.playerB
+          : {
+              ratingBefore: player.ratingBefore,
+              ratingAfter: player.ratingBefore,
+              ratingChange: 0,
+            },
+      won: player === winningPlayer,
+    }));
 
     for (const result of results) {
       if (match.type === ArenaMatchType.RANK) {
@@ -354,22 +432,39 @@ export class ArenaMatchService {
       }
     }
 
-    return this.arenaMatchModel.findOneAndUpdate(
+    const finished = await this.arenaMatchModel.findOneAndUpdate(
       { _id: objectId, status: ArenaMatchStatus.FINISHING },
       {
         $set: {
           status: ArenaMatchStatus.FINISHED,
           finishedAt: now,
           isDraw,
-          winnerId: isDraw
-            ? null
-            : winner === 'B'
-              ? playerB.userId
-              : playerA.userId,
+          winnerId: winningPlayer?.userId ?? null,
         },
       },
-      { new: true },
+      { returnDocument: 'after' },
     );
+    if (
+      finished &&
+      (match.type === ArenaMatchType.FRIEND ||
+        match.type === ArenaMatchType.ROOM) &&
+      match.roomId
+    )
+      await this.friendRooms.updateOne(
+        { _id: match.roomId, currentMatchId: objectId },
+        {
+          $set: {
+            status: FriendRoomStatus.WAITING,
+            currentMatchId: null,
+            guestReady: false,
+            ...(match.type === ArenaMatchType.ROOM
+              ? { 'members.$[].isReady': false }
+              : {}),
+          },
+          $inc: { revision: 1 },
+        },
+      );
+    return finished;
   }
 
   /** Compat alias cho các caller ranked hiện tại. */
@@ -406,6 +501,8 @@ export class ArenaMatchService {
     if (!match) return;
     if (
       match.friendMode === ArenaFriendMode.WORD_CHAIN &&
+      (match.type !== ArenaMatchType.ROOM ||
+        String(match.currentTurnUserId) === userId) &&
       match.status === ArenaMatchStatus.PLAYING
     ) {
       await this.arenaMatchModel.updateOne(
@@ -455,6 +552,9 @@ export class ArenaMatchService {
       !(await this.arenaMatchPlayerModel.exists({
         matchId: match._id,
         status: 'DISCONNECTED',
+        ...(match.type === ArenaMatchType.ROOM
+          ? { userId: match.currentTurnUserId }
+          : {}),
       }))
     ) {
       await this.arenaMatchModel.updateOne(
@@ -483,13 +583,19 @@ export class ArenaMatchService {
    * Trả về các match vừa được finalize để gateway broadcast kết quả.
    */
   async processLifecycle(now = new Date()): Promise<string[]> {
-    const readyDeadline = new Date(now.getTime() - 30_000);
+    const readyDeadline = new Date(now.getTime() - 5_000);
     const countdownMatches = await this.arenaMatchModel.find({
       status: ArenaMatchStatus.COUNTDOWN,
-      type: { $ne: ArenaMatchType.FRIEND },
+      type: ArenaMatchType.RANK,
       createdAt: { $lte: readyDeadline },
     });
     for (const match of countdownMatches) {
+      if (
+        match.createdAt.getTime() +
+          (match.runtimePolicy?.readyTimeout ?? 30) * 1000 >
+        now.getTime()
+      )
+        continue;
       const cancelled = await this.arenaMatchModel.updateOne(
         { _id: match._id, status: ArenaMatchStatus.COUNTDOWN },
         {
@@ -508,7 +614,7 @@ export class ArenaMatchService {
 
     const disconnected = await this.arenaMatchPlayerModel.find({
       status: 'DISCONNECTED',
-      disconnectedAt: { $lte: new Date(now.getTime() - 20_000) },
+      disconnectedAt: { $lte: new Date(now.getTime() - 5_000) },
     });
     const finished: string[] = [];
     for (const player of disconnected) {
@@ -516,7 +622,14 @@ export class ArenaMatchService {
         _id: player.matchId,
         status: { $in: [ArenaMatchStatus.PLAYING, ArenaMatchStatus.WAITING] },
       });
-      if (!match) continue;
+      if (!match || match.type === ArenaMatchType.ROOM) continue;
+      if (
+        player.disconnectedAt &&
+        player.disconnectedAt.getTime() +
+          (match.runtimePolicy?.reconnectGrace ?? 20) * 1000 >
+          now.getTime()
+      )
+        continue;
       if (match.status === ArenaMatchStatus.WAITING) {
         await this.arenaMatchModel.updateOne(
           { _id: match._id, status: ArenaMatchStatus.WAITING },
@@ -549,6 +662,128 @@ export class ArenaMatchService {
   }
 
   /** Lấy user còn lại trong một trận để xử lý forfeit. */
+  async nextRoomPlayer(
+    matchId: string,
+    userId: string,
+    excluded: string[] = [],
+  ) {
+    const match = await this.arenaMatchModel.findById(
+      new Types.ObjectId(matchId),
+    );
+    const players = await this.arenaMatchPlayerModel
+      .find({ matchId: new Types.ObjectId(matchId) })
+      .sort({ _id: 1 });
+    const removed = [
+      ...(match?.eliminatedUserIds ?? []).map(String),
+      ...excluded,
+    ];
+    const index = players.findIndex((p) => String(p.userId) === userId);
+    for (let offset = 1; offset <= players.length; offset++) {
+      const player = players[(index + offset) % players.length];
+      if (
+        player &&
+        String(player.userId) !== userId &&
+        !removed.includes(String(player.userId))
+      )
+        return String(player.userId);
+    }
+    return null;
+  }
+
+  // A timed-out/forfeiting Room player drops out; the remaining players keep playing.
+  async dropRoomPlayer(
+    matchId: string,
+    userId: string,
+    reason: ArenaMatchFinishReason,
+    expectedTurnCount?: number,
+  ) {
+    const objectId = new Types.ObjectId(matchId);
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const match = await this.arenaMatchModel.findById(objectId);
+      if (
+        !match ||
+        match.type !== ArenaMatchType.ROOM ||
+        match.status !== ArenaMatchStatus.PLAYING
+      )
+        return null;
+      if ((match.eliminatedUserIds ?? []).some((id) => String(id) === userId))
+        return null;
+      const players = await this.arenaMatchPlayerModel
+        .find({ matchId: objectId })
+        .sort({ _id: 1 });
+      if (!players.some((p) => String(p.userId) === userId))
+        throw new WsException('NOT_ROOM_GUEST');
+      const eliminated = [
+        ...(match.eliminatedUserIds ?? []),
+        new Types.ObjectId(userId),
+      ];
+      const remaining = players.filter(
+        (p) => !eliminated.some((id) => String(id) === String(p.userId)),
+      );
+      const next = await this.nextRoomPlayer(matchId, userId, [userId]);
+      const switchTurn = String(match.currentTurnUserId) === userId;
+      const now = new Date();
+      const changed = await this.arenaMatchModel.updateOne(
+        {
+          _id: objectId,
+          status: ArenaMatchStatus.PLAYING,
+          turnCount: match.turnCount,
+          roomRevision: match.roomRevision ?? 0,
+          ...(expectedTurnCount !== undefined
+            ? {
+                turnCount: expectedTurnCount,
+                chainPausedAt: null,
+                turnDeadline: { $lte: now },
+              }
+            : {}),
+        },
+        {
+          $set: {
+            eliminatedUserIds: eliminated,
+            ...(switchTurn && next
+              ? {
+                  currentTurnUserId: new Types.ObjectId(next),
+                  turnStartedAt: now,
+                  turnDeadline: new Date(
+                    now.getTime() +
+                      (match.settingsSnapshot?.turnTime ?? 20) * 1000,
+                  ),
+                  chainPausedAt: null,
+                }
+              : {}),
+          },
+          $inc: { roomRevision: 1 },
+        },
+      );
+      if (!changed.modifiedCount) {
+        if (expectedTurnCount !== undefined) return null;
+        continue;
+      }
+      await this.arenaMatchPlayerModel.updateOne(
+        { matchId: objectId, userId: new Types.ObjectId(userId) },
+        { $set: { status: 'LEFT', disconnectedAt: null } },
+      );
+      if (remaining.length <= 1)
+        return this.finishMatch(
+          matchId,
+          reason,
+          remaining[0] ? String(remaining[0].userId) : undefined,
+        );
+      if (
+        match.friendMode === ArenaFriendMode.WORD_GUESS &&
+        remaining.every(
+          (p) =>
+            (match.wordGuessAttempts ?? []).filter(
+              (a) => a.userId === String(p.userId),
+            ).length >= 5,
+        )
+      )
+        return this.finishMatch(matchId, ArenaMatchFinishReason.NORMAL);
+      return null;
+    }
+    throw new WsException('ROOM_IN_MATCH');
+  }
+
   async getOpponentUserId(matchId: string, userId: string) {
     const opponent = await this.arenaMatchPlayerModel.findOne({
       matchId: new Types.ObjectId(matchId),
@@ -574,7 +809,10 @@ export class ArenaMatchService {
     if (!match) {
       throw new WsException('Match not found');
     }
-    if (match.type === ArenaMatchType.FRIEND)
+    if (
+      match.type === ArenaMatchType.FRIEND ||
+      match.type === ArenaMatchType.ROOM
+    )
       throw new WsException('Friendly matches require host Start');
 
     const member = await this.arenaMatchPlayerModel.exists({
@@ -616,7 +854,7 @@ export class ArenaMatchService {
         },
       },
       {
-        new: true,
+        returnDocument: 'after',
       },
     );
 
@@ -661,7 +899,7 @@ export class ArenaMatchService {
         _id: new Types.ObjectId(matchId),
 
         status: ArenaMatchStatus.COUNTDOWN,
-        type: { $ne: ArenaMatchType.FRIEND },
+        type: ArenaMatchType.RANK,
       },
       {
         $set: {
@@ -671,7 +909,7 @@ export class ArenaMatchService {
         },
       },
       {
-        new: true,
+        returnDocument: 'after',
       },
     );
 

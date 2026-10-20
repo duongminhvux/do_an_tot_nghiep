@@ -311,6 +311,8 @@ export function AppSidebar() {
                         />
                         <span>{t('nav.game_list', 'Danh sách trò chơi')}</span>
                       </Link>
+
+
                     </div>
                   )}
                 </div>

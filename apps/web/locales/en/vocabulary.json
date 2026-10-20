@@ -350,6 +350,8 @@
     "no_due_desc": "All vocabulary is reviewed on schedule. Keep exploring new lessons or come back tomorrow!",
     "completed_title": "Review Session Completed! 🎉",
     "completed_desc": "You've successfully reviewed {{count}} words. Your long-term memory is getting stronger!",
-    "back_to_catalog": "Back to Vocabulary"
-  }
+    "back_to_catalog": "Back to Vocabulary",
+    "more_words": "+{{count}} more words"
+  },
+  "words": "words"
 }

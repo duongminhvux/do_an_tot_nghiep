@@ -1,5 +1,8 @@
 import {
   IsEnum,
+  IsInt,
+  Min,
+  Max,
   IsMongoId,
   IsOptional,
   IsString,
@@ -17,6 +20,11 @@ export class CreateFriendMatchDto {
 }
 
 export class CreateArenaRoomDto {
+  @IsOptional()
+  @IsInt()
+  @Min(3)
+  @Max(8)
+  maxPlayers?: number;
   @IsString()
   @MinLength(1)
   @MaxLength(80)

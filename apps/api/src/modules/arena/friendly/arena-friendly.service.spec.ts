@@ -1,11 +1,17 @@
 import { Types } from 'mongoose';
 import { ArenaFriendlyService } from './arena-friendly.service.js';
-import { ArenaFriendMode } from '../schemas/arena-match.schema.js';
 
+vi.mock('./arena-friend-room.service.js', () => ({
+  ArenaFriendRoomService: class {},
+}));
 vi.mock('../schemas/arena-match.schema.js', () => ({
   ArenaMatch: class {},
-  ArenaFriendMode: { CLASSIC: 'CLASSIC', WORD_CHAIN: 'WORD_CHAIN' },
-  ArenaMatchType: { FRIEND: 'FRIEND', RANK: 'RANK' },
+  ArenaFriendMode: {
+    CLASSIC: 'CLASSIC',
+    WORD_CHAIN: 'WORD_CHAIN',
+    WORD_GUESS: 'WORD_GUESS',
+  },
+  ArenaMatchType: { FRIEND: 'FRIEND', ROOM: 'ROOM', RANK: 'RANK' },
   ArenaMatchStatus: {
     WAITING: 'WAITING',
     COUNTDOWN: 'COUNTDOWN',
@@ -116,6 +122,11 @@ function fixture() {
     })),
   };
   const arena = { getOrCreateProfile: vi.fn() };
+  const friendRooms = {
+    member: vi.fn(async () => ({ code: 'ABC234' })),
+    join: vi.fn(async () => ({ code: 'ABC234', roomId: 'room-id' })),
+    snapshot: vi.fn(async () => ({ code: 'ABC234', roomId: 'room-id' })),
+  };
   const deps = [
     matches,
     invites,
@@ -127,9 +138,11 @@ function fixture() {
     questions,
     presence,
     arena,
+    friendRooms,
   ] as unknown as ConstructorParameters<typeof ArenaFriendlyService>;
   return {
     service: new ArenaFriendlyService(...deps),
+    friendRooms,
     user,
     opponent,
     match,
@@ -151,11 +164,11 @@ describe('Friendly Word Chain', () => {
     const events = await f.service.submit(
       String(f.match._id),
       f.user,
-      '  LEMON  ',
+      '  ELEPHANT  ',
     );
-    expect(f.match.usedWords).toEqual(['apple', 'lemon']);
+    expect(f.match.usedWords).toEqual(['apple', 'elephant']);
     expect(String(f.match.currentTurnUserId)).toBe(f.opponent);
-    expect(f.match.requiredLetter).toBe('on');
+    expect(f.match.requiredLetter).toBe('t');
     expect(f.match.turnDeadline.getTime()).toBeGreaterThanOrEqual(
       before + 20000,
     );
@@ -166,7 +179,6 @@ describe('Friendly Word Chain', () => {
   });
   it.each([
     ['house', 'INVALID_START_LETTER'],
-    ['elephant', 'INVALID_START_LETTER'],
     ['a', 'WORD_NOT_FOUND'],
     ['apple', 'WORD_ALREADY_USED'],
     ['two words', 'WORD_NOT_FOUND'],
@@ -174,7 +186,7 @@ describe('Friendly Word Chain', () => {
   ])('rejects %s without changing the deadline', async (word, reason) => {
     const f = fixture();
     if (word === 'apple') {
-      f.match.currentWord = 'map';
+      f.match.currentWord = 'idea';
       f.match.requiredLetter = 'ap';
     }
     const deadline = f.match.turnDeadline.getTime();
@@ -192,33 +204,31 @@ describe('Friendly Word Chain', () => {
     f.match.usedWords = [];
     const events = await f.service.submit(String(f.match._id), f.user, 'Apple');
     expect(events[0]?.event).toBe('word-chain:accepted');
-    expect(f.match.requiredLetter).toBe('le');
+    expect(f.match.requiredLetter).toBe('e');
   });
-  it('derives two letters from the previous word even for an old one-letter snapshot', async () => {
+  it('requires the last single letter of the previous word', async () => {
     const f = fixture();
-    f.match.requiredLetter = 'e';
     const snapshot = await f.service.gameSnapshot(String(f.match._id));
-    expect(snapshot[0]?.data.requiredLetter).toBe('le');
+    expect(snapshot[0]?.data.requiredLetter).toBe('e');
     const events = await f.service.submit(
       String(f.match._id),
       f.user,
       'elephant',
     );
-    expect(events[0]?.data.reason).toBe('INVALID_START_LETTER');
-    expect(f.words.exists).not.toHaveBeenCalled();
+    expect(events[0]?.event).toBe('word-chain:accepted');
   });
   it('checks the application vocabulary', async () => {
     const f = fixture();
     f.words.exists.mockResolvedValue(false);
     expect(
-      (await f.service.submit(String(f.match._id), f.user, 'lemon'))[0]?.data
+      (await f.service.submit(String(f.match._id), f.user, 'elephant'))[0]?.data
         .reason,
     ).toBe('WORD_NOT_FOUND');
   });
   it('rejects submissions from the other player', async () => {
     const f = fixture();
     expect(
-      (await f.service.submit(String(f.match._id), f.opponent, 'lemon'))[0]
+      (await f.service.submit(String(f.match._id), f.opponent, 'elephant'))[0]
         ?.data.reason,
     ).toBe('NOT_YOUR_TURN');
   });
@@ -229,7 +239,7 @@ describe('Friendly Word Chain', () => {
       return true;
     });
     expect(
-      (await f.service.submit(String(f.match._id), f.user, 'lemon'))[0]?.data
+      (await f.service.submit(String(f.match._id), f.user, 'elephant'))[0]?.data
         .reason,
     ).toBe('TURN_EXPIRED');
     expect(f.match.usedWords).toEqual(['apple']);
@@ -237,8 +247,8 @@ describe('Friendly Word Chain', () => {
   it('accepts only one of two simultaneous submissions for a turn', async () => {
     const f = fixture();
     const results = await Promise.all([
-      f.service.submit(String(f.match._id), f.user, 'lemon'),
-      f.service.submit(String(f.match._id), f.user, 'letter'),
+      f.service.submit(String(f.match._id), f.user, 'elephant'),
+      f.service.submit(String(f.match._id), f.user, 'environment'),
     ]);
     expect(
       results.filter((events) => events[0]?.event === 'word-chain:accepted'),
@@ -260,23 +270,20 @@ describe('Friendly Word Chain', () => {
 });
 
 describe('Friendly lifecycle', () => {
-  it('creates the chosen Friendly mode with the invitation sender as host', async () => {
+  it('accepting an invitation joins its room without creating a match', async () => {
     const f = fixture();
     const inviteId = new Types.ObjectId();
+    const roomId = new Types.ObjectId();
     f.invites.findOneAndUpdate.mockResolvedValue({
       _id: inviteId,
+      roomId,
       senderId: new Types.ObjectId(f.user),
       receiverId: new Types.ObjectId(f.opponent),
-      mode: ArenaFriendMode.WORD_CHAIN,
     });
     const result = await f.service.respond(f.opponent, String(inviteId), true);
-    expect(f.matchService.createFriendMatch).toHaveBeenCalledWith(
-      f.user,
-      f.opponent,
-      ArenaFriendMode.WORD_CHAIN,
-    );
-    expect(result.event).toBe('friend:match-created');
-    expect(result.users).toEqual([f.user, f.opponent]);
+    expect(result.event).toBe('friend:invite-accepted');
+    expect(f.friendRooms.join).toHaveBeenCalledWith(f.opponent, 'ABC234');
+    expect(f.matchService.createFriendMatch).not.toHaveBeenCalled();
   });
   it('declining notifies both users and creates no match', async () => {
     const f = fixture();
@@ -339,220 +346,152 @@ describe('Friendly lifecycle', () => {
       expiresAt: { $gt: expect.any(Date) },
     });
   });
-  it('only allows the host to start', async () => {
+  it('requires room lifecycle events rather than starting a match lobby', async () => {
     const f = fixture();
-    f.match.status = 'WAITING';
-    await expect(
-      f.service.start(String(f.match._id), f.opponent),
-    ).rejects.toThrow('host');
-  });
-  it('does not start until the opponent is ready', async () => {
-    const f = fixture();
-    f.match.status = 'WAITING';
-    f.players.find.mockResolvedValueOnce([
-      {
-        userId: new Types.ObjectId(f.opponent),
-        isReady: false,
-        status: 'PLAYING',
-      },
-    ] as never);
     await expect(f.service.start(String(f.match._id), f.user)).rejects.toThrow(
-      'ready',
+      'friend-room:start',
     );
-  });
-  it('starts Word Chain with the host and no Ranked questions', async () => {
-    const f = fixture();
-    f.match.status = 'WAITING';
-    await f.service.start(String(f.match._id), f.user);
-    expect(String(f.match.currentTurnUserId)).toBe(f.user);
-    expect(f.questions.createRankedQuestions).not.toHaveBeenCalled();
-    expect(f.match.status).toBe('PLAYING');
-  });
-  it('Classic uses the existing Ranked question generator', async () => {
-    const f = fixture();
-    f.match.status = 'WAITING';
-    f.match.friendMode = ArenaFriendMode.CLASSIC;
-    await f.service.start(String(f.match._id), f.user);
-    expect(f.questions.createRankedQuestions).toHaveBeenCalledWith(
-      String(f.match._id),
-      10,
-    );
-    expect(f.rounds.snapshot).toHaveBeenCalled();
-  });
-  it('leaving the lobby cancels without choosing a winner', async () => {
-    const f = fixture();
-    f.match.status = 'WAITING';
-    expect((await f.service.leave(String(f.match._id), f.user))[0]?.event).toBe(
-      'friend:cancelled',
-    );
-    expect(f.matchService.finishMatch).not.toHaveBeenCalled();
   });
 });
 
-function resultLobbyFixture() {
-  const f = fixture();
-  const match = Object.assign(f.match, {
-    status: 'FINISHED',
-    nextMatchId: null as Types.ObjectId | null,
-    lobbyStarting: false,
-  });
-  const players = [f.user, f.opponent].map((id) => ({
-    userId: new Types.ObjectId(id),
-    status: 'FINISHED',
-    returnedToLobby: false,
-    leftLobby: false,
-    isReady: false,
-    readyMode: match.friendMode,
-    score: 12,
-    disconnectedAt: null,
-  }));
-  f.players.find.mockImplementation(async () => players);
-  f.players.updateOne.mockImplementation(async (filter, update) => {
-    const player = players.find(
-      (p) => String(p.userId) === String(filter.userId),
+describe('Returning to the Friendly room', () => {
+  it('returns the existing room without creating another match', async () => {
+    const f = fixture();
+    Object.assign(f.match, {
+      status: 'FINISHED',
+      roomId: new Types.ObjectId(),
+    });
+    await f.service.returnToLobby(String(f.match._id), f.user);
+    expect(f.friendRooms.snapshot).toHaveBeenCalledWith(
+      String((f.match as { roomId?: Types.ObjectId }).roomId),
+      f.user,
     );
-    if (player) Object.assign(player, update.$set);
-    return { modifiedCount: player ? 1 : 0 };
+    expect(f.matchService.createFriendMatch).not.toHaveBeenCalled();
   });
+  it('cannot return to a room that the host deleted', async () => {
+    const f = fixture();
+    Object.assign(f.match, {
+      status: 'FINISHED',
+      roomId: new Types.ObjectId(),
+    });
+    f.friendRooms.snapshot.mockRejectedValue(new Error('ROOM_NOT_FOUND'));
+    await expect(
+      f.service.returnToLobby(String(f.match._id), f.user),
+    ).rejects.toThrow('ROOM_NOT_FOUND');
+  });
+});
+
+function guessFixture() {
+  const f = fixture();
+  const match = f.match as any;
+  Object.assign(match, {
+    friendMode: 'WORD_GUESS',
+    wordGuessAnswer: 'apple',
+    wordGuessAttempts: [],
+    wordGuessRevision: 0,
+    wordGuessSolvedBy: null,
+    roomRevision: 0,
+    eliminatedUserIds: [],
+  });
+  (f.matches as any).findById = vi.fn(() => {
+    const copy = { ...match, wordGuessAttempts: [...match.wordGuessAttempts] };
+    return Object.assign(Promise.resolve(copy), { select: async () => copy });
+  });
+  (f.players as any).findOne = vi.fn(async () => ({ status: 'PLAYING' }));
   f.matches.findOneAndUpdate.mockImplementation(async (filter, update) => {
-    if (filter.lobbyStarting && (match.lobbyStarting || match.nextMatchId))
+    if (
+      filter.wordGuessRevision !== match.wordGuessRevision ||
+      match.wordGuessSolvedBy
+    )
       return null;
+    match.wordGuessAttempts = [
+      ...match.wordGuessAttempts,
+      update.$push.wordGuessAttempts,
+    ];
+    match.wordGuessRevision++;
     Object.assign(match, update.$set);
     return { ...match };
   });
-  f.matches.updateOne.mockImplementation(async (...args: unknown[]) => {
-    const [, update] = args as [unknown, { $set: Record<string, unknown> }];
-    Object.assign(match, update.$set);
-    return { modifiedCount: 1 };
-  });
-  const nextId = new Types.ObjectId();
-  f.matchService.createFriendMatch.mockResolvedValue({
-    match: { _id: nextId },
-  });
-  return { ...f, match, resultPlayers: players, nextId };
+  f.matchService.finishMatch.mockImplementation(
+    async (_id?: any, _reason?: any, winner?: any) => {
+      match.status = 'FINISHED';
+      match.winnerId = winner;
+      match.isDraw = !winner;
+      return true;
+    },
+  );
+  return { ...f, match };
 }
 
-describe('Returning to the Friendly lobby after a result', () => {
-  it('keeps the opponent on the result while the first player waits in the old lobby', async () => {
-    const f = resultLobbyFixture();
-    const snapshot = await f.service.returnToLobby(String(f.match._id), f.user);
-    expect(snapshot.matchId).toBe(String(f.match._id));
-    expect(snapshot.status).toBe('FINISHED');
-    expect(
-      snapshot.players.find((p) => p.userId === f.user)?.returnedToLobby,
-    ).toBe(true);
-    expect(
-      snapshot.players.find((p) => p.userId === f.opponent)?.returnedToLobby,
-    ).toBe(false);
-    expect(f.matchService.createFriendMatch).not.toHaveBeenCalled();
-    expect(f.match.usedWords).toEqual(['apple']);
-    expect(f.resultPlayers[0]?.score).toBe(12);
-  });
-
-  it('continues with the same host, opponent and mode only after both return', async () => {
-    const f = resultLobbyFixture();
-    await f.service.returnToLobby(String(f.match._id), f.user);
-    const snapshot = await f.service.returnToLobby(
+describe('Word Guess match', () => {
+  it('keeps the answer and opponents guesses private during play', async () => {
+    const f = guessFixture();
+    const state = await f.service.submitWordGuess(
+      String(f.match._id),
+      f.user,
+      'PEARL',
+    );
+    expect(state.attempts[0]).toEqual({
+      word: 'pearl',
+      feedback: ['present', 'present', 'present', 'absent', 'present'],
+    });
+    expect(state).not.toHaveProperty('answer');
+    const opponent = await f.service.wordGuessSnapshot(
       String(f.match._id),
       f.opponent,
     );
-    expect(f.matchService.createFriendMatch).toHaveBeenCalledExactlyOnceWith(
+    expect(opponent.attempts).toHaveLength(0);
+    expect(opponent.players.find((p) => p.userId === f.user)?.attempts).toBe(1);
+  });
+  it('rejects invalid lengths and repeated guesses without spending attempts', async () => {
+    const f = guessFixture();
+    await expect(
+      f.service.submitWordGuess(String(f.match._id), f.user, 'abcd'),
+    ).rejects.toThrow('WORD_MUST_HAVE_FIVE_LETTERS');
+    await f.service.submitWordGuess(String(f.match._id), f.user, 'pearl');
+    await expect(
+      f.service.submitWordGuess(String(f.match._id), f.user, 'pearl'),
+    ).rejects.toThrow('WORD_ALREADY_GUESSED');
+    expect(f.match.wordGuessAttempts).toHaveLength(1);
+  });
+  it('enforces exactly five attempts even for concurrent submissions', async () => {
+    const f = guessFixture();
+    const words = ['bound', 'trace', 'crane', 'slate', 'money', 'crown'];
+    const results = await Promise.allSettled(
+      words.map((word) =>
+        f.service.submitWordGuess(String(f.match._id), f.user, word),
+      ),
+    );
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(5);
+    expect(f.match.wordGuessAttempts).toHaveLength(5);
+    expect(f.match.status).toBe('PLAYING');
+  });
+  it('finishes with the first correct guess and reveals the answer only afterward', async () => {
+    const f = guessFixture();
+    const state = await f.service.submitWordGuess(
+      String(f.match._id),
       f.user,
-      f.opponent,
-      'WORD_CHAIN',
+      ' APPLE ',
     );
-    expect(snapshot.nextMatchId).toBe(String(f.nextId));
-    expect(f.match.status).toBe('FINISHED');
-    expect(f.match.usedWords).toEqual(['apple']);
-    await f.service.returnToLobby(String(f.match._id), f.user);
-    expect(f.matchService.createFriendMatch).toHaveBeenCalledOnce();
-  });
-
-  it('creates a single next round for simultaneous return requests', async () => {
-    const f = resultLobbyFixture();
-    await Promise.all([
-      f.service.returnToLobby(String(f.match._id), f.user),
-      f.service.returnToLobby(String(f.match._id), f.opponent),
-    ]);
-    expect(f.matchService.createFriendMatch).toHaveBeenCalledOnce();
-    expect(String(f.match.nextMatchId)).toBe(String(f.nextId));
-    expect(f.match.lobbyStarting).toBe(false);
-  });
-
-  it('broadcasts that a player left the result without changing the completed match', async () => {
-    const f = resultLobbyFixture();
-    await f.service.returnToLobby(String(f.match._id), f.user);
-    const events = await f.service.leaveResult(String(f.match._id), f.opponent);
-    expect(events[0]?.event).toBe('friend:snapshot');
-    expect(events[0]?.data.players).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          userId: f.opponent,
-          leftLobby: true,
-          returnedToLobby: false,
-        }),
-      ]),
-    );
-    expect(f.match.status).toBe('FINISHED');
-    expect(f.matchService.finishMatch).not.toHaveBeenCalled();
-    expect(f.matchService.createFriendMatch).not.toHaveBeenCalled();
-  });
-
-  it('does not start a completed match while someone is still viewing the result', async () => {
-    const f = resultLobbyFixture();
-    await f.service.returnToLobby(String(f.match._id), f.user);
-    await expect(f.service.start(String(f.match._id), f.user)).rejects.toThrow(
-      'Only the host',
-    );
-    expect(f.questions.createRankedQuestions).not.toHaveBeenCalled();
-  });
-
-  it('releases the lobby lock on failure and allows the return to be retried', async () => {
-    const f = resultLobbyFixture();
-    await f.service.returnToLobby(String(f.match._id), f.user);
-    f.matchService.createFriendMatch.mockRejectedValueOnce(
-      new Error('Try again'),
-    );
-    await expect(
-      f.service.returnToLobby(String(f.match._id), f.opponent),
-    ).rejects.toThrow('Try again');
-    expect(f.match.lobbyStarting).toBe(false);
-    await f.service.returnToLobby(String(f.match._id), f.opponent);
-    expect(String(f.match.nextMatchId)).toBe(String(f.nextId));
-  });
-
-  it('rejects a nonmember and a player who has already joined another match', async () => {
-    const f = resultLobbyFixture();
-    f.rounds.assertMember.mockRejectedValueOnce(new Error('Not a member'));
-    await expect(
-      f.service.returnToLobby(String(f.match._id), f.user),
-    ).rejects.toThrow('Not a member');
-    f.matchService.findActiveMatchForUser.mockResolvedValueOnce({
-      _id: new Types.ObjectId(),
-    } as never);
-    await expect(
-      f.service.returnToLobby(String(f.match._id), f.user),
-    ).rejects.toThrow('already in a match');
-    expect(f.matchService.createFriendMatch).not.toHaveBeenCalled();
-  });
-});
-
-describe('Departures while the next Friendly round is being created', () => {
-  it('cancels the new waiting round if a player closes the tab during creation', async () => {
-    const f = resultLobbyFixture();
-    f.matches.findById.mockImplementation(async (...args: unknown[]) =>
-      String(args[0]) === String(f.nextId)
-        ? { ...f.match, _id: f.nextId, status: 'WAITING' }
-        : { ...f.match },
-    );
-    const leave = vi.spyOn(f.service, 'leave').mockResolvedValue([]);
-    await f.service.returnToLobby(String(f.match._id), f.user);
-    f.matchService.createFriendMatch.mockImplementation(async () => {
-      f.resultPlayers[0]!.leftLobby = true;
-      return { match: { _id: f.nextId } };
+    expect(state).toMatchObject({
+      status: 'FINISHED',
+      answer: 'apple',
+      winnerId: f.user,
     });
-    await f.service.returnToLobby(String(f.match._id), f.opponent);
-    expect(leave).toHaveBeenCalledWith(String(f.nextId), f.user);
-    expect(f.match.status).toBe('FINISHED');
+    expect(f.players.updateOne).toHaveBeenCalledWith(expect.anything(), {
+      $set: { score: 500 },
+    });
+    await expect(
+      f.service.submitWordGuess(String(f.match._id), f.opponent, 'apple'),
+    ).rejects.toThrow('GAME_NOT_PLAYING');
+  });
+  it('declares a draw when all players have used five unsuccessful guesses', async () => {
+    const f = guessFixture();
+    for (const player of [f.user, f.opponent])
+      for (const word of ['bound', 'trace', 'crane', 'slate', 'money'])
+        await f.service.submitWordGuess(String(f.match._id), player, word);
+    expect(
+      await f.service.wordGuessSnapshot(String(f.match._id), f.user),
+    ).toMatchObject({ status: 'FINISHED', isDraw: true, answer: 'apple' });
   });
 });

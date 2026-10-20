@@ -1,4 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { ArenaSettingsService } from './admin/arena-settings.service.js';
+import { ARENA_DEFAULTS } from './admin/arena-settings.defaults.js';
+import { Injectable, Optional } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { ArenaReadService } from './arena-read.service.js';
@@ -26,6 +28,7 @@ export class ArenaService {
     private readonly arenaProfileModel: Model<ArenaProfileDocument>,
     @InjectModel(ArenaRatingHistory.name)
     private readonly ratingHistory: Model<ArenaRatingHistoryDocument>,
+    @Optional() private readonly settings?: ArenaSettingsService,
   ) {}
 
   /** Elo hiện tại cùng tổng thay đổi trong ngày và thống kê ranked của chính người dùng. */
@@ -69,6 +72,9 @@ export class ArenaService {
   /** Lấy profile có sẵn hoặc tạo profile Arena mặc định cho người dùng mới. */
   async getOrCreateProfile(userId: string) {
     const objectUserId = new Types.ObjectId(userId);
+    const config = this.settings
+      ? await this.settings.current()
+      : ARENA_DEFAULTS;
 
     return this.arenaProfileModel.findOneAndUpdate(
       {
@@ -78,7 +84,7 @@ export class ArenaService {
         $setOnInsert: {
           userId: objectUserId,
 
-          rating: 1000,
+          rating: config.ranked.defaultRating,
 
           rankedMatches: 0,
           rankedWins: 0,
@@ -90,7 +96,7 @@ export class ArenaService {
         },
       },
       {
-        new: true,
+        returnDocument: 'after',
         upsert: true,
       },
     );

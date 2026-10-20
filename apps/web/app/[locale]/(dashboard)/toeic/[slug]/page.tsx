@@ -91,7 +91,7 @@ export default function ToeicGroupDetailPage() {
   const groupName = group?.name || slug;
   const groupDescription =
     group?.description ||
-    'Các đề luyện thi TOEIC từ cơ bản đến nâng cao, giúp bạn làm quen với cấu trúc bài thi và cải thiện kỹ năng từng bước.';
+    t('pages.group_description');
   const groupExamCount = group?.examCount ?? rawExams.length;
 
   const iconConfig = PRESET_ICON_MAP[slug] ?? DEFAULT_ICON;
@@ -137,13 +137,13 @@ export default function ToeicGroupDetailPage() {
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-400">
             <AlertCircle className="h-7 w-7" />
           </div>
-          <h2 className="text-base font-bold text-slate-800">Không tìm thấy nhóm đề</h2>
-          <p className="text-xs text-slate-500">Nhóm đề thi này không tồn tại hoặc đã bị xóa.</p>
+          <h2 className="text-base font-bold text-slate-800">{t('pages.group_not_found')}</h2>
+          <p className="text-xs text-slate-500">{t('pages.group_not_found_description')}</p>
           <Link
             href={`/${locale}/toeic`}
             className="inline-flex items-center gap-1.5 rounded bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 transition"
           >
-            ← Quay lại TOEIC
+            {t('pages.back_to_toeic')}
           </Link>
         </div>
       </div>
@@ -385,7 +385,7 @@ export default function ToeicGroupDetailPage() {
                         {exam.durationMinutes && exam.durationMinutes > 0 && (
                           <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
-                            {exam.durationMinutes} phút
+                            {exam.durationMinutes} {t('pages.minutes')}
                           </span>
                         )}
                       </div>

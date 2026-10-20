@@ -1,3 +1,6 @@
+vi.mock('../matches/arena-match.service.js', () => ({
+  ArenaMatchService: class {},
+}));
 import { ArenaMatchmakingService } from './arena-matchmaking.service.js';
 vi.mock('../../users/schema/user.schema.js', () => ({ User: class {} }));
 

@@ -208,7 +208,7 @@ export default function ToeicExamDetailPage() {
               {(exam?.totalAttempts ?? 0) > 0 && (
                 <span className="flex items-center gap-1.5">
                   <Users className="h-4 w-4 text-slate-400" />
-                  {exam!.totalAttempts!.toLocaleString('vi-VN')} {t('exam_detail.attempts')}
+                  {exam!.totalAttempts!.toLocaleString(locale === 'en' ? 'en-US' : 'vi-VN')} {t('exam_detail.attempts')}
                 </span>
               )}
               {(exam?.durationMinutes ?? 0) > 0 && (
