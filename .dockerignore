@@ -24,3 +24,5 @@ repomix-output.xml
 .DS_Store
 storage/*
 !storage/.gitkeep
+
+backups

@@ -9,7 +9,7 @@ import { ActivityLogsModule } from '../activity-logs/activity-logs.module.js';
 import { FriendRoom, FriendRoomSchema } from './schemas/friend-room.schema.js';
 import { ArenaFriendRoomService } from './friendly/arena-friend-room.service.js';
 import { Module } from '@nestjs/common';
-import { AuthModule } from '../auth/auth.module.js';
+import { ServiceJwtModule } from '../auth/service-jwt.module.js';
 
 import { ArenaGateway } from './gateways/arena.gateway.js';
 import { ArenaFriendlyService } from './friendly/arena-friendly.service.js';
@@ -56,7 +56,7 @@ import { ArenaRatingService } from './rating/arena-rating.service.js';
 
 @Module({
   imports: [
-    AuthModule,
+    ServiceJwtModule,
     ActivityLogsModule,
     MongooseModule.forFeature([
       { name: ArenaSettings.name, schema: ArenaSettingsSchema },

@@ -29,9 +29,9 @@ export const VocabularyGroupSchema = SchemaFactory.createForClass(VocabularyGrou
 // Partial unique index: only active records must have unique name and slug
 VocabularyGroupSchema.index(
   { name: 1 },
-  { unique: true, partialFilterExpression: { isDeleted: { $ne: true } } },
+  { unique: true, partialFilterExpression: { isDeleted: false } },
 );
 VocabularyGroupSchema.index(
   { slug: 1 },
-  { unique: true, partialFilterExpression: { isDeleted: { $ne: true } } },
+  { unique: true, partialFilterExpression: { isDeleted: false } },
 );

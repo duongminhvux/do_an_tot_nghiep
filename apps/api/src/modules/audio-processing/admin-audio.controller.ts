@@ -1,5 +1,6 @@
 /// <reference types="multer" />
-import { Body, Get, NotFoundException, Param, Post, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Body, Get, NotFoundException, Param, Post, Sse, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { interval, startWith, concatMap, takeWhile } from 'rxjs';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AdminController } from '../auth/decorators/admin-controller.decorator.js';
 import { AudioProcessingService } from './audio-processing.service.js';
@@ -69,6 +70,47 @@ export class AdminAudioController {
   @Post('toeic/exams/:examId/generate')
   generateExam(@Param('examId') examId: string, @Body() dto: BulkToeicAudioDto) {
     return this.audioQueue.enqueueToeicExam(examId, dto.parts);
+  }
+
+  // Opt-in asynchronous alternatives. Existing synchronous endpoints are untouched.
+  @Post('vocabulary/:id/enqueue')
+  enqueueVocabulary(@Param('id') id: string, @Body() dto: GenerateVocabularyAudioDto) {
+    if (dto.accent === 'both') return this.audioQueue.enqueueVocabularyBulk([id], 'both');
+    return this.audioQueue.enqueueVocabularySingle(id, dto.accent || 'us', dto.voiceId);
+  }
+
+  @Post('toeic/questions/:id/enqueue')
+  enqueueQuestion(@Param('id') id: string, @Body() dto: GenerateToeicAudioDto) {
+    return this.audioQueue.enqueueToeicQuestionSingle(id, dto.primaryVoiceId, dto.secondaryVoiceId);
+  }
+
+  @Post('toeic/passages/:id/enqueue')
+  enqueuePassage(@Param('id') id: string, @Body() dto: GenerateToeicAudioDto) {
+    return this.audioQueue.enqueueToeicPassageSingle(id, dto.primaryVoiceId, dto.secondaryVoiceId);
+  }
+
+  @Get('workers/config')
+  workerConfig() { return this.audioQueue.workerConfig(); }
+
+  @Post('workers/config')
+  saveWorkerConfig(@Body() body: { maxWorkers: number; backlogThreshold: number }) {
+    return this.audioQueue.configureWorkers(body);
+  }
+
+  @Get('workers/metrics')
+  workerMetrics() { return this.audioQueue.queueMetrics(); }
+
+  @Sse('jobs/:id/events')
+  events(@Param('id') id: string) {
+    return interval(1500).pipe(
+      startWith(0),
+      concatMap(async () => {
+        const job = await this.audioQueue.status(id);
+        return { data: job ?? { error: 'not_found' } };
+      }),
+      takeWhile((event) => !['completed','failed'].includes(
+        (event.data as any).state || ''), true),
+    );
   }
 
   @Get('jobs/:id')

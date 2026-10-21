@@ -1,0 +1,111 @@
+# Optional RabbitMQ audio queue extraction. Overlay this on docker-compose.yml.
+services:
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?Set RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      - ./infra/rabbitmq/rabbitmq.conf:/etc/rabbitmq/conf.d/99-consumer.conf:ro
+    ports:
+      - "127.0.0.1:15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+    networks: [toeic-network]
+
+  job-broker:
+    build:
+      context: .
+      dockerfile: services/job-broker/Dockerfile
+    restart: unless-stopped
+    environment:
+      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+      REDIS_URL: redis://redis:6379
+      JOB_INTERNAL_TOKEN: ${JOB_INTERNAL_TOKEN:?Set JOB_INTERNAL_TOKEN}
+    depends_on:
+      rabbitmq: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    networks: [toeic-network]
+
+  audio-worker:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: ["node", "apps/api/dist/audio-worker-main.js"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5001/_internal/audio/health').then(r => process.exit(r.ok ? 0 : 1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      AUDIO_QUEUE_BACKEND: rabbitmq
+      MONGO_URI: ${DOCKER_MONGO_URI:-mongodb://mongo:27017/english-platform}
+      REDIS_URL: redis://redis:6379
+      JOB_INTERNAL_TOKEN: ${JOB_INTERNAL_TOKEN:?Set JOB_INTERNAL_TOKEN}
+      TTS_SERVICE_URL: ${DOCKER_TTS_SERVICE_URL:-http://tts-service:8001}
+      TTS_REQUEST_TIMEOUT_MS: ${TTS_REQUEST_TIMEOUT_MS:-120000}
+      VOCAB_TTS_SPEED: ${VOCAB_TTS_SPEED:-1}
+      TOEIC_TTS_OPTION_PAUSE_MS: ${TOEIC_TTS_OPTION_PAUSE_MS:-650}
+      TOEIC_TTS_TURN_PAUSE_MS: ${TOEIC_TTS_TURN_PAUSE_MS:-350}
+      TOEIC_TTS_SENTENCE_PAUSE_MS: ${TOEIC_TTS_SENTENCE_PAUSE_MS:-260}
+      TOEIC_P1_VOICE: ${TOEIC_P1_VOICE:-af_heart}
+      TOEIC_P2_PROMPT_VOICE: ${TOEIC_P2_PROMPT_VOICE:-am_adam}
+      TOEIC_P2_RESPONSE_VOICE: ${TOEIC_P2_RESPONSE_VOICE:-af_heart}
+      TOEIC_P3_SPEAKER_A_VOICE: ${TOEIC_P3_SPEAKER_A_VOICE:-am_adam}
+      TOEIC_P3_SPEAKER_B_VOICE: ${TOEIC_P3_SPEAKER_B_VOICE:-af_heart}
+      TOEIC_P3_SPEAKER_C_VOICE: ${TOEIC_P3_SPEAKER_C_VOICE:-bm_george}
+      TOEIC_P4_VOICE: ${TOEIC_P4_VOICE:-bf_emma}
+      MEDIA_STORAGE_PATH: /app/storage
+      MEDIA_STORAGE_BACKEND: ${MEDIA_STORAGE_BACKEND:-local}
+      MEDIA_BRIDGE_URL: http://media-bridge:8010
+      MEDIA_INTERNAL_TOKEN: ${MEDIA_INTERNAL_TOKEN:-}
+      MEDIA_PUBLIC_BASE_URL: ${MEDIA_PUBLIC_BASE_URL:-http://localhost:5000/media}
+      VOCAB_TTS_US_VOICE: ${VOCAB_TTS_US_VOICE:-af_heart}
+      VOCAB_TTS_UK_VOICE: ${VOCAB_TTS_UK_VOICE:-bf_emma}
+      TOEIC_TTS_SPEED: ${TOEIC_TTS_SPEED:-1}
+    volumes:
+      - ./storage:/app/storage
+    depends_on:
+      db-migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+      tts-service: {condition: service_started}
+    networks: [toeic-network]
+
+  job-runner:
+    build:
+      context: .
+      dockerfile: services/job-broker/Dockerfile.runner
+    restart: unless-stopped
+    environment:
+      RUNNER_ROLE: primary
+      GPU_SCHEDULER_ENABLED: ${GPU_SCHEDULER_ENABLED:-false}
+      GPU_NODE_ID: ${GPU_NODE_ID:-server-a}
+      GPU_MAX_CONCURRENT: ${GPU_MAX_CONCURRENT:-1}
+      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+      REDIS_URL: redis://redis:6379
+      JOB_INTERNAL_TOKEN: ${JOB_INTERNAL_TOKEN:?Set JOB_INTERNAL_TOKEN}
+      AUDIO_WORKER_URL: http://audio-worker:5001
+      AUDIO_JOB_RETRIES: ${AUDIO_JOB_RETRIES:-3}
+    depends_on:
+      rabbitmq: {condition: service_healthy}
+      audio-worker: {condition: service_healthy}
+    networks: [toeic-network]
+
+  api:
+    environment:
+      AUDIO_QUEUE_BACKEND: rabbitmq
+      RABBIT_JOB_BROKER_URL: http://job-broker:8020
+      JOB_INTERNAL_TOKEN: ${JOB_INTERNAL_TOKEN:?Set JOB_INTERNAL_TOKEN}
+    depends_on:
+      job-broker: {condition: service_started}
+
+volumes:
+  rabbitmq_data:

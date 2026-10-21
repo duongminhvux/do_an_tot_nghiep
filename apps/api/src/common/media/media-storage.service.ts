@@ -8,6 +8,9 @@ import crypto from 'node:crypto';
 export class MediaStorageService {
   readonly rootPath: string;
   private readonly publicBaseUrl: string;
+  private readonly backend: 'local' | 's3';
+  private readonly bridgeUrl: string;
+  private readonly internalToken: string;
 
   constructor(private readonly configService: ConfigService) {
     const configuredPath = this.configService.get<string>('MEDIA_STORAGE_PATH') || './storage';
@@ -20,6 +23,9 @@ export class MediaStorageService {
       this.rootPath = path.resolve(repositoryRoot, configuredPath);
     }
 
+    this.backend = this.configService.get<string>('MEDIA_STORAGE_BACKEND') === 's3' ? 's3' : 'local';
+    this.bridgeUrl = (this.configService.get<string>('MEDIA_BRIDGE_URL') || 'http://media-bridge:8010').replace(/\/$/, '');
+    this.internalToken = this.configService.get<string>('MEDIA_INTERNAL_TOKEN') || '';
     this.publicBaseUrl = (
       this.configService.get<string>('MEDIA_PUBLIC_BASE_URL') || 'http://localhost:5000/media'
     ).replace(/\/$/, '');
@@ -74,8 +80,38 @@ export class MediaStorageService {
     return null;
   }
 
+  private objectUrl(key: string): string {
+    return `${this.bridgeUrl}/objects/${this.normalizeStorageKey(key).split('/').map(encodeURIComponent).join('/')}`;
+  }
+
+  private async bridgeRequest(method: string, key: string, body?: Buffer): Promise<Response> {
+    if (!this.internalToken) throw new Error('MEDIA_INTERNAL_TOKEN is required for S3 storage');
+    const response = await fetch(this.objectUrl(key), {
+      method,
+      headers: { 'x-internal-token': this.internalToken, ...(body ? { 'content-type': 'application/octet-stream' } : {}) },
+      ...(body ? { body: new Uint8Array(body) } : {}),
+      signal: AbortSignal.timeout(120_000),
+    });
+    return response;
+  }
+
+  async streamFromObject(key: string, range?: string): Promise<Response> {
+    if (!this.internalToken) throw new Error('MEDIA_INTERNAL_TOKEN is required for S3 storage');
+    return fetch(this.objectUrl(key), {
+      headers: { 'x-internal-token': this.internalToken, ...(range ? { range } : {}) },
+      signal: AbortSignal.timeout(60_000),
+    });
+  }
+
+  useObjectStorage(): boolean { return this.backend === 's3'; }
+
   async saveBuffer(storageKey: string, buffer: Buffer): Promise<{ storageKey: string; url: string }> {
     const normalized = this.normalizeStorageKey(storageKey);
+    if (this.backend === 's3') {
+      const response = await this.bridgeRequest('PUT', normalized, buffer);
+      if (!response.ok) throw new Error(`S3 object write failed (${response.status})`);
+      return { storageKey: normalized, url: this.getPublicUrl(normalized) };
+    }
     const target = this.absolutePath(normalized);
     await fs.mkdir(path.dirname(target), { recursive: true });
 
@@ -88,6 +124,11 @@ export class MediaStorageService {
 
   async delete(storageKey?: string | null): Promise<void> {
     if (!storageKey) return;
+    if (this.backend === 's3') {
+      const response = await this.bridgeRequest('DELETE', storageKey);
+      if (!response.ok) throw new Error(`S3 delete failed (${response.status})`);
+      return;
+    }
     try {
       await fs.unlink(this.absolutePath(storageKey));
     } catch (error: any) {
@@ -97,6 +138,10 @@ export class MediaStorageService {
 
   async exists(storageKey?: string | null): Promise<boolean> {
     if (!storageKey) return false;
+    if (this.backend === 's3') {
+      const response = await this.bridgeRequest('HEAD', storageKey);
+      return response.ok;
+    }
     try {
       await fs.access(this.absolutePath(storageKey));
       return true;

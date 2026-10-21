@@ -1,0 +1,34 @@
+# Optional durable domain-event relay; works with RabbitMQ and existing MongoDB.
+services:
+  event-relay:
+    build: {context: ., dockerfile: services/domain-events/Dockerfile}
+    restart: unless-stopped
+    environment:
+      MONGO_URI: ${DOCKER_MONGO_URI:-mongodb://mongo:27017/english-platform}
+      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+    depends_on:
+      mongo: {condition: service_healthy}
+      rabbitmq: {condition: service_healthy}
+    networks: [toeic-network]
+  event-consumer-learning:
+    build: {context: ., dockerfile: services/domain-events/Dockerfile}
+    command: ["python", "consumer.py"]
+    environment:
+      EVENT_CONSUMER: learning
+      MONGO_URI: ${DOCKER_MONGO_URI:-mongodb://mongo:27017/english-platform}
+      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+    restart: unless-stopped
+    depends_on:
+      rabbitmq: {condition: service_healthy}
+    networks: [toeic-network]
+  event-consumer-notification:
+    build: {context: ., dockerfile: services/domain-events/Dockerfile}
+    command: ["python", "consumer.py"]
+    environment:
+      EVENT_CONSUMER: notification
+      MONGO_URI: ${DOCKER_MONGO_URI:-mongodb://mongo:27017/english-platform}
+      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+    restart: unless-stopped
+    depends_on:
+      rabbitmq: {condition: service_healthy}
+    networks: [toeic-network]

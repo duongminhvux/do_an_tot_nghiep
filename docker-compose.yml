@@ -1,6 +1,7 @@
 services:
   redis:
     image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
     container_name: vocalearn-redis
     restart: unless-stopped
     ports:
@@ -28,6 +29,20 @@ services:
       timeout: 5s
       retries: 10
       start_period: 10s
+    networks:
+      - toeic-network
+
+  db-migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: "no"
+    environment:
+      MONGO_URI: ${DOCKER_MONGO_URI:-mongodb://mongo:27017/english-platform}
+    command: ["node", "apps/api/src/scripts/db-migrate.mjs"]
+    depends_on:
+      mongo:
+        condition: service_healthy
     networks:
       - toeic-network
 
@@ -84,6 +99,8 @@ services:
       MEDIA_STORAGE_PATH: ${DOCKER_MEDIA_STORAGE_PATH:-/app/storage}
       MEDIA_PUBLIC_BASE_URL: ${MEDIA_PUBLIC_BASE_URL:-http://localhost:5000/media}
       AUDIO_QUEUE_CONCURRENCY: ${AUDIO_QUEUE_CONCURRENCY:-1}
+      AUDIO_QUEUE_BACKEND: ${AUDIO_QUEUE_BACKEND:-redis}
+      MONGOOSE_AUTO_INDEX: ${MONGOOSE_AUTO_INDEX:-true}
 
       VOCAB_TTS_US_VOICE: ${VOCAB_TTS_US_VOICE:-af_heart}
       VOCAB_TTS_UK_VOICE: ${VOCAB_TTS_UK_VOICE:-bf_emma}
@@ -139,10 +156,10 @@ services:
     volumes:
       - ./storage:/app/storage
     ports:
-      - "${PORT:-5000}:${PORT:-5000}"
+      - "${API_PUBLISH_HOST:-0.0.0.0}:${API_PUBLISHED_PORT:-5000}:${PORT:-5000}"
     depends_on:
-      mongo:
-        condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
       tts-service:

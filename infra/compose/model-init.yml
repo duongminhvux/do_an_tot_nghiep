@@ -1,0 +1,23 @@
+# Optional model download/check before inference services start.
+services:
+  model-init:
+    build:
+      context: .
+      dockerfile: services/model-init/Dockerfile
+    restart: "no"
+    environment:
+      MODEL_AUTO_DOWNLOAD: ${MODEL_AUTO_DOWNLOAD:-true}
+      KOKORO_MODEL_ID: ${KOKORO_MODEL_ID:-hexgrad/Kokoro-82M}
+      KOKORO_HF_HOME: /models/huggingface
+      WHISPER_REPO_ID: ${WHISPER_REPO_ID:-Systran/faster-whisper-small.en}
+      ASR_MODEL_DIR: /models/faster-whisper
+    volumes:
+      - kokoro_models:/models/huggingface
+      - whisper_models:/models/faster-whisper
+    networks: [toeic-network]
+  tts-service:
+    depends_on:
+      model-init: {condition: service_completed_successfully}
+  asr-service:
+    depends_on:
+      model-init: {condition: service_completed_successfully}

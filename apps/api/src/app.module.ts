@@ -21,6 +21,7 @@ import { DictationModule } from './modules/dictation/dictation.module.js';
 import { ActivityLogsModule } from './modules/activity-logs/activity-logs.module.js';
 import { DashboardModule } from './modules/dashboard/dashboard.module.js';
 import { RedisModule } from './common/redis/redis.module.js';
+import { DomainEventsModule } from './common/events/domain-events.module.js';
 import { ArenaModule } from './modules/arena/arena.module.js';
 import { MediaStorageModule } from './common/media/media-storage.module.js';
 import { AudioProcessingModule } from './modules/audio-processing/audio-processing.module.js';
@@ -66,6 +67,9 @@ const isDev = process.env.NODE_ENV !== 'production';
         uri:
           configService.get<string>('MONGO_URI') ??
           'mongodb://127.0.0.1:27017/english-platform',
+        // Transitional safety: keep existing index creation until all Mongoose
+        // indexes have been reviewed into versioned migrations.
+        autoIndex: configService.get<string>('MONGOOSE_AUTO_INDEX') !== 'false',
       }),
     }),
     UsersModule,
@@ -81,6 +85,7 @@ const isDev = process.env.NODE_ENV !== 'production';
     ActivityLogsModule,
     DashboardModule,
     RedisModule,
+    DomainEventsModule,
     MediaStorageModule,
     AudioProcessingModule,
     ArenaModule,

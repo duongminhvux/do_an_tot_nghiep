@@ -1,7 +1,6 @@
 import {
   Injectable,
   Logger,
-  OnModuleInit,
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
@@ -12,7 +11,7 @@ import { ConfigService } from '@nestjs/config';
 import { I18nService } from 'nestjs-i18n';
 
 @Injectable()
-export class AdminsService implements OnModuleInit {
+export class AdminsService {
   private readonly logger = new Logger(AdminsService.name);
 
   constructor(
@@ -20,10 +19,6 @@ export class AdminsService implements OnModuleInit {
     private readonly configService: ConfigService,
     private readonly i18n: I18nService,
   ) {}
-
-  async onModuleInit() {
-    await this.seedDefaultAdmin();
-  }
 
   private getDefaultAdminCredentials() {
     return {

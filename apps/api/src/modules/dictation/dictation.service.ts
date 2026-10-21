@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
@@ -693,7 +694,7 @@ export class DictationService {
         );
       }
 
-      const storageKey = `dictation/${lesson._id.toString()}/full.wav`;
+      const storageKey = `dictation/${lesson._id.toString()}/full-${randomUUID()}.wav`;
       const fullUpload = await this.mediaStorage.saveBuffer(storageKey, fullResult.audio);
 
       const generatedSegments = sentences.map((text, order) => ({
@@ -769,7 +770,7 @@ export class DictationService {
       }
 
       const ext = (file.originalname?.split('.').pop() || 'audio').replace(/[^a-zA-Z0-9]/g, '').toLowerCase() || 'audio';
-      const storageKey = `dictation/${lesson._id.toString()}/uploaded.${ext}`;
+      const storageKey = `dictation/${lesson._id.toString()}/uploaded-${randomUUID()}.${ext}`;
       const upload = await this.mediaStorage.saveBuffer(storageKey, file.buffer);
 
       const totalDurationMs = Math.max(

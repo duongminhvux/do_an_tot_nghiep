@@ -3,12 +3,14 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { I18nContext, I18nService } from 'nestjs-i18n';
 import { Exam, ExamDocument } from './schemas/exam.schema.js';
 import { CreateExamDto } from './dto/create-exam.dto.js';
+import { DomainOutboxService } from '../../../common/events/domain-outbox.service.js';
 import { UpdateExamDto } from './dto/update-exam.dto.js';
 import { QueryExamDto } from './dto/query-exam.dto.js';
 
@@ -41,6 +43,7 @@ export class ExamsService {
     @InjectModel(Exam.name)
     private readonly examModel: Model<ExamDocument>,
     private readonly i18n: I18nService,
+    @Optional() private readonly domainOutbox?: DomainOutboxService,
   ) {}
 
   private getLang(): string {
@@ -120,6 +123,15 @@ export class ExamsService {
     });
 
     const saved = await createdExam.save();
+    try {
+      await this.domainOutbox?.enqueue('assessment.exam.created.v1', String(saved._id), {
+        examId: String(saved._id), type: saved.type,
+      });
+    } catch (error) {
+      // No transaction yet; avoid falsely reporting that the saved exam failed.
+      console.warn('Exam event outbox unavailable', error);
+    }
+
     const ranks = await this.normalizeOrders(String(saved._id), createExamDto.order);
     saved.order = ranks.find(row => row.id === String(saved._id))!.order;
     return saved;

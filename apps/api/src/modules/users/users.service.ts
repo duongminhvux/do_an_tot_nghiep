@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, Optional } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import { UpdateProfileDto } from './dto/update-profile.dto.js';
 import { InjectModel } from '@nestjs/mongoose';
@@ -115,6 +115,8 @@ function formatRelativeTime(dateInput: Date | string | null | undefined): string
   return 'Vừa xong';
 }
 
+import { DomainOutboxService } from '../../common/events/domain-outbox.service.js';
+
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
@@ -140,6 +142,7 @@ export class UsersService {
     @InjectModel(UserDailyActivity.name)
     private readonly userDailyActivityModel: Model<UserDailyActivity>,
     private readonly i18n: I18nService,
+    @Optional() private readonly domainOutbox?: DomainOutboxService,
   ) {}
 
   async isExistingEmail(email: string) {
@@ -147,9 +150,17 @@ export class UsersService {
   }
 
   async create(data: CreateUserDto) {
-    return await this.userModel.create({
-      ...data
-    });
+    const created = await this.userModel.create({ ...data });
+    try {
+      await this.domainOutbox?.enqueue('identity.user.created.v1', String(created._id), {
+        userId: String(created._id),
+      });
+    } catch (error) {
+      // User was already saved; failing registration here could encourage a
+      // duplicate request. Reconciliation is required until transactions are enabled.
+      this.logger.warn('Could not publish user-created outbox event', error);
+    }
+    return created;
   }
 
   async findByEmail(email: string): Promise<UserDocument | null> {

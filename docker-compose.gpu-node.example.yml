@@ -1,0 +1,161 @@
+# OPTIONAL FUTURE DEPLOYMENT: run this file alone on GPU Server B.
+# Root path relative to repository. Requires a private VPN to Server A, never
+# expose RabbitMQ/Redis/MongoDB/MinIO ports to the public Internet.
+# On Server A, disable local inference/runner services before enabling these.
+name: vocalearn-gpu-node
+services:
+  tts-service:
+    build:
+      context: .
+      dockerfile: services/tts-service/Dockerfile
+      args:
+        TORCH_VERSION: ${TORCH_VERSION:-2.7.1}
+        TORCH_INDEX_URL: ${TORCH_INDEX_URL_GPU:-https://download.pytorch.org/whl/cu126}
+    restart: unless-stopped
+    environment:
+      KOKORO_DEVICE: cuda
+      KOKORO_MODEL_ID: ${KOKORO_MODEL_ID:-hexgrad/Kokoro-82M}
+      HF_HOME: /models/huggingface
+    volumes: [kokoro_models:/models/huggingface]
+    gpus: all
+    ports: ["${GPU_PRIVATE_BIND_IP:?Set private GPU server IP}:8001:8001"]
+    networks: [gpu-network]
+  asr-service:
+    build:
+      context: .
+      dockerfile: services/asr-service/Dockerfile.gpu
+    restart: unless-stopped
+    environment:
+      ASR_DEVICE: cuda
+      ASR_COMPUTE_TYPE: ${ASR_COMPUTE_TYPE_GPU:-float16}
+      ASR_MODEL: ${ASR_MODEL:-small.en}
+      ASR_MODEL_DIR: /models/faster-whisper
+      ASR_VAD_FILTER: ${ASR_VAD_FILTER:-true}
+      ASR_BEAM_SIZE: ${ASR_BEAM_SIZE:-5}
+    volumes: [whisper_models:/models/faster-whisper]
+    gpus: all
+    ports: ["${GPU_PRIVATE_BIND_IP:?Set private GPU server IP}:8002:8002"]
+    networks: [gpu-network]
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    environment:
+      OLLAMA_NUM_PARALLEL: '1'
+      OLLAMA_MAX_LOADED_MODELS: '1'
+      OLLAMA_NO_CLOUD: 'true'
+    volumes: [ollama_models:/root/.ollama]
+    gpus: all
+    networks: [gpu-network]
+  ollama-model-init:
+    image: ollama/ollama:latest
+    restart: 'no'
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["until ollama list >/dev/null 2>&1; do sleep 3; done; ollama pull \"$${OLLAMA_MODEL}\""]
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b}
+    depends_on: [ollama]
+    networks: [gpu-network]
+  pdf-ai:
+    build:
+      context: .
+      dockerfile: services/pdf-ai/Dockerfile
+    restart: unless-stopped
+    environment:
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b}
+      PDF_AI_QUEUE_BACKEND: rabbitmq
+      RABBITMQ_URL: ${REMOTE_RABBITMQ_URL:?Set RabbitMQ over VPN}
+      PDF_AI_ASSET_DIR: /app/assets
+      PDF_AI_LEARNING_DIR: /app/learning
+    volumes:
+      - ./storage/pdf-ai:/app/assets
+      - ./.local/pdf-ai-learning:/app/learning
+    ports: ["${GPU_PRIVATE_BIND_IP:?Set private GPU server IP}:8003:8003"]
+    depends_on: [ollama]
+    networks: [gpu-network]
+  pdf-ai-worker:
+    build:
+      context: .
+      dockerfile: services/pdf-ai/Dockerfile
+    command: ["python", "worker.py"]
+    restart: unless-stopped
+    environment:
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b}
+      PDF_AI_QUEUE_BACKEND: rabbitmq
+      PDF_AI_ASSET_DIR: /app/assets
+      PDF_AI_LEARNING_DIR: /app/learning
+      RABBITMQ_URL: ${REMOTE_RABBITMQ_URL:?Set RabbitMQ over VPN}
+      REDIS_URL: ${REMOTE_REDIS_URL:?Set Redis over VPN}
+      GPU_SCHEDULER_ENABLED: 'true'
+      GPU_NODE_ID: ${GPU_NODE_ID:-server-b}
+      GPU_MAX_CONCURRENT: ${GPU_MAX_CONCURRENT:-1}
+    volumes:
+      - ./storage/pdf-ai:/app/assets
+      - ./.local/pdf-ai-learning:/app/learning
+    depends_on: [pdf-ai]
+    networks: [gpu-network]
+  audio-worker:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: ["node", "apps/api/dist/audio-worker-main.js"]
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      AUDIO_QUEUE_BACKEND: rabbitmq
+      MONGO_URI: ${REMOTE_MONGO_URI:?Set MongoDB over VPN}
+      REDIS_URL: ${REMOTE_REDIS_URL:?Set Redis over VPN}
+      JOB_INTERNAL_TOKEN: ${JOB_INTERNAL_TOKEN:?Set private token}
+      TTS_SERVICE_URL: http://tts-service:8001
+      MEDIA_STORAGE_BACKEND: s3
+      MEDIA_BRIDGE_URL: ${REMOTE_MEDIA_BRIDGE_URL:?Set media bridge over VPN}
+      MEDIA_INTERNAL_TOKEN: ${MEDIA_INTERNAL_TOKEN:?Set media token}
+      MEDIA_PUBLIC_BASE_URL: ${MEDIA_PUBLIC_BASE_URL:?Set public media URL}
+      MEDIA_STORAGE_PATH: /app/storage
+    networks: [gpu-network]
+  job-runner:
+    build:
+      context: .
+      dockerfile: services/job-broker/Dockerfile.runner
+    restart: unless-stopped
+    environment:
+      RUNNER_ROLE: primary
+      RABBITMQ_URL: ${REMOTE_RABBITMQ_URL:?Set RabbitMQ over VPN}
+      REDIS_URL: ${REMOTE_REDIS_URL:?Set Redis over VPN}
+      JOB_INTERNAL_TOKEN: ${JOB_INTERNAL_TOKEN:?Set private token}
+      AUDIO_WORKER_URL: http://audio-worker:5001
+      GPU_SCHEDULER_ENABLED: 'true'
+      GPU_NODE_ID: ${GPU_NODE_ID:-server-b}
+      GPU_MAX_CONCURRENT: ${GPU_MAX_CONCURRENT:-1}
+    depends_on: [audio-worker]
+    networks: [gpu-network]
+  asr-job-runner:
+    build:
+      context: .
+      dockerfile: services/asr-jobs/Dockerfile
+    command: ["python", "worker.py"]
+    restart: unless-stopped
+    environment:
+      MONGO_URI: ${REMOTE_MONGO_URI:?Set MongoDB over VPN}
+      RABBITMQ_URL: ${REMOTE_RABBITMQ_URL:?Set RabbitMQ over VPN}
+      JOB_INTERNAL_TOKEN: ${JOB_INTERNAL_TOKEN:?Set private token}
+      S3_ENDPOINT: ${REMOTE_S3_ENDPOINT:?Set MinIO over VPN}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?Set key}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:?Set secret}
+      S3_BUCKET: ${S3_BUCKET:-vocalearn-media}
+      ASR_SERVICE_URL: http://asr-service:8002
+      REDIS_URL: ${REMOTE_REDIS_URL:?Set Redis over VPN}
+      GPU_SCHEDULER_ENABLED: 'true'
+      GPU_NODE_ID: ${GPU_NODE_ID:-server-b}
+      GPU_MAX_CONCURRENT: ${GPU_MAX_CONCURRENT:-1}
+    depends_on: [asr-service]
+    networks: [gpu-network]
+volumes:
+  kokoro_models:
+  whisper_models:
+  ollama_models:
+networks:
+  gpu-network:
+    driver: bridge

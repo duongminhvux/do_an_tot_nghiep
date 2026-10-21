@@ -49,3 +49,8 @@ storage/*
 !storage/.gitkeep
 # Local correction corpus (source PDFs, gold labels and evaluation reports).
 .local/
+
+# Deployment backups, local cache and secrets
+backups/
+media-data/
+*.archive.gz

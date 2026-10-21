@@ -68,10 +68,10 @@ export const ExamSchema = SchemaFactory.createForClass(Exam);
 
 ExamSchema.index(
   { name: 1 },
-  { unique: true, partialFilterExpression: { isDeleted: { $ne: true } } },
+  { unique: true, partialFilterExpression: { isDeleted: false } },
 );
 ExamSchema.index(
   { slug: 1 },
-  { unique: true, partialFilterExpression: { isDeleted: { $ne: true } } },
+  { unique: true, partialFilterExpression: { isDeleted: false } },
 );
 ExamSchema.index({ groupId: 1 });

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException, OnModuleInit } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { I18nContext, I18nService } from 'nestjs-i18n';
@@ -11,7 +11,7 @@ import { UpdateVocabularyGroupDto } from './dto/update-vocabulary-group.dto.js';
 import { QueryVocabularyGroupDto } from './dto/query-vocabulary-group.dto.js';
 
 @Injectable()
-export class VocabularyGroupsService implements OnModuleInit {
+export class VocabularyGroupsService {
   constructor(
     @InjectModel(VocabularyGroup.name)
     private readonly vocabularyGroupModel: Model<VocabularyGroupDocument>,
@@ -23,21 +23,6 @@ export class VocabularyGroupsService implements OnModuleInit {
     private readonly lessonWordModel: Model<LessonWordDocument>,
     private readonly i18n: I18nService,
   ) {}
-
-  async onModuleInit() {
-    try {
-      // Drop old unique indexes if they exist without partialFilterExpression
-      const indexes = await this.vocabularyGroupModel.collection.indexes();
-      for (const idx of indexes) {
-        if ((idx.name === 'name_1' || idx.name === 'slug_1') && !idx.partialFilterExpression) {
-          await this.vocabularyGroupModel.collection.dropIndex(idx.name);
-        }
-      }
-      await this.vocabularyGroupModel.syncIndexes();
-    } catch {
-      // Ignore if index doesn't exist or collection hasn't been created yet
-    }
-  }
 
   private getLang(): string {
     return I18nContext.current()?.lang || 'vi';

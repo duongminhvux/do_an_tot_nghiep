@@ -14,7 +14,7 @@ import {
 
 import { Server, Socket } from 'socket.io';
 
-import { AuthService } from '../../auth/auth.service.js';
+import { IdentityTokenVerifier } from '../../auth/service-jwt.module.js';
 import { ConnectionAuthenticated } from '../../auth/decorators/connection-authenticated.decorator.js';
 import { ArenaMatchmakingService } from '../matchmaking/arena-matchmaking.service.js';
 import { ArenaPresenceService } from '../presence/arena-presence.service.js';
@@ -59,7 +59,7 @@ export class ArenaGateway
     private readonly matchmakingService: ArenaMatchmakingService,
     private readonly arenaMatchService: ArenaMatchService,
     private readonly presenceService: ArenaPresenceService,
-    private readonly authService: AuthService,
+    private readonly identityVerifier: IdentityTokenVerifier,
     private readonly arenaRoundService: ArenaRoundService,
     private readonly friendRooms: ArenaFriendRoomService,
   ) {
@@ -72,6 +72,9 @@ export class ArenaGateway
 
   /** Khởi động clock server để xử lý timeout và chuyển vòng định kỳ. */
   onModuleInit() {
+    // In gateway migration mode the legacy API provides fallback HTTP only.
+    // Only arena-service may advance match clocks.
+    if (process.env.SERVICE_ROLE === 'legacy') return;
     this.clock = setInterval(() => {
       void this.tick();
     }, 500);
@@ -112,6 +115,7 @@ export class ArenaGateway
 
   /** Xác thực socket bằng access token và đăng ký trạng thái presence. */
   async handleConnection(client: Socket) {
+    if (process.env.SERVICE_ROLE === 'legacy') { client.disconnect(true); return; }
     try {
       const token = client.handshake.auth?.token;
 
@@ -121,7 +125,8 @@ export class ArenaGateway
         return;
       }
 
-      const payload = await this.authService.verifyToken(token);
+      const payload = await this.identityVerifier.verifyToken(token);
+      if (payload.role !== 'USER') { client.disconnect(); return; }
 
       if (!client.connected) {
         return;

@@ -117,5 +117,5 @@ export const DictationLessonSchema = SchemaFactory.createForClass(DictationLesso
 
 DictationLessonSchema.index(
   { slug: 1 },
-  { unique: true, partialFilterExpression: { isDeleted: { $ne: true } } },
+  { unique: true, partialFilterExpression: { isDeleted: false } },
 );

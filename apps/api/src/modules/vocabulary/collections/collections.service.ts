@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException, OnModuleInit } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { I18nContext, I18nService } from 'nestjs-i18n';
@@ -9,26 +9,12 @@ import { UpdateCollectionDto } from './dto/update-collection.dto.js';
 import { QueryCollectionDto } from './dto/query-collection.dto.js';
 
 @Injectable()
-export class CollectionsService implements OnModuleInit {
+export class CollectionsService {
   constructor(
     @InjectModel(Collection.name) private readonly collectionModel: Model<CollectionDocument>,
     @InjectModel(Lesson.name) private readonly lessonModel: Model<LessonDocument>,
     private readonly i18n: I18nService,
   ) {}
-
-  async onModuleInit() {
-    try {
-      const indexes = await this.collectionModel.collection.indexes();
-      for (const idx of indexes) {
-        if ((idx.name === 'name_1' || idx.name === 'slug_1') && !idx.partialFilterExpression) {
-          await this.collectionModel.collection.dropIndex(idx.name);
-        }
-      }
-      await this.collectionModel.syncIndexes();
-    } catch {
-      // Ignore
-    }
-  }
 
   private getLang(): string {
     return I18nContext.current()?.lang || 'vi';

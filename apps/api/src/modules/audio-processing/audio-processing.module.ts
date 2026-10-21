@@ -8,6 +8,7 @@ import { PassageGroup, PassageGroupSchema } from '../assessment/questions/schema
 import { AudioProcessingService } from './audio-processing.service.js';
 import { AudioQueueService } from './audio-queue.service.js';
 import { AdminAudioController } from './admin-audio.controller.js';
+import { AdminInfrastructureController } from './admin-infrastructure.controller.js';
 
 @Module({
   imports: [
@@ -19,7 +20,7 @@ import { AdminAudioController } from './admin-audio.controller.js';
       { name: PassageGroup.name, schema: PassageGroupSchema },
     ]),
   ],
-  controllers: [AdminAudioController],
+  controllers: [AdminAudioController, AdminInfrastructureController],
   providers: [AudioProcessingService, AudioQueueService],
   exports: [AudioProcessingService, AudioQueueService],
 })

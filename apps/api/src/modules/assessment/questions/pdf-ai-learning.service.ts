@@ -24,6 +24,9 @@ export class PdfAiLearningService implements OnModuleInit, OnModuleDestroy {
     private readonly pdfAi: PdfAiService,
   ) {}
   onModuleInit() {
+    // Only Assessment should deliver the correction outbox. The AI API can
+    // read its status without starting a competing flush loop.
+    if (process.env.PDF_AI_CORRECTIONS_FLUSH_ENABLED === 'false') return;
     this.timer = setInterval(() => void this.flush(), 30_000);
     this.timer.unref();
     void this.flush();

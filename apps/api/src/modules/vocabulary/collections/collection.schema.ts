@@ -36,9 +36,9 @@ export const CollectionSchema = SchemaFactory.createForClass(Collection);
 // Partial unique index: only active records must have unique name and slug
 CollectionSchema.index(
   { name: 1 },
-  { unique: true, partialFilterExpression: { isDeleted: { $ne: true } } },
+  { unique: true, partialFilterExpression: { isDeleted: false } },
 );
 CollectionSchema.index(
   { slug: 1 },
-  { unique: true, partialFilterExpression: { isDeleted: { $ne: true } } },
+  { unique: true, partialFilterExpression: { isDeleted: false } },
 );

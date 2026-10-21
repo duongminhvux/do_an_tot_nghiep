@@ -137,6 +137,12 @@ export function AppSidebar() {
       ),
     },
     {
+      label: "Workers & Queue",
+      href: `/${locale}/infrastructure`,
+      icon: Settings,
+      active: active(`/${locale}/infrastructure`),
+    },
+    {
       label: t("nav.users"),
       href: `/${locale}/users`,
       icon: Users,

@@ -15,6 +15,22 @@ export interface AudioJobStatus {
 }
 
 export const audioService = {
+  getServiceHealth: async (): Promise<{ checkedAt: string; services: {name:string; state:string; status?:number}[] }> => {
+    const response = await apiClient.get('/admin/infrastructure/services');
+    return response.data;
+  },
+  getWorkerConfig: async (): Promise<{maxWorkers:number; backlogThreshold:number;note:string}> => {
+    const res = await apiClient.get('/admin/audio/workers/config');
+    return res.data;
+  },
+  setWorkerConfig: async (settings: {maxWorkers:number;backlogThreshold:number}) => {
+    const res = await apiClient.post('/admin/audio/workers/config', settings);
+    return res.data;
+  },
+  getQueueMetrics: async (): Promise<{backend:string;waiting:number;retrying?:number;dead?:number;consumers?:number}> => {
+    const res = await apiClient.get('/admin/audio/workers/metrics');
+    return res.data;
+  },
   getVoices: async () => {
     const res = await apiClient.get('/admin/audio/voices');
     return res.data;

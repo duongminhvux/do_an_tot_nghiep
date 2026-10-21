@@ -2,7 +2,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { Model, Types } from 'mongoose';
 import { AudioGenerationStatus, AudioSourceType, GeneratedAudioMetadata } from '../../common/media/generated-audio.schema.js';
 import { MediaStorageService } from '../../common/media/media-storage.service.js';
@@ -151,7 +151,7 @@ export class AudioProcessingService {
     if (!word) throw new NotFoundException('Vocabulary word not found.');
     if (!file?.buffer?.length) throw new BadRequestException('Audio file is required.');
     const ext = this.extensionFromFile(file);
-    const storageKey = `vocab/${word._id.toString()}/${accent}.${ext}`;
+    const storageKey = `vocab/${word._id.toString()}/${accent}-${randomUUID()}.${ext}`;
     const stored = await this.mediaStorage.saveBuffer(storageKey, file.buffer);
     const meta = this.uploadedMeta(storageKey, this.hash({ word: word.word, accent }));
     const updated = await this.wordModel.findByIdAndUpdate(word._id, {
@@ -167,7 +167,7 @@ export class AudioProcessingService {
     if (![1, 2].includes(Number(question.part))) throw new BadRequestException('Question audio upload is only supported for Part 1 and Part 2.');
     if (!file?.buffer?.length) throw new BadRequestException('Audio file is required.');
     const ext = this.extensionFromFile(file);
-    const storageKey = `toeic/questions/${question._id.toString()}/audio.${ext}`;
+    const storageKey = `toeic/questions/${question._id.toString()}/audio-${randomUUID()}.${ext}`;
     const stored = await this.mediaStorage.saveBuffer(storageKey, file.buffer);
     const meta = this.uploadedMeta(storageKey, this.hash({ part: question.part, content: question.content, options: question.options }));
     const updated = await this.questionModel.findByIdAndUpdate(question._id, { $set: { audioUrl: stored.url, audioMeta: meta } }, { returnDocument: 'after' }).lean().exec();
@@ -182,7 +182,7 @@ export class AudioProcessingService {
     if (!group || ![3, 4].includes(Number(group.part))) throw new BadRequestException('Passage audio upload is only supported for Part 3 and Part 4.');
     if (!file?.buffer?.length) throw new BadRequestException('Audio file is required.');
     const ext = this.extensionFromFile(file);
-    const storageKey = `toeic/passages/${passage._id.toString()}/audio.${ext}`;
+    const storageKey = `toeic/passages/${passage._id.toString()}/audio-${randomUUID()}.${ext}`;
     const stored = await this.mediaStorage.saveBuffer(storageKey, file.buffer);
     const meta = this.uploadedMeta(storageKey, this.hash({ part: group.part, content: passage.content || '' }));
     const updated = await this.passageModel.findByIdAndUpdate(passage._id, { $set: { audioUrl: stored.url, audioMeta: meta } }, { returnDocument: 'after' }).lean().exec();
@@ -213,7 +213,7 @@ export class AudioProcessingService {
 
     try {
       const result = await this.ttsService.synthesize({ text: script, language, voiceId, speed });
-      const storageKey = `vocab/${word._id.toString()}/${accent}.wav`;
+      const storageKey = `vocab/${word._id.toString()}/${accent}-${randomUUID()}.wav`;
       const stored = await this.mediaStorage.saveBuffer(storageKey, result.audio);
       const meta = this.singleAudioMeta(storageKey, language, voiceId, speed, scriptHash, result);
       meta.segments = [{ text: script, speaker: '', voiceId, startMs: 0, endMs: Number(result.durationMs || 0) }];
@@ -310,7 +310,7 @@ export class AudioProcessingService {
         defaultLanguage: 'en-US',
         defaultSpeed: sequence[0]!.speed,
       });
-      const storageKey = `toeic/questions/${question._id.toString()}/audio.wav`;
+      const storageKey = `toeic/questions/${question._id.toString()}/audio-${randomUUID()}.wav`;
       const stored = await this.mediaStorage.saveBuffer(storageKey, result.audio);
       const meta = this.audioMeta(storageKey, 'en-US', [...new Set(sequence.map((item) => item.voiceId))], sequence[0]!.speed, scriptHash, result, sequence);
       const updated = await this.questionModel.findByIdAndUpdate(question._id, { $set: { audioUrl: stored.url, audioMeta: meta } }, { returnDocument: 'after' }).lean().exec();
@@ -395,7 +395,7 @@ export class AudioProcessingService {
         defaultLanguage: sequence[0]!.language,
         defaultSpeed: sequence[0]!.speed,
       });
-      const storageKey = `toeic/passages/${passage._id.toString()}/audio.wav`;
+      const storageKey = `toeic/passages/${passage._id.toString()}/audio-${randomUUID()}.wav`;
       const stored = await this.mediaStorage.saveBuffer(storageKey, result.audio);
       const voices = [...new Set(sequence.map((item) => item.voiceId))];
       const meta = this.audioMeta(storageKey, sequence[0]!.language, voices, sequence[0]!.speed, scriptHash, result, sequence);

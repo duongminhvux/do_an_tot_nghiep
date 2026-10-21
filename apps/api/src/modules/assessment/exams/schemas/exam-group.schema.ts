@@ -28,11 +28,11 @@ export const ExamGroupSchema = SchemaFactory.createForClass(ExamGroup);
 
 ExamGroupSchema.index(
   { name: 1 },
-  { unique: true, partialFilterExpression: { isDeleted: { $ne: true } } },
+  { unique: true, partialFilterExpression: { isDeleted: false } },
 );
 ExamGroupSchema.index(
   { slug: 1 },
-  { unique: true, partialFilterExpression: { isDeleted: { $ne: true } } },
+  { unique: true, partialFilterExpression: { isDeleted: false } },
 );
 ExamGroupSchema.index({ order: 1 });
-ExamGroupSchema.index({ isActive: 1, order: 1 });
+ExamGroupSchema.index({ isActive: 1, order: 1 });

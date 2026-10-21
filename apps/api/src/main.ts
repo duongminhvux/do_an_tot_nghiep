@@ -9,6 +9,7 @@ import { I18nService, I18nValidationExceptionFilter, I18nValidationPipe } from '
 import { RedisIoAdapter } from './common/socket/redis-io.adapter.js';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { MediaStorageService } from './common/media/media-storage.service.js';
+import { Readable } from 'node:stream';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -32,6 +33,26 @@ async function bootstrap() {
   });
 
   app.use(cookieParser());
+  if (mediaStorage.useObjectStorage()) {
+    app.use('/media', async (req: any, res: any, next: any) => {
+      if (!['GET', 'HEAD'].includes(req.method)) return next();
+      let key: string;
+      try { key = mediaStorage.normalizeStorageKey(decodeURIComponent(req.path).replace(/^\//, '')); }
+      catch { res.status(400).end(); return; }
+      try {
+        const upstream = await mediaStorage.streamFromObject(key, req.headers.range);
+        if (upstream.status === 404) return next(); // old local media remains accessible
+        if (!upstream.ok) return res.status(502).end('Media storage unavailable');
+        res.status(upstream.status);
+        for (const header of ['content-type','content-length','content-range','accept-ranges','cache-control']) {
+          const value = upstream.headers.get(header);
+          if (value) res.setHeader(header, value);
+        }
+        if (req.method === 'HEAD' || !upstream.body) return res.end();
+        Readable.fromWeb(upstream.body as any).pipe(res);
+      } catch { res.status(502).end('Media storage unavailable'); }
+    });
+  }
   app.useStaticAssets(mediaStorage.rootPath, { prefix: '/media/' });
   app.setGlobalPrefix('api');
   app.useGlobalPipes(

@@ -1,0 +1,294 @@
+{
+  "format": "mongoose-source-registry-v1",
+  "models": [
+    {
+      "path": "apps/api/src/modules/activity-logs/schemas/activity-log.schema.ts",
+      "models": [
+        "ActivityLog"
+      ],
+      "sha256": "3331a81dc32234e245d399e36301de63081236db667bd372f14858eab4153143"
+    },
+    {
+      "path": "apps/api/src/modules/admins/schema/admin.schema.ts",
+      "models": [
+        "Admin"
+      ],
+      "sha256": "2d0e9389236360e42bcc85cfbf66bf1197df440abca3b5292e8d95f2c7bfe7f0"
+    },
+    {
+      "path": "apps/api/src/modules/arena/admin/arena-settings.schema.ts",
+      "models": [
+        "ArenaSettings"
+      ],
+      "sha256": "2447135eca6664c247b03cd44b1734629563c4123d3dfed5061d41f9e569e5a5"
+    },
+    {
+      "path": "apps/api/src/modules/arena/schemas/arena-invitation.schema.ts",
+      "models": [],
+      "sha256": "de7740a3d093315f275d826bdb417f227c9647134bc63a283d11f22c3b0fbcd5"
+    },
+    {
+      "path": "apps/api/src/modules/arena/schemas/arena-match-player.schema.ts",
+      "models": [],
+      "sha256": "79fbadbdc7e261e2993ffcb22a3a9430d7f5803575d329df78cbc73d4841a882"
+    },
+    {
+      "path": "apps/api/src/modules/arena/schemas/arena-match-question.schema.ts",
+      "models": [
+        "ArenaQuestionOption"
+      ],
+      "sha256": "f7e9ed0178bb76ca38609f1e82a270b5b73b5304864f7ed0401411a2452778d3"
+    },
+    {
+      "path": "apps/api/src/modules/arena/schemas/arena-match.schema.ts",
+      "models": [],
+      "sha256": "b3775fc635a8a4e5dcdad8c986b60792c69e9c36baf2d6481417ce5b6d5afab2"
+    },
+    {
+      "path": "apps/api/src/modules/arena/schemas/arena-player-answer.schema.ts",
+      "models": [],
+      "sha256": "c82427226010f9b2d0a29ed97ec8c3d2e34914b1b2e6f61021aa717e96e36091"
+    },
+    {
+      "path": "apps/api/src/modules/arena/schemas/arena-profile.schema.ts",
+      "models": [],
+      "sha256": "ad26561fdd0929d232bf6f38d4ce510ea706f2c8778b6a2cd554ee34fb443f38"
+    },
+    {
+      "path": "apps/api/src/modules/arena/schemas/arena-rating-history.schema.ts",
+      "models": [],
+      "sha256": "ee3b6c8483e99a55edc370158b44a02ea5997b43a69d5e44e578016c2b334a1c"
+    },
+    {
+      "path": "apps/api/src/modules/arena/schemas/arena-room.schema.ts",
+      "models": [
+        "ArenaRoomMember"
+      ],
+      "sha256": "b55dc18d43aa05b151a9d276e4c7cbf8922fde47815d6b499120b60da8821492"
+    },
+    {
+      "path": "apps/api/src/modules/arena/schemas/friend-room.schema.ts",
+      "models": [
+        "FriendRoomMember",
+        "FriendRoom"
+      ],
+      "sha256": "4fde23124943aaca71ddb56660632d83264976c03e219ca9f6555c090d7e909a"
+    },
+    {
+      "path": "apps/api/src/modules/assessment/attempts/schemas/attempt-answer.schema.ts",
+      "models": [
+        "AttemptAnswer"
+      ],
+      "sha256": "9db62f5e28798d1955524e5241b4155f38b16fff104afa38c8e7787164847968"
+    },
+    {
+      "path": "apps/api/src/modules/assessment/attempts/schemas/attempt.schema.ts",
+      "models": [
+        "Attempt"
+      ],
+      "sha256": "0d8916fe43e65d1b6f87b55d55e6bad421110a21ab25881ba4d0a30a14ffffdf"
+    },
+    {
+      "path": "apps/api/src/modules/assessment/exams/schemas/exam-group.schema.ts",
+      "models": [
+        "ExamGroup"
+      ],
+      "sha256": "9168b09d03058e7f82c29288db7bba1ed39ae8591c89fe34101842b681e582f5"
+    },
+    {
+      "path": "apps/api/src/modules/assessment/exams/schemas/exam.schema.ts",
+      "models": [
+        "Exam"
+      ],
+      "sha256": "9ed395fbc6c4575b58026d83db15ae573e9c8b9adb88f8724898fabe58b39778"
+    },
+    {
+      "path": "apps/api/src/modules/assessment/questions/schemas/passage-group.schema.ts",
+      "models": [
+        "PassageGroup"
+      ],
+      "sha256": "d36d56f6a4fb7a2a1b656acd892360a77ddde6104fcdb872ac4251dad0ebd00e"
+    },
+    {
+      "path": "apps/api/src/modules/assessment/questions/schemas/passage.schema.ts",
+      "models": [
+        "Passage"
+      ],
+      "sha256": "e0609ac1f3fdcf44b09bc5cb96b91b6e4fb75f0c96d3df37f5e2d0dbd9c25e1e"
+    },
+    {
+      "path": "apps/api/src/modules/assessment/questions/schemas/question.schema.ts",
+      "models": [
+        "Question"
+      ],
+      "sha256": "40e4ca85aa2c58cc5a088ad0bd1e769730bcea2a0b658e8996022fd3a5500e35"
+    },
+    {
+      "path": "apps/api/src/modules/dictation/schemas/dictation-lesson.schema.ts",
+      "models": [
+        "DictationLesson"
+      ],
+      "sha256": "519573418628a189fccb7e6008c3dd840d10fb43fe6a869edc3019406fe6003b"
+    },
+    {
+      "path": "apps/api/src/modules/dictation/schemas/dictation-progress.schema.ts",
+      "models": [
+        "DictationSegmentProgress",
+        "DictationProgress"
+      ],
+      "sha256": "de25850d403a37774c5e28c1e79a2e067e838bdcb6507a39551d28cae81e6748"
+    },
+    {
+      "path": "apps/api/src/modules/dictation/schemas/dictation-section.schema.ts",
+      "models": [
+        "DictationSection"
+      ],
+      "sha256": "8a6f36517e33f6d4de5760bfb5fe3772a228c20a76cd300a4e576e95610df38f"
+    },
+    {
+      "path": "apps/api/src/modules/dictation/schemas/dictation-segment.schema.ts",
+      "models": [
+        "DictationWordTiming",
+        "DictationSegment"
+      ],
+      "sha256": "82c57ab74f284672808e179b92b1b1929fb2f236e3833412665e92c0e393aeed"
+    },
+    {
+      "path": "apps/api/src/modules/dictation/schemas/dictation-topic.schema.ts",
+      "models": [
+        "DictationTopic"
+      ],
+      "sha256": "4017dbd16009eaa48f87e931923844ec3d896d2a246dcdc419e876baa0639c5b"
+    },
+    {
+      "path": "apps/api/src/modules/learning/progress/schemas/user-daily-activity.schema.ts",
+      "models": [
+        "UserDailyActivity"
+      ],
+      "sha256": "8f16c5d6f3e956582e4fedabc2f3785230e6addb112b26dc6b51d6cb2fc705f0"
+    },
+    {
+      "path": "apps/api/src/modules/learning/progress/schemas/user-lesson-progress.schema.ts",
+      "models": [
+        "UserLessonProgress"
+      ],
+      "sha256": "2c3b58fed8fad63055a7f5b7cf4cd2ffe4f3e8351020b086848cd999344f770b"
+    },
+    {
+      "path": "apps/api/src/modules/learning/progress/schemas/user-lesson-word.schema.ts",
+      "models": [
+        "UserLessonWord"
+      ],
+      "sha256": "82db874de9d62e79dcdb7368c704a5a8561232d738746af2c06c1ed6636f0256"
+    },
+    {
+      "path": "apps/api/src/modules/learning/progress/user-daily-activity.schema.ts",
+      "models": [],
+      "sha256": "fbcdb311848dbd9e493c20a1337d60aea41553e89d46a14fd0cb02faf965725a"
+    },
+    {
+      "path": "apps/api/src/modules/learning/reviews/schemas/user-word-review.schema.ts",
+      "models": [
+        "UserWordReview"
+      ],
+      "sha256": "627cd331c8f88eea02b929626f2be8b70ffc7be143a058a31e3c91a23fb95bfa"
+    },
+    {
+      "path": "apps/api/src/modules/learning/saved-words/schema/saved-word.schema.ts",
+      "models": [
+        "UserSavedWord"
+      ],
+      "sha256": "4ce6f677396e55dfd3fbad44e2e3fc3f1c97ae72f91fb0fb75d9e0c8027d199d"
+    },
+    {
+      "path": "apps/api/src/modules/learning/saved-words/schema/vocabulary-folder.schema.ts",
+      "models": [
+        "VocabularyFolder"
+      ],
+      "sha256": "5c6ef4b3a99c140c8569278617ed9c939f4d008123744cd456e6ce3c06c12690"
+    },
+    {
+      "path": "apps/api/src/modules/learning/sessions/schemas/learning-session-word.schema.ts",
+      "models": [
+        "LearningSessionWord"
+      ],
+      "sha256": "7a8dc86c8b45abf2bc2e1e89d2c772b26305294d61e003b57c660282c5c252e8"
+    },
+    {
+      "path": "apps/api/src/modules/learning/sessions/schemas/learning-session.schema.ts",
+      "models": [
+        "LearningSession"
+      ],
+      "sha256": "274fdc06a42866b1b61621ce8a74b70ef4bf62b215475d4e68b09d3b39879222"
+    },
+    {
+      "path": "apps/api/src/modules/minigame/schemas/game-definition.schema.ts",
+      "models": [
+        "GameDefinition"
+      ],
+      "sha256": "d2625702ab03dcb629615280f9dab82890f9426a1d7daee0d6d0d84242d3a3e1"
+    },
+    {
+      "path": "apps/api/src/modules/minigame/schemas/minigame-result.schema.ts",
+      "models": [
+        "MiniGameResult"
+      ],
+      "sha256": "0e420a85e656b7bb560e41463da9bd0f13548a6f02ca6025ad4f88594977cb73"
+    },
+    {
+      "path": "apps/api/src/modules/users/schema/user.schema.ts",
+      "models": [
+        "User"
+      ],
+      "sha256": "5071c04661d450ff27e7baf7e56ae65dffa5bed9cb3cd251a37e4386a47304ae"
+    },
+    {
+      "path": "apps/api/src/modules/vocabulary/collections/collection.schema.ts",
+      "models": [
+        "Collection"
+      ],
+      "sha256": "2d624e1c9fc005e5bbe0bef2a9832f20404d71a7bbad652e3bb220c4135e06ba"
+    },
+    {
+      "path": "apps/api/src/modules/vocabulary/groups/vocabulary-group.schema.ts",
+      "models": [
+        "VocabularyGroup"
+      ],
+      "sha256": "65b44f2a8aada61516368a6c829f30599182221073d37ec94ae7dc4ba7dbdb8e"
+    },
+    {
+      "path": "apps/api/src/modules/vocabulary/lessons/lesson-word.schema.ts",
+      "models": [
+        "LessonWord"
+      ],
+      "sha256": "54f14c3f5f22d9ec8a3e86bdf022cd59db22552d0cf6e8b7978b783bcca4bb5e"
+    },
+    {
+      "path": "apps/api/src/modules/vocabulary/lessons/lesson.schema.ts",
+      "models": [
+        "Lesson"
+      ],
+      "sha256": "495635c2e23f8890d788cab1dc06dca3181191d29f06b2e0d87ab8889b50e2e8"
+    },
+    {
+      "path": "apps/api/src/modules/vocabulary/lessons/section.schema.ts",
+      "models": [
+        "Section"
+      ],
+      "sha256": "29af61b4b8b03e93d511e811564bb98b13d2c9f45d8ff70c19032d2c34dbb537"
+    },
+    {
+      "path": "apps/api/src/modules/vocabulary/words/word.schema.ts",
+      "models": [
+        "WordIpa",
+        "WordAudio",
+        "WordAudioMetadata",
+        "WordExample",
+        "WordMeaning",
+        "WordPart",
+        "Word"
+      ],
+      "sha256": "909d003f5331159980fbd6543d488e66e7e3697fb12769475971942d2b991a77"
+    }
+  ]
+}
