@@ -20,7 +20,17 @@ import {
   ExternalLink,
   MinusCircle,
   FileText,
+  GripVertical,
+  ChevronUp,
+  ChevronDown,
 } from 'lucide-react';
+
+function moveItem<T>(list: T[], from: number, to: number) {
+  const next = [...list];
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item!);
+  return next;
+}
 
 export default function ExamGroupDetailPage() {
   const router = useRouter();
@@ -63,7 +73,37 @@ export default function ExamGroupDetailPage() {
     enabled: !!groupId,
   });
 
-  const exams: ExamItem[] = examsResponse || [];
+  const serverExams: ExamItem[] = examsResponse || [];
+  // Local order while dragging / saving; null means "use the server order".
+  const [orderIds, setOrderIds] = useState<string[] | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const exams: ExamItem[] = orderIds
+    ? orderIds.flatMap((id) => serverExams.filter((exam) => exam._id === id))
+    : serverExams;
+
+  const reorderMutation = useMutation({
+    mutationFn: (examIds: string[]) => examGroupService.reorderExams(groupId, examIds),
+    onSuccess: (res) => {
+      queryClient.setQueryData(['admin-exam-group-exams', groupId], res?.data);
+      queryClient.invalidateQueries({ queryKey: ['admin-exams'] });
+      setOrderIds(null);
+    },
+    onError: () => setOrderIds(null),
+  });
+
+  const saveOrder = (ids: string[]) => {
+    if (ids.join() === serverExams.map((exam) => exam._id).join()) {
+      setOrderIds(null);
+      return;
+    }
+    setOrderIds(ids);
+    reorderMutation.mutate(ids);
+  };
+  const moveBy = (index: number, delta: number) => {
+    const target = index + delta;
+    if (target < 0 || target >= exams.length || reorderMutation.isPending) return;
+    saveOrder(moveItem(exams.map((exam) => exam._id), index, target));
+  };
 
   // Remove exam from group mutation
   const removeMutation = useMutation({
@@ -197,7 +237,27 @@ export default function ExamGroupDetailPage() {
             <span>{t('examGroups.detail.examsInGroup')}</span>
             <span className="text-xs font-normal text-slate-400">({exams.length})</span>
           </h2>
+          {exams.length > 1 && (
+            <p className="flex items-center gap-1.5 text-xs text-slate-400">
+              {reorderMutation.isPending ? (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  {t('examGroups.detail.savingOrder')}
+                </>
+              ) : (
+                <>
+                  <GripVertical className="h-3.5 w-3.5" />
+                  {t('examGroups.detail.dragHint')}
+                </>
+              )}
+            </p>
+          )}
         </div>
+        {reorderMutation.isError && (
+          <p role="alert" className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+            {t('examGroups.detail.reorderError')}
+          </p>
+        )}
 
         {isExamsLoading ? (
           <div className="bg-white rounded border border-slate-200/90 p-12 text-center text-slate-400 flex flex-col items-center justify-center gap-2">
@@ -232,11 +292,66 @@ export default function ExamGroupDetailPage() {
             {exams.map((exam, idx) => (
               <div
                 key={exam._id}
-                className="p-4 sm:p-4.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/70 transition-all cursor-pointer group"
+                draggable={!reorderMutation.isPending && exams.length > 1}
+                onDragStart={(e) => {
+                  e.dataTransfer.effectAllowed = 'move';
+                  setDragId(exam._id);
+                  setOrderIds(exams.map((item) => item._id));
+                }}
+                onDragOver={(e) => {
+                  if (!dragId) return;
+                  e.preventDefault();
+                  if (dragId === exam._id) return;
+                  setOrderIds((ids) => {
+                    const list = ids ?? exams.map((item) => item._id);
+                    return moveItem(list, list.indexOf(dragId), list.indexOf(exam._id));
+                  });
+                }}
+                onDrop={(e) => e.preventDefault()}
+                onDragEnd={() => {
+                  setDragId(null);
+                  if (orderIds) saveOrder(orderIds);
+                }}
+                className={`p-4 sm:p-4.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/70 transition-all cursor-pointer group ${
+                  dragId === exam._id ? 'opacity-50 bg-blue-50/60 ring-1 ring-inset ring-blue-300' : ''
+                }`}
                 onClick={() => router.push(`/${locale}/assessment/${exam._id}`)}
               >
                 {/* Left: Exam Info */}
                 <div className="flex items-center gap-3.5 min-w-0">
+                  {exams.length > 1 && (
+                    <div
+                      className="flex shrink-0 items-center gap-0.5"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <GripVertical
+                        aria-hidden
+                        className="h-4 w-4 cursor-grab text-slate-300 group-hover:text-slate-500 active:cursor-grabbing"
+                      />
+                      <div className="flex flex-col">
+                        <button
+                          type="button"
+                          title={t('examGroups.detail.moveUp')}
+                          aria-label={t('examGroups.detail.moveUp')}
+                          disabled={idx === 0 || reorderMutation.isPending}
+                          onClick={() => moveBy(idx, -1)}
+                          className="rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 cursor-pointer"
+                        >
+                          <ChevronUp className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          title={t('examGroups.detail.moveDown')}
+                          aria-label={t('examGroups.detail.moveDown')}
+                          disabled={idx === exams.length - 1 || reorderMutation.isPending}
+                          onClick={() => moveBy(idx, 1)}
+                          className="rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 cursor-pointer"
+                        >
+                          <ChevronDown className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   <div className="w-8 h-8 rounded bg-slate-100 group-hover:bg-blue-50 text-slate-600 group-hover:text-blue-600 font-bold text-xs flex items-center justify-center shrink-0 transition-colors">
                     {idx + 1}
                   </div>
