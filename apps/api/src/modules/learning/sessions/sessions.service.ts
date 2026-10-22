@@ -2,7 +2,10 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
+import { XP } from '@repo/shared-types/learning-xp';
+import { LearningActivityService } from '../../learning-activity/learning-activity.service.js';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import {
@@ -41,7 +44,10 @@ import { CreateSessionDto } from './dto/create-session.dto.js';
 import { RecordActionDto } from './dto/record-action.dto.js';
 import { I18nService } from 'nestjs-i18n';
 import { ActivityLogsService } from '../../activity-logs/activity-logs.service.js';
-import { ActivityAction, ActivityCategory } from '../../activity-logs/schemas/activity-log.schema.js';
+import {
+  ActivityAction,
+  ActivityCategory,
+} from '../../activity-logs/schemas/activity-log.schema.js';
 
 @Injectable()
 export class SessionsService {
@@ -64,6 +70,7 @@ export class SessionsService {
     private dailyActivityModel: Model<UserDailyActivityDocument>,
     private readonly i18n: I18nService,
     private readonly activityLogsService: ActivityLogsService,
+    @Optional() private readonly learningActivity?: LearningActivityService,
   ) {}
 
   /**
@@ -72,7 +79,9 @@ export class SessionsService {
   async create(userId: string, createSessionDto: CreateSessionDto) {
     const lesson = await this.lessonModel.findById(createSessionDto.lessonId);
     if (!lesson) {
-      throw new NotFoundException(await this.i18n.t('learning.LESSON_NOT_FOUND'));
+      throw new NotFoundException(
+        await this.i18n.t('learning.LESSON_NOT_FOUND'),
+      );
     }
 
     const totalWords = await this.lessonWordModel.countDocuments({
@@ -154,9 +163,7 @@ export class SessionsService {
         userId: userObjId,
         type: 'LESSON',
         lessonId: lesson._id,
-        startedAt: dto.sessionStartedAt
-          ? new Date(dto.sessionStartedAt)
-          : now,
+        startedAt: dto.sessionStartedAt ? new Date(dto.sessionStartedAt) : now,
         totalWords,
         completedWords: 0,
       });
@@ -250,7 +257,10 @@ export class SessionsService {
         // Học lại sau 10 phút
         review.nextReviewAt = new Date(now.getTime() + 10 * 60 * 1000);
       } else if (isHard) {
-        review.intervalDays = Math.max(1, Math.round((review.intervalDays || 1) * 1.2));
+        review.intervalDays = Math.max(
+          1,
+          Math.round((review.intervalDays || 1) * 1.2),
+        );
         review.nextReviewAt = new Date(
           now.getTime() + review.intervalDays * 24 * 60 * 60 * 1000,
         );
@@ -288,6 +298,16 @@ export class SessionsService {
       } else {
         await this.incrementDailyActivity(userObjId, now, { wordsReviewed: 1 });
       }
+      const learned = review.reviewCount === 1;
+      await this.learningActivity?.record({
+        userId: userObjId,
+        module: 'VOCABULARY',
+        type: learned ? 'WORD_LEARNED' : 'WORD_REVIEWED',
+        sourceKey: `vocab-word:${review._id}:${review.reviewCount}`,
+        xp: learned ? XP.WORD_LEARNED : XP.WORD_REVIEWED,
+        occurredAt: now,
+        refId: String(review._id),
+      });
 
       // 4.3. Tính toán và cập nhật UserLessonProgress
       if (session.lessonId) {
@@ -389,6 +409,31 @@ export class SessionsService {
       sessionCount: 1,
       studyMinutes,
     });
+
+    if (this.learningActivity) {
+      const lesson = session.lessonId
+        ? await this.lessonModel
+            .findById(session.lessonId)
+            .select('title')
+            .lean()
+            .exec()
+        : null;
+      await this.learningActivity.record({
+        userId: session.userId,
+        module: 'VOCABULARY',
+        type: 'VOCAB_SESSION',
+        sourceKey: `vocab-session:${session._id}`,
+        xp: XP.VOCAB_SESSION,
+        occurredAt: session.endedAt,
+        title: lesson?.title,
+        refId: String(session._id),
+        link: '/vocabulary',
+        correct: session.completedWords,
+        total: session.totalWords,
+        durationSec: durationSeconds,
+        metadata: { sessionType: session.type },
+      });
+    }
 
     this.activityLogsService.log({
       userId: String(session.userId),

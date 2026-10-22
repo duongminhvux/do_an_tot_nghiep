@@ -1,4 +1,6 @@
 import { ArenaSettingsService } from '../admin/arena-settings.service.js';
+import { arenaMatchXp } from '@repo/shared-types/learning-xp';
+import { LearningActivityService } from '../../learning-activity/learning-activity.service.js';
 import { ARENA_DEFAULTS } from '../admin/arena-settings.defaults.js';
 import {
   FriendRoom,
@@ -70,6 +72,7 @@ export class ArenaMatchService {
     @InjectModel(FriendRoom.name)
     private readonly friendRooms: Model<FriendRoom>,
     @Optional() private readonly settings?: ArenaSettingsService,
+    @Optional() private readonly learningActivity?: LearningActivityService,
   ) {}
 
   /** Tạo một match 1v1 dùng chung cho rank, friend và room. */
@@ -444,6 +447,36 @@ export class ArenaMatchService {
       },
       { returnDocument: 'after' },
     );
+    if (finished && this.learningActivity)
+      for (const result of results)
+        await this.learningActivity.record({
+          userId: result.player.userId,
+          module: 'ARENA',
+          type: 'ARENA_MATCH',
+          sourceKey: `arena:${matchId}`,
+          xp: arenaMatchXp(result.won),
+          occurredAt: now,
+          refId: matchId,
+          link: '/arena',
+          correct: result.player.correctAnswers,
+          total:
+            (result.player.correctAnswers ?? 0) +
+            (result.player.wrongAnswers ?? 0) +
+            (result.player.unanswered ?? 0),
+          score: result.player.score,
+          durationSec: match.startedAt
+            ? Math.max(
+                0,
+                Math.round((now.getTime() - match.startedAt.getTime()) / 1000),
+              )
+            : undefined,
+          metadata: {
+            matchType: match.type,
+            won: result.won,
+            isDraw,
+            ratingChange: result.rating.ratingChange,
+          },
+        });
     if (
       finished &&
       (match.type === ArenaMatchType.FRIEND ||

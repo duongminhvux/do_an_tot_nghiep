@@ -4,7 +4,10 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
+import { dictationLessonXp } from '@repo/shared-types/learning-xp';
+import { LearningActivityService } from '../learning-activity/learning-activity.service.js';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -69,6 +72,7 @@ export class DictationService {
     private readonly cloudinaryService: CloudinaryService,
     private readonly mediaStorage: MediaStorageService,
     private readonly configService: ConfigService,
+    @Optional() private readonly learningActivity?: LearningActivityService,
   ) {
     this.asrStartPaddingMs = this.readNonNegativeInt('DICTATION_SEGMENT_START_PADDING_MS', 100);
     this.asrEndPaddingMs = this.readNonNegativeInt('DICTATION_SEGMENT_END_PADDING_MS', 150);
@@ -1109,10 +1113,41 @@ export class DictationService {
       }
     }
 
+    return this.saveLessonProgress(progress, lesson);
+  }
+
+  // Saves after a sentence is answered/revealed; the moment a lesson becomes
+  // completed it is recorded as a learning activity (a reset starts over).
+  private async saveLessonProgress(
+    progress: DictationProgressDocument,
+    lesson: DictationLessonDocument,
+  ) {
     const handledSegments = new Set([...(progress.completedSegments || []), ...(progress.revealedSegments || [])]);
+    const wasCompleted = Boolean(progress.completed);
     progress.completed = handledSegments.size >= lesson.sentenceCount;
     progress.lastPracticedAt = new Date();
-    return progress.save();
+    const saved = await progress.save();
+    if (!wasCompleted && saved.completed && this.learningActivity) {
+      const firstTry = (saved.segmentProgress || []).filter((s) => s.firstTryCorrect).length;
+      await this.learningActivity.record({
+        userId: saved.userId,
+        module: 'DICTATION',
+        type: 'DICTATION_LESSON',
+        sourceKey: `dictation:${saved._id}`,
+        xp: dictationLessonXp(firstTry),
+        occurredAt: saved.lastPracticedAt,
+        title: lesson.title,
+        refId: String(lesson._id),
+        link: `/dictation/${lesson.slug}`,
+        correct: saved.completedSegments?.length ?? 0,
+        total: lesson.sentenceCount,
+        durationSec: lesson.totalDurationMs
+          ? Math.round(lesson.totalDurationMs / 1000)
+          : undefined,
+        metadata: { firstTryCorrect: firstTry, revealed: saved.revealedSegments?.length ?? 0 },
+      });
+    }
+    return saved;
   }
 
   async revealSegment(userId: string, lessonId: string, segmentIndex: number) {
@@ -1142,10 +1177,7 @@ export class DictationService {
       progress.revealedSegments.sort((a, b) => a - b);
     }
     progress.currentSegment = segmentIndex;
-    const handledSegments = new Set([...(progress.completedSegments || []), ...(progress.revealedSegments || [])]);
-    progress.completed = handledSegments.size >= lesson.sentenceCount;
-    progress.lastPracticedAt = new Date();
-    return progress.save();
+    return this.saveLessonProgress(progress, lesson);
   }
 
   async revealTranscript(userId: string, lessonId: string) {

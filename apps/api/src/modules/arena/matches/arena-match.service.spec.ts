@@ -38,7 +38,7 @@ vi.mock('../schemas/arena-rating-history.schema.js', () => ({
   ArenaRatingHistory: class {},
 }));
 
-function fixture() {
+function fixture(learningActivity?: { record: ReturnType<typeof vi.fn> }) {
   const match = {
     _id: new Types.ObjectId(),
     type: 'FRIEND',
@@ -100,6 +100,8 @@ function fixture() {
     {},
     rating,
     friendRooms,
+    undefined,
+    learningActivity,
   ] as unknown as ConstructorParameters<typeof ArenaMatchService>;
   return {
     service: new ArenaMatchService(...deps),
@@ -113,6 +115,27 @@ function fixture() {
     rating,
   };
 }
+
+describe('Learning activity', () => {
+  it('records one activity per player with win XP for the winner only', async () => {
+    const record = vi.fn(async () => true);
+    const f = fixture({ record });
+    f.match.friendMode = 'CLASSIC';
+    await f.service.finishMatch(String(f.match._id));
+    expect(record).toHaveBeenCalledTimes(2);
+    const calls = record.mock.calls.map(([input]: any) => input);
+    expect(calls.map((c) => String(c.userId))).toEqual(
+      f.players.map((p) => String(p.userId)),
+    );
+    expect(calls.map((c) => c.xp)).toEqual([20, 10]);
+    expect(calls[0]).toMatchObject({
+      module: 'ARENA',
+      sourceKey: `arena:${f.match._id}`,
+      score: 100,
+      metadata: { won: true, isDraw: false },
+    });
+  });
+});
 
 describe('Friendly results and reconnect', () => {
   it('finishes Classic without touching ranked profiles, rating history or Elo', async () => {
@@ -348,15 +371,13 @@ describe('Word Guess room departures', () => {
       turnCount: 0,
       roomRevision: 0,
       eliminatedUserIds: [],
-      wordGuessAttempts: f.players
-        .slice(1)
-        .flatMap((p) =>
-          Array.from({ length: 5 }, () => ({
-            userId: String(p.userId),
-            word: 'crane',
-            feedback: [],
-          })),
-        ),
+      wordGuessAttempts: f.players.slice(1).flatMap((p) =>
+        Array.from({ length: 5 }, () => ({
+          userId: String(p.userId),
+          word: 'crane',
+          feedback: [],
+        })),
+      ),
     });
     const result = await f.service.dropRoomPlayer(
       String(f.match._id),
