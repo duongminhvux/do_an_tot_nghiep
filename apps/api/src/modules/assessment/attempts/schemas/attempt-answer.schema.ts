@@ -35,8 +35,7 @@ export class AttemptAnswer {
   answeredAt?: Date;
 }
 
-export const AttemptAnswerSchema =
-  SchemaFactory.createForClass(AttemptAnswer);
+export const AttemptAnswerSchema = SchemaFactory.createForClass(AttemptAnswer);
 
 AttemptAnswerSchema.index(
   {

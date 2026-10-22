@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectConnection } from '@nestjs/mongoose';
-import { Connection, type ClientSession } from 'mongoose';
+import type { Connection, ClientSession } from 'mongoose';
 import { randomUUID } from 'node:crypto';
 
 export type DomainEventType = 'identity.user.created.v1' | 'assessment.exam.created.v1'
