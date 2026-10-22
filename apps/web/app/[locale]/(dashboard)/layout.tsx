@@ -36,6 +36,9 @@ export default function DashboardLayout({
       return t('nav.arena', isEn ? 'Vocabulary Arena' : 'Đấu trường từ vựng');
     }
 
+    if (pathname?.includes('/toeic/attempts/') && pathname.endsWith('/result')) {
+      return t('nav.toeic_result', isEn ? 'Test Result' : 'Kết quả bài thi');
+    }
     if (pathname?.includes('/toeic/history')) {
       return t('nav.toeic_history', isEn ? 'Test History' : 'Lịch sử làm bài');
     }
@@ -60,17 +63,30 @@ export default function DashboardLayout({
     return t('nav.home', isEn ? 'Home' : 'Trang chủ');
   };
 
+  // Taking a test is full-screen; its result page keeps the app shell.
+  if (
+    pathname?.startsWith(`/${locale}/toeic/attempts/`) &&
+    !pathname.endsWith('/result')
+  ) {
+    return (
+      <AuthGuard>
+        <RoomClosedNotice />
+        {children}
+      </AuthGuard>
+    );
+  }
+
   return (
       <AuthGuard>
         <RoomClosedNotice />
         <SidebarProvider>
           <AppSidebar />
-          <SidebarInset className="bg-slate-50 min-h-screen flex flex-col">
+          <SidebarInset className="bg-background min-h-screen flex flex-col">
             {/* Top Bar with Sidebar Trigger - Sticky Fixed to top */}
             <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-slate-200 bg-white/95 px-4 sm:px-6 backdrop-blur-md shadow-xs">
               <SidebarTrigger className="-ml-1 text-slate-600 hover:text-slate-900 cursor-pointer" />
               <Separator orientation="vertical" className="mr-2 h-4" />
-              <span className="text-xs font-semibold text-slate-700">
+              <span className="text-sm font-semibold text-slate-700">
                 {getPageTitle()}
               </span>
             </header>

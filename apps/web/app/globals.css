@@ -44,8 +44,8 @@
   body {
     max-width: 100vw;
     overflow-x: clip;
-    background-color: #f8fafc;
-    color: #0f172a;
+    background-color: var(--background);
+    color: var(--foreground);
   }
 
   a {
@@ -94,6 +94,70 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Be Vietnam Pro covers every Vietnamese diacritic (Geist does not). */
+  --font-sans: var(--font-be-vietnam), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+/* Enter animations (the class names follow tailwindcss-animate, which the
+   components already use: animate-in fade-in zoom-in-95 slide-in-from-*). */
+@keyframes enter {
+  from {
+    opacity: var(--tw-enter-opacity, 1);
+    transform: translate3d(
+        var(--tw-enter-translate-x, 0),
+        var(--tw-enter-translate-y, 0),
+        0
+      )
+      scale(var(--tw-enter-scale, 1));
+  }
+}
+@utility animate-in {
+  animation: enter var(--tw-duration, 200ms) ease-out both;
+}
+@utility fade-in {
+  --tw-enter-opacity: 0;
+}
+@utility fade-in-0 {
+  --tw-enter-opacity: 0;
+}
+@utility zoom-in-95 {
+  --tw-enter-scale: 0.95;
+}
+@utility slide-in-from-top-2 {
+  --tw-enter-translate-y: -0.5rem;
+}
+@utility slide-in-from-bottom-2 {
+  --tw-enter-translate-y: 0.5rem;
+}
+@utility slide-in-from-left-2 {
+  --tw-enter-translate-x: -0.5rem;
+}
+@utility slide-in-from-right-2 {
+  --tw-enter-translate-x: 0.5rem;
+}
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(14deg); }
+  50% { transform: rotate(-8deg); }
+  75% { transform: rotate(10deg); }
+}
+@utility animate-wiggle {
+  animation: wiggle 1.2s ease-in-out 1;
+  transform-origin: 70% 70%;
+}
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-in,
+  .animate-wiggle {
+    animation: none;
+  }
 }
 
 /* Tiptap Content & Reading Passages */
