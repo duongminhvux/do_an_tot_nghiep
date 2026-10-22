@@ -49,7 +49,7 @@ export function CreateCollectionDialog({
   const [isUploading, setIsUploading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Track temporarily uploaded Cloudinary URLs during this session
+  // Track temporarily uploaded managed media URLs during this session
   const tempUploadedUrls = useRef<Set<string>>(new Set());
 
   const cleanupTempUploads = () => {
@@ -128,7 +128,7 @@ export function CreateCollectionDialog({
       setErrorMessage(null);
       const res = await uploadService.uploadFile(file);
       if (res?.url) {
-        // If replacing previously uploaded image in this session, delete previous image from Cloudinary immediately
+        // If replacing previously uploaded image in this session, delete previous image from managed media immediately
         tempUploadedUrls.current.forEach((prevUrl) => {
           if (prevUrl !== res.url) {
             uploadService.deleteFile(prevUrl);

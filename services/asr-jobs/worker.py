@@ -8,7 +8,6 @@ import uuid
 from datetime import datetime, timezone
 import requests
 from common import JOBS, S3, BUCKET, QUEUE, RETRY, broker, publish
-from gpu_lease import gpu_lease
 
 logging.basicConfig(level=logging.INFO)
 LOG=logging.getLogger('asr-worker')
@@ -32,12 +31,11 @@ def main():
                         ch.basic_ack(delivery.delivery_tag);return
                     JOBS.update_one({'_id':job_id},{'$set':{'state':'active'},'$inc':{'attempts':1}})
                     file=S3.get_object(Bucket=BUCKET,Key=job['key'])['Body'].read()
-                    with gpu_lease('asr'):
-                        resp=requests.post(ASR_URL+'/v1/transcribe',timeout=3600,
-                            data={'language':job['language'] if job['language']!='auto' else ''},
-                            files={'file':('audio.wav',io.BytesIO(file),'application/octet-stream')})
-                        resp.raise_for_status()
-                        result=resp.json()
+                    resp=requests.post(ASR_URL+'/v1/transcribe',timeout=3600,
+                        data={'language':job['language'] if job['language']!='auto' else ''},
+                        files={'file':('audio.wav',io.BytesIO(file),'application/octet-stream')})
+                    resp.raise_for_status()
+                    result=resp.json()
                     JOBS.update_one({'_id':job_id},{'$set':{
                         'state':'completed','result':result,'finishedAt':datetime.now(timezone.utc)}})
                     ch.basic_ack(delivery.delivery_tag)

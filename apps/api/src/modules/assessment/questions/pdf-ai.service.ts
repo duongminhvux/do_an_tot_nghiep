@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { type Model, Types } from 'mongoose';
 import { validateImportDraft } from '@repo/shared-types/assessment-import';
 import { Exam, ExamDocument } from '../exams/schemas/exam.schema.js';
 

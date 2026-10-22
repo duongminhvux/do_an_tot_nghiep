@@ -3,7 +3,7 @@ import { ARENA_DEFAULTS } from '../admin/arena-settings.defaults.js';
 import { Injectable, Optional, ForbiddenException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { WsException } from '@nestjs/websockets';
-import { Model, Types } from 'mongoose';
+import { type Model, Types } from 'mongoose';
 import { ArenaRoom, ArenaRoomDocument } from '../schemas/arena-room.schema.js';
 
 @Injectable()

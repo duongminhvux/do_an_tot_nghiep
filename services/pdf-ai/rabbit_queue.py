@@ -36,12 +36,11 @@ def publish_job(job_id: str):
 
 
 def publish(channel, job_id: str, attempt: int, queue: str):
-    ok = channel.basic_publish(
+    # Publisher confirm failures raise exceptions; a successful call returns None.
+    channel.basic_publish(
         exchange='', routing_key=queue,
         body=json.dumps({'jobId': job_id, 'attempt': attempt}).encode('utf8'),
         properties=pika.BasicProperties(delivery_mode=2, content_type='application/json',
                                         message_id=f'{job_id}:{attempt}'),
         mandatory=True,
     )
-    if not ok:
-        raise RuntimeError('RabbitMQ message was not confirmed')

@@ -1,72 +1,44 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
 import { loadRootEnv } from './load-root-env.mjs';
+import { isEnabled, parseSeedOptions, seedAdminRecord } from './seed-admin-core.mjs';
 
 loadRootEnv();
 
-const MONGO_URI =
-  process.env.MONGO_URI || 'mongodb://localhost:27017/english-platform';
+const argv = process.argv.slice(2);
+const automatic = argv.includes('--auto');
 
-const email =
-  process.argv[2] || process.env.DEFAULT_ADMIN_EMAIL || 'admin@gmail.com';
-const username =
-  process.argv[3] || process.env.DEFAULT_ADMIN_USERNAME || 'admin';
-// Keep this in sync with AdminsService.
-const rawPassword =
-  process.argv[4] || process.env.DEFAULT_ADMIN_PASSWORD || 'admin123';
-
-async function createAdmin() {
-  try {
-    await mongoose.connect(MONGO_URI);
-    console.log('Connected to MongoDB');
-
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(rawPassword, saltRounds);
-
-    const db = mongoose.connection.db;
-    if (!db) {
-      throw new Error('MongoDB connection is not ready');
-    }
-
-    const adminCollection = db.collection('admins');
-
-    await adminCollection.findOneAndUpdate(
-      {
-        $or: [
-          { email: email.toLowerCase().trim() },
-          { username: username.trim() },
-        ],
-      },
-      {
-        $set: {
-          email: email.toLowerCase().trim(),
-          username: username.trim(),
-          password: hashedPassword,
-          isDeleted: false,
-          updatedAt: new Date(),
-        },
-        $unset: {
-          deletedAt: '',
-        },
-        $setOnInsert: {
-          createdAt: new Date(),
-        },
-      },
-      { upsert: true, returnDocument: 'after' },
-    );
-
-    console.log('\n========================================');
-    console.log('Admin account created / updated successfully:');
-    console.log(`- Email:    ${email.toLowerCase().trim()}`);
-    console.log(`- Username: ${username.trim()}`);
-    console.log('========================================\n');
-  } catch (err) {
-    console.error('Error creating admin account:', err);
-    process.exitCode = 1;
-  } finally {
-    await mongoose.disconnect();
-    console.log('Disconnected from MongoDB');
-  }
+// Automatic startup is opt-in. Manual invocation does not require this flag.
+if (automatic && !isEnabled(process.env.ADMIN_SEED_ENABLED)) {
+  console.log('[admin-seed] Skipped: set ADMIN_SEED_ENABLED=true to enable automatic seeding.');
+  process.exit(0);
 }
 
-await createAdmin();
+try {
+  const options = parseSeedOptions(argv, process.env);
+  const uri = process.env.MONGO_IDENTITY_URI || process.env.MONGO_URI;
+  if (!uri) throw new Error('MONGO_IDENTITY_URI or MONGO_URI is required');
+
+  if (options.password && options.password.length < 12 && options.allowWeakPassword) {
+    console.warn('[admin-seed] WARNING: weak admin password enabled. Use only for local development.');
+  }
+
+  await mongoose.connect(uri, { dbName: 'identity_db', serverSelectionTimeoutMS: 20000 });
+  const database = mongoose.connection.db;
+  if (!database) throw new Error('MongoDB connection is not ready');
+
+  const result = await seedAdminRecord(
+    database.collection('admins'),
+    options,
+    (password) => bcrypt.hash(password, 12),
+  );
+  console.log(`[admin-seed] ${result.status}: email=${result.email}, username=${result.username}`);
+  if (result.status === 'existing-disabled') {
+    console.warn('[admin-seed] Account is disabled. Use --reactivate explicitly if intended.');
+  }
+} catch (error) {
+  console.error('[admin-seed] ERROR:', error instanceof Error ? error.message : String(error));
+  process.exitCode = 1;
+} finally {
+  await mongoose.disconnect();
+}

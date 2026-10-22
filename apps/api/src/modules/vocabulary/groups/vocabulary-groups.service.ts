@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { type Model, Types } from 'mongoose';
 import { I18nContext, I18nService } from 'nestjs-i18n';
 import { VocabularyGroup, VocabularyGroupDocument } from './vocabulary-group.schema.js';
 import { Collection, CollectionDocument } from '../collections/collection.schema.js';

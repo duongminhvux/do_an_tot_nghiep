@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, PipelineStage, Types } from 'mongoose';
+import { type Model, type PipelineStage, Types } from 'mongoose';
 import {
   ArenaMatch,
   ArenaMatchStatus,
@@ -22,7 +22,7 @@ import { User } from '../../users/schema/user.schema.js';
 import { ArenaPresenceService } from '../presence/arena-presence.service.js';
 import { ArenaFriendRoomService } from '../friendly/arena-friend-room.service.js';
 import { ArenaGateway } from '../gateways/arena.gateway.js';
-import { ActivityLogsService } from '../../activity-logs/activity-logs.service.js';
+import { NotificationClient } from '../../../common/clients/notification-client.js';
 import { arenaTodayRange } from '../arena.service.js';
 import {
   ArenaAdminQuery,
@@ -56,7 +56,7 @@ export class ArenaAdminService {
     private readonly friendRooms: ArenaFriendRoomService,
     private readonly gateway: ArenaGateway,
     private readonly settings: ArenaSettingsService,
-    private readonly logs: ActivityLogsService,
+    private readonly logs: NotificationClient,
     private readonly reads: ArenaReadService,
   ) {}
   private id(value: string) {

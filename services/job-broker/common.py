@@ -3,18 +3,18 @@ import hmac
 import json
 import os
 import pika
-import redis
+from pymongo import MongoClient
 from fastapi import HTTPException, Request
 
 AMQP = os.environ['RABBITMQ_URL']
-REDIS = os.getenv('REDIS_URL', 'redis://redis:6379')
 QUEUE = 'audio.jobs'
 RETRY = 'audio.jobs.retry'
 DLQ = 'audio.jobs.dead'
 TOKEN = os.getenv('JOB_INTERNAL_TOKEN', '')
 if len(TOKEN) < 24 or TOKEN.upper().startswith('REPLACE_'): raise RuntimeError('JOB_INTERNAL_TOKEN must be >= 24 chars')
 
-cache = redis.Redis.from_url(REDIS, decode_responses=True)
+MONGO = MongoClient(os.environ['MONGO_URI'], serverSelectionTimeoutMS=12000)
+JOBS = MONGO['media_db']['audio_jobs']
 
 def authorize(request: Request):
     if not hmac.compare_digest(request.headers.get('x-internal-token',''), TOKEN):
@@ -33,8 +33,4 @@ def connect(long_running=False):
     return c, ch
 
 def load_job(job_id):
-    raw = cache.get('audio:job:'+job_id)
-    return json.loads(raw) if raw else None
-
-def store_job(job):
-    cache.set('audio:job:'+job['id'], json.dumps(job), ex=7*24*3600)
+    return JOBS.find_one({'id':job_id}, {'_id':0})

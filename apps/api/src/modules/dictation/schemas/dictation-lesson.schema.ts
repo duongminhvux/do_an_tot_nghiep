@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { type HydratedDocument, Types } from 'mongoose';
 import { DictationTopic } from './dictation-topic.schema.js';
 import { DictationSection } from './dictation-section.schema.js';
 

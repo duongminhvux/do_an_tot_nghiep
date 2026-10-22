@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, Logger, Optional } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { type Model, Types } from 'mongoose';
 import { parseOffice } from 'officeparser';
 import { createHash } from 'node:crypto';
 import { parseImportText, validateImportDraft } from '@repo/shared-types/assessment-import';
@@ -10,7 +10,7 @@ import { PassageGroup, PassageGroupDocument } from './schemas/passage-group.sche
 import { Passage, PassageDocument } from './schemas/passage.schema.js';
 import { CreateQuestionDto } from './dto/create-question.dto.js';
 import { UpdateQuestionDto } from './dto/update-question.dto.js';
-import { CloudinaryService } from '../../upload/cloudinary.service.js';
+import { ManagedMediaService } from '../../upload/managed-media.service.js';
 import { AudioGenerationStatus } from '../../../common/media/generated-audio.schema.js';
 import { MediaStorageService } from '../../../common/media/media-storage.service.js';
 import { PdfAiLearningService } from './pdf-ai-learning.service.js';
@@ -44,7 +44,7 @@ export class QuestionsService {
     private readonly passageGroupModel: Model<PassageGroupDocument>,
     @InjectModel(Passage.name)
     private readonly passageModel: Model<PassageDocument>,
-    private readonly cloudinaryService: CloudinaryService,
+    private readonly mediaUploadService: ManagedMediaService,
     private readonly mediaStorage: MediaStorageService,
     @InjectModel(Exam.name)
     private readonly examModel?: Model<ExamDocument>,
@@ -60,13 +60,13 @@ export class QuestionsService {
   }
 
   private async deleteUnusedImage(url?: string) {
-    if (!url || !this.cloudinaryService.extractCloudinaryPublicId(url)) return;
+    if (!url || !this.mediaUploadService.isManagedUrl(url)) return;
     try {
       const [question, passage] = await Promise.all([
         this.questionModel.exists({ imageUrl: url }),
         this.passageModel.exists({ imageUrl: url }),
       ]);
-      if (!question && !passage) await this.cloudinaryService.deleteFile(url);
+      if (!question && !passage) await this.mediaUploadService.deleteFile(url);
     } catch (error) {
       this.logger.warn('Could not clean up replaced passage image', error);
     }

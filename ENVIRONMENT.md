@@ -1,70 +1,13 @@
-# Root environment configuration
+# Environment variables
 
-The repository now uses exactly one application configuration file:
+Copy `.env.example` to `.env` and set real credentials/secrets. Compose reads this
+root file. The new services use individually named MongoDB databases in a
+single `rs0` instance; no `LEGACY_MONGO_URI` is required to start them.
 
-```text
-.env
-```
+The optional legacy importer connects only to a **staging** database named
+`legacy_import`, under explicit `-Dump` and `-Apply` user control.
 
-It lives at the repository root beside `docker-compose.yml`. Start from:
+`COMPOSE_PARALLEL_LIMIT=2` and `COMPOSE_BAKE=false` are set in `.env.example` to
+reduce BuildKit fan-out on a machine with slow registry/mirror access.
 
-```bash
-cp .env.example .env
-```
-
-Per-app env files under `apps/api`, `apps/web`, and `apps/admin-web` have been removed.
-
-## Why local and Docker URLs are separate
-
-The same root file supports both local processes and Docker containers. A process running on the host reaches services through `localhost`, while an API container reaches other containers through Docker DNS names.
-
-```env
-MONGO_URI=mongodb://127.0.0.1:27017/english-platform
-DOCKER_MONGO_URI=mongodb://mongo:27017/english-platform
-
-TTS_SERVICE_URL=http://localhost:8001
-DOCKER_TTS_SERVICE_URL=http://tts-service:8001
-
-ASR_SERVICE_URL=http://localhost:8002
-DOCKER_ASR_SERVICE_URL=http://asr-service:8002
-```
-
-NestJS and API scripts use the local values when run directly. `docker-compose.yml` maps the `DOCKER_*` values into the API container.
-
-## Next.js
-
-`apps/web` and `apps/admin-web` use `scripts/run-next-with-root-env.mjs` for local `dev/build/start`, so the root `.env` is loaded before Next.js starts without putting env-loader logic inside `next.config`. Docker builds still receive `NEXT_PUBLIC_API_URL` as a build argument because public Next.js variables are compiled into the client bundle.
-
-## CPU / GPU
-
-CPU defaults live in root `.env`:
-
-```env
-KOKORO_DEVICE=cpu
-ASR_DEVICE=cpu
-ASR_COMPUTE_TYPE=int8
-```
-
-The GPU compose override reads its GPU values from the same root file:
-
-```env
-KOKORO_DEVICE_GPU=cuda
-ASR_DEVICE_GPU=cuda
-ASR_COMPUTE_TYPE_GPU=float16
-```
-
-CPU:
-
-```bash
-docker compose up --build
-```
-
-GPU:
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.gpu.yml up --build
-```
-
-## Security
-
-`.env` is ignored by Git. Keep real JWT, OAuth, mail and Cloudinary credentials only in `.env`. Keep placeholders in `.env.example`.
+See [`DEPLOY_FRESH.md`](DEPLOY_FRESH.md) for configuration and runtime checks.

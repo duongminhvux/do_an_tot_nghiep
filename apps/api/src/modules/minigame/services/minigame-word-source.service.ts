@@ -8,7 +8,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { type Model, Types } from 'mongoose';
 import { randomInt } from 'node:crypto';
 import { Collection } from '../../vocabulary/collections/collection.schema.js';
 import { Lesson } from '../../vocabulary/lessons/lesson.schema.js';

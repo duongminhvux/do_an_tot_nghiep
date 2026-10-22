@@ -11,8 +11,7 @@ import { UpdateQuestionDto } from '../dist/modules/assessment/questions/dto/upda
 import { QuestionsService } from '../dist/modules/assessment/questions/questions.service.js';
 import { CreateExamDto } from '../dist/modules/assessment/exams/dto/create-exam.dto.js';
 import { QueryExamDto } from '../dist/modules/assessment/exams/dto/query-exam.dto.js';
-import { CloudinaryService } from '../dist/modules/upload/cloudinary.service.js';
-import { v2 as cloudinary } from 'cloudinary';
+import { ManagedMediaService } from '../dist/modules/upload/managed-media.service.js';
 
 const Question = mongoose.model('AssessmentRegressionQuestion', QuestionSchema);
 const payload = {
@@ -61,31 +60,29 @@ test('question list preserves legacy inactive records and new boolean state', as
   assert.deepEqual(result.map((q) => q.isActive), [false, false, true]);
 });
 
-test('Cloudinary upload returns secure URL and deleting that URL targets the correct public ID', async () => {
-  const service = new CloudinaryService({ get: () => undefined });
-  const originalUpload = cloudinary.uploader.upload_stream;
-  const originalDestroy = cloudinary.uploader.destroy;
-  const calls = [];
-  try {
-    cloudinary.uploader.upload_stream = (options, callback) => ({
-      end(buffer) {
-        assert.ok(Buffer.isBuffer(buffer));
-        assert.equal(options.resource_type, 'auto');
-        callback(null, { secure_url: payload.imageUrl, public_id: 'questions/photo' });
-      },
-    });
-    cloudinary.uploader.destroy = async (id, options) => {
-      calls.push({ id, type: options.resource_type });
-      return { result: 'ok' };
-    };
-    const uploaded = await service.uploadFile({ buffer: Buffer.from('image') });
-    assert.equal(uploaded.url, payload.imageUrl);
-    await service.deleteFile(uploaded.url);
-    assert.deepEqual(calls, [{ id: 'questions/photo', type: 'image' }]);
-  } finally {
-    cloudinary.uploader.upload_stream = originalUpload;
-    cloudinary.uploader.destroy = originalDestroy;
-  }
+test('MinIO managed upload returns object URL and deletes only its own object', async () => {
+  const deleted = [];
+  const media = {
+    async saveBuffer(key, buffer) {
+      assert.ok(Buffer.isBuffer(buffer));
+      assert.ok(key.startsWith('uploads/questions/'));
+      return { url: `https://media.example.com/${key}`, storageKey: key };
+    },
+    storageKeyFromPublicUrl(url) {
+      return url?.startsWith('https://media.example.com/uploads/')
+        ? url.slice('https://media.example.com/'.length) : null;
+    },
+    async delete(key) { deleted.push(key); },
+  };
+  const service = new ManagedMediaService(media);
+  const uploaded = await service.uploadFile({ buffer: Buffer.from('image'), originalname: 'cover.png' }, 'questions');
+  assert.ok(uploaded.url.startsWith('https://media.example.com/uploads/questions/'));
+  assert.ok(uploaded.public_id.startsWith('s3:uploads/questions/'));
+  await service.deleteFile(uploaded.url);
+  assert.deepEqual(deleted, [uploaded.public_id.slice(3)]);
+  // Migrated documents might still refer to external assets; never delete those remotely.
+  assert.deepEqual(await service.deleteFile(payload.imageUrl), { result: 'external-not-managed' });
+  assert.equal(deleted.length, 1);
 });
 
 test('editing group questions accepts the group ID and explicitly clearing imageUrl', async () => {
@@ -96,7 +93,7 @@ test('editing group questions accepts the group ID and explicitly clearing image
 });
 
 test('replacing a passage image preserves shared assets; clearing the last reference deletes it', async () => {
-  const oldUrl = payload.imageUrl;
+  const oldUrl = 'https://media.example.com/uploads/questions/old-image.jpg';
   const id = new mongoose.Types.ObjectId().toString();
   const deleted = [];
   let questionReference = { _id: 'shared-question', imageUrl: oldUrl };
@@ -115,8 +112,8 @@ test('replacing a passage image preserves shared assets; clearing the last refer
     },
     exists: async () => questionReference,
   };
-  const cloud = { extractCloudinaryPublicId: () => ({ publicId: 'photo' }), deleteFile: async (url) => deleted.push(url) };
-  const service = new QuestionsService(questionModel, { findById: () => query({ part: 3 }) }, passageModel, cloud);
+  const managed = { isManagedUrl: (url) => url.startsWith('https://media.example.com/'), deleteFile: async (url) => deleted.push(url) };
+  const service = new QuestionsService(questionModel, { findById: () => query({ part: 3 }) }, passageModel, managed);
   await service.updatePassage(id, { imageUrl: 'https://example.com/replacement.png' });
   assert.deepEqual(deleted, []);
   const updated = await service.update(id, { imageUrl: '' });

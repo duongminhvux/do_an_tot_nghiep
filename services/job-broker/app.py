@@ -21,13 +21,16 @@ def publish(body: PublishBody, request: Request):
     authorize(request)
     job=load_job(body.jobId)
     if not job or job.get('state') != 'waiting':
-        raise HTTPException(409,'Job not waiting in Redis')
+        raise HTTPException(409,'Job not waiting in MongoDB')
     c,ch=connect()
     try:
-        accepted=ch.basic_publish(exchange='',routing_key=QUEUE,
-            body=json.dumps({'jobId':body.jobId,'name':body.name}).encode(),
-            properties=pika.BasicProperties(delivery_mode=2, content_type='application/json'),mandatory=True)
-        if not accepted: raise HTTPException(503,'Message not confirmed')
+        try:
+            # Pika basic_publish() returns None on confirmed success.
+            ch.basic_publish(exchange='',routing_key=QUEUE,
+                body=json.dumps({'jobId':body.jobId,'name':body.name}).encode(),
+                properties=pika.BasicProperties(delivery_mode=2, content_type='application/json'),mandatory=True)
+        except pika.exceptions.AMQPError as exc:
+            raise HTTPException(503, 'RabbitMQ publish failed') from exc
         return {'published':True,'jobId':body.jobId}
     finally:
         c.close()

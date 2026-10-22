@@ -7,9 +7,9 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { type Model, Types } from 'mongoose';
 import { AsrService } from '../asr/asr.service.js';
-import { CloudinaryService } from '../upload/cloudinary.service.js';
+import { ManagedMediaService } from '../upload/managed-media.service.js';
 import { TtsService } from '../tts/tts.service.js';
 import { MediaStorageService } from '../../common/media/media-storage.service.js';
 import { CreateDictationDto } from './dto/create-dictation.dto.js';
@@ -66,7 +66,7 @@ export class DictationService {
     private readonly sectionModel: Model<DictationSectionDocument>,
     private readonly ttsService: TtsService,
     private readonly asrService: AsrService,
-    private readonly cloudinaryService: CloudinaryService,
+    private readonly mediaUploadService: ManagedMediaService,
     private readonly mediaStorage: MediaStorageService,
     private readonly configService: ConfigService,
   ) {
@@ -325,7 +325,7 @@ export class DictationService {
       dto.thumbnailPublicId !== undefined &&
       oldThumbnailPublicId !== topic.thumbnailPublicId
     ) {
-      await this.cloudinaryService.deleteFile(oldThumbnailPublicId, 'image');
+      await this.mediaUploadService.deleteFile(oldThumbnailPublicId, 'image');
     }
     return topic.toObject();
   }
@@ -340,7 +340,7 @@ export class DictationService {
     topic.isActive = false;
     await topic.save();
     await this.sectionModel.updateMany({ topicId: topic._id }, { $set: { isDeleted: true, isActive: false } });
-    if (topic.thumbnailPublicId) await this.cloudinaryService.deleteFile(topic.thumbnailPublicId, 'image');
+    if (topic.thumbnailPublicId) await this.mediaUploadService.deleteFile(topic.thumbnailPublicId, 'image');
     return topic;
   }
 
@@ -907,9 +907,9 @@ export class DictationService {
     await Promise.allSettled([
       ...oldSegments
         .filter((segment) => Boolean(segment.audioPublicId))
-        .map((segment) => this.cloudinaryService.deleteFile(segment.audioPublicId!, 'video')),
+        .map((segment) => this.mediaUploadService.deleteFile(segment.audioPublicId!, 'video')),
       ...(oldFullPublicId
-        ? [this.cloudinaryService.deleteFile(oldFullPublicId, 'video')]
+        ? [this.mediaUploadService.deleteFile(oldFullPublicId, 'video')]
         : []),
       ...(oldStorageKey && oldStorageKey !== audio.storageKey
         ? [this.mediaStorage.delete(oldStorageKey)]

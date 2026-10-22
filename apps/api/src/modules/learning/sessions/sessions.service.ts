@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { type Model, Types } from 'mongoose';
 import {
   LearningSession,
   LearningSessionDocument,
@@ -40,8 +40,8 @@ import {
 import { CreateSessionDto } from './dto/create-session.dto.js';
 import { RecordActionDto } from './dto/record-action.dto.js';
 import { I18nService } from 'nestjs-i18n';
-import { ActivityLogsService } from '../../activity-logs/activity-logs.service.js';
-import { ActivityAction, ActivityCategory } from '../../activity-logs/schemas/activity-log.schema.js';
+import { NotificationClient } from '../../../common/clients/notification-client.js';
+import { ActivityAction, ActivityCategory } from '../../../common/contracts/activity.types.js';
 
 @Injectable()
 export class SessionsService {
@@ -63,7 +63,7 @@ export class SessionsService {
     @InjectModel(UserDailyActivity.name)
     private dailyActivityModel: Model<UserDailyActivityDocument>,
     private readonly i18n: I18nService,
-    private readonly activityLogsService: ActivityLogsService,
+    private readonly activityLogsService: NotificationClient,
   ) {}
 
   /**
@@ -390,7 +390,7 @@ export class SessionsService {
       studyMinutes,
     });
 
-    this.activityLogsService.log({
+    void this.activityLogsService.log({
       userId: String(session.userId),
       action: ActivityAction.VOCABULARY_LEARN,
       category: ActivityCategory.VOCABULARY,
@@ -404,7 +404,7 @@ export class SessionsService {
         completedWords: session.completedWords,
         durationSeconds,
       },
-    });
+    }).catch(err => this.activityLogsService.reportError('activity log',err));
 
     return session;
   }

@@ -14,11 +14,11 @@ import {
   VocabularyFolder,
   VocabularyFolderSchema,
 } from './schema/vocabulary-folder.schema.js';
-import { VocabularyModule } from '../../vocabulary/vocabulary.module.js';
+import { VocabularyReadModelsModule } from '../../vocabulary/vocabulary-read-models.module.js';
 
 @Module({
   imports: [
-    VocabularyModule,
+    VocabularyReadModelsModule,
     MongooseModule.forFeature([
       { name: UserSavedWord.name, schema: UserSavedWordSchema },
       { name: UserWordReview.name, schema: UserWordReviewSchema },

@@ -1,55 +1,975 @@
+name: vocalearn-clean
 services:
-  redis:
-    image: redis:7-alpine
-    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
-    container_name: vocalearn-redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-    networks:
-      - toeic-network
-
   mongo:
     image: mongo:8.0
+    command:
+      - mongod
+      - --replSet
+      - rs0
+      - --bind_ip_all
     restart: unless-stopped
-    environment:
-      MONGO_INITDB_DATABASE: ${MONGO_DB_NAME:-english-platform}
     volumes:
       - mongo_data:/data/db
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      test:
+        - CMD
+        - mongosh
+        - --quiet
+        - --eval
+        - db.adminCommand("ping").ok
       interval: 10s
       timeout: 5s
-      retries: 10
-      start_period: 10s
+      retries: 15
     networks:
       - toeic-network
-
-  db-migrate:
+  # Initialize rs0 or additively reconcile service databases against the manifest.
+  # A schema change rebuilds this one-shot image; no legacy import on startup.
+  db-init:
+    image: vocalearn-clean-db-init:local
+    pull_policy: never
     build:
       context: .
-      dockerfile: apps/api/Dockerfile
+      dockerfile: database/Dockerfile
+      provenance: false
+      sbom: false
+    entrypoint: ["mongosh"]
+    command: ["--norc", "--quiet", "mongodb://mongo:27017/?directConnection=true", "--file", "/bootstrap/init.js"]
     restart: "no"
-    environment:
-      MONGO_URI: ${DOCKER_MONGO_URI:-mongodb://mongo:27017/english-platform}
-    command: ["node", "apps/api/src/scripts/db-migrate.mjs"]
     depends_on:
       mongo:
         condition: service_healthy
     networks:
       - toeic-network
-
+  redis:
+    image: redis:7-alpine
+    command:
+      - redis-server
+      - --appendonly
+      - 'yes'
+      - --appendfsync
+      - everysec
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - ping
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - toeic-network
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?Set RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      - ./infra/rabbitmq/rabbitmq.conf:/etc/rabbitmq/conf.d/99-consumer.conf:ro
+    ports:
+      - 127.0.0.1:15672:15672
+    healthcheck:
+      test:
+        - CMD
+        - rabbitmq-diagnostics
+        - -q
+        - ping
+      interval: 10s
+      timeout: 5s
+      retries: 15
+    networks:
+      - toeic-network
+  # S3-compatible SeaweedFS (MinIO images unavailable since Sep 2026).
+  objectstore:
+    image: chrislusf/seaweedfs:4.30
+    command:
+      - mini
+      - -dir=/data
+      - -s3.port=9000
+    restart: unless-stopped
+    environment:
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:?Set S3_ACCESS_KEY}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:?Set S3_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET:-vocalearn-media}
+    volumes:
+      - objectstore_data:/data
+    ports:
+      - 127.0.0.1:9000:9000
+    networks:
+      - toeic-network
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - -q
+        - --spider
+        - http://127.0.0.1:9000/readyz
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+  # Idempotent admin seed: after db-init, before identity-service.
+  # Disabled by default. Never overwrites an existing password on restart.
+  admin-seed:
+    image: vocalearn-clean-api:local
+    pull_policy: never
+    command: ["node", "apps/api/src/scripts/seed-admin.mjs", "--auto"]
+    restart: "no"
+    environment:
+      MONGO_URI: ${MONGO_IDENTITY_URI:-mongodb://mongo:27017/identity_db?replicaSet=rs0}
+      DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-admin@gmail.com}
+      DEFAULT_ADMIN_USERNAME: ${DEFAULT_ADMIN_USERNAME:-admin}
+      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-}
+      ADMIN_SEED_ENABLED: ${ADMIN_SEED_ENABLED:-false}
+      ADMIN_SEED_ALLOW_WEAK_PASSWORD: ${ADMIN_SEED_ALLOW_WEAK_PASSWORD:-false}
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    networks:
+      - toeic-network
+  identity-service:
+    image: vocalearn-clean-api:local
+    pull_policy: never
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      provenance: false
+      sbom: false
+    command:
+      - node
+      - apps/api/dist/entrypoints/identity.js
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: '5000'
+      MONGO_URI: ${MONGO_IDENTITY_URI:-mongodb://mongo:27017/identity_db?replicaSet=rs0}
+      REDIS_URL: redis://redis:6379
+      MEDIA_STORAGE_BACKEND: s3
+      MEDIA_BRIDGE_URL: http://media-bridge:8010
+      MEDIA_INTERNAL_TOKEN: ${MEDIA_INTERNAL_TOKEN:?Set MEDIA_INTERNAL_TOKEN}
+      MEDIA_PUBLIC_BASE_URL: ${MEDIA_PUBLIC_BASE_URL:-http://localhost:5000/media}
+      MEDIA_STORAGE_PATH: /app/storage
+      AUDIO_QUEUE_BACKEND: rabbitmq
+      RABBIT_JOB_BROKER_URL: http://job-broker:8020
+      JOB_INTERNAL_TOKEN: ${JOB_INTERNAL_TOKEN:?Set JOB_INTERNAL_TOKEN}
+      ASR_JOB_API_URL: http://asr-job-api:8021
+      IDENTITY_INTROSPECTION_URL: http://identity-service:5000/api/_internal/identity/introspect
+      IDENTITY_INTERNAL_TOKEN: ${IDENTITY_INTERNAL_TOKEN:?Set IDENTITY_INTERNAL_TOKEN}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:?Set INTERNAL_SERVICE_TOKEN}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Set JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Set JWT_REFRESH_SECRET}
+      JWT_ACCESS_TOKEN_EXPIRES: ${JWT_ACCESS_TOKEN_EXPIRES:-15m}
+      JWT_REFRESH_TOKEN_EXPIRES: ${JWT_REFRESH_TOKEN_EXPIRES:-7d}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      ADMIN_URL: ${ADMIN_URL:-http://localhost:3001}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:5000/api/auth/google/callback}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-Daily English}
+      MAIL_SERVER: ${MAIL_SERVER:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      TTS_SERVICE_URL: http://tts-service:8001
+      ASR_SERVICE_URL: http://asr-service:8002
+      PDF_AI_URL: http://pdf-ai:8003
+      VOCAB_TTS_US_VOICE: ${VOCAB_TTS_US_VOICE:-af_heart}
+      VOCAB_TTS_UK_VOICE: ${VOCAB_TTS_UK_VOICE:-bf_emma}
+      VOCAB_TTS_SPEED: ${VOCAB_TTS_SPEED:-1}
+      TOEIC_TTS_SPEED: ${TOEIC_TTS_SPEED:-1}
+      CONTENT_INTERNAL_URL: http://content-service:5000
+      ASSESSMENT_INTERNAL_URL: http://assessment-service:5000
+      SERVICE_ROLE: identity
+      MONGO_DB_NAME: identity_db
+      NOTIFICATION_INTERNAL_URL: http://notification-service:5000
+    volumes:
+      - ./storage:/app/storage:ro
+    depends_on:
+      admin-seed:
+        condition: service_completed_successfully
+      db-init:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      objectstore:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 8
+    networks:
+      - toeic-network
+  content-service:
+    image: vocalearn-clean-api:local
+    pull_policy: never
+    command:
+      - node
+      - apps/api/dist/entrypoints/content.js
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: '5000'
+      MONGO_URI: ${MONGO_CONTENT_URI:-mongodb://mongo:27017/content_db?replicaSet=rs0}
+      REDIS_URL: redis://redis:6379
+      MEDIA_STORAGE_BACKEND: s3
+      MEDIA_BRIDGE_URL: http://media-bridge:8010
+      MEDIA_INTERNAL_TOKEN: ${MEDIA_INTERNAL_TOKEN:?Set MEDIA_INTERNAL_TOKEN}
+      MEDIA_PUBLIC_BASE_URL: ${MEDIA_PUBLIC_BASE_URL:-http://localhost:5000/media}
+      MEDIA_STORAGE_PATH: /app/storage
+      AUDIO_QUEUE_BACKEND: rabbitmq
+      RABBIT_JOB_BROKER_URL: http://job-broker:8020
+      JOB_INTERNAL_TOKEN: ${JOB_INTERNAL_TOKEN:?Set JOB_INTERNAL_TOKEN}
+      ASR_JOB_API_URL: http://asr-job-api:8021
+      IDENTITY_INTROSPECTION_URL: http://identity-service:5000/api/_internal/identity/introspect
+      IDENTITY_INTERNAL_TOKEN: ${IDENTITY_INTERNAL_TOKEN:?Set IDENTITY_INTERNAL_TOKEN}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:?Set INTERNAL_SERVICE_TOKEN}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Set JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Set JWT_REFRESH_SECRET}
+      JWT_ACCESS_TOKEN_EXPIRES: ${JWT_ACCESS_TOKEN_EXPIRES:-15m}
+      JWT_REFRESH_TOKEN_EXPIRES: ${JWT_REFRESH_TOKEN_EXPIRES:-7d}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      ADMIN_URL: ${ADMIN_URL:-http://localhost:3001}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:5000/api/auth/google/callback}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-Daily English}
+      MAIL_SERVER: ${MAIL_SERVER:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      TTS_SERVICE_URL: http://tts-service:8001
+      ASR_SERVICE_URL: http://asr-service:8002
+      PDF_AI_URL: http://pdf-ai:8003
+      VOCAB_TTS_US_VOICE: ${VOCAB_TTS_US_VOICE:-af_heart}
+      VOCAB_TTS_UK_VOICE: ${VOCAB_TTS_UK_VOICE:-bf_emma}
+      VOCAB_TTS_SPEED: ${VOCAB_TTS_SPEED:-1}
+      TOEIC_TTS_SPEED: ${TOEIC_TTS_SPEED:-1}
+      CONTENT_INTERNAL_URL: http://content-service:5000
+      ASSESSMENT_INTERNAL_URL: http://assessment-service:5000
+      SERVICE_ROLE: content
+      MONGO_DB_NAME: content_db
+      NOTIFICATION_INTERNAL_URL: http://notification-service:5000
+    volumes:
+      - ./storage:/app/storage
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      objectstore:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 8
+    networks:
+      - toeic-network
+  assessment-service:
+    image: vocalearn-clean-api:local
+    pull_policy: never
+    command:
+      - node
+      - apps/api/dist/entrypoints/assessment.js
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: '5000'
+      MONGO_URI: ${MONGO_ASSESSMENT_URI:-mongodb://mongo:27017/assessment_db?replicaSet=rs0}
+      REDIS_URL: redis://redis:6379
+      MEDIA_STORAGE_BACKEND: s3
+      MEDIA_BRIDGE_URL: http://media-bridge:8010
+      MEDIA_INTERNAL_TOKEN: ${MEDIA_INTERNAL_TOKEN:?Set MEDIA_INTERNAL_TOKEN}
+      MEDIA_PUBLIC_BASE_URL: ${MEDIA_PUBLIC_BASE_URL:-http://localhost:5000/media}
+      MEDIA_STORAGE_PATH: /app/storage
+      AUDIO_QUEUE_BACKEND: rabbitmq
+      RABBIT_JOB_BROKER_URL: http://job-broker:8020
+      JOB_INTERNAL_TOKEN: ${JOB_INTERNAL_TOKEN:?Set JOB_INTERNAL_TOKEN}
+      ASR_JOB_API_URL: http://asr-job-api:8021
+      IDENTITY_INTROSPECTION_URL: http://identity-service:5000/api/_internal/identity/introspect
+      IDENTITY_INTERNAL_TOKEN: ${IDENTITY_INTERNAL_TOKEN:?Set IDENTITY_INTERNAL_TOKEN}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:?Set INTERNAL_SERVICE_TOKEN}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Set JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Set JWT_REFRESH_SECRET}
+      JWT_ACCESS_TOKEN_EXPIRES: ${JWT_ACCESS_TOKEN_EXPIRES:-15m}
+      JWT_REFRESH_TOKEN_EXPIRES: ${JWT_REFRESH_TOKEN_EXPIRES:-7d}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      ADMIN_URL: ${ADMIN_URL:-http://localhost:3001}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:5000/api/auth/google/callback}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-Daily English}
+      MAIL_SERVER: ${MAIL_SERVER:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      TTS_SERVICE_URL: http://tts-service:8001
+      ASR_SERVICE_URL: http://asr-service:8002
+      PDF_AI_URL: http://pdf-ai:8003
+      VOCAB_TTS_US_VOICE: ${VOCAB_TTS_US_VOICE:-af_heart}
+      VOCAB_TTS_UK_VOICE: ${VOCAB_TTS_UK_VOICE:-bf_emma}
+      VOCAB_TTS_SPEED: ${VOCAB_TTS_SPEED:-1}
+      TOEIC_TTS_SPEED: ${TOEIC_TTS_SPEED:-1}
+      CONTENT_INTERNAL_URL: http://content-service:5000
+      ASSESSMENT_INTERNAL_URL: http://assessment-service:5000
+      SERVICE_ROLE: assessment
+      MONGO_DB_NAME: assessment_db
+      NOTIFICATION_INTERNAL_URL: http://notification-service:5000
+    volumes:
+      - ./storage:/app/storage:ro
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      objectstore:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 8
+    networks:
+      - toeic-network
+  arena-service:
+    image: vocalearn-clean-api:local
+    pull_policy: never
+    command:
+      - node
+      - apps/api/dist/entrypoints/arena.js
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: '5000'
+      MONGO_URI: ${MONGO_ARENA_URI:-mongodb://mongo:27017/arena_db?replicaSet=rs0}
+      REDIS_URL: redis://redis:6379
+      MEDIA_STORAGE_BACKEND: s3
+      MEDIA_BRIDGE_URL: http://media-bridge:8010
+      MEDIA_INTERNAL_TOKEN: ${MEDIA_INTERNAL_TOKEN:?Set MEDIA_INTERNAL_TOKEN}
+      MEDIA_PUBLIC_BASE_URL: ${MEDIA_PUBLIC_BASE_URL:-http://localhost:5000/media}
+      MEDIA_STORAGE_PATH: /app/storage
+      AUDIO_QUEUE_BACKEND: rabbitmq
+      RABBIT_JOB_BROKER_URL: http://job-broker:8020
+      JOB_INTERNAL_TOKEN: ${JOB_INTERNAL_TOKEN:?Set JOB_INTERNAL_TOKEN}
+      ASR_JOB_API_URL: http://asr-job-api:8021
+      IDENTITY_INTROSPECTION_URL: http://identity-service:5000/api/_internal/identity/introspect
+      IDENTITY_INTERNAL_TOKEN: ${IDENTITY_INTERNAL_TOKEN:?Set IDENTITY_INTERNAL_TOKEN}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:?Set INTERNAL_SERVICE_TOKEN}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Set JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Set JWT_REFRESH_SECRET}
+      JWT_ACCESS_TOKEN_EXPIRES: ${JWT_ACCESS_TOKEN_EXPIRES:-15m}
+      JWT_REFRESH_TOKEN_EXPIRES: ${JWT_REFRESH_TOKEN_EXPIRES:-7d}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      ADMIN_URL: ${ADMIN_URL:-http://localhost:3001}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:5000/api/auth/google/callback}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-Daily English}
+      MAIL_SERVER: ${MAIL_SERVER:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      TTS_SERVICE_URL: http://tts-service:8001
+      ASR_SERVICE_URL: http://asr-service:8002
+      PDF_AI_URL: http://pdf-ai:8003
+      VOCAB_TTS_US_VOICE: ${VOCAB_TTS_US_VOICE:-af_heart}
+      VOCAB_TTS_UK_VOICE: ${VOCAB_TTS_UK_VOICE:-bf_emma}
+      VOCAB_TTS_SPEED: ${VOCAB_TTS_SPEED:-1}
+      TOEIC_TTS_SPEED: ${TOEIC_TTS_SPEED:-1}
+      CONTENT_INTERNAL_URL: http://content-service:5000
+      ASSESSMENT_INTERNAL_URL: http://assessment-service:5000
+      SERVICE_ROLE: arena
+      MONGO_DB_NAME: arena_db
+      NOTIFICATION_INTERNAL_URL: http://notification-service:5000
+    volumes:
+      - ./storage:/app/storage:ro
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      objectstore:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 8
+    networks:
+      - toeic-network
+  learning-service:
+    image: vocalearn-clean-api:local
+    pull_policy: never
+    command:
+      - node
+      - apps/api/dist/entrypoints/learning.js
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: '5000'
+      MONGO_URI: ${MONGO_LEARNING_URI:-mongodb://mongo:27017/learning_db?replicaSet=rs0}
+      REDIS_URL: redis://redis:6379
+      MEDIA_STORAGE_BACKEND: s3
+      MEDIA_BRIDGE_URL: http://media-bridge:8010
+      MEDIA_INTERNAL_TOKEN: ${MEDIA_INTERNAL_TOKEN:?Set MEDIA_INTERNAL_TOKEN}
+      MEDIA_PUBLIC_BASE_URL: ${MEDIA_PUBLIC_BASE_URL:-http://localhost:5000/media}
+      MEDIA_STORAGE_PATH: /app/storage
+      AUDIO_QUEUE_BACKEND: rabbitmq
+      RABBIT_JOB_BROKER_URL: http://job-broker:8020
+      JOB_INTERNAL_TOKEN: ${JOB_INTERNAL_TOKEN:?Set JOB_INTERNAL_TOKEN}
+      ASR_JOB_API_URL: http://asr-job-api:8021
+      IDENTITY_INTROSPECTION_URL: http://identity-service:5000/api/_internal/identity/introspect
+      IDENTITY_INTERNAL_TOKEN: ${IDENTITY_INTERNAL_TOKEN:?Set IDENTITY_INTERNAL_TOKEN}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:?Set INTERNAL_SERVICE_TOKEN}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Set JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Set JWT_REFRESH_SECRET}
+      JWT_ACCESS_TOKEN_EXPIRES: ${JWT_ACCESS_TOKEN_EXPIRES:-15m}
+      JWT_REFRESH_TOKEN_EXPIRES: ${JWT_REFRESH_TOKEN_EXPIRES:-7d}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      ADMIN_URL: ${ADMIN_URL:-http://localhost:3001}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:5000/api/auth/google/callback}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-Daily English}
+      MAIL_SERVER: ${MAIL_SERVER:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      TTS_SERVICE_URL: http://tts-service:8001
+      ASR_SERVICE_URL: http://asr-service:8002
+      PDF_AI_URL: http://pdf-ai:8003
+      VOCAB_TTS_US_VOICE: ${VOCAB_TTS_US_VOICE:-af_heart}
+      VOCAB_TTS_UK_VOICE: ${VOCAB_TTS_UK_VOICE:-bf_emma}
+      VOCAB_TTS_SPEED: ${VOCAB_TTS_SPEED:-1}
+      TOEIC_TTS_SPEED: ${TOEIC_TTS_SPEED:-1}
+      CONTENT_INTERNAL_URL: http://content-service:5000
+      ASSESSMENT_INTERNAL_URL: http://assessment-service:5000
+      SERVICE_ROLE: learning
+      MONGO_DB_NAME: learning_db
+      NOTIFICATION_INTERNAL_URL: http://notification-service:5000
+    volumes:
+      - ./storage:/app/storage:ro
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      objectstore:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 8
+    networks:
+      - toeic-network
+  media-jobs-service:
+    image: vocalearn-clean-api:local
+    pull_policy: never
+    command:
+      - node
+      - apps/api/dist/entrypoints/media-jobs.js
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: '5000'
+      MONGO_URI: ${MONGO_MEDIA_JOBS_URI:-mongodb://mongo:27017/media_db?replicaSet=rs0}
+      REDIS_URL: redis://redis:6379
+      MEDIA_STORAGE_BACKEND: s3
+      MEDIA_BRIDGE_URL: http://media-bridge:8010
+      MEDIA_INTERNAL_TOKEN: ${MEDIA_INTERNAL_TOKEN:?Set MEDIA_INTERNAL_TOKEN}
+      MEDIA_PUBLIC_BASE_URL: ${MEDIA_PUBLIC_BASE_URL:-http://localhost:5000/media}
+      MEDIA_STORAGE_PATH: /app/storage
+      AUDIO_QUEUE_BACKEND: rabbitmq
+      RABBIT_JOB_BROKER_URL: http://job-broker:8020
+      JOB_INTERNAL_TOKEN: ${JOB_INTERNAL_TOKEN:?Set JOB_INTERNAL_TOKEN}
+      ASR_JOB_API_URL: http://asr-job-api:8021
+      IDENTITY_INTROSPECTION_URL: http://identity-service:5000/api/_internal/identity/introspect
+      IDENTITY_INTERNAL_TOKEN: ${IDENTITY_INTERNAL_TOKEN:?Set IDENTITY_INTERNAL_TOKEN}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:?Set INTERNAL_SERVICE_TOKEN}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Set JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Set JWT_REFRESH_SECRET}
+      JWT_ACCESS_TOKEN_EXPIRES: ${JWT_ACCESS_TOKEN_EXPIRES:-15m}
+      JWT_REFRESH_TOKEN_EXPIRES: ${JWT_REFRESH_TOKEN_EXPIRES:-7d}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      ADMIN_URL: ${ADMIN_URL:-http://localhost:3001}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:5000/api/auth/google/callback}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-Daily English}
+      MAIL_SERVER: ${MAIL_SERVER:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      TTS_SERVICE_URL: http://tts-service:8001
+      ASR_SERVICE_URL: http://asr-service:8002
+      PDF_AI_URL: http://pdf-ai:8003
+      VOCAB_TTS_US_VOICE: ${VOCAB_TTS_US_VOICE:-af_heart}
+      VOCAB_TTS_UK_VOICE: ${VOCAB_TTS_UK_VOICE:-bf_emma}
+      VOCAB_TTS_SPEED: ${VOCAB_TTS_SPEED:-1}
+      TOEIC_TTS_SPEED: ${TOEIC_TTS_SPEED:-1}
+      CONTENT_INTERNAL_URL: http://content-service:5000
+      ASSESSMENT_INTERNAL_URL: http://assessment-service:5000
+      SERVICE_ROLE: media-jobs
+      MONGO_DB_NAME: media_db
+      NOTIFICATION_INTERNAL_URL: http://notification-service:5000
+    volumes:
+      - ./storage:/app/storage
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      objectstore:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 8
+    networks:
+      - toeic-network
+  ai-import-service:
+    image: vocalearn-clean-api:local
+    pull_policy: never
+    command:
+      - node
+      - apps/api/dist/entrypoints/ai-import.js
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: '5000'
+      MONGO_URI: ${MONGO_AI_IMPORT_URI:-mongodb://mongo:27017/ai_import_db?replicaSet=rs0}
+      REDIS_URL: redis://redis:6379
+      MEDIA_STORAGE_BACKEND: s3
+      MEDIA_BRIDGE_URL: http://media-bridge:8010
+      MEDIA_INTERNAL_TOKEN: ${MEDIA_INTERNAL_TOKEN:?Set MEDIA_INTERNAL_TOKEN}
+      MEDIA_PUBLIC_BASE_URL: ${MEDIA_PUBLIC_BASE_URL:-http://localhost:5000/media}
+      MEDIA_STORAGE_PATH: /app/storage
+      AUDIO_QUEUE_BACKEND: rabbitmq
+      RABBIT_JOB_BROKER_URL: http://job-broker:8020
+      JOB_INTERNAL_TOKEN: ${JOB_INTERNAL_TOKEN:?Set JOB_INTERNAL_TOKEN}
+      ASR_JOB_API_URL: http://asr-job-api:8021
+      IDENTITY_INTROSPECTION_URL: http://identity-service:5000/api/_internal/identity/introspect
+      IDENTITY_INTERNAL_TOKEN: ${IDENTITY_INTERNAL_TOKEN:?Set IDENTITY_INTERNAL_TOKEN}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:?Set INTERNAL_SERVICE_TOKEN}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Set JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Set JWT_REFRESH_SECRET}
+      JWT_ACCESS_TOKEN_EXPIRES: ${JWT_ACCESS_TOKEN_EXPIRES:-15m}
+      JWT_REFRESH_TOKEN_EXPIRES: ${JWT_REFRESH_TOKEN_EXPIRES:-7d}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      ADMIN_URL: ${ADMIN_URL:-http://localhost:3001}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:5000/api/auth/google/callback}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-Daily English}
+      MAIL_SERVER: ${MAIL_SERVER:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      TTS_SERVICE_URL: http://tts-service:8001
+      ASR_SERVICE_URL: http://asr-service:8002
+      PDF_AI_URL: http://pdf-ai:8003
+      VOCAB_TTS_US_VOICE: ${VOCAB_TTS_US_VOICE:-af_heart}
+      VOCAB_TTS_UK_VOICE: ${VOCAB_TTS_UK_VOICE:-bf_emma}
+      VOCAB_TTS_SPEED: ${VOCAB_TTS_SPEED:-1}
+      TOEIC_TTS_SPEED: ${TOEIC_TTS_SPEED:-1}
+      CONTENT_INTERNAL_URL: http://content-service:5000
+      ASSESSMENT_INTERNAL_URL: http://assessment-service:5000
+      SERVICE_ROLE: ai-import
+      MONGO_DB_NAME: ai_import_db
+      NOTIFICATION_INTERNAL_URL: http://notification-service:5000
+    volumes:
+      - ./storage:/app/storage
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      objectstore:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 8
+    networks:
+      - toeic-network
+  notification-service:
+    image: vocalearn-clean-api:local
+    pull_policy: never
+    command:
+      - node
+      - apps/api/dist/entrypoints/notification.js
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: '5000'
+      MONGO_URI: ${MONGO_NOTIFICATION_URI:-mongodb://mongo:27017/notification_db?replicaSet=rs0}
+      REDIS_URL: redis://redis:6379
+      MEDIA_STORAGE_BACKEND: s3
+      MEDIA_BRIDGE_URL: http://media-bridge:8010
+      MEDIA_INTERNAL_TOKEN: ${MEDIA_INTERNAL_TOKEN:?Set MEDIA_INTERNAL_TOKEN}
+      MEDIA_PUBLIC_BASE_URL: ${MEDIA_PUBLIC_BASE_URL:-http://localhost:5000/media}
+      MEDIA_STORAGE_PATH: /app/storage
+      AUDIO_QUEUE_BACKEND: rabbitmq
+      RABBIT_JOB_BROKER_URL: http://job-broker:8020
+      JOB_INTERNAL_TOKEN: ${JOB_INTERNAL_TOKEN:?Set JOB_INTERNAL_TOKEN}
+      ASR_JOB_API_URL: http://asr-job-api:8021
+      IDENTITY_INTROSPECTION_URL: http://identity-service:5000/api/_internal/identity/introspect
+      IDENTITY_INTERNAL_TOKEN: ${IDENTITY_INTERNAL_TOKEN:?Set IDENTITY_INTERNAL_TOKEN}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:?Set INTERNAL_SERVICE_TOKEN}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Set JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Set JWT_REFRESH_SECRET}
+      JWT_ACCESS_TOKEN_EXPIRES: ${JWT_ACCESS_TOKEN_EXPIRES:-15m}
+      JWT_REFRESH_TOKEN_EXPIRES: ${JWT_REFRESH_TOKEN_EXPIRES:-7d}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      ADMIN_URL: ${ADMIN_URL:-http://localhost:3001}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:5000/api/auth/google/callback}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-Daily English}
+      MAIL_SERVER: ${MAIL_SERVER:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      TTS_SERVICE_URL: http://tts-service:8001
+      ASR_SERVICE_URL: http://asr-service:8002
+      PDF_AI_URL: http://pdf-ai:8003
+      VOCAB_TTS_US_VOICE: ${VOCAB_TTS_US_VOICE:-af_heart}
+      VOCAB_TTS_UK_VOICE: ${VOCAB_TTS_UK_VOICE:-bf_emma}
+      VOCAB_TTS_SPEED: ${VOCAB_TTS_SPEED:-1}
+      TOEIC_TTS_SPEED: ${TOEIC_TTS_SPEED:-1}
+      CONTENT_INTERNAL_URL: http://content-service:5000
+      ASSESSMENT_INTERNAL_URL: http://assessment-service:5000
+      SERVICE_ROLE: notification
+      MONGO_DB_NAME: notification_db
+      NOTIFICATION_INTERNAL_URL: http://notification-service:5000
+    volumes:
+      - ./storage:/app/storage:ro
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      objectstore:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 8
+    networks:
+      - toeic-network
+  gateway:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    volumes:
+      - ./infra/gateway/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - ${API_PUBLISHED_PORT:-5000}:5000
+    depends_on:
+      identity-service:
+        condition: service_started
+      content-service:
+        condition: service_started
+      assessment-service:
+        condition: service_started
+      arena-service:
+        condition: service_started
+      learning-service:
+        condition: service_started
+      media-jobs-service:
+        condition: service_started
+      ai-import-service:
+        condition: service_started
+      notification-service:
+        condition: service_started
+    networks:
+      - toeic-network
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      provenance: false
+      sbom: false
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000/api}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000/api}
+    ports:
+      - 3000:3000
+    depends_on:
+      gateway:
+        condition: service_started
+    networks:
+      - toeic-network
+  admin-web:
+    build:
+      context: .
+      dockerfile: apps/admin-web/Dockerfile
+      provenance: false
+      sbom: false
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000/api}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000/api}
+    ports:
+      - 3001:3001
+    depends_on:
+      gateway:
+        condition: service_started
+    networks:
+      - toeic-network
+  media-bridge:
+    build:
+      context: .
+      dockerfile: services/media-bridge/Dockerfile
+      provenance: false
+      sbom: false
+    restart: unless-stopped
+    environment:
+      S3_ENDPOINT: http://objectstore:9000
+      S3_BUCKET: ${S3_BUCKET:-vocalearn-media}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?Set S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:?Set S3_SECRET_KEY}
+      MEDIA_INTERNAL_TOKEN: ${MEDIA_INTERNAL_TOKEN:?Set MEDIA_INTERNAL_TOKEN}
+    depends_on:
+      objectstore:
+        condition: service_healthy
+    networks:
+      - toeic-network
+  job-broker:
+    build:
+      context: .
+      dockerfile: services/job-broker/Dockerfile
+      provenance: false
+      sbom: false
+    restart: unless-stopped
+    environment:
+      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+      JOB_INTERNAL_TOKEN: ${JOB_INTERNAL_TOKEN:?Set JOB_INTERNAL_TOKEN}
+      MONGO_URI: ${MONGO_MEDIA_JOBS_URI:-mongodb://mongo:27017/media_db?replicaSet=rs0}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    networks:
+      - toeic-network
+  audio-worker:
+    image: vocalearn-clean-api:local
+    pull_policy: never
+    command:
+      - node
+      - apps/api/dist/audio-worker-main.js
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: '5000'
+      MONGO_URI: ${MONGO_MEDIA_JOBS_URI:-mongodb://mongo:27017/media_db?replicaSet=rs0}
+      REDIS_URL: redis://redis:6379
+      MEDIA_STORAGE_BACKEND: s3
+      MEDIA_BRIDGE_URL: http://media-bridge:8010
+      MEDIA_INTERNAL_TOKEN: ${MEDIA_INTERNAL_TOKEN:?Set MEDIA_INTERNAL_TOKEN}
+      MEDIA_PUBLIC_BASE_URL: ${MEDIA_PUBLIC_BASE_URL:-http://localhost:5000/media}
+      MEDIA_STORAGE_PATH: /app/storage
+      AUDIO_QUEUE_BACKEND: rabbitmq
+      RABBIT_JOB_BROKER_URL: http://job-broker:8020
+      JOB_INTERNAL_TOKEN: ${JOB_INTERNAL_TOKEN:?Set JOB_INTERNAL_TOKEN}
+      ASR_JOB_API_URL: http://asr-job-api:8021
+      IDENTITY_INTROSPECTION_URL: http://identity-service:5000/api/_internal/identity/introspect
+      IDENTITY_INTERNAL_TOKEN: ${IDENTITY_INTERNAL_TOKEN:?Set IDENTITY_INTERNAL_TOKEN}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:?Set INTERNAL_SERVICE_TOKEN}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Set JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Set JWT_REFRESH_SECRET}
+      JWT_ACCESS_TOKEN_EXPIRES: ${JWT_ACCESS_TOKEN_EXPIRES:-15m}
+      JWT_REFRESH_TOKEN_EXPIRES: ${JWT_REFRESH_TOKEN_EXPIRES:-7d}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      ADMIN_URL: ${ADMIN_URL:-http://localhost:3001}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:5000/api/auth/google/callback}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-Daily English}
+      MAIL_SERVER: ${MAIL_SERVER:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      TTS_SERVICE_URL: http://tts-service:8001
+      ASR_SERVICE_URL: http://asr-service:8002
+      PDF_AI_URL: http://pdf-ai:8003
+      VOCAB_TTS_US_VOICE: ${VOCAB_TTS_US_VOICE:-af_heart}
+      VOCAB_TTS_UK_VOICE: ${VOCAB_TTS_UK_VOICE:-bf_emma}
+      VOCAB_TTS_SPEED: ${VOCAB_TTS_SPEED:-1}
+      TOEIC_TTS_SPEED: ${TOEIC_TTS_SPEED:-1}
+      CONTENT_INTERNAL_URL: http://content-service:5000
+      ASSESSMENT_INTERNAL_URL: http://assessment-service:5000
+      MONGO_DB_NAME: media_db
+      AUDIO_WORKER_PORT: '5001'
+    volumes:
+      - ./storage:/app/storage
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:5001/_internal/audio/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 8
+    networks:
+      - toeic-network
+  job-runner:
+    build:
+      context: .
+      dockerfile: services/job-broker/Dockerfile.runner
+      provenance: false
+      sbom: false
+    restart: unless-stopped
+    environment:
+      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+      JOB_INTERNAL_TOKEN: ${JOB_INTERNAL_TOKEN:?Set JOB_INTERNAL_TOKEN}
+      AUDIO_WORKER_URL: http://audio-worker:5001
+      AUDIO_JOB_RETRIES: ${AUDIO_JOB_RETRIES:-3}
+      MONGO_URI: ${MONGO_MEDIA_JOBS_URI:-mongodb://mongo:27017/media_db?replicaSet=rs0}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      audio-worker:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    networks:
+      - toeic-network
+  asr-job-api:
+    image: vocalearn-clean-asr-jobs:local
+    pull_policy: never
+    build:
+      context: .
+      dockerfile: services/asr-jobs/Dockerfile
+      provenance: false
+      sbom: false
+    restart: unless-stopped
+    environment:
+      MONGO_URI: ${MONGO_MEDIA_JOBS_URI:-mongodb://mongo:27017/media_db?replicaSet=rs0}
+      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+      JOB_INTERNAL_TOKEN: ${JOB_INTERNAL_TOKEN:?Set JOB_INTERNAL_TOKEN}
+      S3_ENDPOINT: http://objectstore:9000
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?Set S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:?Set S3_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET:-vocalearn-media}
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+      objectstore:
+        condition: service_healthy
+    networks:
+      - toeic-network
+  asr-job-runner:
+    image: vocalearn-clean-asr-jobs:local
+    pull_policy: never
+    command:
+      - python
+      - worker.py
+    restart: unless-stopped
+    environment:
+      MONGO_URI: ${MONGO_MEDIA_JOBS_URI:-mongodb://mongo:27017/media_db?replicaSet=rs0}
+      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+      JOB_INTERNAL_TOKEN: ${JOB_INTERNAL_TOKEN:?Set JOB_INTERNAL_TOKEN}
+      S3_ENDPOINT: http://objectstore:9000
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?Set S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:?Set S3_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET:-vocalearn-media}
+      ASR_SERVICE_URL: http://asr-service:8002
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+      asr-service:
+        condition: service_started
+    networks:
+      - toeic-network
   tts-service:
     build:
       context: .
       dockerfile: services/tts-service/Dockerfile
+      provenance: false
+      sbom: false
       args:
         TORCH_VERSION: ${TORCH_VERSION:-2.7.1}
         TORCH_INDEX_URL: ${TORCH_INDEX_URL:-https://download.pytorch.org/whl/cpu}
@@ -57,160 +977,397 @@ services:
     environment:
       KOKORO_DEVICE: ${KOKORO_DEVICE:-cpu}
       KOKORO_MODEL_ID: ${KOKORO_MODEL_ID:-hexgrad/Kokoro-82M}
-      HF_HOME: ${KOKORO_HF_HOME:-/models/huggingface}
+      HF_HOME: /models/huggingface
     volumes:
-      - kokoro_models:${KOKORO_HF_HOME:-/models/huggingface}
-    expose:
-      - "8001"
+      - kokoro_models:/models/huggingface
     networks:
       - toeic-network
-
   asr-service:
     build:
       context: .
       dockerfile: services/asr-service/Dockerfile
+      provenance: false
+      sbom: false
     restart: unless-stopped
     environment:
       ASR_DEVICE: ${ASR_DEVICE:-cpu}
       ASR_COMPUTE_TYPE: ${ASR_COMPUTE_TYPE:-int8}
       ASR_MODEL: ${ASR_MODEL:-small.en}
-      ASR_MODEL_DIR: ${ASR_MODEL_DIR:-/models/faster-whisper}
-      ASR_VAD_FILTER: ${ASR_VAD_FILTER:-true}
-      ASR_BEAM_SIZE: ${ASR_BEAM_SIZE:-5}
-      ASR_SENTENCE_GAP_MS: ${ASR_SENTENCE_GAP_MS:-900}
-      ASR_MAX_UPLOAD_MB: ${ASR_MAX_UPLOAD_MB:-100}
+      ASR_MODEL_DIR: /models/faster-whisper
     volumes:
-      - whisper_models:${ASR_MODEL_DIR:-/models/faster-whisper}
-    expose:
-      - "8002"
+      - whisper_models:/models/faster-whisper
     networks:
       - toeic-network
-
-  api:
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
+  ollama:
+    profiles:
+      - ai
+    image: ollama/ollama:latest
     restart: unless-stopped
     environment:
-      NODE_ENV: ${DOCKER_NODE_ENV:-production}
-      PORT: ${PORT:-5000}
-      MONGO_URI: ${DOCKER_MONGO_URI:-mongodb://mongo:27017/english-platform}
-      REDIS_URL: ${DOCKER_REDIS_URL:-redis://redis:6379}
-      MEDIA_STORAGE_PATH: ${DOCKER_MEDIA_STORAGE_PATH:-/app/storage}
-      MEDIA_PUBLIC_BASE_URL: ${MEDIA_PUBLIC_BASE_URL:-http://localhost:5000/media}
-      AUDIO_QUEUE_CONCURRENCY: ${AUDIO_QUEUE_CONCURRENCY:-1}
-      AUDIO_QUEUE_BACKEND: ${AUDIO_QUEUE_BACKEND:-redis}
-      MONGOOSE_AUTO_INDEX: ${MONGOOSE_AUTO_INDEX:-true}
-
-      VOCAB_TTS_US_VOICE: ${VOCAB_TTS_US_VOICE:-af_heart}
-      VOCAB_TTS_UK_VOICE: ${VOCAB_TTS_UK_VOICE:-bf_emma}
-      VOCAB_TTS_SPEED: ${VOCAB_TTS_SPEED:-1}
-      TOEIC_TTS_SPEED: ${TOEIC_TTS_SPEED:-1}
-      TOEIC_TTS_OPTION_PAUSE_MS: ${TOEIC_TTS_OPTION_PAUSE_MS:-650}
-      TOEIC_TTS_TURN_PAUSE_MS: ${TOEIC_TTS_TURN_PAUSE_MS:-350}
-      TOEIC_TTS_SENTENCE_PAUSE_MS: ${TOEIC_TTS_SENTENCE_PAUSE_MS:-260}
-      TOEIC_P1_VOICE: ${TOEIC_P1_VOICE:-af_heart}
-      TOEIC_P2_PROMPT_VOICE: ${TOEIC_P2_PROMPT_VOICE:-am_adam}
-      TOEIC_P2_RESPONSE_VOICE: ${TOEIC_P2_RESPONSE_VOICE:-af_heart}
-      TOEIC_P3_SPEAKER_A_VOICE: ${TOEIC_P3_SPEAKER_A_VOICE:-am_adam}
-      TOEIC_P3_SPEAKER_B_VOICE: ${TOEIC_P3_SPEAKER_B_VOICE:-af_heart}
-      TOEIC_P3_SPEAKER_C_VOICE: ${TOEIC_P3_SPEAKER_C_VOICE:-bm_george}
-      TOEIC_P4_VOICE: ${TOEIC_P4_VOICE:-bf_emma}
-
-      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
-      JWT_ACCESS_TOKEN_EXPIRES: ${JWT_ACCESS_TOKEN_EXPIRES:-15m}
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
-      JWT_REFRESH_TOKEN_EXPIRES: ${JWT_REFRESH_TOKEN_EXPIRES:-7d}
-
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:5000/api/auth/google/callback}
-      SESSION_SECRET: ${SESSION_SECRET:-}
-
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
-      ADMIN_URL: ${ADMIN_URL:-http://localhost:3001}
-
-      MAIL_USERNAME: ${MAIL_USERNAME:-}
-      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
-      MAIL_FROM: ${MAIL_FROM:-Daily English}
-      MAIL_SERVER: ${MAIL_SERVER:-smtp.gmail.com}
-      MAIL_PORT: ${MAIL_PORT:-587}
-
-      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
-      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
-      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
-
-      DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-admin@gmail.com}
-      DEFAULT_ADMIN_USERNAME: ${DEFAULT_ADMIN_USERNAME:-admin}
-      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-admin123}
-      DEFAULT_ADMIN_SYNC_PASSWORD: ${DEFAULT_ADMIN_SYNC_PASSWORD:-false}
-
-      TTS_SERVICE_URL: ${DOCKER_TTS_SERVICE_URL:-http://tts-service:8001}
-      TTS_REQUEST_TIMEOUT_MS: ${TTS_REQUEST_TIMEOUT_MS:-120000}
-      ASR_SERVICE_URL: ${DOCKER_ASR_SERVICE_URL:-http://asr-service:8002}
-      ASR_REQUEST_TIMEOUT_MS: ${ASR_REQUEST_TIMEOUT_MS:-600000}
-      DICTATION_SEGMENT_START_PADDING_MS: ${DICTATION_SEGMENT_START_PADDING_MS:-100}
-      DICTATION_SEGMENT_END_PADDING_MS: ${DICTATION_SEGMENT_END_PADDING_MS:-150}
-      DICTATION_MAX_ATTEMPTS_BEFORE_REVEAL: ${DICTATION_MAX_ATTEMPTS_BEFORE_REVEAL:-3}
-      DICTATION_AUTO_NEXT_DELAY_MS: ${DICTATION_AUTO_NEXT_DELAY_MS:-700}
+      OLLAMA_NUM_PARALLEL: '1'
+      OLLAMA_MAX_LOADED_MODELS: '1'
     volumes:
-      - ./storage:/app/storage
-    ports:
-      - "${API_PUBLISH_HOST:-0.0.0.0}:${API_PUBLISHED_PORT:-5000}:${PORT:-5000}"
+      - ollama_models:/root/.ollama
+    networks:
+      - toeic-network
+  pdf-ai:
+    profiles:
+      - ai
+    image: vocalearn-clean-pdf-ai:local
+    pull_policy: never
+    build:
+      context: .
+      dockerfile: services/pdf-ai/Dockerfile
+      provenance: false
+      sbom: false
+    restart: unless-stopped
+    environment:
+      PDF_AI_QUEUE_BACKEND: rabbitmq
+      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b}
+      PDF_AI_ASSET_DIR: /app/assets
+      PDF_AI_LEARNING_DIR: /app/learning
+    volumes:
+      - ./storage/pdf-ai:/app/assets
+      - ./.local/pdf-ai-learning:/app/learning
     depends_on:
-      db-migrate:
+      rabbitmq:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    networks:
+      - toeic-network
+  pdf-ai-worker:
+    profiles:
+      - ai
+    image: vocalearn-clean-pdf-ai:local
+    pull_policy: never
+    restart: unless-stopped
+    environment:
+      PDF_AI_QUEUE_BACKEND: rabbitmq
+      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b}
+      PDF_AI_ASSET_DIR: /app/assets
+      PDF_AI_LEARNING_DIR: /app/learning
+    volumes:
+      - ./storage/pdf-ai:/app/assets
+      - ./.local/pdf-ai-learning:/app/learning
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    networks:
+      - toeic-network
+    command:
+      - python
+      - worker.py
+  projection-consumer-identity:
+    image: vocalearn-clean-projections:local
+    pull_policy: never
+    build:
+      context: .
+      dockerfile: services/projections/Dockerfile
+      provenance: false
+      sbom: false
+    restart: unless-stopped
+    environment:
+      MONGO_URI: ${MONGO_IDENTITY_URI:-mongodb://mongo:27017/identity_db?replicaSet=rs0}
+      SERVICE_ROLE: identity
+      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+      PROJECTION_MODE: consume
+    depends_on:
+      db-init:
         condition: service_completed_successfully
-      redis:
+      rabbitmq:
         condition: service_healthy
-      tts-service:
-        condition: service_started
-      asr-service:
-        condition: service_started
     networks:
       - toeic-network
-
-  web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
-      args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000/api}
+  projection-relay-identity:
+    image: vocalearn-clean-projections:local
+    pull_policy: never
     restart: unless-stopped
     environment:
-      NODE_ENV: ${DOCKER_NODE_ENV:-production}
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000/api}
-    ports:
-      - "3000:3000"
+      MONGO_URI: ${MONGO_IDENTITY_URI:-mongodb://mongo:27017/identity_db?replicaSet=rs0}
+      SERVICE_ROLE: identity
+      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+      PROJECTION_MODE: relay
     depends_on:
-      api:
+      db-init:
+        condition: service_completed_successfully
+      rabbitmq:
         condition: service_healthy
     networks:
       - toeic-network
-
-  admin-web:
-    build:
-      context: .
-      dockerfile: apps/admin-web/Dockerfile
-      args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000/api}
+  projection-consumer-content:
+    image: vocalearn-clean-projections:local
+    pull_policy: never
     restart: unless-stopped
     environment:
-      NODE_ENV: ${DOCKER_NODE_ENV:-production}
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000/api}
-    ports:
-      - "3001:3001"
+      MONGO_URI: ${MONGO_CONTENT_URI:-mongodb://mongo:27017/content_db?replicaSet=rs0}
+      SERVICE_ROLE: content
+      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+      PROJECTION_MODE: consume
     depends_on:
-      api:
+      db-init:
+        condition: service_completed_successfully
+      rabbitmq:
         condition: service_healthy
     networks:
       - toeic-network
-
+  projection-relay-content:
+    image: vocalearn-clean-projections:local
+    pull_policy: never
+    restart: unless-stopped
+    environment:
+      MONGO_URI: ${MONGO_CONTENT_URI:-mongodb://mongo:27017/content_db?replicaSet=rs0}
+      SERVICE_ROLE: content
+      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+      PROJECTION_MODE: relay
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - toeic-network
+  projection-consumer-assessment:
+    image: vocalearn-clean-projections:local
+    pull_policy: never
+    restart: unless-stopped
+    environment:
+      MONGO_URI: ${MONGO_ASSESSMENT_URI:-mongodb://mongo:27017/assessment_db?replicaSet=rs0}
+      SERVICE_ROLE: assessment
+      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+      PROJECTION_MODE: consume
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - toeic-network
+  projection-relay-assessment:
+    image: vocalearn-clean-projections:local
+    pull_policy: never
+    restart: unless-stopped
+    environment:
+      MONGO_URI: ${MONGO_ASSESSMENT_URI:-mongodb://mongo:27017/assessment_db?replicaSet=rs0}
+      SERVICE_ROLE: assessment
+      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+      PROJECTION_MODE: relay
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - toeic-network
+  projection-consumer-arena:
+    image: vocalearn-clean-projections:local
+    pull_policy: never
+    restart: unless-stopped
+    environment:
+      MONGO_URI: ${MONGO_ARENA_URI:-mongodb://mongo:27017/arena_db?replicaSet=rs0}
+      SERVICE_ROLE: arena
+      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+      PROJECTION_MODE: consume
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - toeic-network
+  projection-consumer-learning:
+    image: vocalearn-clean-projections:local
+    pull_policy: never
+    restart: unless-stopped
+    environment:
+      MONGO_URI: ${MONGO_LEARNING_URI:-mongodb://mongo:27017/learning_db?replicaSet=rs0}
+      SERVICE_ROLE: learning
+      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+      PROJECTION_MODE: consume
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - toeic-network
+  projection-relay-learning:
+    image: vocalearn-clean-projections:local
+    pull_policy: never
+    restart: unless-stopped
+    environment:
+      MONGO_URI: ${MONGO_LEARNING_URI:-mongodb://mongo:27017/learning_db?replicaSet=rs0}
+      SERVICE_ROLE: learning
+      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+      PROJECTION_MODE: relay
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - toeic-network
+  projection-consumer-media-jobs:
+    image: vocalearn-clean-projections:local
+    pull_policy: never
+    restart: unless-stopped
+    environment:
+      MONGO_URI: ${MONGO_MEDIA_JOBS_URI:-mongodb://mongo:27017/media_db?replicaSet=rs0}
+      SERVICE_ROLE: media-jobs
+      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+      PROJECTION_MODE: consume
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - toeic-network
+  projection-consumer-ai-import:
+    image: vocalearn-clean-projections:local
+    pull_policy: never
+    restart: unless-stopped
+    environment:
+      MONGO_URI: ${MONGO_AI_IMPORT_URI:-mongodb://mongo:27017/ai_import_db?replicaSet=rs0}
+      SERVICE_ROLE: ai-import
+      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+      PROJECTION_MODE: consume
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - toeic-network
+  projection-consumer-notification:
+    image: vocalearn-clean-projections:local
+    pull_policy: never
+    restart: unless-stopped
+    environment:
+      MONGO_URI: ${MONGO_NOTIFICATION_URI:-mongodb://mongo:27017/notification_db?replicaSet=rs0}
+      SERVICE_ROLE: notification
+      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+      PROJECTION_MODE: consume
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - toeic-network
+  projection-relay-notification:
+    image: vocalearn-clean-projections:local
+    pull_policy: never
+    restart: unless-stopped
+    environment:
+      MONGO_URI: ${MONGO_NOTIFICATION_URI:-mongodb://mongo:27017/notification_db?replicaSet=rs0}
+      SERVICE_ROLE: notification
+      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+      PROJECTION_MODE: relay
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - toeic-network
+  outbox-identity:
+    image: vocalearn-clean-domain-events:local
+    pull_policy: never
+    build:
+      context: .
+      dockerfile: services/domain-events/Dockerfile
+      provenance: false
+      sbom: false
+    restart: unless-stopped
+    environment:
+      MONGO_URI: ${MONGO_IDENTITY_URI:-mongodb://mongo:27017/identity_db?replicaSet=rs0}
+      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    networks:
+      - toeic-network
+  outbox-assessment:
+    image: vocalearn-clean-domain-events:local
+    pull_policy: never
+    restart: unless-stopped
+    environment:
+      MONGO_URI: ${MONGO_ASSESSMENT_URI:-mongodb://mongo:27017/assessment_db?replicaSet=rs0}
+      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    networks:
+      - toeic-network
+  outbox-arena:
+    image: vocalearn-clean-domain-events:local
+    pull_policy: never
+    restart: unless-stopped
+    environment:
+      MONGO_URI: ${MONGO_ARENA_URI:-mongodb://mongo:27017/arena_db?replicaSet=rs0}
+      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    networks:
+      - toeic-network
+  domain-consumer-learning:
+    image: vocalearn-clean-domain-events:local
+    pull_policy: never
+    command:
+      - python
+      - consumer.py
+    restart: unless-stopped
+    environment:
+      EVENT_CONSUMER: learning
+      MONGO_URI: ${MONGO_LEARNING_URI:-mongodb://mongo:27017/learning_db?replicaSet=rs0}
+      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - toeic-network
+  domain-consumer-notification:
+    image: vocalearn-clean-domain-events:local
+    pull_policy: never
+    command:
+      - python
+      - consumer.py
+    restart: unless-stopped
+    environment:
+      EVENT_CONSUMER: notification
+      MONGO_URI: ${MONGO_NOTIFICATION_URI:-mongodb://mongo:27017/notification_db?replicaSet=rs0}
+      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - toeic-network
 volumes:
-  mongo_data:
-  kokoro_models:
-  whisper_models:
-  redis_data:
-
+  mongo_data: {}
+  redis_data: {}
+  rabbitmq_data: {}
+  kokoro_models: {}
+  whisper_models: {}
+  ollama_models: {}
+  objectstore_data: {}
 networks:
   toeic-network:
     driver: bridge

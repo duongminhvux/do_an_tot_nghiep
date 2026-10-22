@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types, PipelineStage } from 'mongoose';
+import { type Model, Types, type PipelineStage } from 'mongoose';
 import { ExamGroup, ExamGroupDocument } from './schemas/exam-group.schema.js';
 import { Exam, ExamDocument } from './schemas/exam.schema.js';
 import { CreateExamGroupDto } from './dto/create-exam-group.dto.js';

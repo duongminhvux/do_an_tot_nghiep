@@ -1,44 +1,11 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
+import { type HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 import { User } from '../../users/schema/user.schema.js';
 
 export type ActivityLogDocument = HydratedDocument<ActivityLog>;
 
-export enum ActivityCategory {
-  AUTH = 'AUTH',
-  SESSION = 'SESSION',
-  VOCABULARY = 'VOCABULARY',
-  DICTATION = 'DICTATION',
-  ASSESSMENT = 'ASSESSMENT',
-  GENERAL = 'GENERAL',
-}
-
-export enum ActivityAction {
-  // Auth & Session
-  AUTH_LOGIN = 'AUTH_LOGIN',
-  AUTH_LOGOUT = 'AUTH_LOGOUT',
-  AUTH_REGISTER = 'AUTH_REGISTER',
-  SESSION_START = 'SESSION_START',
-  SESSION_END = 'SESSION_END',
-  HEARTBEAT = 'HEARTBEAT',
-  PAGE_VIEW = 'PAGE_VIEW',
-
-  // Vocabulary
-  VOCABULARY_LEARN = 'VOCABULARY_LEARN',
-  VOCABULARY_TEST = 'VOCABULARY_TEST',
-  VOCABULARY_SAVE = 'VOCABULARY_SAVE',
-
-  // Dictation
-  DICTATION_START = 'DICTATION_START',
-  DICTATION_SUBMIT = 'DICTATION_SUBMIT',
-
-  // Assessment / TOEIC
-  TOEIC_START = 'TOEIC_START',
-  TOEIC_SUBMIT = 'TOEIC_SUBMIT',
-
-  // Other / Generic
-  CUSTOM = 'CUSTOM',
-}
+import { ActivityCategory } from '../../../common/contracts/activity.types.js';
+export { ActivityAction, ActivityCategory } from '../../../common/contracts/activity.types.js';
 
 @Schema({ timestamps: true })
 export class ActivityLog {

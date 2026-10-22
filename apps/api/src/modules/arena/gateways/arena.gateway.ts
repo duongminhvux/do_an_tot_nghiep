@@ -72,9 +72,6 @@ export class ArenaGateway
 
   /** Khởi động clock server để xử lý timeout và chuyển vòng định kỳ. */
   onModuleInit() {
-    // In gateway migration mode the legacy API provides fallback HTTP only.
-    // Only arena-service may advance match clocks.
-    if (process.env.SERVICE_ROLE === 'legacy') return;
     this.clock = setInterval(() => {
       void this.tick();
     }, 500);
@@ -115,7 +112,6 @@ export class ArenaGateway
 
   /** Xác thực socket bằng access token và đăng ký trạng thái presence. */
   async handleConnection(client: Socket) {
-    if (process.env.SERVICE_ROLE === 'legacy') { client.disconnect(true); return; }
     try {
       const token = client.handshake.auth?.token;
 

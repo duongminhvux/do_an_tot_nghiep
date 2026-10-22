@@ -1,0 +1,18 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "incremental": false,
+    "declaration": false,
+    "sourceMap": false,
+    "rootDir": "../src",
+    "outDir": "../dist"
+  },
+  "files": [
+    "../src/entrypoints/media-jobs.ts"
+  ],
+  "include": [],
+  "exclude": [
+    "../test",
+    "../src/**/*.spec.ts"
+  ]
+}

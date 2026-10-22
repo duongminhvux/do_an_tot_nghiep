@@ -6,7 +6,7 @@ import {
   Optional,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { type Model, Types } from 'mongoose';
 import { I18nContext, I18nService } from 'nestjs-i18n';
 import { Exam, ExamDocument } from './schemas/exam.schema.js';
 import { CreateExamDto } from './dto/create-exam.dto.js';

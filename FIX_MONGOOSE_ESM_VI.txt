@@ -1,0 +1,25 @@
+BẢN VÁ MONGOOSE ESM — KHẮC PHỤC AUDIO-WORKER CRASH
+
+Nguyên nhân: Node.js ESM không tải được named export Connection từ mongoose, trong khi
+Connection/Model chỉ là kiểu TypeScript dùng cho @InjectConnection/@InjectModel.
+
+Đã sửa import type cho Connection, Model, HydratedDocument, PipelineStage,
+UpdateQuery và ClientSession trong code API. Các giá trị runtime Types, Schema,
+isValidObjectId vẫn giữ nguyên.
+
+CÀI ĐẶT TRÊN WINDOWS (PowerShell):
+1. Sao lưu code/Git commit thay đổi của bạn trước khi áp dụng.
+2. Giải nén ZIP vào thư mục gốc dự án, cho phép ghi đè các file nguồn.
+3. Trong thư mục gốc, chạy:
+   docker compose build identity-service
+   docker compose up -d --no-build
+4. Kiểm tra:
+   docker compose ps -a
+   docker compose logs --tail=100 audio-worker
+   docker compose logs --tail=100 identity-service
+
+Do Compose dùng chung image vocalearn-clean-api:local cho các NestJS entrypoints,
+chỉ cần build service có build definition identity-service để tạo lại image chung.
+Nếu lỗi mới xuất hiện, xem log thực tế của service trước khi thay đổi database.
+
+Đã kiểm tra tĩnh; chưa chạy Docker daemon hay MongoDB thật trong môi trường tạo bản vá.

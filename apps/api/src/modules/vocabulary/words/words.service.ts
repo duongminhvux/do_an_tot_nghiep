@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import type { Model } from 'mongoose';
 import { I18nContext, I18nService } from 'nestjs-i18n';
 import { Word, WordDocument } from './word.schema.js';
 import { CreateWordDto } from './dto/create-word.dto.js';

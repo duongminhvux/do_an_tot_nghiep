@@ -5,7 +5,7 @@ import { UsersService } from '../users/users.service.js';
 import { comparePassword, hashPassword as hashPasswordHelper } from '../../common/bcrypt.js';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { GmailService } from '../gmail/gmail.service.js';
+import { NotificationClient } from '../../common/clients/notification-client.js';
 import { I18nContext, I18nService } from 'nestjs-i18n';
 import { ChangePasswordDto } from './dto/change-password.dto.js';
 import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
@@ -18,7 +18,7 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-    private readonly gmailService: GmailService,
+    private readonly gmailService: NotificationClient,
     private readonly i18n: I18nService,
   ) { }
 
@@ -161,7 +161,7 @@ export class AuthService {
       const lang = I18nContext.current()?.lang || 'vi';
       const subject = await this.i18n.translate('auth.AUTH_VERIFY_EMAIL_SUBJECT', { lang });
       const html = await this.buildEmailTemplate(code, createUserDto.username);
-      this.gmailService.sendEmail(email, subject as string, html);
+      await this.gmailService.sendEmail(email, subject as string, html);
     } catch (error) {
       this.logger.error(`Failed to send email to ${email}`, error);
     }
@@ -256,7 +256,7 @@ export class AuthService {
       const lang = I18nContext.current()?.lang || 'vi';
       const subject = await this.i18n.translate('auth.AUTH_RESEND_CODE_SUBJECT', { lang });
       const html = await this.buildEmailTemplate(code, user.username);
-      this.gmailService.sendEmail(email, subject as string, html);
+      await this.gmailService.sendEmail(email, subject as string, html);
     } catch (error) {
       this.logger.error(`Failed to resend email to ${email}`, error);
     }
@@ -385,7 +385,7 @@ export class AuthService {
       const lang = I18nContext.current()?.lang || 'vi';
       const subject = await this.i18n.translate('auth.AUTH_FORGOT_PASSWORD_SUBJECT', { lang });
       const html = await this.buildEmailTemplate(code, user.username);
-      this.gmailService.sendEmail(email, subject as string, html);
+      await this.gmailService.sendEmail(email, subject as string, html);
     } catch (error) {
       this.logger.error(`Failed to send forgot password email to ${email}`, error);
     }

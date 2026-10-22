@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectConnection } from '@nestjs/mongoose';
-import { Connection, type ClientSession } from 'mongoose';
+import type { Connection, ClientSession } from 'mongoose';
 import { randomUUID } from 'node:crypto';
 
 export type DomainEventType = 'identity.user.created.v1' | 'assessment.exam.created.v1'
@@ -23,7 +23,7 @@ export class DomainOutboxService {
     await this.connection.db.collection('domain_outbox').insertOne({
       _id: eventId as any,
       eventId, type, aggregateId, payload,
-      version: 1, source: process.env.SERVICE_ROLE || 'legacy',
+      version: 1, source: process.env.SERVICE_ROLE || 'unset',
       occurredAt: new Date(), state: 'pending', attempts: 0,
     }, session ? { session } : {});
     return eventId;
