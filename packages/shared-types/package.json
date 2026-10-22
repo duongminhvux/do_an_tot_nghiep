@@ -6,7 +6,9 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./assessment-import": "./src/assessment-import.mjs"
+    "./assessment-import": "./src/assessment-import.mjs",
+    "./toeic-score": "./src/toeic-score.mjs",
+    "./learning-xp": "./src/learning-xp.mjs"
   },
   "scripts": {
     "check-types": "tsc --noEmit"
