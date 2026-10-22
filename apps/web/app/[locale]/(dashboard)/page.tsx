@@ -1,25 +1,42 @@
 "use client";
 
-import { useDashboardData } from "./hooks/use-dashboard-data";
+import { useHomeData } from "./hooks/use-home-data";
 import { DashboardHeader } from "./components/dashboard-header";
-import { DashboardErrors } from "./components/dashboard-errors";
-import { DashboardStats } from "./components/dashboard-stats";
-import { VocabularyProgress } from "./components/vocabulary-progress";
-import { ActivityHeatmap } from "./components/activity-heatmap";
-import { DashboardTasks } from "./components/dashboard-tasks";
+import { ErrorBanner } from "./components/dashboard-feedback";
+import { HomeStats } from "./components/home-stats";
+import { ContinueLearning } from "./components/continue-learning";
+import { XpHeatmap } from "./components/xp-heatmap";
+import { RecentActivityList } from "./components/recent-activity";
+import { PageShell } from "@/components/ui/page";
 
 export default function StudentHomePage() {
-  const data = useDashboardData();
+  const data = useHomeData();
+  const { t, locale, home, recent } = data;
   return (
-    <div className="flex-1 w-full px-3 sm:px-4 lg:px-5 py-6 space-y-6">
+    <PageShell>
       <DashboardHeader {...data} />
-      <DashboardErrors {...data} />
-      <DashboardStats {...data} />
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <VocabularyProgress {...data} />
-        <ActivityHeatmap {...data} />
+      {home.isError && (
+        <ErrorBanner
+          message={t("errors.activity")}
+          onRetry={() => void home.refetch()}
+        />
+      )}
+      <HomeStats t={t} home={home.data} isLoading={home.isLoading} />
+      <ContinueLearning data={data} />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <XpHeatmap
+          t={t}
+          locale={locale}
+          home={home.data}
+          isLoading={home.isLoading}
+        />
+        <RecentActivityList
+          t={t}
+          locale={locale}
+          items={recent.data}
+          isLoading={recent.isLoading}
+        />
       </div>
-      <DashboardTasks {...data} />
-    </div>
+    </PageShell>
   );
 }

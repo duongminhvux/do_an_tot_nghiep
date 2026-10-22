@@ -9,33 +9,70 @@
     "retry": "Retry",
     "overview": "Failed to load learning progress overview.",
     "vocabulary": "Failed to load vocabulary progress.",
-    "activity": "Failed to load activity history.",
+    "activity": "Could not load your learning activity.",
     "tasks": "Failed to load today's tasks."
   },
-  "stats": {
-    "streak": "Study streak",
-    "streak_value": "{{count}} days",
-    "streak_growth": "{{count}} days vs last week",
-    "streak_record": "Record: {{count}} days",
-    "words_learned": "Total words learned",
-    "words_learned_value": "{{count}} words",
-    "words_learned_growth": "{{count}} words vs last week",
-    "words_reviewed": "Total words reviewed",
-    "words_reviewed_value": "{{count}} words",
-    "words_reviewed_growth": "{{count}} words vs last week",
-    "study_time": "Study time",
-    "study_time_growth": "{{time}} vs last week"
+  "kpi": {
+    "streak": "Learning streak",
+    "days": "{{count}} days",
+    "streak_record": "Best: {{count}} days",
+    "streak_keep": "Study today to keep your streak!",
+    "xp_today": "XP today",
+    "goal_done": "Daily goal reached 🎉",
+    "total_xp": "Total: {{xp}} XP",
+    "study_time_week": "Study time (7 days)",
+    "activities_week": "Completed activities (7 days)",
+    "vs_last_week": "vs last week",
+    "no_previous": "No data for last week"
   },
-  "progress": {
-    "title": "Learning progress",
-    "view_detail": "View details",
-    "empty_title": "No learning progress yet",
-    "empty_desc": "Start your first lesson to track your progress.",
-    "empty_cta": "Go to vocabulary",
-    "words_progress": "{{learned}} / {{total}} words"
+  "modules": {
+    "title": "Continue learning",
+    "totals": "{{count}} activities · {{xp}} XP",
+    "continue": "Continue",
+    "vocabulary": {
+      "name": "Vocabulary",
+      "review": "{{count}} words to review",
+      "review_hint": "Review on time to remember longer",
+      "review_cta": "Review now",
+      "lesson": "Continue: {{title}}",
+      "lesson_cta": "Continue lesson",
+      "empty": "Start your first vocabulary set",
+      "explore_cta": "Explore vocabulary"
+    },
+    "dictation": {
+      "name": "Dictation",
+      "unfinished": "In progress: {{title}}",
+      "sentences": "{{done}}/{{total}} sentences",
+      "completed": "{{count}} dictation lessons completed",
+      "empty": "Practise listening sentence by sentence",
+      "cta": "New lesson"
+    },
+    "toeic": {
+      "name": "TOEIC tests",
+      "unfinished": "Unfinished: {{title}}",
+      "answered": "Answered {{answered}}/{{total}}",
+      "avg_score": "Average {{score}} · best {{best}}",
+      "completed": "{{count}} tests submitted",
+      "empty": "Take a full test or practise by Part",
+      "cta": "Choose a test"
+    },
+    "arena": {
+      "name": "Arena",
+      "rating": "Rating {{rating}}",
+      "record": "{{wins}} W · {{losses}} L · today {{change}}",
+      "empty": "1-on-1 vocabulary battles",
+      "cta": "Enter the arena"
+    },
+    "minigame": {
+      "name": "Minigames",
+      "played": "{{count}} games played",
+      "empty": "Review vocabulary through games",
+      "cta": "Play"
+    }
   },
-  "heatmap": {
-    "title": "Study activity (last 90 days)",
+  "activity_map": {
+    "title": "Learning activity (last 13 weeks)",
+    "active_days": "{{count}} active days in 90 days",
     "days": {
       "mon": "Mon",
       "tue": "Tue",
@@ -45,39 +82,31 @@
       "sat": "Sat",
       "sun": "Sun"
     },
-    "week": "Week {{count}}",
-    "tooltip_not_yet": "{{date}}: Not yet",
-    "tooltip_learned": "{{date}}: Learned {{words}} words ({{minutes}} mins)",
-    "tooltip_none": "{{date}}: No study activity",
-    "lesson_item": "{{title}}{{collection}} [{{count}} words]",
-    "today": "Today",
-    "minutes_studied": "{{count}} mins studied",
-    "not_yet": "Not yet",
-    "words_learned": "words learned",
-    "words_reviewed": "words reviewed",
-    "sessions": "sessions",
-    "lessons_joined": "Lessons joined:",
-    "no_activity_day": "No study activity on this day.",
-    "hint": "Hover over a day on the calendar to see lesson details and word count",
-    "real_data": "Real data",
-    "legend_active": "Studied",
-    "legend_light": "Light activity",
-    "legend_none": "No activity"
+    "less": "Less",
+    "more": "More",
+    "goal_hint": "Darkest = {{goal}} XP daily goal reached",
+    "hover_hint": "Hover a day to see details",
+    "none": "No activity"
   },
-  "tasks": {
-    "title": "Today you have {{count}} study tasks",
-    "goal_label": "Today's goal",
-    "goal_value": "{{learned}} / {{goal}} words",
-    "review_title": "Review vocabulary",
-    "review_desc": "{{count}} words to review",
-    "start_now": "Start now",
-    "new_title": "Learn new lesson",
-    "new_empty": "No new lesson today",
-    "course_fallback": "Course",
-    "go_to_vocab": "Go to vocabulary"
+  "recent": {
+    "title": "Recent activity",
+    "empty": "No activity yet. Start learning!",
+    "score": "{{score}} points",
+    "points": "{{score}} game points",
+    "correct": "{{correct}}/{{total}} correct",
+    "win": "Won",
+    "loss": "Lost",
+    "draw": "Draw",
+    "types": {
+      "VOCAB_SESSION": "Vocabulary session",
+      "DICTATION_LESSON": "Dictation lesson",
+      "TOEIC_ATTEMPT": "TOEIC test",
+      "ARENA_MATCH": "Arena match",
+      "MINIGAME_PLAY": "Minigame"
+    }
   },
-  "quote": {
-    "title": "The more you study, the more you improve!",
-    "text": "There is no path to success without effort."
+  "time": {
+    "hours_minutes": "{{h}}h {{m}}m",
+    "minutes": "{{m}} min"
   }
 }

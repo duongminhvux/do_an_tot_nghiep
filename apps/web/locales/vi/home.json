@@ -9,33 +9,70 @@
     "retry": "Thử lại",
     "overview": "Lỗi tải tổng quan tiến độ học tập.",
     "vocabulary": "Lỗi tải tiến độ từ vựng.",
-    "activity": "Lỗi tải lịch sử hoạt động học tập.",
+    "activity": "Lỗi tải hoạt động học tập.",
     "tasks": "Lỗi tải nhiệm vụ hôm nay."
   },
-  "stats": {
-    "streak": "Chuỗi học",
-    "streak_value": "{{count}} ngày",
-    "streak_growth": "{{count}} ngày so với tuần trước",
+  "kpi": {
+    "streak": "Chuỗi ngày học",
+    "days": "{{count}} ngày",
     "streak_record": "Kỷ lục: {{count}} ngày",
-    "words_learned": "Tổng từ đã học",
-    "words_learned_value": "{{count}} từ",
-    "words_learned_growth": "{{count}} từ so với tuần trước",
-    "words_reviewed": "Tổng từ đã ôn",
-    "words_reviewed_value": "{{count}} từ",
-    "words_reviewed_growth": "{{count}} từ so với tuần trước",
-    "study_time": "Thời gian học",
-    "study_time_growth": "{{time}} so với tuần trước"
+    "streak_keep": "Học hôm nay để giữ chuỗi!",
+    "xp_today": "XP hôm nay",
+    "goal_done": "Đã đạt mục tiêu hôm nay 🎉",
+    "total_xp": "Tổng: {{xp}} XP",
+    "study_time_week": "Thời gian học (7 ngày)",
+    "activities_week": "Hoạt động hoàn thành (7 ngày)",
+    "vs_last_week": "so với tuần trước",
+    "no_previous": "Chưa có dữ liệu tuần trước"
   },
-  "progress": {
-    "title": "Tiến độ học tập",
-    "view_detail": "Xem chi tiết",
-    "empty_title": "Chưa có dữ liệu tiến độ học tập",
-    "empty_desc": "Hãy bắt đầu học bài đầu tiên để theo dõi tiến độ của bạn.",
-    "empty_cta": "Đến trang từ vựng",
-    "words_progress": "{{learned}} / {{total}} từ"
+  "modules": {
+    "title": "Tiếp tục học",
+    "totals": "{{count}} hoạt động · {{xp}} XP",
+    "continue": "Tiếp tục",
+    "vocabulary": {
+      "name": "Từ vựng",
+      "review": "{{count}} từ cần ôn tập",
+      "review_hint": "Ôn đúng lúc để nhớ lâu hơn",
+      "review_cta": "Ôn tập ngay",
+      "lesson": "Học tiếp: {{title}}",
+      "lesson_cta": "Học tiếp",
+      "empty": "Bắt đầu học bộ từ vựng đầu tiên",
+      "explore_cta": "Khám phá từ vựng"
+    },
+    "dictation": {
+      "name": "Dictation",
+      "unfinished": "Đang luyện: {{title}}",
+      "sentences": "{{done}}/{{total}} câu",
+      "completed": "Đã hoàn thành {{count}} bài nghe chép",
+      "empty": "Luyện nghe chép chính tả từng câu",
+      "cta": "Luyện bài mới"
+    },
+    "toeic": {
+      "name": "Thi TOEIC",
+      "unfinished": "Đang làm dở: {{title}}",
+      "answered": "Đã làm {{answered}}/{{total}} câu",
+      "avg_score": "Điểm TB {{score}} · cao nhất {{best}}",
+      "completed": "Đã nộp {{count}} bài",
+      "empty": "Làm bài thi thử hoặc luyện từng Part",
+      "cta": "Chọn đề thi"
+    },
+    "arena": {
+      "name": "Đấu trường",
+      "rating": "Rating {{rating}}",
+      "record": "{{wins}} thắng · {{losses}} thua · hôm nay {{change}}",
+      "empty": "Thi đấu từ vựng 1-1 với người khác",
+      "cta": "Vào đấu trường"
+    },
+    "minigame": {
+      "name": "Minigame",
+      "played": "Đã chơi {{count}} ván",
+      "empty": "Ôn từ vựng qua các trò chơi",
+      "cta": "Chơi game"
+    }
   },
-  "heatmap": {
-    "title": "Hoạt động học tập (90 ngày gần đây)",
+  "activity_map": {
+    "title": "Hoạt động học tập (13 tuần gần đây)",
+    "active_days": "{{count}} ngày có học trong 90 ngày",
     "days": {
       "mon": "T2",
       "tue": "T3",
@@ -45,39 +82,31 @@
       "sat": "T7",
       "sun": "CN"
     },
-    "week": "Tuần {{count}}",
-    "tooltip_not_yet": "{{date}}: Chưa diễn ra",
-    "tooltip_learned": "{{date}}: Đã học {{words}} từ ({{minutes}} phút)",
-    "tooltip_none": "{{date}}: Không có hoạt động học tập",
-    "lesson_item": "{{title}}{{collection}} [{{count}} từ]",
-    "today": "Hôm nay",
-    "minutes_studied": "{{count}} phút học",
-    "not_yet": "Chưa diễn ra",
-    "words_learned": "từ đã học",
-    "words_reviewed": "từ đã ôn",
-    "sessions": "phiên học",
-    "lessons_joined": "Bài học đã tham gia:",
-    "no_activity_day": "Không có hoạt động học tập nào trong ngày này.",
-    "hint": "Rê chuột vào một ngày trên lịch để xem chi tiết bài học và số từ vựng",
-    "real_data": "Dữ liệu thực tế",
-    "legend_active": "Có học",
-    "legend_light": "Ít hoạt động",
-    "legend_none": "Không hoạt động"
+    "less": "Ít",
+    "more": "Nhiều",
+    "goal_hint": "Ô đậm nhất = đạt mục tiêu {{goal}} XP",
+    "hover_hint": "Rê chuột lên một ngày để xem chi tiết",
+    "none": "Không có hoạt động"
   },
-  "tasks": {
-    "title": "Hôm nay, bạn có {{count}} nhiệm vụ học tập",
-    "goal_label": "Mục tiêu hôm nay",
-    "goal_value": "{{learned}} / {{goal}} từ",
-    "review_title": "Ôn tập từ vựng",
-    "review_desc": "{{count}} từ cần ôn",
-    "start_now": "Bắt đầu ngay",
-    "new_title": "Học bài mới",
-    "new_empty": "Không có bài học mới nào hôm nay",
-    "course_fallback": "Khóa học",
-    "go_to_vocab": "Đến trang từ vựng"
+  "recent": {
+    "title": "Hoạt động gần đây",
+    "empty": "Chưa có hoạt động nào. Hãy bắt đầu học!",
+    "score": "{{score}} điểm",
+    "points": "{{score}} điểm game",
+    "correct": "{{correct}}/{{total}} đúng",
+    "win": "Thắng",
+    "loss": "Thua",
+    "draw": "Hoà",
+    "types": {
+      "VOCAB_SESSION": "Phiên học từ vựng",
+      "DICTATION_LESSON": "Bài nghe chép",
+      "TOEIC_ATTEMPT": "Bài thi TOEIC",
+      "ARENA_MATCH": "Trận đấu trường",
+      "MINIGAME_PLAY": "Ván minigame"
+    }
   },
-  "quote": {
-    "title": "Càng học nhiều bạn sẽ càng tiến bộ!",
-    "text": "Không có con đường nào dẫn đến thành công mà không có sự nỗ lực."
+  "time": {
+    "hours_minutes": "{{h}} giờ {{m}} phút",
+    "minutes": "{{m}} phút"
   }
 }
