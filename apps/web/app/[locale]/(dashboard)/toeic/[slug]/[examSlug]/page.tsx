@@ -5,16 +5,9 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import {
-  Home,
-  ChevronRight,
-  ChevronLeft,
-  FileQuestion,
-  Clock,
-  Users,
-  AlertCircle,
-  Loader2,
-} from 'lucide-react';
+import { FileQuestion, Clock, Users, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, EmptyState, ErrorState, LoadingState, PageHeader, PageShell } from '@/components/ui/page';
 import { useAppSelector } from '@/redux/hooks';
 import {
   toeicService,
@@ -26,6 +19,7 @@ import { ExamStructureTable } from './components/exam-structure-table';
 import { ExamModePartsSelector } from './components/exam-mode-parts-selector';
 import { ExamLeaderboard } from './components/exam-leaderboard';
 import { ExamComments } from './components/exam-comments';
+import { toeicAttemptService, ExamMode } from '@/services/toeic-attempt.service';
 
 function unwrapOne<T>(value: any): T | null {
   if (!value) return null;
@@ -49,17 +43,7 @@ const PART_TIME_MAP: Record<number, number> = {
   7: 42,
 };
 
-const DEFAULT_PARTS: ToeicExamPart[] = [
-  { _id: 'p1', section: 'LISTENING', part: 1, type: 'Photos',               totalQuestions: 6  },
-  { _id: 'p2', section: 'LISTENING', part: 2, type: 'Question-Response',    totalQuestions: 25 },
-  { _id: 'p3', section: 'LISTENING', part: 3, type: 'Conversations',        totalQuestions: 39 },
-  { _id: 'p4', section: 'LISTENING', part: 4, type: 'Talks',                totalQuestions: 30 },
-  { _id: 'p5', section: 'READING',   part: 5, type: 'Incomplete Sentences', totalQuestions: 30 },
-  { _id: 'p6', section: 'READING',   part: 6, type: 'Text Completion',      totalQuestions: 16 },
-  { _id: 'p7', section: 'READING',   part: 7, type: 'Reading Comprehension',totalQuestions: 54 },
-];
-
-type Mode = 'exam' | 'practice';
+type Mode = ExamMode;
 
 /* ══════════════════════════════════════════════════════════════════════════════
    Page
@@ -74,9 +58,11 @@ export default function ToeicExamDetailPage() {
 
   const { user } = useAppSelector((state) => state.auth);
 
-  const [mode, setMode]               = useState<Mode>('exam');
+  const [mode, setMode]               = useState<Mode>('TEST');
   const [selected, setSelected]       = useState<Set<string>>(new Set());
-  const [initialised, setInitialised] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const [startError, setStartError] = useState(false);
+  const [initialised, setInitialised] = useState('');
 
   const { data: groupData } = useQuery({
     queryKey: ['toeic-group-detail', groupSlug],
@@ -88,7 +74,7 @@ export default function ToeicExamDetailPage() {
     queryFn:  () => toeicService.getExamById(examSlug),
     enabled:  !!examSlug,
   });
-  const { data: partsData, isLoading: isPartsLoading } = useQuery({
+  const { data: partsData, isLoading: isPartsLoading, isError: isPartsError } = useQuery({
     queryKey: ['toeic-exam-parts', examSlug],
     queryFn:  () => toeicService.getExamParts(examSlug),
     enabled:  !!examSlug,
@@ -103,14 +89,14 @@ export default function ToeicExamDetailPage() {
   const exam        = unwrapOne<ToeicExamSummary>(examData);
   const rawParts    = unwrapArray<ToeicExamPart>(partsData);
   const rawAttempts = unwrapArray<ToeicAttemptSummary>(attemptsData);
-  const parts       = rawParts.length > 0 ? rawParts : DEFAULT_PARTS;
+  const parts       = rawParts;
 
   React.useEffect(() => {
-    if (parts.length > 0 && !initialised) {
+    if (parts.length > 0 && initialised !== examSlug) {
       setSelected(new Set(parts.map((p) => p._id)));
-      setInitialised(true);
+      setInitialised(examSlug);
     }
-  }, [parts, initialised]);
+  }, [parts, initialised, examSlug]);
 
   const groupName         = group?.name || groupSlug;
   const listeningParts    = parts.filter((p) => p.section === 'LISTENING');
@@ -133,106 +119,93 @@ export default function ToeicExamDetailPage() {
   const selectAll   = () => setSelected(new Set(parts.map((p) => p._id)));
   const deselectAll = () => setSelected(new Set());
 
-  const handleStart = () => {
-    const partIds = Array.from(selected).join(',');
-    router.push(`/${locale}/toeic/take/${exam?._id}?${new URLSearchParams({ mode, parts: partIds })}`);
+  const handleStart = async () => {
+    if (!exam || starting || !selectedParts.length) return;
+    setStarting(true);
+    setStartError(false);
+    try {
+      const attempt = await toeicAttemptService.create(exam._id, mode, selectedParts.map(p => p.part));
+      router.push(`/${locale}/toeic/attempts/${attempt._id}`);
+    } catch { setStartError(true); setStarting(false); }
   };
-  const handleContinue = () =>
-    router.push(`/${locale}/toeic/take/${exam?._id}?attemptId=${latestAttempt?._id}`);
+  const handleContinue = () => {
+    if (latestAttempt) router.push(`/${locale}/toeic/attempts/${latestAttempt._id}`);
+  };
 
   /* error */
-  if (!isExamLoading && (isExamError || (!isLoading && !exam))) {
+  if (!isExamLoading && (isExamError || isPartsError || (!isLoading && !exam))) {
     return (
-      <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center p-8">
-        <div className="text-center space-y-4">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-400">
-            <AlertCircle className="h-7 w-7" />
-          </div>
-          <h2 className="text-base font-bold text-slate-800">{t('exam_detail.not_found_title')}</h2>
-          <p className="text-xs text-slate-500">{t('exam_detail.not_found_desc')}</p>
-          <Link
-            href={`/${locale}/toeic/${groupSlug}`}
-            className="inline-flex items-center gap-1.5 rounded bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 transition"
-          >
-            {t('exam_detail.back_to_group')}
-          </Link>
-        </div>
-      </div>
+      <PageShell>
+        <EmptyState
+          icon={AlertCircle}
+          title={t('exam_detail.not_found_title')}
+          description={t('exam_detail.not_found_desc')}
+          action={
+            <Button asChild>
+              <Link href={`/${locale}/toeic/${groupSlug}`}>{t('exam_detail.back_to_group')}</Link>
+            </Button>
+          }
+        />
+      </PageShell>
     );
   }
 
+  const meta = (
+    <span className="flex flex-wrap items-center gap-x-5 gap-y-1">
+      {(exam?.totalQuestions ?? 0) > 0 && (
+        <span className="flex items-center gap-1.5">
+          <FileQuestion className="h-4 w-4 text-slate-400" />
+          {exam!.totalQuestions} {t('exam_detail.questions')}
+        </span>
+      )}
+      {(exam?.totalAttempts ?? 0) > 0 && (
+        <span className="flex items-center gap-1.5">
+          <Users className="h-4 w-4 text-slate-400" />
+          {exam!.totalAttempts!.toLocaleString(locale === 'en' ? 'en-US' : 'vi-VN')} {t('exam_detail.attempts')}
+        </span>
+      )}
+      {(exam?.durationMinutes ?? 0) > 0 && (
+        <span className="flex items-center gap-1.5">
+          <Clock className="h-4 w-4 text-slate-400" />
+          {exam!.durationMinutes} {t('exam_detail.minutes')}
+        </span>
+      )}
+    </span>
+  );
+
   return (
-    <div className="min-h-screen bg-[#f8fafc]">
-      <div className="px-4 py-6 sm:px-8 lg:px-12 space-y-6">
+    <PageShell>
+      <PageHeader
+        breadcrumbs={[
+          { label: 'TOEIC', href: `/${locale}/toeic` },
+          { label: groupName, href: `/${locale}/toeic/${groupSlug}` },
+          { label: isLoading ? '...' : exam?.name || '' },
+        ]}
+        title={
+          isLoading ? (
+            <span className="inline-block h-8 w-80 max-w-full animate-pulse rounded-md bg-slate-100 align-middle" />
+          ) : (
+            exam?.name
+          )
+        }
+        description={isLoading ? undefined : meta}
+      />
 
-        {/* ── Breadcrumb ── */}
-        <nav className="flex items-center gap-1.5 text-xs text-slate-400 flex-wrap">
-          <Link href={`/${locale}`} className="hover:text-slate-600 transition">
-            <Home className="h-3.5 w-3.5" />
-          </Link>
-          <ChevronRight className="h-3 w-3 text-slate-300" />
-          <Link href={`/${locale}/toeic`} className="hover:text-slate-600 transition">TOEIC</Link>
-          <ChevronRight className="h-3 w-3 text-slate-300" />
-          <span>{t('exam_detail.breadcrumb_exams')}</span>
-          <ChevronRight className="h-3 w-3 text-slate-300" />
-          <Link href={`/${locale}/toeic/${groupSlug}`} className="hover:text-slate-600 transition truncate max-w-[140px] sm:max-w-xs">
-            {groupName}
-          </Link>
-          <ChevronRight className="h-3 w-3 text-slate-300" />
-          <span className="text-slate-700 font-medium truncate max-w-[200px] sm:max-w-sm">
-            {isLoading ? '...' : exam?.name}
-          </span>
-        </nav>
+      {isLoading ? (
+        <Card>
+          <LoadingState />
+        </Card>
+      ) : (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+            <ExamStructureTable parts={parts} partTimeMap={PART_TIME_MAP} />
 
-        {/* ── Title + meta ── */}
-        <div className="flex items-start gap-3">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="mt-1.5 flex h-7 w-7 shrink-0 items-center justify-center rounded border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 transition cursor-pointer"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          <div>
-            {isLoading
-              ? <div className="h-9 w-80 rounded bg-slate-100 animate-pulse" />
-              : <h1 className="text-2xl sm:text-[28px] font-extrabold text-slate-900 leading-tight">{exam?.name}</h1>
-            }
-            <div className="mt-1.5 flex flex-wrap items-center gap-5 text-sm text-slate-500">
-              {(exam?.totalQuestions ?? 0) > 0 && (
-                <span className="flex items-center gap-1.5">
-                  <FileQuestion className="h-4 w-4 text-slate-400" />
-                  {exam!.totalQuestions} {t('exam_detail.questions')}
-                </span>
-              )}
-              {(exam?.totalAttempts ?? 0) > 0 && (
-                <span className="flex items-center gap-1.5">
-                  <Users className="h-4 w-4 text-slate-400" />
-                  {exam!.totalAttempts!.toLocaleString(locale === 'en' ? 'en-US' : 'vi-VN')} {t('exam_detail.attempts')}
-                </span>
-              )}
-              {(exam?.durationMinutes ?? 0) > 0 && (
-                <span className="flex items-center gap-1.5">
-                  <Clock className="h-4 w-4 text-slate-400" />
-                  {exam!.durationMinutes} {t('exam_detail.minutes')}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* ── Body ── */}
-        {isLoading ? (
-          <div className="flex min-h-[320px] items-center justify-center">
-            <Loader2 className="h-7 w-7 animate-spin text-blue-500" />
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {/* ── 2-col body: Cấu trúc đề & Chế độ làm bài ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-              <ExamStructureTable parts={parts} partTimeMap={PART_TIME_MAP} />
-
+            <div className="space-y-3">
+              {exam?.description && <p className="text-sm text-slate-600">{exam.description}</p>}
+              {startError && <ErrorState message={t('attempt.start_error')} />}
+              {!parts.length && <p className="text-sm text-slate-500">{t('attempt.no_parts')}</p>}
               <ExamModePartsSelector
+                starting={starting}
                 mode={mode}
                 setMode={setMode}
                 selected={selected}
@@ -249,15 +222,13 @@ export default function ToeicExamDetailPage() {
                 onContinue={handleContinue}
               />
             </div>
-
-            {/* ── BẢNG THÀNH TÍCH ── */}
-            <ExamLeaderboard rawAttempts={rawAttempts} />
-
-            {/* ── KHU VỰC BÌNH LUẬN ── */}
-            <ExamComments currentUser={user} />
           </div>
-        )}
-      </div>
-    </div>
+
+          <ExamLeaderboard rawAttempts={rawAttempts} />
+
+          <ExamComments currentUser={user} />
+        </div>
+      )}
+    </PageShell>
   );
 }

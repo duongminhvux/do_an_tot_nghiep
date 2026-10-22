@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MessageSquare, Send, ThumbsUp, MessageCircle, CornerDownRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Badge, Segmented, surface, tones } from '@/components/ui/page';
 
 interface CommentItem {
   id: string;
@@ -148,46 +150,38 @@ export function ExamComments({ currentUser }: ExamCommentsProps) {
   };
 
   return (
-    <div className="rounded border border-slate-200 bg-white shadow-xs p-5 sm:p-6 space-y-6">
+    <div className={cn(surface, 'space-y-6 p-5 sm:p-6')}>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded bg-blue-50 text-blue-600">
-            <MessageSquare className="h-4.5 w-4.5" />
+          <div className={cn('flex h-9 w-9 items-center justify-center rounded-lg', tones.blue)}>
+            <MessageSquare className="h-4 w-4" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-slate-900">{t('exam_detail.comments_title')}</h2>
+            <h2 className="text-base font-semibold text-slate-900">{t('exam_detail.comments_title')}</h2>
             <p className="text-xs text-slate-500">{t('pages.community_comments', { count: comments.length })}</p>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="flex items-center gap-1 self-start sm:self-auto">
-          {(['all', 'qa', 'newest'] as const).map((filter) => (
-            <button
-              key={filter}
-              type="button"
-              onClick={() => setCommentFilter(filter)}
-              className={cn(
-                'px-3 py-1 text-xs rounded font-medium transition cursor-pointer',
-                commentFilter === filter
-                  ? 'bg-blue-50 text-blue-600 font-semibold border border-blue-100'
-                  : 'text-slate-600 hover:bg-slate-50 border border-transparent'
-              )}
-            >
-              {t(`exam_detail.filter_${filter}`)}
-            </button>
-          ))}
-        </div>
+        <Segmented
+          className="self-start sm:self-auto"
+          value={commentFilter}
+          onChange={setCommentFilter}
+          items={(['all', 'qa', 'newest'] as const).map((filter) => ({
+            value: filter,
+            label: t(`exam_detail.filter_${filter}`),
+          }))}
+        />
       </div>
 
       {/* Form tạo bình luận */}
       <form onSubmit={handleAddComment} className="flex gap-3 items-start">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white font-bold text-xs shadow-xs">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white font-semibold text-xs">
           {((currentUser?.username?.[0] || 'N')).toUpperCase()}
         </div>
         <div className="flex-1 space-y-2">
-          <div className="rounded border border-slate-200 bg-white focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500/20 transition overflow-hidden">
+          <div className="rounded-lg border border-slate-200 bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition overflow-hidden">
             <textarea
               rows={3}
               value={commentInput}
@@ -196,17 +190,13 @@ export function ExamComments({ currentUser }: ExamCommentsProps) {
               className="w-full p-3 text-sm text-slate-800 placeholder-slate-400 outline-none resize-none"
             />
             <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border-t border-slate-100">
-              <span className="text-[11px] text-slate-400">
+              <span className="text-xs text-slate-400">
                 {t('pages.comment_help')}
               </span>
-              <button
-                type="submit"
-                disabled={!commentInput.trim()}
-                className="inline-flex items-center gap-1.5 rounded bg-blue-600 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
-              >
-                <Send className="h-3 w-3" />
+              <Button type="submit" size="sm" disabled={!commentInput.trim()}>
+                <Send />
                 {t('exam_detail.btn_send_comment')}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -217,16 +207,14 @@ export function ExamComments({ currentUser }: ExamCommentsProps) {
         {comments.map((comment) => (
           <div key={comment.id} className="space-y-3 pb-4 border-b border-slate-100 last:border-b-0 last:pb-0">
             <div className="flex items-start gap-3">
-              <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white font-bold text-xs', comment.avatarColor)}>
+              <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white font-semibold text-xs', comment.avatarColor)}>
                 {comment.author.charAt(0)}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-bold text-slate-800">{comment.author}</span>
+                  <span className="text-sm font-semibold text-slate-800">{comment.author}</span>
                   {comment.badge && (
-                    <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 border border-blue-100 px-1.5 py-0.2 rounded">
-                      {comment.badge}
-                    </span>
+                    <Badge tone="blue">{comment.badge}</Badge>
                   )}
                   <span className="text-xs text-slate-400">• {comment.createdAt}</span>
                 </div>
@@ -241,7 +229,7 @@ export function ExamComments({ currentUser }: ExamCommentsProps) {
                     onClick={() => handleToggleLike(comment.id)}
                     className={cn(
                       'flex items-center gap-1 transition cursor-pointer',
-                      comment.isLiked ? 'text-blue-600 font-bold' : 'text-slate-500 hover:text-blue-600'
+                      comment.isLiked ? 'text-blue-600 font-semibold' : 'text-slate-500 hover:text-blue-600'
                     )}
                   >
                     <ThumbsUp className={cn('h-3.5 w-3.5', comment.isLiked && 'fill-blue-600')} />
@@ -268,7 +256,7 @@ export function ExamComments({ currentUser }: ExamCommentsProps) {
                         value={replyInput}
                         onChange={(e) => setReplyInput(e.target.value)}
                         placeholder={t('pages.reply_placeholder')}
-                        className="flex-1 rounded border border-slate-200 px-3 py-1.5 text-xs text-slate-800 outline-none focus:border-blue-500"
+                        className="h-8 flex-1 rounded-lg border border-slate-200 px-3 text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             e.preventDefault();
@@ -276,14 +264,14 @@ export function ExamComments({ currentUser }: ExamCommentsProps) {
                           }
                         }}
                       />
-                      <button
+                      <Button
                         type="button"
+                        size="sm"
                         onClick={() => handleAddReply(comment.id)}
                         disabled={!replyInput.trim()}
-                        className="rounded bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-40 transition cursor-pointer"
                       >
                         {t('pages.send')}
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 )}
@@ -292,13 +280,11 @@ export function ExamComments({ currentUser }: ExamCommentsProps) {
                 {comment.replies && comment.replies.length > 0 && (
                   <div className="mt-3 pl-4 border-l-2 border-slate-100 space-y-2.5">
                     {comment.replies.map((reply) => (
-                      <div key={reply.id} className="text-xs bg-slate-50/70 p-2.5 rounded">
+                      <div key={reply.id} className="rounded-lg bg-slate-50 p-3 text-xs">
                         <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-slate-800">{reply.author}</span>
+                          <span className="font-semibold text-slate-800">{reply.author}</span>
                           {reply.badge && (
-                            <span className="text-[9px] font-semibold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-100">
-                              {reply.badge}
-                            </span>
+                            <Badge tone="emerald" className="px-2 text-[11px]">{reply.badge}</Badge>
                           )}
                           <span className="text-slate-400">• {reply.createdAt}</span>
                         </div>
