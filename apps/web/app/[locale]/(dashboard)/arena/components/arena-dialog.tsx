@@ -27,17 +27,17 @@ export function ArenaDialog(props: ArenaController) {
         <Dialog.Overlay className="fixed inset-0 z-50 bg-slate-950/35 backdrop-blur-sm" />
         <Dialog.Content
           className={cn(
-            "fixed left-1/2 top-1/2 z-50 max-h-[calc(100dvh-2rem)] w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded border border-slate-200 p-4 shadow-2xl sm:w-[calc(100%-2rem)] sm:p-6",
+            "fixed left-1/2 top-1/2 z-50 max-h-[calc(100dvh-2rem)] w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-2xl border border-slate-200 bg-white p-4 shadow-xl sm:w-[calc(100%-2rem)] sm:p-6",
             panel === "rank"
-              ? "max-w-2xl rounded   bg-[radial-gradient(ellipse_at_center,#edf5ff_0%,#f8fbff_65%,#fff_100%)] p-0"
-              : "bg-white",
+              ? "max-w-2xl bg-gradient-to-b from-blue-50/60 to-white p-0"
+              : undefined,
           )}
         >
           <Dialog.Title
             className={
               panel === "rank"
                 ? "sr-only"
-                : "pr-8 text-lg font-bold text-slate-900"
+                : "pr-8 text-lg font-semibold text-slate-900"
             }
           >
             {dialogTitle}
@@ -46,7 +46,7 @@ export function ArenaDialog(props: ArenaController) {
             className={
               panel === "rank"
                 ? "sr-only"
-                : "mt-1 text-xs leading-5 text-slate-500"
+                : "mt-1 text-sm leading-5 text-slate-500"
             }
           >
             {text(
@@ -56,7 +56,7 @@ export function ArenaDialog(props: ArenaController) {
           </Dialog.Description>
           <Dialog.Close
             aria-label={text("Đóng", "Close")}
-            className="absolute right-4 top-4 cursor-pointer rounded-full p-2 text-slate-400 hover:bg-slate-100"
+            className="absolute right-4 top-4 cursor-pointer rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <X className="size-4" />
           </Dialog.Close>

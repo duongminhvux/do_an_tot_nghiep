@@ -6,6 +6,9 @@ import { arenaSocket } from "@/lib/arena-socket";
 import { friendlyRequest, type FriendSnapshot } from "@/lib/friendly-arena";
 import { FriendlyAvatar } from "./friendly-avatar";
 import { MatchExitDialog } from "./match-exit-dialog";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Badge, surface } from "@/components/ui/page";
 
 type Tile = "correct" | "present" | "absent";
 type GuessState = {
@@ -152,25 +155,25 @@ export function WordGuessMatch({
   };
   const winner = room.players.find((p) => p.userId === state?.winnerId);
   return (
-    <main className="min-h-[calc(100dvh-3.5rem)] bg-gradient-to-b from-blue-50 to-slate-50 px-3 py-6 text-slate-800 sm:px-6">
+    <main className="min-h-[calc(100dvh-3.5rem)] bg-background px-3 py-6 text-slate-800 sm:px-6">
       <div className="mx-auto max-w-5xl">
         <header className="mb-6 flex items-center justify-between gap-3">
-          <button
-            className="flex items-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-semibold shadow-sm"
+          <Button
+            variant="outline"
             onClick={() => (finished ? void leave() : setExitOpen(true))}
           >
-            <ArrowLeft className="size-4" />
+            <ArrowLeft />
             {text("Đấu trường", "Arena")}
-          </button>
-          <span className="flex items-center gap-2 rounded-full border border-blue-100 bg-white px-4 py-2 text-sm font-bold text-blue-600">
+          </Button>
+          <Badge tone="blue" className="px-3 py-1 text-sm">
             <Sparkles className="size-4" />
             {text("Đoán từ", "Word guess")}
-          </span>
+          </Badge>
         </header>
-        <div className="grid items-start gap-5 lg:grid-cols-[1.6fr_1fr]">
-          <section className="rounded-3xl border border-blue-100 bg-white p-4 shadow-sm sm:p-7">
+        <div className="grid items-start gap-6 lg:grid-cols-[1.6fr_1fr]">
+          <section className={cn(surface, "p-4 sm:p-6")}>
             <div className="mb-6 text-center">
-              <h1 className="text-2xl font-extrabold">
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900">
                 {text("5 chữ cái · 5 lượt đoán", "5 letters · 5 guesses")}
               </h1>
               <p className="mt-2 text-sm text-slate-500">
@@ -183,7 +186,7 @@ export function WordGuessMatch({
             {!connected && (
               <p
                 role="status"
-                className="mb-4 rounded-xl bg-amber-50 p-3 text-sm"
+                className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800"
               >
                 {text("Đang kết nối lại…", "Reconnecting…")}
               </p>
@@ -213,7 +216,7 @@ export function WordGuessMatch({
                       <div
                         key={col}
                         aria-label={`${text("Lượt", "Guess")} ${row + 1}, ${col + 1}: ${letter || "—"}, ${label}`}
-                        className={`flex aspect-square items-center justify-center rounded-xl border-2 text-2xl font-extrabold uppercase transition-colors ${color ? tileStyle[color] : letter ? "border-blue-400 bg-blue-50 text-blue-700" : "border-slate-200 bg-slate-50 text-slate-400"}`}
+                        className={`flex aspect-square items-center justify-center rounded-lg border-2 text-2xl font-bold uppercase transition-colors ${color ? tileStyle[color] : letter ? "border-blue-400 bg-blue-50 text-blue-700" : "border-slate-200 bg-slate-50 text-slate-400"}`}
                       >
                         {letter}
                       </div>
@@ -237,7 +240,7 @@ export function WordGuessMatch({
                 ] as const
               ).map(([color, label]) => (
                 <span key={color} className="flex items-center gap-1.5">
-                  <span className={`size-3 rounded ${tileStyle[color]}`} />
+                  <span className={`size-3 rounded-sm ${tileStyle[color]}`} />
                   {label}
                 </span>
               ))}
@@ -245,7 +248,7 @@ export function WordGuessMatch({
             {notice && (
               <p
                 role="alert"
-                className="mb-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800"
+                className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800"
               >
                 {notice}
               </p>
@@ -253,10 +256,10 @@ export function WordGuessMatch({
             {finished ? (
               <div
                 role="status"
-                className="rounded-2xl bg-blue-50 p-5 text-center"
+                className="rounded-xl border border-blue-100 bg-blue-50 p-5 text-center"
               >
                 <Trophy className="mx-auto mb-2 size-8 text-amber-500" />
-                <h2 className="font-extrabold">
+                <h2 className="text-base font-bold text-slate-900">
                   {state.isDraw
                     ? text(
                         "Hòa! Chưa ai tìm ra từ bí mật.",
@@ -266,14 +269,15 @@ export function WordGuessMatch({
                       ? text("Bạn đã chiến thắng!", "You won!")
                       : `${winner?.username ?? text("Người chơi khác", "Another player")} ${text("đã chiến thắng!", "won!")}`}
                 </h2>
-                <p className="mt-2 text-sm">
+                <p className="mt-2 text-sm text-slate-600">
                   {text("Đáp án", "Answer")}:{" "}
                   <strong className="text-xl uppercase tracking-[0.15em] text-blue-700">
                     {state.answer}
                   </strong>
                 </p>
-                <button
-                  className="mt-4 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white disabled:opacity-40"
+                <Button
+                  size="lg"
+                  className="mt-4"
                   disabled={busy}
                   onClick={async () => {
                     setBusy(true);
@@ -285,7 +289,7 @@ export function WordGuessMatch({
                   }}
                 >
                   {text("Trở về phòng", "Return to room")}
-                </button>
+                </Button>
               </div>
             ) : (
               <>
@@ -312,20 +316,21 @@ export function WordGuessMatch({
                       )
                     }
                     placeholder={text("Nhập 5 chữ cái", "Enter 5 letters")}
-                    className="min-w-0 flex-1 rounded-xl border border-slate-200 px-4 py-3 font-bold uppercase tracking-widest outline-none focus:border-blue-500 disabled:bg-slate-50"
+                    className="h-11 min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-4 font-bold uppercase tracking-widest shadow-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50"
                   />
-                  <button
+                  <Button
+                    size="icon"
                     aria-label={text("Gửi đáp án", "Submit guess")}
                     disabled={locked || word.length !== 5}
-                    className="rounded-xl bg-blue-600 px-4 text-white disabled:opacity-40"
+                    className="size-11"
                   >
-                    <Send className="size-5" />
-                  </button>
+                    <Send />
+                  </Button>
                 </form>
                 {(attempts.length >= 5 || eliminated) && (
                   <p
                     role="status"
-                    className="mb-4 rounded-xl bg-amber-50 p-3 text-center text-sm"
+                    className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-center text-sm text-amber-800"
                   >
                     {text(
                       "Bạn đã hết lượt. Chờ những người còn lại hoàn thành.",
@@ -343,7 +348,7 @@ export function WordGuessMatch({
                         <button
                           disabled={locked || word.length !== 5}
                           onClick={() => void submit()}
-                          className="rounded-lg bg-blue-600 px-2 text-[10px] font-bold text-white disabled:opacity-40"
+                          className="cursor-pointer rounded-lg bg-primary px-2 text-[11px] font-bold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           ENTER
                         </button>
@@ -353,7 +358,7 @@ export function WordGuessMatch({
                           key={letter}
                           disabled={locked || word.length >= 5}
                           onClick={() => setWord((value) => value + letter)}
-                          className={`h-11 min-w-0 flex-1 rounded-lg text-xs font-bold sm:text-sm ${keyColors[letter] ? tileStyle[keyColors[letter]!] : "bg-slate-100 text-slate-700"} disabled:opacity-60`}
+                          className={`h-11 min-w-0 flex-1 cursor-pointer rounded-lg text-xs font-bold transition-colors sm:text-sm ${keyColors[letter] ? tileStyle[keyColors[letter]!] : "bg-slate-100 text-slate-700 hover:bg-slate-200"} disabled:cursor-not-allowed disabled:opacity-60`}
                         >
                           {letter}
                         </button>
@@ -363,7 +368,7 @@ export function WordGuessMatch({
                           aria-label={text("Xóa chữ", "Delete letter")}
                           disabled={locked || !word}
                           onClick={() => setWord((value) => value.slice(0, -1))}
-                          className="rounded-lg bg-slate-200 px-2 text-slate-700 disabled:opacity-40"
+                          className="cursor-pointer rounded-lg bg-slate-200 px-2 text-slate-700 transition-colors hover:bg-slate-300 disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           <Delete className="size-4" />
                         </button>
@@ -374,8 +379,8 @@ export function WordGuessMatch({
               </>
             )}
           </section>
-          <aside className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
-            <h2 className="mb-4 font-bold">
+          <aside className={cn(surface, "p-5")}>
+            <h2 className="mb-4 text-base font-semibold text-slate-900">
               {text("Người chơi trong phòng", "Room players")}
             </h2>
             <div className="space-y-3">
@@ -386,7 +391,7 @@ export function WordGuessMatch({
                 return (
                   <div
                     key={player.userId}
-                    className="flex items-center gap-3 rounded-xl bg-slate-50 p-3"
+                    className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3"
                   >
                     <div className="size-10 shrink-0 overflow-hidden rounded-full">
                       <FriendlyAvatar
@@ -395,7 +400,7 @@ export function WordGuessMatch({
                       />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <strong className="block truncate text-sm">
+                      <strong className="block truncate text-sm font-semibold text-slate-900">
                         {player.username}
                         {player.userId === userId
                           ? text(" (Bạn)", " (You)")

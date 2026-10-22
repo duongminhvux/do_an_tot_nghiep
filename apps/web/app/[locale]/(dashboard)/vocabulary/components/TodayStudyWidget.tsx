@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { Target, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { DashboardStudyStats } from '@/types/learning';
+import { Button } from '@/components/ui/button';
+import { Panel } from '@/components/ui/page';
 
 interface TodayStudyWidgetProps {
   stats?: DashboardStudyStats;
@@ -37,17 +39,19 @@ export function TodayStudyWidget({
   };
 
   return (
-    <div className="rounded border border-slate-200 bg-white p-5 space-y-4 shadow-2xs">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Target className="w-4 h-4 text-blue-600" />
-          <h3 className="text-sm font-bold text-slate-900">{t('today_widget.title')}</h3>
-        </div>
-        <span className="text-[11px] font-medium text-slate-400">
+    <Panel
+      title={
+        <span className="inline-flex items-center gap-2">
+          <Target className="h-4 w-4 text-blue-600" />
+          {t('today_widget.title')}
+        </span>
+      }
+      action={
+        <span className="text-xs font-medium text-slate-500">
           {t('today_widget.goal_label', { count: dailyGoal })}
         </span>
-      </div>
+      }
+    >
 
       <div className="flex items-center justify-between gap-4 py-1">
         {/* Circular Progress Gauge */}
@@ -79,10 +83,10 @@ export function TodayStudyWidget({
               <span className="text-xs font-semibold text-slate-400 animate-pulse">...</span>
             ) : (
               <>
-                <span className="text-sm font-extrabold text-slate-900 leading-tight">
+                <span className="text-sm font-bold leading-tight text-slate-900">
                   {todayLearned}/{dailyGoal}
                 </span>
-                <span className="text-[9px] font-medium text-slate-400">
+                <span className="text-[11px] font-medium text-slate-500">
                   {t('today_widget.words_learned')}
                 </span>
               </>
@@ -108,25 +112,22 @@ export function TodayStudyWidget({
           </p>
 
           {hasContinue ? (
-            <Link
-              href={`/${locale}/vocabulary/collection/${continueLesson?.collectionSlug}/lesson/${continueLesson?.lessonSlug}`}
-              className="w-full py-2 px-3 rounded bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-xs cursor-pointer text-center"
-            >
-              <span>{continueLesson?.progress ? t('today_widget.continue_study') : t('today_widget.start_study')}</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+            <Button asChild size="sm" className="w-full">
+              <Link
+                href={`/${locale}/vocabulary/collection/${continueLesson?.collectionSlug}/lesson/${continueLesson?.lessonSlug}`}
+              >
+                <span>{continueLesson?.progress ? t('today_widget.continue_study') : t('today_widget.start_study')}</span>
+                <ArrowRight />
+              </Link>
+            </Button>
           ) : (
-            <button
-              type="button"
-              onClick={handleAction}
-              className="w-full py-2 px-3 rounded bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
-            >
+            <Button type="button" size="sm" onClick={handleAction} className="w-full">
               <span>{t('today_widget.start_study')}</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+              <ArrowRight />
+            </Button>
           )}
         </div>
       </div>
-    </div>
+    </Panel>
   );
 }

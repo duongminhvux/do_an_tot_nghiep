@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/page";
 import { Crosshair, Pause, Play, Timer, Target } from "lucide-react";
 import { WordShooterEngine } from "../engine/word-shooter-engine";
 import { WordShooterResult } from "./word-shooter-result";
@@ -198,40 +200,41 @@ export function WordShooterGame({
     (state.remainingMs / (session.config.roundDurationSeconds * 1000)) * 100;
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       {/* Top HUD */}
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/90 px-4 py-2.5">
         <div className="flex items-center gap-4 text-sm">
           <span className="text-slate-600">
             {t("score")}:{" "}
-            <strong className="text-blue-600 font-extrabold text-base">
+            <strong className="text-base font-bold text-blue-600">
               {state.score.toLocaleString(locale)}
             </strong>
           </span>
-          <span className="rounded-full bg-blue-50 px-3 py-0.5 text-xs font-bold text-blue-700 border border-blue-200">
+          <Badge tone="blue">
             {t("shooter_round", { count: state.round })}
-          </span>
+          </Badge>
         </div>
         <div className="flex items-center gap-3">
           <span
             className={
               "flex items-center gap-1.5 text-sm font-bold tabular-nums px-2.5 py-1 rounded-lg " +
-              (percent < 25 ? "bg-rose-50 text-rose-600 animate-pulse" : "bg-blue-50 text-blue-600")
+              (percent < 25 ? "bg-red-50 text-red-600 animate-pulse" : "bg-blue-50 text-blue-600")
             }
           >
             <Timer className="size-4" />
             {(state.remainingMs / 1000).toFixed(1)}s
           </span>
-          <button
+          <Button
+            variant="outline"
+            size="icon-sm"
             aria-label={t("pause")}
             onClick={() => {
               engine.pause();
               sync();
             }}
-            className="rounded-lg border border-slate-200 bg-white p-2 text-slate-600 hover:bg-slate-100 transition"
           >
-            <Pause className="size-4" />
-          </button>
+            <Pause />
+          </Button>
         </div>
       </div>
 
@@ -247,7 +250,7 @@ export function WordShooterGame({
         <div
           className={
             "h-full transition-all duration-100 " +
-            (percent < 25 ? "bg-rose-500" : "bg-blue-600")
+            (percent < 25 ? "bg-red-500" : "bg-blue-600")
           }
           style={{ width: percent + "%" }}
         />
@@ -267,7 +270,7 @@ export function WordShooterGame({
           className={
             "mt-0.5 h-4 text-xs font-semibold transition-all " +
             (state.feedback === "wrong"
-              ? "text-rose-600"
+              ? "text-red-600"
               : state.feedback === "correct"
                 ? "text-emerald-600"
                 : "opacity-0")
@@ -288,7 +291,7 @@ export function WordShooterGame({
         ref={field}
         tabIndex={-1}
         onMouseMove={handleMouseMove}
-        className="relative min-h-0 flex-1 overflow-hidden select-none bg-[radial-gradient(ellipse_at_bottom,#e0e7ff_0%,#f8fafc_65%,#f1f5f9_100%)] p-4 outline-none cursor-crosshair"
+        className="relative min-h-0 flex-1 overflow-hidden select-none bg-[radial-gradient(ellipse_at_bottom,#dbeafe_0%,#f8fafc_65%,#f1f5f9_100%)] p-4 outline-none cursor-crosshair"
       >
         {/* Floating Bubble Targets */}
         <div className="absolute inset-0 pointer-events-none">
@@ -328,9 +331,9 @@ export function WordShooterGame({
                     } as React.CSSProperties
                   }
                   className={
-                    "group relative flex items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border-2 px-3.5 py-2 shadow-sm transition-all duration-200 active:scale-95 hover:scale-105 " +
+                    "group relative flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border-2 px-3.5 py-2 shadow-sm transition-all duration-200 active:scale-95 hover:scale-105 " +
                     (isWrong
-                      ? "border-rose-500 bg-rose-50 ring-2 ring-rose-200 text-rose-700"
+                      ? "border-red-500 bg-red-50 ring-2 ring-red-200 text-red-700"
                       : isHit
                         ? "border-emerald-500 bg-emerald-50 ring-2 ring-emerald-200 text-emerald-700 scale-110"
                         : "border-slate-200 bg-white/95 text-slate-800 shadow-slate-900/5 hover:border-blue-500 hover:bg-blue-50/90 hover:shadow-md")
@@ -348,7 +351,7 @@ export function WordShooterGame({
                   <Crosshair className="size-3.5 shrink-0 text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
 
                   {/* Index badge */}
-                  <span className="absolute -top-2 -right-1.5 rounded-full bg-slate-100 px-1.5 py-0.2 text-[9px] font-bold text-slate-500 border border-slate-300 shadow-xs">
+                  <span className="absolute -top-2 -right-1.5 rounded-full bg-slate-100 px-1.5 text-[11px] leading-4 font-semibold text-slate-500 border border-slate-300 shadow-xs">
                     {index + 1}
                   </span>
                 </button>
@@ -378,7 +381,7 @@ export function WordShooterGame({
                 "size-6 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 shadow-lg " +
                 (projectile.isCorrect
                   ? "border-emerald-200 bg-gradient-to-tr from-emerald-600 via-emerald-400 to-white shadow-emerald-400/80"
-                  : "border-rose-200 bg-gradient-to-tr from-rose-600 via-rose-400 to-white shadow-rose-400/80")
+                  : "border-red-200 bg-gradient-to-tr from-red-600 via-red-400 to-white shadow-red-400/80")
               }
             >
               {/* Core bright spark */}
@@ -463,23 +466,20 @@ export function WordShooterGame({
         {/* Paused Overlay */}
         {state.status === "PAUSED" && (
           <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-4 bg-white/90 p-4 text-center backdrop-blur-sm">
-            <h2 className="text-2xl font-bold text-slate-800">{t("paused")}</h2>
-            <button
+            <h2 className="text-2xl font-bold text-slate-900">{t("paused")}</h2>
+            <Button
+              size="lg"
               onClick={() => {
                 engine.resume();
                 sync();
               }}
-              className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-bold text-white shadow-md hover:bg-blue-700 transition"
             >
-              <Play className="size-5" />
+              <Play />
               {t("resume")}
-            </button>
-            <button
-              onClick={onChange}
-              className="text-sm text-slate-500 underline hover:text-slate-800 transition"
-            >
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onChange}>
               {t("change_sources")}
-            </button>
+            </Button>
           </div>
         )}
       </div>

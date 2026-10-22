@@ -7,12 +7,12 @@ import {
   Clock3,
   Loader2,
   Shield,
-  Sparkles,
   Swords,
   UserRound,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 import type { ArenaController } from "../hooks/use-arena-controller";
 import { useSelector } from "react-redux";
@@ -23,7 +23,6 @@ type Props = Pick<
   | "text"
   | "number"
   | "panel"
-  | "button"
   | "profile"
   | "rankedStatus"
   | "rankedError"
@@ -37,7 +36,6 @@ export function QuickMatchPanel({
   text,
   number,
   panel,
-  button,
   profile,
   rankedStatus,
   rankedError,
@@ -55,18 +53,16 @@ export function QuickMatchPanel({
         <p role="alert" className="text-sm text-red-600">
           {rankedError}
         </p>
-        <button
-          onClick={handleFindMatch}
-          className={cn(button, "mt-5 bg-blue-600 text-white")}
-        >
+        <Button onClick={handleFindMatch} className="mt-5">
           {text("Thử lại", "Retry")}
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="ghost"
           onClick={cancelRankedQueue}
-          className="mt-4 block w-full text-sm text-slate-500"
+          className="mt-2 w-full"
         >
           {text("Hủy tìm trận", "Cancel")}
-        </button>
+        </Button>
       </div>
     );
 
@@ -97,7 +93,7 @@ export function QuickMatchPanel({
           />
         </div>
 
-        <h3 className="text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">
+        <h3 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
           {matchFound
             ? text("Đã tìm thấy đối thủ!", "Opponent found!")
             : text("Đang tìm đối thủ", "Finding an opponent")}
@@ -138,14 +134,14 @@ export function QuickMatchPanel({
                 icon={Shield}
                 label={text("Xếp hạng hiện tại", "Current tier")}
                 value={rankValue}
-                color="bg-amber-50 text-amber-500"
+                color="bg-amber-50 text-amber-600"
               />
 
               <StatItem
                 icon={BarChart3}
                 label={text("Điểm rank", "Rank rating")}
                 value={number(rating)}
-                color="bg-violet-50 text-violet-500"
+                color="bg-violet-50 text-violet-600"
               />
 
               <StatItem
@@ -156,42 +152,39 @@ export function QuickMatchPanel({
                     ? text("Đã ghép trận", "Match found")
                     : text("Đang tìm...", "Searching...")
                 }
-                color="bg-blue-50 text-blue-500"
+                color="bg-blue-50 text-blue-600"
               />
             </div>
 
             {/* SEARCH ACTION */}
             {searching && (
               <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-2 sm:grid-cols-1">
-                <button
+                <Button
                   type="button"
                   disabled
-                  className={cn(
-                    button,
-                    "min-h-11 w-full rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 px-3 text-xs text-white disabled:opacity-100",
-                  )}
+                  size="lg"
+                  className="w-full px-3 disabled:opacity-100"
                 >
-                  <Loader2 className="size-4 animate-spin" />
+                  <Loader2 className="animate-spin" />
 
                   {text("Đang tìm đối thủ...", "Searching for opponent...")}
-                </button>
+                </Button>
 
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="lg"
                   onClick={cancelRankedQueue}
-                  className={cn(
-                    button,
-                    "min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-600 hover:bg-slate-50",
-                  )}
+                  className="w-full px-3"
                 >
                   {text("Hủy tìm trận", "Cancel search")}
-                </button>
+                </Button>
               </div>
             )}
 
             {/* FOUND STATUS */}
             {matchFound && (
-              <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50/70 px-4 py-3">
+              <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
                 <p className="text-sm font-semibold text-emerald-700">
                   {text(
                     `Trận đấu bắt đầu sau ${matchCountdown} giây`,
@@ -326,15 +319,15 @@ function FoundView({
 
         {/* VS */}
         <div className="flex flex-col items-center justify-center">
-          <span className="text-2xl font-black italic tracking-tight text-blue-600 sm:text-4xl">
+          <span className="text-2xl font-black italic tracking-tight text-blue-600 sm:text-3xl">
             VS
           </span>
 
-          <span className="mt-2 flex size-10 items-center justify-center rounded-full bg-blue-600 text-xl font-black text-white shadow-lg shadow-blue-200 sm:size-12">
+          <span className="mt-2 flex size-10 items-center justify-center rounded-full bg-blue-600 text-xl font-bold tabular-nums text-white shadow-sm sm:size-12">
             {countdown}
           </span>
 
-          <span className="mt-2 text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-400">
+          <span className="mt-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
             {text("Bắt đầu sau", "Starts in")}
           </span>
         </div>
@@ -374,12 +367,12 @@ function PlayerCard({
   number: (value: number) => string;
 }) {
   return (
-    <div className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50/50 px-2 py-3 shadow-sm sm:px-4">
-      <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+    <div className="min-w-0 rounded-xl border border-slate-200 bg-white px-2 py-3 shadow-sm sm:px-4">
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
         {label}
       </p>
 
-      <div className="mx-auto mt-2 flex size-14 items-center justify-center overflow-hidden rounded-full bg-white ring-4 ring-white sm:size-16">
+      <div className="mx-auto mt-2 flex size-14 items-center justify-center overflow-hidden rounded-full bg-white bg-slate-100 ring-4 ring-slate-50 sm:size-16">
         {image ? (
           <Image
             src={image}
@@ -395,7 +388,7 @@ function PlayerCard({
 
       <p className="mt-2 truncate text-sm font-bold text-slate-900">{name}</p>
 
-      <p className="mt-1 text-sm font-semibold text-violet-600">
+      <p className="mt-1 text-sm font-semibold text-blue-600">
         {number(rating)} Elo
       </p>
     </div>
@@ -418,7 +411,7 @@ function StatItem({
   color: string;
 }) {
   return (
-    <div className="flex min-w-0 flex-col items-center gap-1.5 rounded-xl border border-slate-100 bg-white/80 px-2 py-2.5">
+    <div className="flex min-w-0 flex-col items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-2.5">
       <span
         className={cn(
           "flex size-8 shrink-0 items-center justify-center rounded-lg",
@@ -429,9 +422,9 @@ function StatItem({
       </span>
 
       <div className="w-full min-w-0 text-center">
-        <p className="text-[10px] leading-4 text-slate-400">{label}</p>
+        <p className="text-[11px] leading-4 text-slate-500">{label}</p>
 
-        <p className="mt-0.5 text-xs font-bold leading-4 text-slate-800">
+        <p className="mt-0.5 text-xs font-bold leading-4 text-slate-900">
           {value}
         </p>
       </div>

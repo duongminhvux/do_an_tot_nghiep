@@ -11,6 +11,7 @@ import { ArenaDialog } from "./components/arena-dialog";
 import { useQuery } from "@tanstack/react-query";
 import { arenaService } from "@/services/arena.service";
 import { useEffect } from "react";
+import { PageShell } from "@/components/ui/page";
 
 export default function ArenaPage() {
   const data = useArenaController();
@@ -28,16 +29,16 @@ export default function ArenaPage() {
     }
   }, [profileData, data.setProfile]);
   return (
-    <main className="@container/arena mx-auto w-full min-w-0 max-w-[1400px] space-y-3 p-3 sm:space-y-4 sm:p-5 xl:p-6">
+    <PageShell className="@container/arena min-w-0 space-y-4 sm:space-y-6">
       <ArenaHero {...data} />
       <ArenaModes {...data} />
       <ArenaStats {...data} />
-      <div className="grid min-w-0 items-stretch gap-3 @min-[900px]/arena:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)] sm:gap-4">
+      <div className="grid min-w-0 items-stretch gap-4 @min-[900px]/arena:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)] sm:gap-6">
         <RecentMatches {...data} />
         <ArenaLeaderboard {...data} />
       </div>
       <ArenaFooter {...data} />
       <ArenaDialog {...data} />
-    </main>
+    </PageShell>
   );
 }

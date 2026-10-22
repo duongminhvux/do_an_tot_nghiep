@@ -19,6 +19,9 @@ import {
 import { useTranslation } from "react-i18next";
 import { savedWordsService } from "@/services/saved-words.service";
 import { VocabularyFolder } from "@/types/saved-words";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { EmptyState, ErrorState, LoadingState, surface, tones } from "@/components/ui/page";
+import { cn } from "@/lib/utils";
 
 export function VocabularyFolders({
   folders,
@@ -126,44 +129,37 @@ export function VocabularyFolders({
       debouncedSearch.length > 0,
   });
   const folder = folders.find((item) => item._id === selectedFolder);
-  const buttonClass =
-    "inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50";
+  const buttonClass = buttonVariants({ size: "sm" });
   return (
     <section
       className={
         selectedFolder === null
-          ? "relative isolate space-y-5 overflow-hidden rounded-2xl bg-gradient-to-br from-slate-50 via-blue-50/40 to-white p-4 sm:p-8 lg:p-10"
+          ? "space-y-5"
           : hideSelectedHeader
             ? "space-y-4"
-            : "space-y-4 rounded-xl border border-slate-200 bg-white p-5"
+            : cn(surface, "space-y-4 p-5")
       }
     >
       {selectedFolder === null ? (
         <>
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute -right-24 -top-36 -z-10 h-80 w-80 rounded-full bg-blue-100/30"
-          />
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute -bottom-44 -left-40 -z-10 h-80 w-80 rounded-full bg-blue-100/30"
-          />
-          <button
-            type="button"
-            onClick={() => {
-              create.reset();
-              setCreateOpen(true);
-            }}
-            className="inline-flex items-center gap-3 rounded-xl bg-blue-600 px-6 py-3.5 text-base font-semibold text-white shadow-lg shadow-blue-500/15 transition hover:bg-blue-700"
-          >
-            <Plus className="h-5 w-5" />
-            {t("folders.create_list")}
-          </button>
-          <div className="flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50/70 px-4 py-3 text-sm leading-relaxed text-slate-500">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600">
-              <Bookmark className="h-4 w-4" />
-            </span>
-            <p>{t("folders.library_hint")}</p>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3 text-sm text-slate-500">
+              <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", tones.blue)}>
+                <Bookmark className="h-4 w-4" />
+              </span>
+              <p>{t("folders.library_hint")}</p>
+            </div>
+            <Button
+              type="button"
+              onClick={() => {
+                create.reset();
+                setCreateOpen(true);
+              }}
+              className="shrink-0"
+            >
+              <Plus />
+              {t("folders.create_list")}
+            </Button>
           </div>
           <Dialog.Root
             open={createOpen}
@@ -173,9 +169,9 @@ export function VocabularyFolders({
           >
             <Dialog.Portal>
               <Dialog.Overlay className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm" />
-              <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-blue-100 bg-white p-6 shadow-xl">
+              <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
                 <div className="mb-2 flex items-center justify-between gap-3">
-                  <Dialog.Title className="text-lg font-bold text-slate-900">
+                  <Dialog.Title className="text-lg font-semibold text-slate-900">
                     {t("folders.create_list")}
                   </Dialog.Title>
                   <Dialog.Close
@@ -233,7 +229,7 @@ export function VocabularyFolders({
                     className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   />
                   {create.isError && (
-                    <p role="alert" className="mt-3 text-sm text-rose-600">
+                    <p role="alert" className="mt-3 text-sm text-red-600">
                       {t("folders.create_error")}
                     </p>
                   )}
@@ -241,7 +237,7 @@ export function VocabularyFolders({
                     <Dialog.Close
                       type="button"
                       disabled={create.isPending}
-                      className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                      className={buttonVariants({ variant: "outline", size: "sm" })}
                     >
                       {t("folders.cancel")}
                     </Dialog.Close>
@@ -263,65 +259,46 @@ export function VocabularyFolders({
             </Dialog.Portal>
           </Dialog.Root>{" "}
           {loading ? (
-            <div className="flex min-h-80 items-center justify-center rounded-2xl border border-blue-100 bg-white text-sm text-slate-500">
-              {t("folders.loading")}
-            </div>
+            <LoadingState label={t("folders.loading")} className={cn(surface, "min-h-80")} />
           ) : error ? (
-            <div
-              role="alert"
-              className="rounded-2xl border border-blue-100 bg-white p-8"
-            >
-              <p>{t("folders.load_error")}</p>
-              <button onClick={retry} className="mt-2 text-blue-600">
-                {t("folders.retry")}
-              </button>
-            </div>
+            <ErrorState
+              message={t("folders.load_error")}
+              onRetry={retry}
+              retryLabel={t("folders.retry")}
+            />
           ) : folders.length === 0 ? (
-            <div className="flex min-h-[480px] flex-col items-center justify-center rounded-2xl border border-blue-100 bg-white/90 px-5 py-16 text-center sm:min-h-[540px]">
-              <div
-                aria-hidden="true"
-                className="relative mb-8 flex h-36 w-52 items-center justify-center"
-              >
-                <div className="absolute h-28 w-52 rotate-12 rounded-[50%] bg-blue-50" />
-                <div className="absolute h-36 w-36 -rotate-12 rounded-[42%] bg-blue-50/80" />
-                <div className="relative flex h-28 w-28 items-center justify-center rounded-[32px] bg-blue-100/60">
-                  <BookOpen
-                    className="h-14 w-14 text-blue-500"
-                    strokeWidth={2.2}
-                  />
+            <EmptyState
+              icon={BookOpen}
+              title={t("folders.empty_list_title")}
+              description={t("folders.empty_list_description")}
+              className="min-h-[360px]"
+              action={
+                <div className="flex flex-col items-center gap-3">
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      create.reset();
+                      setCreateOpen(true);
+                    }}
+                  >
+                    <Plus />
+                    {t("folders.create_list")}
+                  </Button>
+                  {total > 0 && (
+                    <Button
+                      type="button"
+                      variant="link"
+                      size="sm"
+                      onClick={() => onSelect("unfiled")}
+                    >
+                      {t("folders.view_unfiled", { count: total })}
+                    </Button>
+                  )}
                 </div>
-                <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-blue-100" />
-                <span className="absolute left-4 top-6 h-2 w-2 rounded-full bg-blue-100" />
-                <span className="absolute right-0 top-12 h-1.5 w-3 rotate-[-30deg] rounded-full bg-blue-300" />
-              </div>
-              <h2 className="text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
-                {t("folders.empty_list_title")}
-              </h2>
-              <p className="mt-4 max-w-xl text-base leading-relaxed text-slate-500 sm:text-lg">
-                {t("folders.empty_list_description")}
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  create.reset();
-                  setCreateOpen(true);
-                }}
-                className="mt-8 inline-flex items-center gap-3 rounded-xl bg-blue-600 px-7 py-4 text-base font-semibold text-white shadow-lg shadow-blue-500/15 transition hover:bg-blue-700"
-              >
-                <Plus className="h-5 w-5" />
-                {t("folders.create_list")}
-              </button>
-              {total > 0 && (
-                <button
-                  onClick={() => onSelect("unfiled")}
-                  className="mt-5 text-sm font-medium text-blue-600 hover:underline"
-                >
-                  {t("folders.view_unfiled", { count: total })}
-                </button>
-              )}
-            </div>
+              }
+            />
           ) : (
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {[
                 ...folders,
                 ...(total > folders.reduce((sum, item) => sum + item.count, 0)
@@ -338,10 +315,10 @@ export function VocabularyFolders({
               ].map((item) => (
                 <div
                   key={item._id}
-                  className="group relative flex items-center gap-4 rounded-2xl border border-blue-100 bg-white p-6 text-left shadow-sm transition hover:border-blue-300 hover:shadow-md"
+                  className={cn(surface, "group relative flex items-center gap-4 p-5 text-left transition-colors hover:border-blue-300")}
                 >
-                  <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-blue-50">
-                    <Folder className="h-7 w-7 text-blue-500" />
+                  <span className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl", tones.blue)}>
+                    <Folder className="h-5 w-5" />
                   </span>
                   <Link
                     href={
@@ -360,7 +337,7 @@ export function VocabularyFolders({
                         {item.name}
                       </h3>
                       {"description" in item && item.description && (
-                        <p className="mt-1 line-clamp-2 text-xs text-slate-400">
+                        <p className="mt-1 line-clamp-2 text-xs text-slate-500">
                           {item.description}
                         </p>
                       )}
@@ -373,7 +350,7 @@ export function VocabularyFolders({
                         )}
                       </p>
                     </div>
-                    <ArrowRight className="h-4 w-4 shrink-0 text-slate-300 transition group-hover:translate-x-1 group-hover:text-blue-500" />
+                    <ArrowRight className="h-4 w-4 shrink-0 text-slate-300 transition group-hover:translate-x-1 group-hover:text-blue-600" />
                   </Link>
                   {item._id !== "unfiled" && (
                     <div className="absolute right-4 top-4 flex gap-1 opacity-0 transition group-hover:opacity-100">
@@ -393,7 +370,7 @@ export function VocabularyFolders({
                       </button>
                       <button
                         type="button"
-                        className="rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                        className="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
                         aria-label={t("folders.delete")}
                         onClick={() => {
                           if (window.confirm(t("folders.delete_confirm"))) {
@@ -461,9 +438,9 @@ export function VocabularyFolders({
             >
               <Dialog.Portal>
                 <Dialog.Overlay className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm" />
-                <Dialog.Content className="fixed left-1/2 top-1/2 z-50 flex max-h-[85dvh] w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl border border-blue-100 bg-white p-5 shadow-xl sm:p-6">
+                <Dialog.Content className="fixed left-1/2 top-1/2 z-50 flex max-h-[85dvh] w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-xl sm:p-6">
                   <div className="mb-2 flex items-center justify-between gap-3">
-                    <Dialog.Title className="flex items-center gap-2 text-lg font-bold text-slate-900">
+                    <Dialog.Title className="flex items-center gap-2 text-lg font-semibold text-slate-900">
                       <Plus className="h-5 w-5 text-blue-600" />
                       {t("folders.add_words")}
                     </Dialog.Title>
@@ -488,10 +465,10 @@ export function VocabularyFolders({
                       placeholder={t("folders.search_words")}
                       value={search}
                       onChange={(event) => setSearch(event.target.value)}
-                      className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/70 px-4 text-sm outline-none transition focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                      className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                     />
                     {add.isError && (
-                      <p role="alert" className="text-sm text-rose-600">
+                      <p role="alert" className="text-sm text-red-600">
                         {t("folders.add_error")}
                       </p>
                     )}
@@ -510,7 +487,7 @@ export function VocabularyFolders({
                           {results.data?.data?.map((word) => (
                             <div
                               key={word._id}
-                              className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/60 p-4"
+                              className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3"
                             >
                               <div>
                                 <p className="font-semibold">{word.word}</p>
@@ -545,7 +522,7 @@ export function VocabularyFolders({
                   <div className="mt-5 flex justify-end border-t border-slate-100 pt-4">
                     <Dialog.Close
                       disabled={add.isPending}
-                      className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+                      className={buttonVariants({ variant: "outline", size: "sm" })}
                     >
                       {t("folders.close")}
                     </Dialog.Close>
@@ -564,8 +541,8 @@ export function VocabularyFolders({
       >
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm" />
-          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-blue-100 bg-white p-6 shadow-xl">
-            <Dialog.Title className="text-lg font-bold text-slate-900">
+          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+            <Dialog.Title className="text-lg font-semibold text-slate-900">
               {t("folders.edit")}
             </Dialog.Title>
             <form
@@ -578,7 +555,7 @@ export function VocabularyFolders({
               <input
                 value={editName}
                 onChange={(event) => setEditName(event.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-500"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                 maxLength={80}
                 placeholder={t("folders.new_placeholder")}
               />
@@ -591,13 +568,13 @@ export function VocabularyFolders({
                 placeholder={t("folders.description_placeholder")}
               />
               <div className="flex justify-end gap-3">
-                <Dialog.Close className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600">
+                <Dialog.Close className={buttonVariants({ variant: "outline", size: "sm" })}>
                   {t("folders.cancel")}
                 </Dialog.Close>
                 <button
                   type="submit"
                   disabled={!editName.trim() || update.isPending}
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                  className={buttonClass}
                 >
                   {t("folders.save_changes")}
                 </button>

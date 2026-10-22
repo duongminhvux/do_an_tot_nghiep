@@ -18,8 +18,8 @@ export function FriendlyAvatar({
       className="size-full rounded-full object-cover"
     />
   ) : (
-    <span className="flex size-full items-center justify-center rounded-full bg-blue-50 text-blue-500">
-      <UserRound className="size-10" />
+    <span className="flex size-full items-center justify-center rounded-full bg-blue-50 text-blue-600">
+      <UserRound className="size-[60%]" />
     </span>
   );
 }

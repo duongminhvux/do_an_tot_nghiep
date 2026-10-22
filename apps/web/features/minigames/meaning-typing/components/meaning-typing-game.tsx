@@ -5,6 +5,7 @@ import { meaningPopupPosition } from "../engine/typing-input";
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
 import { Heart, Pause, Play, Crosshair } from "lucide-react";
 import { useMeaningTyping } from "../hooks/use-meaning-typing";
 import {
@@ -194,20 +195,21 @@ export function MeaningTypingGame({
                   className={
                     "size-4 " +
                     (i < state.lives
-                      ? "fill-rose-500 text-rose-500"
+                      ? "fill-red-500 text-red-500"
                       : "text-slate-200")
                   }
                 />
               ),
             )}
           </span>
-          <button
+          <Button
+            variant="outline"
+            size="icon-sm"
             onClick={pause}
             aria-label={t("pause")}
-            className="rounded-lg border border-slate-200 bg-white p-2 text-slate-600 hover:bg-slate-100"
           >
-            <Pause className="size-4" />
-          </button>
+            <Pause />
+          </Button>
         </div>
       </div>
       <div
@@ -251,7 +253,7 @@ export function MeaningTypingGame({
               (word.kind === "HEART"
                 ? "border-pink-300 bg-pink-50 text-pink-700"
                 : word.y > dangerY * 0.8
-                  ? "border-rose-300 bg-rose-50 text-rose-700"
+                  ? "border-red-300 bg-red-50 text-red-700"
                   : word.y > dangerY * 0.6
                     ? "border-amber-300 bg-amber-50 text-amber-800"
                     : "border-blue-200 bg-blue-50 text-blue-800")
@@ -268,7 +270,7 @@ export function MeaningTypingGame({
             {target?.instanceId === word.instanceId && (
               <Crosshair
                 aria-hidden="true"
-                className="pointer-events-none absolute -right-3 -top-3 size-7 animate-pulse rounded-full bg-white p-1 text-indigo-700 shadow-lg"
+                className="pointer-events-none absolute -right-3 -top-3 size-7 animate-pulse rounded-full bg-white p-1 text-blue-700 shadow-lg"
               />
             )}
             {word.kind === "HEART" && (
@@ -332,7 +334,7 @@ export function MeaningTypingGame({
           </div>
         ))}
         <div
-          className="pointer-events-none absolute bottom-0 left-0 right-0 flex items-end justify-center border-t border-rose-200 bg-gradient-to-t from-rose-100 to-rose-50/50 pb-3 text-[10px] font-bold uppercase tracking-[.25em] text-rose-600"
+          className="pointer-events-none absolute bottom-0 left-0 right-0 flex items-end justify-center border-t border-red-200 bg-gradient-to-t from-red-100 to-red-50/50 pb-3 text-[11px] font-semibold uppercase tracking-[.25em] text-red-600"
           style={{ height: 44 }}
         >
           {t("danger_zone")}
@@ -340,7 +342,7 @@ export function MeaningTypingGame({
         {state.status === "PAUSED" && (
           <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 bg-white/90 p-5 text-center backdrop-blur-sm">
             {countdown !== null ? (
-              <strong className="text-7xl text-blue-600">
+              <strong className="text-7xl font-bold text-blue-600">
                 {countdown === 0 ? t("go") : countdown}
               </strong>
             ) : (
@@ -349,20 +351,17 @@ export function MeaningTypingGame({
                 <p className="max-w-sm text-sm text-slate-500">
                   {t("pause_help")}
                 </p>
-                <button
+                <Button
+                  size="lg"
                   onPointerDown={(event) => event.stopPropagation()}
                   onClick={resume}
-                  className="flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-3 font-bold text-white hover:bg-indigo-700"
                 >
-                  <Play className="size-4" />
+                  <Play />
                   {t("resume")}
-                </button>
-                <button
-                  onClick={onChange}
-                  className="text-sm text-slate-500 underline"
-                >
+                </Button>
+                <Button variant="ghost" size="sm" onClick={onChange}>
                   {t("change_sources")}
-                </button>
+                </Button>
               </>
             )}
           </div>
@@ -372,7 +371,7 @@ export function MeaningTypingGame({
         aria-live="polite"
         className={
           "shrink-0 border-t border-slate-100 px-3 py-1 text-center text-xs leading-5 " +
-          (state.inputError ? "text-rose-600" : "text-slate-500")
+          (state.inputError ? "text-red-600" : "text-slate-500")
         }
       >
         {state.inputError ? t("wrong_answer") : t("meaning_typing_hint")}

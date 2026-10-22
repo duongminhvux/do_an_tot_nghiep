@@ -2,6 +2,9 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { BookOpen, Loader2, Search, Trophy } from "lucide-react";
+import { Panel, StatCard, Tabs } from "@/components/ui/page";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import type { GameStats, Sources, SourceType, WordSource } from "../types";
 export function WordShooterSetup({
   sources,
@@ -32,64 +35,37 @@ export function WordShooterSetup({
     source.name.toLowerCase().includes(search.toLowerCase().trim()),
   );
   return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <section className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6">
-        <h2 className="text-lg font-bold text-slate-900">
-          {t("choose_sources")}
-        </h2>
-        <p className="mt-1 text-sm leading-6 text-slate-500">
-          {t("sources_help")}
-        </p>
-        <div
-          className="mt-5 flex gap-2"
-          role="group"
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <Panel title={t("choose_sources")} description={t("sources_help")}>
+        <Tabs<SourceType>
           aria-label={t("source_category")}
-        >
-          <button
-            aria-pressed={tab === "SYSTEM"}
-            onClick={() => setTab("SYSTEM")}
-            className={
-              "flex-1 rounded-lg px-3 py-2.5 text-sm font-semibold " +
-              (tab === "SYSTEM"
-                ? "bg-indigo-50 text-indigo-700"
-                : "bg-slate-50 text-slate-500")
-            }
-          >
-            {t("system_sources")}
-          </button>
-          <button
-            aria-pressed={tab === "USER"}
-            onClick={() => setTab("USER")}
-            className={
-              "flex-1 rounded-lg px-3 py-2.5 text-sm font-semibold " +
-              (tab === "USER"
-                ? "bg-indigo-50 text-indigo-700"
-                : "bg-slate-50 text-slate-500")
-            }
-          >
-            {t("user_sources")}
-          </button>
-        </div>
+          value={tab}
+          onChange={setTab}
+          items={[
+            { value: "SYSTEM", label: t("system_sources") },
+            { value: "USER", label: t("user_sources") },
+          ]}
+        />
         <div className="relative mt-4">
-          <Search className="absolute left-3 top-3 size-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
           <input
             aria-label={t("search_sources")}
             placeholder={t("search_sources")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-indigo-500"
+            className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
           />
         </div>
         <div className="mt-4 grid max-h-80 gap-2 overflow-y-auto sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {shown.map((source) => (
             <label
               key={key(source)}
-              className={
-                "flex cursor-pointer items-center gap-3 rounded-lg border p-3 " +
-                (selected.includes(key(source))
-                  ? "border-indigo-400 bg-indigo-50/60"
-                  : "border-slate-200 hover:border-slate-300")
-              }
+              className={cn(
+                "flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors",
+                selected.includes(key(source))
+                  ? "border-blue-400 bg-blue-50/60"
+                  : "border-slate-200 hover:border-blue-300",
+              )}
             >
               <input
                 type="checkbox"
@@ -102,12 +78,12 @@ export function WordShooterSetup({
                       : selected.filter((id) => id !== key(source)),
                   )
                 }
-                className="size-4 shrink-0 accent-indigo-600"
+                className="size-4 shrink-0 accent-blue-600"
               />
-              <BookOpen className="size-5 shrink-0 text-indigo-400" />
+              <BookOpen className="size-5 shrink-0 text-blue-500" />
               <span className="min-w-0">
                 <strong
-                  className="block truncate text-sm text-slate-800"
+                  className="block truncate text-sm font-semibold text-slate-800"
                   title={source.name}
                 >
                   {source.name}
@@ -120,7 +96,7 @@ export function WordShooterSetup({
           ))}
         </div>
         {!shown.length && (
-          <p className="py-8 text-center text-sm text-slate-400">
+          <p className="py-8 text-center text-sm text-slate-500">
             {search.trim()
               ? t("no_matches")
               : tab === "USER"
@@ -128,29 +104,35 @@ export function WordShooterSetup({
                 : t("no_system_sources")}
           </p>
         )}
-        <p className="mt-4 text-sm font-semibold text-indigo-600">
+        <p className="mt-4 text-sm font-semibold text-blue-600">
           {t("selected_sources", { count: selected.length })}
         </p>
-        <button
+        <Button
+          size="lg"
           onClick={onStart}
           disabled={
             busy ||
             !selected.length ||
             count < (sources.settings?.minWordCount ?? 10)
           }
-          className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-3 font-bold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40"
+          className="mt-6 w-full"
         >
-          {busy && <Loader2 className="size-4 animate-spin" />}
+          {busy && <Loader2 className="animate-spin" />}
           {t("start")}
-        </button>
+        </Button>
         <p className="mt-2 text-center text-xs text-slate-500">
           {t("minimum_words", { count: sources.settings?.minWordCount ?? 10 })}
         </p>
-      </section>
+      </Panel>
       <aside className="space-y-4">
-        <section className="rounded-xl border border-slate-200 bg-white p-5">
-          <h2 className="font-bold text-slate-800">{t("session_rules")}</h2>
-          <p className="mt-3 text-sm leading-6 text-slate-600">
+        <StatCard
+          icon={Trophy}
+          tone="amber"
+          label={t("personal_best")}
+          value={stats?.bestScore ?? 0}
+        />
+        <Panel title={t("session_rules")}>
+          <p className="text-sm leading-6 text-slate-600">
             {t("shooter_rules", {
               count: sources.settings.wordsPerRound,
               seconds: sources.settings.roundDurationSeconds,
@@ -160,16 +142,7 @@ export function WordShooterSetup({
           <p className="mt-3 text-xs text-slate-500">
             {t("shooter_valid_words")}
           </p>
-        </section>
-        <section className="rounded-xl border border-slate-200 bg-white p-5">
-          <h2 className="flex items-center gap-2 font-bold text-slate-800">
-            <Trophy className="size-4 text-amber-500" />
-            {t("personal_best")}
-          </h2>
-          <p className="mt-3 text-3xl font-bold text-indigo-600">
-            {stats?.bestScore ?? 0}
-          </p>
-        </section>
+        </Panel>
       </aside>
     </div>
   );

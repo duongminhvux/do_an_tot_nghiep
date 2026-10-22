@@ -4,6 +4,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Clock } from 'lucide-react';
 import { CollectionProgressDetail } from '@/types/learning';
+import { Panel } from '@/components/ui/page';
 
 interface CollectionProgressOverviewProps {
   collectionProgress: CollectionProgressDetail | null;
@@ -24,14 +25,18 @@ export function CollectionProgressOverview({
     collectionProgress?.unlearnedWords ??
     Math.max(0, totalWordsCount - masteredWords - learningWords);
 
+  const tiles = [
+    { dot: 'bg-emerald-500', label: t('collection_detail.mastered'), value: masteredWords },
+    { dot: 'bg-amber-500', label: t('collection_detail.learning'), value: learningWords },
+    { dot: 'bg-red-500', label: t('collection_detail.not_mastered'), value: unlearnedWords },
+  ];
+
   return (
-    <div className="rounded border border-slate-200 bg-white p-5 space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold text-slate-900">
-          {t('collection_detail.your_progress')}
-        </h3>
+    <Panel
+      title={t('collection_detail.your_progress')}
+      action={
         <div className="flex items-center gap-2 text-xs text-slate-500">
-          <span className="font-semibold">
+          <span className="font-medium">
             {t('collection_detail.completed_lessons', {
               completed: collectionProgress?.completedLessonsCount || 0,
               total: lessonsCount,
@@ -41,58 +46,35 @@ export function CollectionProgressOverview({
             {collectionProgress?.overallProgress || 0}%
           </span>
         </div>
-      </div>
-
+      }
+      bodyClassName="space-y-4"
+    >
       {/* Progress Bar */}
-      <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+      <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
         <div
-          className="h-full bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full transition-all duration-500"
+          className="h-full rounded-full bg-primary transition-all duration-500"
           style={{ width: `${collectionProgress?.overallProgress || 0}%` }}
         />
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
-        <div className="flex items-center gap-2.5 p-3 rounded bg-emerald-50/60 border border-emerald-100">
-          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
-          <div>
-            <p className="text-[10px] text-slate-500 font-medium">
-              {t('collection_detail.mastered')}
-            </p>
-            <p className="text-base font-black text-slate-900">
-              {masteredWords}
-            </p>
+      <div className="grid grid-cols-2 gap-3 pt-1 sm:grid-cols-4">
+        {tiles.map((tile) => (
+          <div key={tile.label} className="flex items-center gap-2.5 rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${tile.dot}`} />
+            <div>
+              <p className="text-xs font-medium text-slate-500">{tile.label}</p>
+              <p className="text-base font-bold text-slate-900">{tile.value}</p>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-2.5 p-3 rounded bg-amber-50/60 border border-amber-100">
-          <div className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" />
+        ))}
+        <div className="flex items-center gap-2.5 rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <Clock className="h-4 w-4 shrink-0 text-blue-600" />
           <div>
-            <p className="text-[10px] text-slate-500 font-medium">
-              {t('collection_detail.learning')}
-            </p>
-            <p className="text-base font-black text-slate-900">
-              {learningWords}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2.5 p-3 rounded bg-rose-50/60 border border-rose-100">
-          <div className="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0" />
-          <div>
-            <p className="text-[10px] text-slate-500 font-medium">
-              {t('collection_detail.not_mastered')}
-            </p>
-            <p className="text-base font-black text-slate-900">
-              {unlearnedWords}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2.5 p-3 rounded bg-blue-50/60 border border-blue-100">
-          <Clock className="w-4 h-4 text-blue-500 shrink-0" />
-          <div>
-            <p className="text-[10px] text-slate-500 font-medium">
+            <p className="text-xs font-medium text-slate-500">
               {t('collection_detail.study_time')}
             </p>
-            <p className="text-sm font-black text-slate-900">
+            <p className="text-sm font-bold text-slate-900">
               {t('collection_detail.minutes_count', {
                 count: collectionProgress?.studyMinutes ?? 0,
               })}
@@ -100,6 +82,6 @@ export function CollectionProgressOverview({
           </div>
         </div>
       </div>
-    </div>
+    </Panel>
   );
 }

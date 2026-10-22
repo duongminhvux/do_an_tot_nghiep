@@ -16,6 +16,8 @@ import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { arenaService } from "@/services/arena.service";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Badge, surface } from "@/components/ui/page";
 import {
   Dialog,
   DialogContent,
@@ -29,9 +31,9 @@ import type { ArenaController } from "../hooks/use-arena-controller";
 
 type RoomEntry = "friends" | "room";
 
-type Props = Pick<ArenaController, "text" | "openPanel" | "button">;
+type Props = Pick<ArenaController, "text" | "openPanel">;
 
-export function ArenaModes({ text, openPanel, button }: Props) {
+export function ArenaModes({ text, openPanel }: Props) {
   const router = useRouter();
   const params = useParams();
   const locale = typeof params.locale === "string" ? params.locale : "vi";
@@ -176,11 +178,8 @@ export function ArenaModes({ text, openPanel, button }: Props) {
                   `${onlineCount} người đang online`,
                   `${onlineCount} players online`,
                 ),
-          style: "from-blue-50 to-[#e9f2ff]",
-          color: "text-blue-600",
-          iconBg: "bg-blue-100/70",
-          buttonStyle:
-            "bg-blue-600 text-white shadow-sm shadow-blue-200 hover:bg-blue-700",
+          accent: "bg-blue-600",
+          iconTone: "bg-blue-50 text-blue-600",
         },
         {
           key: "friends" as const,
@@ -195,11 +194,8 @@ export function ArenaModes({ text, openPanel, button }: Props) {
             "Chơi cùng bạn bè vui hơn!",
             "Better together with friends!",
           ),
-          style: "from-[#fffaf1] to-[#fff8eb]",
-          color: "text-amber-500",
-          iconBg: "bg-amber-100/70",
-          buttonStyle:
-            "border border-amber-200/60 bg-white text-blue-600 hover:bg-amber-50",
+          accent: "bg-amber-400",
+          iconTone: "bg-amber-50 text-amber-600",
         },
         {
           key: "room" as const,
@@ -211,74 +207,67 @@ export function ArenaModes({ text, openPanel, button }: Props) {
           ),
           action: text("Tạo phòng đấu", "Create a room"),
           footer: text("Hỗ trợ 3 - 8 người chơi", "For 3 – 8 players"),
-          style: "from-violet-50 to-[#f5f0ff]",
-          color: "text-violet-600",
-          iconBg: "bg-violet-100/70",
-          buttonStyle:
-            "border border-violet-200 bg-violet-100/50 text-violet-600 hover:bg-violet-100",
+          accent: "bg-violet-500",
+          iconTone: "bg-violet-50 text-violet-600",
         },
       ].map((mode) => (
         <article
           key={mode.key}
           className={cn(
-            "flex min-w-0 flex-col rounded bg-gradient-to-br p-4 @min-[560px]/arena:last:col-span-2 @min-[900px]/arena:p-5 @min-[900px]/arena:last:col-span-1",
-            mode.style,
+            surface,
+            "relative flex min-w-0 flex-col overflow-hidden p-5 @min-[560px]/arena:last:col-span-2 @min-[900px]/arena:last:col-span-1",
           )}
         >
+          <span
+            aria-hidden
+            className={cn("absolute inset-x-0 top-0 h-1", mode.accent)}
+          />
           <div className="flex items-start gap-3.5">
             <span
               className={cn(
                 "flex size-12 shrink-0 items-center justify-center rounded-xl",
-                mode.iconBg,
-                mode.color,
+                mode.iconTone,
               )}
             >
-              <mode.icon className="size-7" strokeWidth={2.3} />
+              <mode.icon className="size-6" />
             </span>
             <div className="min-w-0">
-              <h2 className="flex flex-wrap items-center gap-2 text-sm font-bold text-slate-900">
+              <h2 className="flex flex-wrap items-center gap-2 text-base font-semibold text-slate-900">
                 {mode.title}
-                {mode.key === "rank" && (
-                  <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[9px] font-medium text-emerald-600">
-                    Online
-                  </span>
-                )}
+                {mode.key === "rank" && <Badge tone="emerald">Online</Badge>}
               </h2>
-              <p className="mt-1.5 min-h-10 text-xs leading-5 text-slate-500">
+              <p className="mt-1 min-h-10 text-sm leading-5 text-slate-500">
                 {mode.description}
               </p>
             </div>
           </div>
           {mode.key === "rank" ? (
-            <button
+            <Button
               type="button"
               onClick={() => openPanel("rank")}
-              className={cn(button, "mt-4 w-full", mode.buttonStyle)}
+              className="mt-4 w-full"
             >
-              <Zap className="size-3.5 fill-current" />
+              <Zap className="fill-current" />
               {mode.action}
-            </button>
+            </Button>
           ) : (
             <div className="mt-4 space-y-3">
               <div className="grid grid-cols-2 gap-2">
-                <button
+                <Button
                   type="button"
                   disabled={!!busy || !connected}
                   onClick={() => void createRoom(mode.key as RoomEntry)}
-                  className={cn(
-                    button,
-                    "w-full disabled:opacity-40",
-                    mode.buttonStyle,
-                  )}
+                  className="w-full"
                 >
                   {busy === mode.key ? (
-                    <Loader2 className="size-4 animate-spin" />
+                    <Loader2 className="animate-spin" />
                   ) : (
-                    <Plus className="size-4" />
+                    <Plus />
                   )}
                   {text("Tạo phòng", "Create room")}
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="outline"
                   type="button"
                   disabled={!!busy}
                   aria-haspopup="dialog"
@@ -288,26 +277,23 @@ export function ArenaModes({ text, openPanel, button }: Props) {
                     setJoinCode("");
                     setNotices((old) => ({ ...old, [mode.key]: "" }));
                   }}
-                  className={cn(
-                    button,
-                    "w-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40",
-                  )}
+                  className="w-full"
                 >
-                  <KeyRound className="size-4" />
+                  <KeyRound />
                   {text("Nhập mã", "Enter code")}
-                </button>
+                </Button>
               </div>
               {joinFor !== mode.key && notices[mode.key] && (
                 <p
                   role="alert"
-                  className="rounded-lg bg-amber-50 p-2.5 text-xs leading-5 text-amber-800"
+                  className="rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs leading-5 text-amber-800"
                 >
                   {message(mode.key, notices[mode.key]!)}
                 </p>
               )}
             </div>
           )}
-          <div className="mt-3 flex items-center gap-2.5">
+          <div className="mt-4 flex items-center gap-2.5 border-t border-slate-100 pt-3">
             <div className="flex -space-x-2">
               <Avatar
                 initials="HM"
@@ -325,7 +311,7 @@ export function ArenaModes({ text, openPanel, button }: Props) {
                 className="size-5 text-[7px]"
               />
             </div>
-            <span className="text-[10px] text-slate-500">{mode.footer}</span>
+            <span className="text-xs text-slate-500">{mode.footer}</span>
           </div>
         </article>
       ))}
@@ -349,7 +335,7 @@ export function ArenaModes({ text, openPanel, button }: Props) {
           <DialogHeader>
             <span
               className={cn(
-                "mb-2 flex size-12 items-center justify-center rounded-2xl",
+                "mb-2 flex size-12 items-center justify-center rounded-xl",
                 joinFor === "room"
                   ? "bg-violet-50 text-violet-600"
                   : "bg-amber-50 text-amber-600",
@@ -415,14 +401,14 @@ export function ArenaModes({ text, openPanel, button }: Props) {
                   if (joinFor) setNotices((old) => ({ ...old, [joinFor]: "" }));
                 }}
                 placeholder="AB23CD"
-                className="h-14 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-center font-mono text-xl font-bold uppercase tracking-[0.3em] text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15 disabled:opacity-50"
+                className="h-14 w-full rounded-lg border border-slate-200 bg-white px-4 text-center font-mono text-xl font-bold uppercase tracking-[0.3em] text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:opacity-50"
               />
             </div>
             {joinFor && notices[joinFor] && (
               <p
                 id="arena-join-error"
                 role="alert"
-                className="rounded-xl bg-amber-50 p-3 text-sm leading-5 text-amber-800"
+                className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm leading-5 text-amber-800"
               >
                 {message(joinFor, notices[joinFor]!)}
               </p>
@@ -433,29 +419,24 @@ export function ArenaModes({ text, openPanel, button }: Props) {
               </p>
             )}
             <DialogFooter>
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 disabled={!!busy}
                 onClick={() => {
                   setJoinFor(null);
                   setJoinCode("");
                 }}
-                className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40"
               >
                 {text("Hủy", "Cancel")}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
                 disabled={!!busy || !connected || joinCode.length !== 6}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-40"
               >
-                {busy ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <KeyRound className="size-4" />
-                )}
+                {busy ? <Loader2 className="animate-spin" /> : <KeyRound />}
                 {text("Vào phòng", "Join room")}
-              </button>
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

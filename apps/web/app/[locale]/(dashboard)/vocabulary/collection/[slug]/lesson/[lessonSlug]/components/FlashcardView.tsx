@@ -70,7 +70,7 @@ export function FlashcardView({
         {/* CARD FRONT: Razor Sharp, Solid White, Full Width */}
         {/* --------------------------------------------- */}
         <div
-          className={`flashcard-face flashcard-front rounded-xl border border-slate-200/90 bg-white p-5 sm:p-7 shadow-md hover:shadow-lg transition-all flex flex-col justify-between ${
+          className={`flashcard-face flashcard-front rounded-xl border border-slate-200 bg-white p-5 sm:p-7 shadow-sm transition-all flex flex-col justify-between ${
             isFlipped ? 'absolute inset-0' : 'relative min-h-[440px] sm:min-h-[470px]'
           }`}
           style={{ pointerEvents: isFlipped ? 'none' : 'auto' }}
@@ -82,7 +82,7 @@ export function FlashcardView({
                 {t('card_label', { current: currentIndex + 1, total: totalWords })}
               </span>
               {wordLevel && (
-                <span className="px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-black border border-indigo-200">
+                <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">
                   {wordLevel}
                 </span>
               )}
@@ -97,7 +97,7 @@ export function FlashcardView({
           <div className="flex-1 flex flex-col items-center justify-center my-auto space-y-3 sm:space-y-4 text-center py-1 min-h-0">
             {/* Illustration image if available */}
             {illustration && (
-              <div className="relative w-36 h-36 sm:w-44 sm:h-44 rounded-2xl overflow-hidden bg-slate-50 border border-slate-200 p-2 shrink-0 group shadow-sm">
+              <div className="relative w-36 h-36 sm:w-44 sm:h-44 rounded-lg overflow-hidden bg-slate-50 border border-slate-200 p-2 shrink-0 group shadow-sm">
                 <img
                   src={illustration}
                   alt={wordText}
@@ -111,7 +111,7 @@ export function FlashcardView({
 
             {/* Main Word */}
             <div className="space-y-1.5">
-              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+              <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
                 {wordText}
               </h2>
 
@@ -124,7 +124,7 @@ export function FlashcardView({
                     e.stopPropagation();
                     playAudio(audioUs || defaultAudioUrl, 'en-US', undefined, 1, 'us');
                   }}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 text-xs text-slate-800 transition-all shadow-2xs group cursor-pointer"
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 text-xs text-slate-800 transition-all group cursor-pointer"
                   title={t('listen_us')}
                 >
                   <Volume2
@@ -133,7 +133,7 @@ export function FlashcardView({
                     }`}
                   />
                   {ipaUs && <span className="font-mono font-semibold">{ipaUs}</span>}
-                  <span className="text-[10px] font-black text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">
+                  <span className="text-[11px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded-md">
                     US
                   </span>
                 </button>
@@ -145,16 +145,16 @@ export function FlashcardView({
                     e.stopPropagation();
                     playAudio(audioUk || defaultAudioUrl, 'en-GB', undefined, 1, 'uk');
                   }}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 text-xs text-slate-800 transition-all shadow-2xs group cursor-pointer"
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 text-xs text-slate-800 transition-all group cursor-pointer"
                   title={t('listen_uk')}
                 >
                   <Volume2
-                    className={`w-3.5 h-3.5 text-indigo-600 group-hover:scale-110 transition-transform ${
+                    className={`w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform ${
                       playingAudioType === 'uk' ? 'animate-bounce' : ''
                     }`}
                   />
                   {ipaUk && <span className="font-mono font-semibold">{ipaUk}</span>}
-                  <span className="text-[10px] font-black text-indigo-700 bg-indigo-100 px-1.5 py-0.5 rounded">
+                  <span className="text-[11px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded-md">
                     UK
                   </span>
                 </button>
@@ -181,7 +181,7 @@ export function FlashcardView({
         {/* CARD BACK: DISPLAYING ALL MEANINGS & EXAMPLES */}
         {/* --------------------------------------------- */}
         <div
-          className={`flashcard-face flashcard-back rounded-xl border border-slate-200/90 bg-white p-4 sm:p-6 shadow-md flex flex-col justify-between ${
+          className={`flashcard-face flashcard-back rounded-xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm flex flex-col justify-between ${
             isFlipped ? 'relative min-h-[440px] sm:min-h-[470px]' : 'absolute inset-0'
           }`}
           style={{ pointerEvents: isFlipped ? 'auto' : 'none' }}
@@ -189,7 +189,7 @@ export function FlashcardView({
           {/* Header: Word & BOTH US & UK Audios / IPAs & Summary */}
           <div className="flex flex-wrap items-center justify-between pb-2.5 border-b border-slate-100 shrink-0 gap-2">
             <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
-              <h3 className="text-xl sm:text-2xl font-black text-slate-900">
+              <h3 className="text-xl sm:text-2xl font-bold text-slate-900">
                 {wordText}
               </h3>
 
@@ -200,7 +200,7 @@ export function FlashcardView({
                   e.stopPropagation();
                   playAudio(audioUs || defaultAudioUrl, 'en-US', undefined, 1, 'us');
                 }}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 text-xs text-slate-800 transition-all shadow-2xs group cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 text-xs text-slate-800 transition-all group cursor-pointer"
                 title={t('listen_us')}
               >
                 <Volume2
@@ -209,7 +209,7 @@ export function FlashcardView({
                   }`}
                 />
                 {ipaUs && <span className="font-mono font-semibold text-[11px]">{ipaUs}</span>}
-                <span className="text-[10px] font-black text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">
+                <span className="text-[11px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded-md">
                   US
                 </span>
               </button>
@@ -221,23 +221,23 @@ export function FlashcardView({
                   e.stopPropagation();
                   playAudio(audioUk || defaultAudioUrl, 'en-GB', undefined, 1, 'uk');
                 }}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 text-xs text-slate-800 transition-all shadow-2xs group cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 text-xs text-slate-800 transition-all group cursor-pointer"
                 title={t('listen_uk')}
               >
                 <Volume2
-                  className={`w-3.5 h-3.5 text-indigo-600 group-hover:scale-110 transition-transform ${
+                  className={`w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform ${
                     playingAudioType === 'uk' ? 'animate-bounce' : ''
                   }`}
                 />
                 {ipaUk && <span className="font-mono font-semibold text-[11px]">{ipaUk}</span>}
-                <span className="text-[10px] font-black text-indigo-700 bg-indigo-100 px-1.5 py-0.5 rounded">
+                <span className="text-[11px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded-md">
                   UK
                 </span>
               </button>
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold border border-indigo-200">
+              <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">
                 {t('all_meanings_badge', { count: totalMeaningsCount })}
               </span>
             </div>
@@ -253,7 +253,7 @@ export function FlashcardView({
                 {/* Part of Speech Header Badge */}
                 <div className="flex items-center gap-2">
                   <span
-                    className={`px-3 py-1 rounded-lg text-xs font-black uppercase tracking-wider border shadow-2xs ${partGroup.info.bg} ${partGroup.info.color} ${partGroup.info.border}`}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider border ${partGroup.info.bg} ${partGroup.info.color} ${partGroup.info.border}`}
                   >
                     {partGroup.info.label} ({partGroup.partOfSpeech})
                   </span>
@@ -267,15 +267,15 @@ export function FlashcardView({
                   {partGroup.meanings.map((meaningItem, mIdx) => (
                     <div
                       key={mIdx}
-                      className="p-3 sm:p-3.5 rounded-2xl bg-slate-50/80 border border-slate-200 space-y-2 hover:bg-slate-50 transition-colors"
+                      className="p-3 sm:p-3.5 rounded-lg bg-slate-50 border border-slate-200 space-y-2 hover:bg-slate-50 transition-colors"
                     >
                       {/* Translations (Tiếng Việt) */}
                       <div className="flex items-start gap-2">
-                        <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                        <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
                           {mIdx + 1}
                         </span>
                         <div className="flex-1">
-                          <p className="text-base sm:text-lg font-black text-slate-900 leading-snug">
+                          <p className="text-base sm:text-lg font-bold text-slate-900 leading-snug">
                             {meaningItem.translations.join(', ') || t('meaning_default')}
                           </p>
                         </div>
@@ -294,7 +294,7 @@ export function FlashcardView({
                           {meaningItem.examples.map((ex, exIdx) => (
                             <div
                               key={exIdx}
-                              className="bg-white p-2.5 rounded-xl border border-slate-200 text-xs space-y-0.5"
+                              className="bg-white p-2.5 rounded-lg border border-slate-200 text-xs space-y-0.5"
                             >
                               <div className="flex items-start justify-between gap-2">
                                 <p className="font-bold text-slate-900 leading-relaxed text-xs">
@@ -340,11 +340,11 @@ export function FlashcardView({
 
                           {meaningItem.antonyms.length > 0 && (
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-bold text-rose-800">{t('antonyms')}</span>
+                              <span className="font-bold text-red-800">{t('antonyms')}</span>
                               {meaningItem.antonyms.map((ant, aIdx) => (
                                 <span
                                   key={aIdx}
-                                  className="px-2 py-0.5 rounded-md bg-rose-50 text-rose-900 border border-rose-300 font-semibold text-[11px]"
+                                  className="px-2 py-0.5 rounded-md bg-red-50 text-red-900 border border-red-300 font-semibold text-[11px]"
                                 >
                                   {ant}
                                 </span>

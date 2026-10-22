@@ -32,6 +32,9 @@ import {
   playErrorSound,
   playVictoryFanfare,
 } from './components/study-sound';
+import { Button } from '@/components/ui/button';
+import { EmptyState, LoadingState, surface, tones } from '@/components/ui/page';
+import { cn } from '@/lib/utils';
 import { StudyHeader } from './components/StudyHeader';
 import { TopicSidebar } from './components/TopicSidebar';
 import { FlashcardView } from './components/FlashcardView';
@@ -883,7 +886,7 @@ export default function LessonStudyPage() {
       : 0;
 
   return (
-    <div className={`min-h-screen bg-slate-50 text-slate-900 transition-all ${showSrsBar ? 'pb-24 sm:pb-28' : 'pb-8'}`}>
+    <div className={`min-h-full bg-background text-slate-900 transition-all ${showSrsBar ? 'pb-24 sm:pb-28' : 'pb-8'}`}>
       {/* 3D Flip Styles */}
       <style jsx global>{`
         .flashcard-3d-wrapper {
@@ -941,8 +944,8 @@ export default function LessonStudyPage() {
       />
 
       {/* 2. Main Content: Sidebar + Study Card */}
-      <div className="max-w-[1440px] mx-auto p-3 sm:p-4 lg:p-5">
-        <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 items-start">
+      <div className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8">
+        <div className="flex flex-col items-start gap-6 lg:flex-row">
           {/* Left Sidebar: Topics */}
           <TopicSidebar
             sections={sections}
@@ -960,32 +963,32 @@ export default function LessonStudyPage() {
           />
 
           {/* Right Main Area: Cards & HUD */}
-          <main className="flex-1 w-full space-y-3">
+          <main className="w-full min-w-0 flex-1 space-y-4">
             {/* Top Progress Bar & HUD */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-xl py-2 px-3.5 border border-slate-200/80 flex items-center justify-between gap-4 shadow-2xs">
+            <div className={cn(surface, 'flex items-center justify-between gap-4 px-4 py-3')}>
               <div className="flex-1 space-y-1">
                 <div className="flex items-center justify-between text-xs font-semibold">
-                  <span className="text-slate-700 font-bold">
+                  <span className="font-semibold text-slate-700">
                     {t('lesson_progress', { percent: Math.round(progressPercent) })}
                   </span>
-                  <span className="text-blue-600 font-bold">
+                  <span className="font-semibold text-blue-600">
                     {t('cards_counter', {
                       current: Math.min(learnedCountInSec, allSectionWords.length),
                       total: allSectionWords.length,
                     })}
                   </span>
                 </div>
-                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden p-0.5 border border-slate-200/50">
+                <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
                   <div
-                    className="bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-500 h-full rounded-full transition-all duration-300 shadow-xs"
+                    className="h-full rounded-full bg-primary transition-all duration-300"
                     style={{ width: `${progressPercent}%` }}
                   />
                 </div>
               </div>
 
               {/* Shortcut Prompt */}
-              <div className="hidden sm:flex items-center gap-1.5 text-[11px] font-medium text-slate-400 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200/70">
-                <kbd className="px-1.5 py-0.5 rounded bg-white border border-slate-300 font-mono text-[10px] text-slate-700 font-bold shadow-2xs">
+              <div className="hidden items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-medium text-slate-500 sm:flex">
+                <kbd className="rounded-md border border-slate-300 bg-white px-1.5 py-0.5 font-mono text-[11px] font-bold text-slate-700">
                   {mode === 'guess' ? 'Enter' : 'Space'}
                 </kbd>
                 <span>
@@ -1000,65 +1003,62 @@ export default function LessonStudyPage() {
 
             {/* Study Card Area */}
             {isWordsLoading ? (
-              <div className="w-full h-[440px] sm:h-[470px] bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col items-center justify-center gap-3 text-slate-400">
-                <div className="w-9 h-9 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                <p className="text-xs font-semibold text-slate-600">{t('loading_cards')}</p>
+              <div className={cn(surface, 'h-[440px] w-full sm:h-[470px]')}>
+                <LoadingState label={t('loading_cards')} className="h-full" />
               </div>
             ) : wordsList.length === 0 ? (
               allSectionWords.length > 0 ? (
-                <div className="w-full h-[440px] sm:h-[470px] bg-white rounded-2xl border border-emerald-200 shadow-sm flex flex-col items-center justify-center text-center p-6 sm:p-8 space-y-4">
-                  <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-200 shadow-xs">
+                <div className={cn(surface, 'flex h-[440px] w-full flex-col items-center justify-center space-y-4 p-6 text-center sm:h-[470px] sm:p-8')}>
+                  <div className={cn('flex h-14 w-14 items-center justify-center rounded-xl', tones.emerald)}>
                     <CheckCheck className="w-8 h-8" />
                   </div>
                   <div className="space-y-1.5 max-w-md">
-                    <h3 className="text-lg font-bold text-slate-900">
+                    <h3 className="text-lg font-semibold text-slate-900">
                       {t('study_page.all_completed_title')}
                     </h3>
-                    <p className="text-xs text-slate-500 leading-relaxed">
+                    <p className="text-sm text-slate-500">
                       {t('study_page.all_completed_desc', { count: allSectionWords.length })}
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-                    <button
+                    <Button
                       type="button"
                       onClick={() => {
                         setReviewAll(true);
                         setCurrentIndex(0);
                         setCompleted(false);
                       }}
-                      className="px-5 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-all shadow-sm cursor-pointer"
                     >
                       {t('study_page.replay_section_btn', { count: allSectionWords.length })}
-                    </button>
+                    </Button>
                     {(() => {
                       const curIdx = sections.findIndex((s) => s._id === selectedSectionId);
                       const nextSec = curIdx >= 0 && curIdx < sections.length - 1 ? sections[curIdx + 1] : null;
                       if (!nextSec) return null;
                       return (
-                        <button
+                        <Button
                           type="button"
+                          variant="outline"
                           onClick={() => {
                             setSelectedSectionId(nextSec._id);
                             setReviewAll(false);
                             setCurrentIndex(0);
                             setCompleted(false);
                           }}
-                          className="px-5 py-2.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200 transition-all cursor-pointer border border-slate-200"
                         >
                           {t('study_page.next_section_btn', { name: nextSec.name })}
-                        </button>
+                        </Button>
                       );
                     })()}
                   </div>
                 </div>
               ) : (
-                <div className="w-full h-[440px] sm:h-[470px] bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center p-6 sm:p-8 space-y-3">
-                  <div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-inner border border-blue-100">
-                    <BookOpen className="w-8 h-8" />
-                  </div>
-                  <h3 className="text-base font-bold text-slate-900">{t('no_words_in_topic')}</h3>
-                  <p className="text-xs text-slate-500 max-w-sm">{t('no_words_desc')}</p>
-                </div>
+                <EmptyState
+                  icon={BookOpen}
+                  title={t('no_words_in_topic')}
+                  description={t('no_words_desc')}
+                  className="h-[440px] w-full sm:h-[470px]"
+                />
               )
             ) : completed ? (
               <LessonCompletionView
@@ -1120,7 +1120,7 @@ export default function LessonStudyPage() {
 
                 {/* MODES 2 & 3 (SOLID CRISP WHITE CARD) */}
                 {mode !== 'flashcard' && (
-                  <div className="w-full min-h-[440px] sm:min-h-[470px] bg-white rounded-xl border border-slate-200 shadow-md p-4 sm:p-6 flex flex-col justify-center items-center">
+                  <div className={cn(surface, 'flex min-h-[440px] w-full flex-col items-center justify-center p-5 sm:min-h-[470px] sm:p-6')}>
                     {/* MODE 2: ĐOÁN TỪ (GUESS MODE) */}
                     {mode === 'guess' && (
                       <GuessModeView

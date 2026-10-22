@@ -7,10 +7,11 @@ import {
   Check,
   CheckCheck,
   Bookmark,
-  Filter,
 } from 'lucide-react';
 import { SectionItem, LessonItem, LessonWordItem } from '@/types/vocabulary';
 import { SectionProgressStat } from '@/types/learning';
+import { surface } from '@/components/ui/page';
+import { cn } from '@/lib/utils';
 
 interface TopicSidebarProps {
   sections: SectionItem[];
@@ -42,15 +43,15 @@ export function TopicSidebar({
   t,
 }: TopicSidebarProps) {
   return (
-    <aside className="w-full lg:w-72 sticky top-20 shrink-0 rounded-2xl border border-slate-200/90 bg-white/90 backdrop-blur-sm p-4 space-y-3 shadow-xs">
+    <aside className={cn(surface, 'w-full shrink-0 space-y-3 p-4 lg:sticky lg:top-32 lg:w-72')}>
       <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
         <div className="flex items-center gap-2">
           <Layers className="w-4 h-4 text-blue-600" />
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-700">
             {t('topic_list')}
           </h2>
         </div>
-        <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
           {sections.length > 0
             ? t('topics_count', { count: sections.length })
             : t('topics_count', { count: 1 })}
@@ -77,17 +78,17 @@ export function TopicSidebar({
               <button
                 key={sec._id}
                 onClick={() => setSelectedSectionId(sec._id)}
-                className={`w-full text-left p-3 rounded-xl border transition-all flex flex-col gap-2 group cursor-pointer ${
+                className={`group flex w-full cursor-pointer flex-col gap-2 rounded-lg border p-3 text-left transition-colors ${
                   isActive
-                    ? 'bg-gradient-to-r from-blue-50/90 to-indigo-50/70 border-blue-400 shadow-sm ring-1 ring-blue-400/30'
-                    : 'border-slate-200/80 hover:border-slate-300 hover:bg-slate-50/80'
+                    ? 'border-blue-300 bg-blue-50'
+                    : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                 }`}
               >
                 <div className="flex items-center justify-between w-full">
                   <div className="min-w-0 flex-1 pr-2">
                     <div className="flex items-center gap-1.5">
                       <h3
-                        className={`text-sm font-bold truncate ${
+                        className={`truncate text-sm font-semibold ${
                           isActive
                             ? 'text-blue-700'
                             : 'text-slate-800 group-hover:text-blue-600'
@@ -96,7 +97,7 @@ export function TopicSidebar({
                         {secLabel}
                       </h3>
                       {isAllMastered && (
-                        <span className="inline-flex items-center text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200 shrink-0">
+                        <span className="inline-flex shrink-0 items-center rounded-full bg-emerald-50 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-100">
                           {t('sidebar.mastered_badge')}
                         </span>
                       )}
@@ -106,9 +107,9 @@ export function TopicSidebar({
                   <div
                     className={`w-6 h-6 rounded-full flex items-center justify-center transition-transform shrink-0 ${
                       isActive
-                        ? 'bg-blue-600 text-white shadow-xs'
+                        ? 'bg-primary text-white'
                         : isAllMastered
-                        ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                        ? 'bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-200'
                         : 'border border-slate-200 text-slate-400 group-hover:border-blue-400 group-hover:text-blue-600 group-hover:translate-x-0.5'
                     }`}
                   >
@@ -129,7 +130,7 @@ export function TopicSidebar({
                           <span className="font-semibold text-slate-700">
                             {t('sidebar.learned_in_sec', { learned: learnedInSec, total: wordCount })}
                           </span>
-                          <span className="text-[11px] text-blue-600 font-bold">
+                          <span className="text-[11px] font-semibold text-blue-600">
                             ({progressPercent}%)
                           </span>
                         </>
@@ -138,12 +139,12 @@ export function TopicSidebar({
                       )}
                     </span>
                     {learnedInSec > 0 && masteredInSec > 0 && (
-                      <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50/80 px-1.5 py-0.2 rounded border border-emerald-100">
+                      <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-100">
                         {t('sidebar.mastered_in_sec', { count: masteredInSec })}
                       </span>
                     )}
                     {learnedInSec === 0 && (
-                      <span className="text-[10px] text-slate-400">
+                      <span className="text-[11px] text-slate-400">
                         {t('sidebar.not_studied')}
                       </span>
                     )}
@@ -155,7 +156,7 @@ export function TopicSidebar({
                       className={`h-full rounded-full transition-all duration-300 ${
                         isAllMastered
                           ? 'bg-emerald-500'
-                          : 'bg-gradient-to-r from-blue-500 to-indigo-500'
+                          : 'bg-primary'
                       }`}
                       style={{ width: `${Math.min(progressPercent, 100)}%` }}
                     />
@@ -174,15 +175,15 @@ export function TopicSidebar({
             return (
               <button
                 onClick={() => setSelectedSectionId('all')}
-                className="w-full text-left p-3 rounded-xl border bg-gradient-to-r from-blue-50 to-indigo-50/60 border-blue-400 shadow-sm flex flex-col gap-2 cursor-pointer"
+                className="flex w-full cursor-pointer flex-col gap-2 rounded-lg border border-blue-300 bg-blue-50 p-3 text-left"
               >
                 <div className="flex items-center justify-between w-full">
                   <div className="min-w-0 flex-1 pr-2">
-                    <h3 className="text-sm font-bold text-blue-700 truncate">
+                    <h3 className="truncate text-sm font-semibold text-blue-700">
                       {currentLesson?.title || t('all_words_title')}
                     </h3>
                   </div>
-                  <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0">
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-white">
                     <Check className="w-3.5 h-3.5" />
                   </div>
                 </div>
@@ -195,7 +196,7 @@ export function TopicSidebar({
                         : t('all_words_in_lesson', { count: total })}
                     </span>
                     {masteredWords.size > 0 && (
-                      <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50/80 px-1.5 py-0.2 rounded border border-emerald-100">
+                      <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-100">
                         {t('sidebar.mastered_in_sec', { count: masteredWords.size })}
                       </span>
                     )}
@@ -203,7 +204,7 @@ export function TopicSidebar({
                   <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all duration-300 ${
-                        isAll ? 'bg-emerald-500' : 'bg-gradient-to-r from-blue-500 to-indigo-500'
+                        isAll ? 'bg-emerald-500' : 'bg-primary'
                       }`}
                       style={{ width: `${Math.min(totalPercent, 100)}%` }}
                     />
@@ -222,13 +223,13 @@ export function TopicSidebar({
             type="checkbox"
             checked={reviewAll}
             onChange={(e) => setReviewAll(e.target.checked)}
-            className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-slate-300 cursor-pointer"
+            className="h-3.5 w-3.5 cursor-pointer rounded border-slate-300 accent-blue-600"
           />
           <span className="font-medium flex-1">
             {t('sidebar.review_all_label')}
           </span>
           {reviewAll && (
-            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full border border-blue-200">
+            <span className="rounded-full bg-blue-50 px-1.5 py-0.5 text-[11px] font-semibold text-blue-700 ring-1 ring-inset ring-blue-100">
               {t('sidebar.review_all_on')}
             </span>
           )}
@@ -251,7 +252,7 @@ export function TopicSidebar({
             </span>
           </span>
         </div>
-        <p className="text-[10.5px] text-slate-400 leading-tight">
+        <p className="text-[11px] leading-tight text-slate-400">
           {t('sidebar.srs_tip')}
         </p>
       </div>

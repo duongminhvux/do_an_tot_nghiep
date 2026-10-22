@@ -13,6 +13,8 @@ import {
   Headphones,
 } from 'lucide-react';
 import { StudyMode } from '../../collection/[slug]/lesson/[lessonSlug]/components/study-sound';
+import { Button } from '@/components/ui/button';
+import { Badge, Segmented } from '@/components/ui/page';
 
 interface ReviewHeaderProps {
   locale: string;
@@ -35,30 +37,59 @@ export function ReviewHeader({
   setShowSettings,
   t,
 }: ReviewHeaderProps) {
+  const modeItems = [
+    {
+      value: 'flashcard' as StudyMode,
+      label: (
+        <span className="inline-flex items-center gap-1.5">
+          <CreditCard className="h-3.5 w-3.5" />
+          {t('modes.flashcard', 'Flashcard')}
+        </span>
+      ),
+    },
+    {
+      value: 'guess' as StudyMode,
+      label: (
+        <span className="inline-flex items-center gap-1.5">
+          <Brain className="h-3.5 w-3.5" />
+          {t('modes.guess', 'Đoán từ')}
+        </span>
+      ),
+    },
+    {
+      value: 'repeat' as StudyMode,
+      label: (
+        <span className="inline-flex items-center gap-1.5">
+          <Headphones className="h-3.5 w-3.5" />
+          {t('modes.repeat', 'Nghe viết')}
+        </span>
+      ),
+    },
+  ];
+
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-2xs">
-      <div className="max-w-4xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
+    // Sticks just below the dashboard shell's own sticky top bar (h-14, z-30).
+    <header className="sticky top-14 z-20 border-b border-slate-200 bg-white/95 backdrop-blur-md">
+      <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-2.5 sm:px-6 lg:px-8">
         {/* Left: Back & Title */}
-        <div className="flex items-center gap-3 min-w-0">
-          <Link
-            href={`/${locale}/vocabulary`}
-            className="w-9 h-9 rounded-xl border border-slate-200 bg-white flex items-center justify-center text-slate-600 hover:text-blue-600 hover:border-blue-300 transition-colors shadow-2xs shrink-0 cursor-pointer"
-            title={t('back', 'Quay lại')}
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </Link>
+        <div className="flex min-w-0 items-center gap-3">
+          <Button asChild variant="outline" size="icon" className="shrink-0" title={t('back', 'Quay lại')}>
+            <Link href={`/${locale}/vocabulary`}>
+              <ArrowLeft />
+            </Link>
+          </Button>
 
           <div className="min-w-0">
-            <h1 className="text-sm sm:text-base font-bold text-slate-900 truncate flex items-center gap-2">
-              <RotateCcw className="w-4 h-4 text-blue-600 shrink-0" />
-              <span>{t('review.page_title', 'Ôn tập định kỳ (SRS)')}</span>
+            <h1 className="flex items-center gap-2 truncate text-base font-semibold text-slate-900">
+              <RotateCcw className="h-4 w-4 shrink-0 text-blue-600" />
+              <span className="truncate">{t('review.page_title', 'Ôn tập định kỳ (SRS)')}</span>
               {dueCount > 0 && (
-                <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                <Badge tone="amber" className="hidden sm:inline-flex">
                   {dueCount} {t('words', 'từ')}
-                </span>
+                </Badge>
               )}
             </h1>
-            <p className="text-[11px] text-slate-400 font-medium truncate hidden sm:block">
+            <p className="hidden truncate text-xs text-slate-500 sm:block">
               {t('review.page_desc', 'Ôn tập lại các từ vựng đến hạn để củng cố trí nhớ dài hạn')}
             </p>
           </div>
@@ -66,114 +97,49 @@ export function ReviewHeader({
 
         {/* Right: Mode Switcher + Streak + Controls */}
         <div className="flex items-center gap-2">
-          {/* Desktop Mode Switcher */}
-          <div className="hidden sm:flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl border border-slate-200/80 shadow-inner">
-            <button
-              type="button"
-              onClick={() => setMode('flashcard')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                mode === 'flashcard'
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25 scale-[1.02]'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
-              }`}
-            >
-              <CreditCard className="w-3.5 h-3.5" />
-              <span>{t('modes.flashcard', 'Flashcard')}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setMode('guess')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                mode === 'guess'
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25 scale-[1.02]'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
-              }`}
-            >
-              <Brain className="w-3.5 h-3.5" />
-              <span>{t('modes.guess', 'Đoán từ')}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setMode('repeat')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                mode === 'repeat'
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25 scale-[1.02]'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
-              }`}
-            >
-              <Headphones className="w-3.5 h-3.5" />
-              <span>{t('modes.repeat', 'Nghe viết')}</span>
-            </button>
-          </div>
+          <Segmented
+            items={modeItems}
+            value={mode}
+            onChange={setMode}
+            className="hidden sm:inline-flex"
+          />
 
           {/* Gamification Streak Pill */}
           {streak > 0 && (
             <div
               title={t('streak_tooltip', 'Chuỗi trả lời đúng liên tiếp')}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-500 to-rose-500 text-white text-xs font-extrabold shadow-sm"
+              className="flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700 ring-1 ring-inset ring-amber-200"
             >
-              <Flame className="w-3.5 h-3.5 fill-white text-white" />
+              <Flame className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
               <span>{streak}</span>
             </div>
           )}
 
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="icon-sm"
             onClick={() => setShowShortcuts(true)}
             title={t('shortcuts_tooltip', 'Phím tắt')}
-            className="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center text-slate-600 hover:text-blue-600 hover:border-blue-300 transition-colors shadow-2xs cursor-pointer"
           >
-            <Keyboard className="w-4 h-4" />
-          </button>
+            <Keyboard />
+          </Button>
 
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="icon-sm"
             onClick={() => setShowSettings(true)}
             title={t('settings_tooltip', 'Cài đặt học tập')}
-            className="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center text-slate-600 hover:text-blue-600 hover:border-blue-300 transition-colors shadow-2xs cursor-pointer"
           >
-            <Settings className="w-4 h-4" />
-          </button>
+            <Settings />
+          </Button>
         </div>
       </div>
 
       {/* Mobile Mode Switcher Bar */}
-      <div className="flex sm:hidden overflow-x-auto px-4 py-2 border-t border-slate-100 gap-1.5 bg-slate-50/90 no-scrollbar">
-        <button
-          type="button"
-          onClick={() => setMode('flashcard')}
-          className={`px-3 py-1 rounded-lg text-xs shrink-0 font-semibold transition-all cursor-pointer ${
-            mode === 'flashcard'
-              ? 'bg-blue-600 text-white shadow-xs'
-              : 'text-slate-700 bg-white border border-slate-200'
-          }`}
-        >
-          {t('modes.flashcard', 'Flashcard')}
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode('guess')}
-          className={`px-3 py-1 rounded-lg text-xs shrink-0 font-semibold transition-all cursor-pointer ${
-            mode === 'guess'
-              ? 'bg-blue-600 text-white shadow-xs'
-              : 'text-slate-700 bg-white border border-slate-200'
-          }`}
-        >
-          {t('modes.guess', 'Đoán từ')}
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode('repeat')}
-          className={`px-3 py-1 rounded-lg text-xs shrink-0 font-semibold transition-all cursor-pointer ${
-            mode === 'repeat'
-              ? 'bg-blue-600 text-white shadow-xs'
-              : 'text-slate-700 bg-white border border-slate-200'
-          }`}
-        >
-          {t('modes.repeat', 'Nghe viết')}
-        </button>
+      <div className="flex overflow-x-auto border-t border-slate-100 px-4 py-2 no-scrollbar sm:hidden">
+        <Segmented items={modeItems} value={mode} onChange={setMode} className="shrink-0" />
       </div>
     </header>
   );

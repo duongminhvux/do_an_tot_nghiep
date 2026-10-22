@@ -19,8 +19,6 @@ import {
   Check,
   X,
   Plus,
-  Folder,
-  ArrowLeft,
 } from "lucide-react";
 import { VocabularyFolders } from "@/components/vocabulary/VocabularyFolders";
 import { savedWordsService } from "@/services/saved-words.service";
@@ -32,23 +30,34 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Badge,
+  EmptyState,
+  ErrorState,
+  PageHeader,
+  PageShell,
+  surface,
+} from "@/components/ui/page";
+import { cn } from "@/lib/utils";
 
-function getLevelBadgeStyle(level?: string) {
+function getLevelBadgeTone(
+  level?: string,
+): "emerald" | "blue" | "violet" | "red" | "amber" | "slate" {
   switch (level?.toUpperCase()) {
     case "A1":
-      return "bg-emerald-50 text-emerald-700 border-emerald-200";
     case "A2":
-      return "bg-teal-50 text-teal-700 border-teal-200";
+      return "emerald";
     case "B1":
-      return "bg-blue-50 text-blue-700 border-blue-200";
     case "B2":
-      return "bg-indigo-50 text-indigo-700 border-indigo-200";
+      return "blue";
     case "C1":
-      return "bg-purple-50 text-purple-700 border-purple-200";
+      return "violet";
     case "C2":
-      return "bg-rose-50 text-rose-700 border-rose-200";
+      return "red";
     default:
-      return "bg-slate-100 text-slate-700 border-slate-200";
+      return "slate";
   }
 }
 
@@ -260,75 +269,46 @@ export default function MyWordsPage({
   };
 
   return (
-    <div className="w-full max-w-[1440px] mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
-      {selectedFolder !== null && (
-        <>
-          <nav
-            aria-label={t("folders.back")}
-            className="flex min-w-0 items-center gap-2 text-sm"
-          >
-            <Link
-              href={`/${locale}/vocabulary/my-words`}
-              className="inline-flex shrink-0 items-center gap-2 font-medium text-slate-500 transition hover:text-blue-600"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              {t("my_words.title")}
-            </Link>
-            <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
-            <span className="truncate font-medium text-slate-700">
-              {activeFolder?.name ?? t("folders.unfiled")}
-            </span>
-          </nav>
-          <header className="relative overflow-hidden rounded-3xl border border-blue-100 bg-gradient-to-br from-white via-blue-50/60 to-indigo-50/70 p-6 sm:p-8">
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute -right-20 -top-28 h-72 w-72 rounded-full border-[40px] border-white/50"
-            />
-            <div className="relative flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
-              <div className="flex min-w-0 flex-1 items-start gap-4 sm:gap-5">
-                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white bg-white text-blue-600 shadow-sm sm:h-16 sm:w-16">
-                  <Folder className="h-7 w-7 sm:h-8 sm:w-8" strokeWidth={1.8} />
-                </span>
-                <div className="min-w-0 max-w-2xl">
-                  <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-blue-600">
-                    {t("folders.personal_list")}
-                  </p>
-                  <h1 className="break-words text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
-                    {activeFolder?.name ?? t("folders.unfiled")}
-                  </h1>
-                  <p className="mt-3 text-sm leading-6 text-slate-500">
-                    {activeFolder?.description ||
-                      t("folders.detail_description")}
-                  </p>
-                  <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-white/80 px-3 py-1 text-xs font-semibold text-blue-700">
-                      <BookOpen className="h-3.5 w-3.5" />
-                      {t("folders.word_count", { count: folderWordCount })}
-                    </span>
-                    <Link
-                      href={`/${locale}/vocabulary`}
-                      className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 transition hover:text-blue-600"
-                    >
-                      {t("my_words.explore_more")}
-                      <ArrowRight className="h-3.5 w-3.5" />
-                    </Link>
-                  </div>
-                </div>
-              </div>
+    <PageShell>
+      {selectedFolder === null ? (
+        <PageHeader
+          icon={Bookmark}
+          title={t("my_words.title")}
+          description={t("my_words.subtitle")}
+        />
+      ) : (
+        <PageHeader
+          back={{
+            href: `/${locale}/vocabulary/my-words`,
+            label: t("my_words.title"),
+          }}
+          eyebrow={t("folders.personal_list")}
+          title={activeFolder?.name ?? t("folders.unfiled")}
+          description={
+            activeFolder?.description || t("folders.detail_description")
+          }
+          actions={
+            <>
+              <Badge tone="blue">
+                <BookOpen className="h-3.5 w-3.5" />
+                {t("folders.word_count", { count: folderWordCount })}
+              </Badge>
+              <Button asChild variant="ghost" size="sm">
+                <Link href={`/${locale}/vocabulary`}>
+                  {t("my_words.explore_more")}
+                  <ArrowRight />
+                </Link>
+              </Button>
               {activeFolder && (
-                <button
-                  type="button"
-                  onClick={() => setFolderAdding(true)}
-                  className="inline-flex shrink-0 items-center justify-center gap-2 self-start rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/15 transition hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-200 lg:self-center"
-                >
-                  <Plus className="h-4 w-4" />
+                <Button type="button" onClick={() => setFolderAdding(true)}>
+                  <Plus />
                   {t("folders.add_words")}
-                </button>
+                </Button>
               )}
-            </div>
-          </header>
-        </>
-      )}{" "}
+            </>
+          }
+        />
+      )}
       <VocabularyFolders
         folders={folders}
         loading={foldersLoading}
@@ -350,13 +330,13 @@ export default function MyWordsPage({
       {selectedFolder !== null && (
         <>
           {/* 2. Controls Toolbar: Search, Filters & View Toggle */}
-          <div className="space-y-4 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm sm:p-5">
+          <div className={cn(surface, "space-y-4 p-5")}>
             <div className="flex items-center justify-between gap-3">
-              <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-                <BookOpen className="h-4 w-4 text-blue-500" />
+              <h2 className="flex items-center gap-2 text-base font-semibold text-slate-900">
+                <BookOpen className="h-4 w-4 text-blue-600" />
                 {t("folders.words_heading")}
               </h2>
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-slate-500">
                 {t("folders.word_count", { count: pagination.total })}
               </span>
             </div>
@@ -375,7 +355,7 @@ export default function MyWordsPage({
                     "my_words.search_placeholder",
                     "Tìm theo từ tiếng Anh hoặc nghĩa tiếng Việt...",
                   )}
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/70 pl-10 pr-8 text-sm outline-none transition focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100 placeholder:text-slate-400"
+                  className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-8 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                 />
                 {searchTerm && (
                   <button
@@ -405,7 +385,7 @@ export default function MyWordsPage({
                       setPage(1);
                     }}
                   >
-                    <SelectTrigger className="h-10 w-auto min-w-[136px] rounded-xl text-xs font-medium">
+                    <SelectTrigger className="h-10 w-auto min-w-[136px] rounded-lg text-xs font-medium">
                       <SelectValue
                         placeholder={t(
                           "my_words.all_levels",
@@ -436,7 +416,7 @@ export default function MyWordsPage({
                     value={selectedStatus}
                     onValueChange={(val) => setSelectedStatus(val)}
                   >
-                    <SelectTrigger className="h-10 w-auto min-w-[155px] rounded-xl text-xs font-medium">
+                    <SelectTrigger className="h-10 w-auto min-w-[155px] rounded-lg text-xs font-medium">
                       <SelectValue
                         placeholder={t(
                           "my_words.all_statuses",
@@ -480,7 +460,7 @@ export default function MyWordsPage({
                     }
                   }}
                 >
-                  <SelectTrigger className="h-10 w-auto min-w-[135px] rounded-xl text-xs font-medium">
+                  <SelectTrigger className="h-10 w-auto min-w-[135px] rounded-lg text-xs font-medium">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent align="end">
@@ -504,112 +484,87 @@ export default function MyWordsPage({
 
           {/* 3. Word Cards Content */}
           {wordsError ? (
-            <div
-              role="alert"
-              className="rounded border border-rose-100 bg-rose-50 p-5 text-sm"
-            >
-              <p>{t("folders.load_error")}</p>
-              <button
-                onClick={() => void refetchWords()}
-                className="mt-2 font-semibold text-blue-600"
-              >
-                {t("folders.retry")}
-              </button>
-            </div>
+            <ErrorState
+              message={t("folders.load_error")}
+              onRetry={() => void refetchWords()}
+              retryLabel={t("folders.retry")}
+            />
           ) : isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="rounded border border-slate-200 bg-white p-5 space-y-4 animate-pulse"
-                >
+                <div key={i} className={cn(surface, "space-y-4 p-5")}>
                   <div className="flex items-center justify-between">
-                    <div className="h-6 w-32 bg-slate-100 rounded" />
-                    <div className="h-5 w-12 bg-slate-100 rounded" />
+                    <Skeleton className="h-6 w-32" />
+                    <Skeleton className="h-5 w-12" />
                   </div>
-                  <div className="h-4 w-48 bg-slate-100 rounded" />
-                  <div className="h-10 w-full bg-slate-50 rounded" />
-                  <div className="h-4 w-24 bg-slate-100 rounded" />
+                  <Skeleton className="h-4 w-48" />
+                  <Skeleton className="h-10 w-full rounded-lg" />
+                  <Skeleton className="h-4 w-24" />
                 </div>
               ))}
             </div>
           ) : filteredList.length === 0 ? (
             /* Empty State */
-            <div className="relative flex min-h-[380px] flex-col items-center justify-center overflow-hidden rounded-3xl border border-slate-200/80 bg-white px-6 py-14 text-center shadow-sm sm:min-h-[420px]">
-              <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-[28px] border-8 border-blue-50 bg-blue-100/60 text-blue-600">
-                <BookOpen
-                  className="h-10 w-10 text-blue-500"
-                  strokeWidth={1.7}
-                />
-              </div>
-              <div className="mx-auto max-w-md space-y-3">
-                <h3 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
-                  {searchTerm ||
-                  selectedLevel !== "all" ||
-                  selectedStatus !== "all"
-                    ? t(
-                        "my_words.no_results_title",
-                        "Không tìm thấy từ vựng phù hợp",
-                      )
-                    : t(
-                        "folders.empty_folder_title",
-                        "Chưa có từ vựng nào trong danh sách",
-                      )}
-                </h3>
-                <p className="text-sm leading-6 text-slate-500">
-                  {searchTerm ||
-                  selectedLevel !== "all" ||
-                  selectedStatus !== "all"
-                    ? t(
-                        "my_words.no_results_desc",
-                        "Hãy thử điều chỉnh từ khóa tìm kiếm hoặc đặt lại các bộ lọc bên trên.",
-                      )
-                    : t(
-                        "folders.empty_folder_description",
-                        "Trong khi học các bài học từ vựng hoặc tra từ, nhấn vào biểu tượng Dấu trang để lưu lại các từ bạn muốn xem lại!",
-                      )}
-                </p>
-              </div>
-              <div className="mt-7">
-                {searchTerm ||
+            <EmptyState
+              icon={BookOpen}
+              className="min-h-[360px]"
+              title={
+                searchTerm || selectedLevel !== "all" || selectedStatus !== "all"
+                  ? t(
+                      "my_words.no_results_title",
+                      "Không tìm thấy từ vựng phù hợp",
+                    )
+                  : t(
+                      "folders.empty_folder_title",
+                      "Chưa có từ vựng nào trong danh sách",
+                    )
+              }
+              description={
+                searchTerm || selectedLevel !== "all" || selectedStatus !== "all"
+                  ? t(
+                      "my_words.no_results_desc",
+                      "Hãy thử điều chỉnh từ khóa tìm kiếm hoặc đặt lại các bộ lọc bên trên.",
+                    )
+                  : t(
+                      "folders.empty_folder_description",
+                      "Trong khi học các bài học từ vựng hoặc tra từ, nhấn vào biểu tượng Dấu trang để lưu lại các từ bạn muốn xem lại!",
+                    )
+              }
+              action={
+                searchTerm ||
                 selectedLevel !== "all" ||
                 selectedStatus !== "all" ? (
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
                     onClick={() => {
                       setSearchTerm("");
                       setSelectedLevel("all");
                       setSelectedStatus("all");
                     }}
-                    className="px-4 py-2 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors cursor-pointer"
                   >
                     {t("my_words.reset_filter", "Đặt lại bộ lọc")}
-                  </button>
+                  </Button>
                 ) : activeFolder ? (
-                  <button
-                    type="button"
-                    onClick={() => setFolderAdding(true)}
-                    className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/15 transition hover:bg-blue-700"
-                  >
-                    <Plus className="h-4 w-4" />
+                  <Button type="button" onClick={() => setFolderAdding(true)}>
+                    <Plus />
                     {t("folders.add_first_word")}
-                  </button>
+                  </Button>
                 ) : (
-                  <Link
-                    href={`/${locale}/vocabulary`}
-                    className="px-5 py-2.5 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm inline-flex items-center gap-2 shadow-xs transition-colors"
-                  >
-                    <span>
-                      {t("my_words.explore_btn", "Khám phá kho từ vựng")}
-                    </span>
-                    <ArrowRight className="w-4 h-4" />
-                  </Link>
-                )}
-              </div>
-            </div>
+                  <Button asChild>
+                    <Link href={`/${locale}/vocabulary`}>
+                      <span>
+                        {t("my_words.explore_btn", "Khám phá kho từ vựng")}
+                      </span>
+                      <ArrowRight />
+                    </Link>
+                  </Button>
+                )
+              }
+            />
           ) : (
             /* Grid Cards Display */
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               {filteredList.map((item) => {
                 const word = item.word;
                 if (!word) return null;
@@ -627,7 +582,7 @@ export default function MyWordsPage({
                 return (
                   <div
                     key={item._id}
-                    className="group relative flex flex-col justify-between space-y-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition-all hover:border-blue-200 hover:shadow-md"
+                    className={cn(surface, "group relative flex flex-col justify-between space-y-4 p-5 transition-colors hover:border-blue-300")}
                   >
                     <div className="space-y-3">
                       {/* Card Header: Word, Level, Speaker, Bookmark */}
@@ -638,13 +593,12 @@ export default function MyWordsPage({
                               {word.word}
                             </h3>
                             {word.level && (
-                              <span
-                                className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase ${getLevelBadgeStyle(
-                                  word.level,
-                                )}`}
+                              <Badge
+                                tone={getLevelBadgeTone(word.level)}
+                                className="px-2 text-[11px] font-semibold uppercase"
                               >
                                 {word.level}
-                              </span>
+                              </Badge>
                             )}
                             {partOfSpeech && (
                               <span className="text-[11px] font-medium text-slate-400 italic">
@@ -660,7 +614,7 @@ export default function MyWordsPage({
                               <button
                                 type="button"
                                 onClick={() => handlePlayAudio(word, "us")}
-                                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 text-xs text-slate-800 transition-all shadow-2xs group cursor-pointer"
+                                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 text-xs text-slate-800 transition-all group cursor-pointer"
                                 title={t("listen_us", "Phát âm US")}
                               >
                                 <Volume2
@@ -673,7 +627,7 @@ export default function MyWordsPage({
                                 <span className="font-mono text-slate-700 text-xs">
                                   {formatIpa(ipaUs)}
                                 </span>
-                                <span className="text-[10px] font-black text-blue-700 bg-blue-100 px-1 py-0.2 rounded">
+                                <span className="text-[11px] font-bold text-blue-700 bg-blue-100 px-1 py-0.2 rounded-md">
                                   US
                                 </span>
                               </button>
@@ -684,20 +638,20 @@ export default function MyWordsPage({
                               <button
                                 type="button"
                                 onClick={() => handlePlayAudio(word, "uk")}
-                                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 text-xs text-slate-800 transition-all shadow-2xs group cursor-pointer"
+                                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 text-xs text-slate-800 transition-all group cursor-pointer"
                                 title={t("listen_uk", "Phát âm UK")}
                               >
                                 <Volume2
-                                  className={`w-3.5 h-3.5 text-indigo-600 group-hover:scale-110 transition-transform ${
+                                  className={`w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform ${
                                     playingAudioKey === `${word._id}-uk`
-                                      ? "animate-bounce text-indigo-700"
+                                      ? "animate-bounce text-blue-700"
                                       : ""
                                   }`}
                                 />
                                 <span className="font-mono text-slate-700 text-xs">
                                   {formatIpa(ipaUk)}
                                 </span>
-                                <span className="text-[10px] font-black text-indigo-700 bg-indigo-100 px-1 py-0.2 rounded">
+                                <span className="text-[11px] font-bold text-blue-700 bg-blue-100 px-1 py-0.2 rounded-md">
                                   UK
                                 </span>
                               </button>
@@ -725,7 +679,7 @@ export default function MyWordsPage({
                           {/* Review status badge */}
                           {item.reviewStatus === "MASTERED" ? (
                             <span
-                              className="p-1 rounded text-emerald-600 bg-emerald-50 border border-emerald-200"
+                              className="rounded-md bg-emerald-50 p-1 text-emerald-600 ring-1 ring-inset ring-emerald-200"
                               title={t(
                                 "my_words.mastered_tooltip",
                                 "Đã ghi nhớ thành thạo",
@@ -735,7 +689,7 @@ export default function MyWordsPage({
                             </span>
                           ) : item.reviewStatus === "LEARNING" ? (
                             <span
-                              className="p-1 rounded text-amber-600 bg-amber-50 border border-amber-200"
+                              className="rounded-md bg-amber-50 p-1 text-amber-600 ring-1 ring-inset ring-amber-200"
                               title={t(
                                 "my_words.learning_tooltip",
                                 "Đang trong tiến trình học",
@@ -745,7 +699,7 @@ export default function MyWordsPage({
                             </span>
                           ) : (
                             <span
-                              className="p-1 rounded text-slate-400 bg-slate-50 border border-slate-200"
+                              className="rounded-md bg-slate-50 p-1 text-slate-400 ring-1 ring-inset ring-slate-200"
                               title={t(
                                 "my_words.not_studied_tooltip",
                                 "Chưa học bài này",
@@ -759,13 +713,13 @@ export default function MyWordsPage({
                           <button
                             type="button"
                             onClick={() => toggleSaveMutation.mutate(word._id)}
-                            className="p-1.5 rounded text-blue-600 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                            className="cursor-pointer rounded-lg p-1.5 text-blue-600 transition-colors hover:bg-red-50 hover:text-red-600"
                             title={t(
                               "my_words.unsave_tooltip",
                               "Bỏ lưu từ này",
                             )}
                           >
-                            <Bookmark className="w-4 h-4 fill-blue-600 group-hover:fill-rose-500 group-hover:text-rose-500 transition-colors" />
+                            <Bookmark className="h-4 w-4 fill-blue-600 transition-colors group-hover:fill-red-500 group-hover:text-red-500" />
                           </button>
                         </div>
                       </div>
@@ -773,7 +727,7 @@ export default function MyWordsPage({
                       {/* Primary Meaning / Translations */}
                       <div className="space-y-1">
                         {translations.length > 0 && (
-                          <p className="text-sm font-semibold text-blue-900 leading-snug">
+                          <p className="text-sm font-semibold leading-snug text-slate-800">
                             {translations.join(", ")}
                           </p>
                         )}
@@ -786,7 +740,7 @@ export default function MyWordsPage({
 
                       {/* Example sentence */}
                       {example?.en && (
-                        <div className="rounded bg-slate-50/80 p-2.5 text-xs space-y-1 border border-slate-100">
+                        <div className="space-y-1 rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-xs">
                           <p className="text-slate-700 font-medium leading-relaxed">
                             “{example.en}”
                           </p>
@@ -801,7 +755,7 @@ export default function MyWordsPage({
                       {/* User Note Section */}
                       <div className="pt-1">
                         {isEditingThisNote ? (
-                          <div className="space-y-2 rounded border border-blue-200 bg-blue-50/30 p-2.5">
+                          <div className="space-y-2 rounded-lg border border-blue-200 bg-blue-50 p-2.5">
                             <textarea
                               value={noteInput}
                               onChange={(e) => setNoteInput(e.target.value)}
@@ -810,30 +764,33 @@ export default function MyWordsPage({
                                 "Viết ghi chú cá nhân cho từ này...",
                               )}
                               rows={2}
-                              className="w-full p-2 text-xs rounded border border-slate-200 bg-white focus:outline-hidden focus:border-blue-500 resize-none"
+                              className="w-full resize-none rounded-lg border border-slate-200 bg-white p-2 text-xs focus:border-blue-500 focus:outline-hidden focus:ring-2 focus:ring-blue-100"
                             />
                             <div className="flex items-center justify-end gap-1.5">
-                              <button
+                              <Button
                                 type="button"
+                                variant="ghost"
+                                size="sm"
                                 onClick={() => setEditingNoteWordId(null)}
-                                className="px-2.5 py-1 rounded text-[11px] text-slate-500 hover:bg-slate-100 cursor-pointer"
+                                className="h-7 px-2.5"
                               >
                                 {t("my_words.cancel_note", "Hủy")}
-                              </button>
-                              <button
+                              </Button>
+                              <Button
                                 type="button"
+                                size="sm"
                                 onClick={() => handleSaveNote(word._id)}
-                                className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold text-[11px] inline-flex items-center gap-1 cursor-pointer"
+                                className="h-7 px-3"
                               >
-                                <Check className="w-3 h-3" />
+                                <Check />
                                 <span>{t("my_words.save_note", "Lưu")}</span>
-                              </button>
+                              </Button>
                             </div>
                           </div>
                         ) : item.note ? (
-                          <div className="flex items-start justify-between gap-2 p-2 rounded bg-amber-50/70 border border-amber-200/60 text-xs">
+                          <div className="flex items-start justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs">
                             <div className="space-y-0.5 min-w-0">
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700">
+                              <span className="text-[11px] font-semibold uppercase tracking-wider text-amber-700">
                                 {t(
                                   "my_words.user_note_label",
                                   "Ghi chú của bạn:",
@@ -856,7 +813,7 @@ export default function MyWordsPage({
                           <button
                             type="button"
                             onClick={() => handleStartEditNote(item)}
-                            className="text-[11px] font-medium text-slate-400 hover:text-blue-600 inline-flex items-center gap-1 cursor-pointer transition-colors"
+                            className="inline-flex cursor-pointer items-center gap-1 text-xs font-medium text-slate-500 transition-colors hover:text-blue-600"
                           >
                             <Edit3 className="w-3.5 h-3.5" />
                             <span>
@@ -892,21 +849,22 @@ export default function MyWordsPage({
 
           {/* 4. Pagination */}
           {pagination.totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 pt-4">
-              <button
+            <div className="flex items-center justify-center gap-2 pt-2">
+              <Button
                 type="button"
+                variant="outline"
+                size="icon-sm"
                 disabled={page <= 1}
                 onClick={() => {
                   setPage((prev) => Math.max(1, prev - 1));
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
-                className="p-2 rounded border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none text-slate-600 cursor-pointer transition-colors"
                 title={t("my_words.prev_page", "Trang trước")}
               >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
+                <ChevronLeft />
+              </Button>
 
-              <span className="text-xs font-semibold text-slate-600 px-3 py-1.5 rounded border border-slate-200 bg-white">
+              <span className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600">
                 {t("my_words.page_info", {
                   current: pagination.page,
                   total: pagination.totalPages,
@@ -914,22 +872,23 @@ export default function MyWordsPage({
                 })}
               </span>
 
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="icon-sm"
                 disabled={page >= pagination.totalPages}
                 onClick={() => {
                   setPage((prev) => Math.min(pagination.totalPages, prev + 1));
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
-                className="p-2 rounded border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none text-slate-600 cursor-pointer transition-colors"
                 title={t("my_words.next_page", "Trang sau")}
               >
-                <ChevronRight className="w-4 h-4" />
-              </button>
+                <ChevronRight />
+              </Button>
             </div>
           )}
         </>
       )}
-    </div>
+    </PageShell>
   );
 }
