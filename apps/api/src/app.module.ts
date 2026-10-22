@@ -1,4 +1,5 @@
 import { MiniGameModule } from './modules/minigame/minigame.module.js';
+import { LearningActivityModule } from './modules/learning-activity/learning-activity.module.js';
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
@@ -86,6 +87,7 @@ const isDev = process.env.NODE_ENV !== 'production';
     DashboardModule,
     RedisModule,
     DomainEventsModule,
+    LearningActivityModule,
     MediaStorageModule,
     AudioProcessingModule,
     ArenaModule,
