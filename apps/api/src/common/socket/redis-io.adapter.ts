@@ -1,3 +1,4 @@
+import { httpPolicy } from '../../platform/http-policy.js';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import { INestApplicationContext } from '@nestjs/common';
 import { ServerOptions } from 'socket.io';
@@ -33,10 +34,13 @@ export class RedisIoAdapter extends IoAdapter {
     port: number,
     options?: ServerOptions,
   ) {
-    const server = super.createIOServer(
-      port,
-      options,
-    );
+    const policy = httpPolicy(this.configService);
+    const server = super.createIOServer(port, {
+      ...options,
+      cors: { origin: policy.origins, credentials: true },
+      // WebSocket upgrades need their own origin gate; CORS covers HTTP polling.
+      allowRequest: (req, callback) => callback(null, policy.allowsOrigin(req.headers.origin)),
+    } as ServerOptions);
 
     server.adapter(this.adapterConstructor);
 

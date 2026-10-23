@@ -1,3 +1,5 @@
+import { httpPolicy } from './http-policy.js';
+import { refreshCookieOptions } from '../modules/auth/refresh-cookie.js';
 import { NestFactory } from '@nestjs/core';
 import type { Type } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
@@ -19,7 +21,22 @@ export async function bootstrapService(role:OwnedService,modules:Type<unknown>[]
   const port=Number(process.env.PORT||5000);
   if(!Number.isInteger(port)||port<=0||port>65535)throw new Error('Invalid PORT');
   app.use(json({limit:'50mb'}));app.use(urlencoded({extended:true,limit:'50mb'}));app.use(cookieParser());
-  app.enableCors({origin:[config.get('FRONTEND_URL')||'http://localhost:3000',config.get('ADMIN_URL')||'http://localhost:3001'],credentials:true});
+  const policy = httpPolicy(config);
+  app.set('trust proxy', policy.trustProxy);
+  if (role === 'identity') {
+    refreshCookieOptions(config, 'user');
+    refreshCookieOptions(config, 'admin');
+  }
+  app.use((req: any, res: any, next: () => void) => {
+    if (!policy.allowsOrigin(req.headers.origin)) {
+      return res.status(403).json({ statusCode: 403, message: 'Origin is not allowed' });
+    }
+    if (/^\/api\/(?:admin\/)?auth(?:\/|$)/.test(req.path)) {
+      res.setHeader('Cache-Control', 'private, no-store');
+    }
+    next();
+  });
+  app.enableCors({origin: policy.origins, credentials: true});
   if(role==='arena'){const adapter=new RedisIoAdapter(app,config);await adapter.connectToRedis();app.useWebSocketAdapter(adapter);}
   if(role==='media-jobs'){
     if(!media.useObjectStorage())throw new Error('MEDIA_STORAGE_BACKEND=s3 required');

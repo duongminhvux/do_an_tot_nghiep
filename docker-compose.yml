@@ -165,6 +165,10 @@ services:
       JWT_REFRESH_TOKEN_EXPIRES: ${JWT_REFRESH_TOKEN_EXPIRES:-7d}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       ADMIN_URL: ${ADMIN_URL:-http://localhost:3001}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
+      COOKIE_SECURE: ${COOKIE_SECURE:-auto}
+      COOKIE_SAME_SITE: ${COOKIE_SAME_SITE:-lax}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:5000/api/auth/google/callback}
@@ -244,6 +248,10 @@ services:
       JWT_REFRESH_TOKEN_EXPIRES: ${JWT_REFRESH_TOKEN_EXPIRES:-7d}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       ADMIN_URL: ${ADMIN_URL:-http://localhost:3001}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
+      COOKIE_SECURE: ${COOKIE_SECURE:-auto}
+      COOKIE_SAME_SITE: ${COOKIE_SAME_SITE:-lax}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:5000/api/auth/google/callback}
@@ -321,6 +329,10 @@ services:
       JWT_REFRESH_TOKEN_EXPIRES: ${JWT_REFRESH_TOKEN_EXPIRES:-7d}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       ADMIN_URL: ${ADMIN_URL:-http://localhost:3001}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
+      COOKIE_SECURE: ${COOKIE_SECURE:-auto}
+      COOKIE_SAME_SITE: ${COOKIE_SAME_SITE:-lax}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:5000/api/auth/google/callback}
@@ -398,6 +410,10 @@ services:
       JWT_REFRESH_TOKEN_EXPIRES: ${JWT_REFRESH_TOKEN_EXPIRES:-7d}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       ADMIN_URL: ${ADMIN_URL:-http://localhost:3001}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
+      COOKIE_SECURE: ${COOKIE_SECURE:-auto}
+      COOKIE_SAME_SITE: ${COOKIE_SAME_SITE:-lax}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:5000/api/auth/google/callback}
@@ -475,6 +491,10 @@ services:
       JWT_REFRESH_TOKEN_EXPIRES: ${JWT_REFRESH_TOKEN_EXPIRES:-7d}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       ADMIN_URL: ${ADMIN_URL:-http://localhost:3001}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
+      COOKIE_SECURE: ${COOKIE_SECURE:-auto}
+      COOKIE_SAME_SITE: ${COOKIE_SAME_SITE:-lax}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:5000/api/auth/google/callback}
@@ -552,6 +572,10 @@ services:
       JWT_REFRESH_TOKEN_EXPIRES: ${JWT_REFRESH_TOKEN_EXPIRES:-7d}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       ADMIN_URL: ${ADMIN_URL:-http://localhost:3001}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
+      COOKIE_SECURE: ${COOKIE_SECURE:-auto}
+      COOKIE_SAME_SITE: ${COOKIE_SAME_SITE:-lax}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:5000/api/auth/google/callback}
@@ -629,6 +653,10 @@ services:
       JWT_REFRESH_TOKEN_EXPIRES: ${JWT_REFRESH_TOKEN_EXPIRES:-7d}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       ADMIN_URL: ${ADMIN_URL:-http://localhost:3001}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
+      COOKIE_SECURE: ${COOKIE_SECURE:-auto}
+      COOKIE_SAME_SITE: ${COOKIE_SAME_SITE:-lax}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:5000/api/auth/google/callback}
@@ -706,6 +734,10 @@ services:
       JWT_REFRESH_TOKEN_EXPIRES: ${JWT_REFRESH_TOKEN_EXPIRES:-7d}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       ADMIN_URL: ${ADMIN_URL:-http://localhost:3001}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
+      COOKIE_SECURE: ${COOKIE_SECURE:-auto}
+      COOKIE_SAME_SITE: ${COOKIE_SAME_SITE:-lax}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:5000/api/auth/google/callback}
@@ -760,7 +792,7 @@ services:
     volumes:
     - ./infra/gateway/nginx.conf:/etc/nginx/nginx.conf:ro
     ports:
-    - ${API_PUBLISHED_PORT:-5000}:5000
+    - ${PUBLIC_BIND_ADDRESS:-127.0.0.1}:${API_PUBLISHED_PORT:-5000}:5000
     depends_on:
       identity-service:
         condition: service_started
@@ -789,12 +821,14 @@ services:
       sbom: false
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000/api}
+        NEXT_PUBLIC_ARENA_SOCKET_URL: ${NEXT_PUBLIC_ARENA_SOCKET_URL:-http://localhost:5000/arena}
     restart: unless-stopped
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000/api}
+      NEXT_PUBLIC_ARENA_SOCKET_URL: ${NEXT_PUBLIC_ARENA_SOCKET_URL:-http://localhost:5000/arena}
     ports:
-    - 3000:3000
+    - ${PUBLIC_BIND_ADDRESS:-127.0.0.1}:${WEB_PUBLISHED_PORT:-3000}:3000
     depends_on:
       gateway:
         condition: service_started
@@ -813,7 +847,7 @@ services:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000/api}
     ports:
-    - 3001:3001
+    - ${PUBLIC_BIND_ADDRESS:-127.0.0.1}:${ADMIN_PUBLISHED_PORT:-3001}:3001
     depends_on:
       gateway:
         condition: service_started
@@ -892,6 +926,10 @@ services:
       JWT_REFRESH_TOKEN_EXPIRES: ${JWT_REFRESH_TOKEN_EXPIRES:-7d}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       ADMIN_URL: ${ADMIN_URL:-http://localhost:3001}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
+      COOKIE_SECURE: ${COOKIE_SECURE:-auto}
+      COOKIE_SAME_SITE: ${COOKIE_SAME_SITE:-lax}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:5000/api/auth/google/callback}

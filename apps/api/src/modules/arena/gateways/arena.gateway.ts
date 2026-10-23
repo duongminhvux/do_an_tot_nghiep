@@ -31,10 +31,7 @@ import {
 
 @ConnectionAuthenticated()
 @WebSocketGateway({
-  namespace: '/arena',
-  cors: {
-    origin: 'http://localhost:3000',
-    credentials: true } })
+  namespace: '/arena' })
 export class ArenaGateway
   implements
     OnGatewayConnection,

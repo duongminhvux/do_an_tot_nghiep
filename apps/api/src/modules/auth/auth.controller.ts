@@ -5,7 +5,7 @@ import { CreateAuthDto } from './dto/create-auth.dto.js';
 import { Public } from './decorators/public.decorator.js';
 import { LocalAuthGuard } from './guards/local-auth.guard.js';
 import { ConfigService } from '@nestjs/config';
-import ms, { StringValue } from 'ms';
+import { setRefreshCookie, clearRefreshCookie, readRefreshCookie } from './refresh-cookie.js';
 
 import { VerifyEmailDto } from './dto/verify-email-auth.dto.js';
 import { ResendCodeDto } from './dto/resend-code.dto.js';
@@ -30,18 +30,11 @@ export class AuthController {
   ) { }
 
   setCookie(res: express.Response, refresh_token: string) {
-    const refreshTokenExpires = this.configService.get<string>('JWT_REFRESH_TOKEN_EXPIRES') || '7d';
-    const maxAge = ms(refreshTokenExpires as StringValue);
-
-    res.cookie('refresh_token', refresh_token, {
-      httpOnly: true,
-      secure: false,
-      sameSite: 'strict',
-      maxAge: typeof maxAge === 'number' ? maxAge : 7 * 24 * 60 * 60 * 1000 });
+    setRefreshCookie(res, refresh_token, this.configService, 'user');
   }
 
   clearCookie(res: express.Response) {
-    res.clearCookie('refresh_token');
+    clearRefreshCookie(res, this.configService, 'user');
   }
 
   @Public()
@@ -145,7 +138,10 @@ export class AuthController {
   @Public()
   @Post('refresh-token')
   async refreshToken(@Req() req: any, @Res({ passthrough: true }) res: express.Response) {
-    const refreshToken = req.cookies?.['refresh_token'];
+    const refreshToken = readRefreshCookie(req, 'user');
+    if (!refreshToken) {
+      throw new UnauthorizedException(await this.i18n.t('auth.INVALID_REFRESH_TOKEN'));
+    }
     const result = await this.authService.refreshToken(refreshToken);
     this.setCookie(res, result.refreshToken);
     return {

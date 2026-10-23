@@ -1,0 +1,44 @@
+# Optional domain ingress. Use together with docker-compose.yml.
+# docker compose -f docker-compose.yml -f compose.edge.yml up -d edge
+services:
+  edge:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    environment:
+      WEB_HOSTS: ${WEB_HOSTS:-localhost 127.0.0.1}
+      ADMIN_HOSTS: ${ADMIN_HOSTS:-admin.localhost}
+      API_HOSTS: ${API_HOSTS:-api.localhost}
+      # Substitute only deployment variables; preserve Nginx $host/$request_uri.
+      NGINX_ENVSUBST_FILTER: ^(WEB_HOSTS|ADMIN_HOSTS|API_HOSTS)$
+    volumes:
+    - ./infra/edge/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+    - ./infra/edge/proxy-headers.conf:/etc/nginx/snippets/proxy-headers.conf:ro
+    - ./infra/edge/public-api.conf:/etc/nginx/snippets/public-api.conf:ro
+    ports:
+    - ${PUBLIC_BIND_ADDRESS:-127.0.0.1}:${EDGE_PUBLISHED_PORT:-8080}:8080
+    depends_on:
+      gateway:
+        condition: service_started
+      web:
+        condition: service_started
+      admin-web:
+        condition: service_started
+    healthcheck:
+      test: [CMD-SHELL, 'wget -q -O /dev/null --header="Host: edge-health.internal" http://127.0.0.1:8080/edge/health']
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+    - toeic-network
+  cloudflared:
+    profiles: [tunnel]
+    image: ${CLOUDFLARED_IMAGE:-cloudflare/cloudflared:latest}
+    restart: unless-stopped
+    command: [tunnel, --no-autoupdate, run]
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    depends_on:
+      edge:
+        condition: service_healthy
+    networks:
+    - toeic-network

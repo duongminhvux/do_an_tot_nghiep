@@ -12,7 +12,7 @@ import express from 'express';
 import { AuthService } from './auth.service.js';
 import { Public } from './decorators/public.decorator.js';
 import { ConfigService } from '@nestjs/config';
-import ms, { StringValue } from 'ms';
+import { setRefreshCookie, clearRefreshCookie, readRefreshCookie } from './refresh-cookie.js';
 import { I18nService } from 'nestjs-i18n';
 import { RolesGuard } from './guards/roles.guard.js';
 import { Roles } from './decorators/roles.decorator.js';
@@ -33,20 +33,11 @@ export class AdminAuthController {
   ) { }
 
   private setCookie(res: express.Response, refresh_token: string) {
-    const refreshTokenExpires =
-      this.configService.get<string>('JWT_REFRESH_TOKEN_EXPIRES') || '7d';
-    const maxAge = ms(refreshTokenExpires as StringValue);
-    const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
-
-    res.cookie('refresh_token', refresh_token, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? 'strict' : 'lax',
-      maxAge: typeof maxAge === 'number' ? maxAge : 7 * 24 * 60 * 60 * 1000 });
+    setRefreshCookie(res, refresh_token, this.configService, 'admin');
   }
 
   private clearCookie(res: express.Response) {
-    res.clearCookie('refresh_token');
+    clearRefreshCookie(res, this.configService, 'admin');
   }
 
   @Public()
@@ -100,7 +91,7 @@ export class AdminAuthController {
   ) {
     const refreshToken =
       bodyRefreshToken ||
-      req.cookies?.['refresh_token'] ||
+      readRefreshCookie(req, 'admin') ||
       (req.headers?.['x-refresh-token'] as string);
 
     if (!refreshToken) {
