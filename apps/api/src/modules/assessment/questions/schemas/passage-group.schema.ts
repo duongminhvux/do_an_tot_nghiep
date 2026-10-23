@@ -1,42 +1,38 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { type HydratedDocument, Types } from 'mongoose';
+import { PgId } from '../../../../postgres/compat.js';
+import { PgField, PgEntity, PgSchemaFactory } from '../../../../postgres/compat.js';
+import { type PgDocument } from '../../../../postgres/compat.js';
 
-export type PassageGroupDocument = HydratedDocument<PassageGroup>;
+export type PassageGroupDocument = PgDocument<PassageGroup>;
 
-@Schema({ timestamps: true })
+@PgEntity({ timestamps: true })
 export class PassageGroup {
-  @Prop({
-    type: Types.ObjectId,
+  @PgField({
+    type: PgId,
     ref: 'Exam',
     required: true,
-    index: true,
-  })
-  examId: Types.ObjectId;
+    index: true })
+  examId: PgId;
 
-  @Prop({
+  @PgField({
     required: true,
-    enum: ['LISTENING', 'READING'],
-  })
+    enum: ['LISTENING', 'READING'] })
   section: 'LISTENING' | 'READING';
 
-  @Prop({
+  @PgField({
     required: true,
     min: 1,
-    max: 7,
-  })
+    max: 7 })
   part: number;
 
-  @Prop({
-    trim: true,
-  })
+  @PgField({
+    trim: true })
   title?: string;
 
-  @Prop({
+  @PgField({
     default: 0,
-    min: 0,
-  })
+    min: 0 })
   order: number;
 }
 
 export const PassageGroupSchema =
-  SchemaFactory.createForClass(PassageGroup);
+  PgSchemaFactory.createForClass(PassageGroup);

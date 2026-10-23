@@ -7,6 +7,5 @@ import { MediaStorageModule } from '../../common/media/media-storage.module.js';
   imports: [MediaStorageModule],
   controllers: [UploadController],
   providers: [ManagedMediaService],
-  exports: [ManagedMediaService],
-})
+  exports: [ManagedMediaService] })
 export class UploadModule {}

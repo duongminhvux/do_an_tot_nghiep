@@ -1,12 +1,12 @@
+import { PgId } from '../../postgres/compat.js';
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { type Model, Types } from 'mongoose';
+import { InjectPgModel } from '../../postgres/compat.js';
+import { type Model } from '../../postgres/compat.js';
 import {
   ActivityAction,
   ActivityCategory,
   ActivityLog,
-  ActivityLogDocument,
-} from './schemas/activity-log.schema.js';
+  ActivityLogDocument } from './schemas/activity-log.schema.js';
 import { CreateActivityLogDto } from './dto/create-activity-log.dto.js';
 import { QueryActivityLogsDto } from './dto/query-activity-logs.dto.js';
 import { QueryActivityStatsDto } from './dto/query-activity-stats.dto.js';
@@ -18,9 +18,9 @@ export class ActivityLogsService {
   private readonly logger = new Logger(ActivityLogsService.name);
 
   constructor(
-    @InjectModel(ActivityLog.name)
+    @InjectPgModel(ActivityLog.name)
     private readonly activityLogModel: Model<ActivityLogDocument>,
-    @InjectModel(User.name)
+    @InjectPgModel(User.name)
     private readonly userModel: Model<UserDocument>,
     private readonly i18n: I18nService,
   ) {}
@@ -79,12 +79,12 @@ export class ActivityLogsService {
    */
   async log(dto: CreateActivityLogDto): Promise<ActivityLogDocument | null> {
     try {
-      let resolvedUserId: Types.ObjectId | undefined;
+      let resolvedUserId: PgId | undefined;
       let userEmail = dto.userEmail;
       let userName = dto.userName;
 
-      if (dto.userId && Types.ObjectId.isValid(dto.userId)) {
-        resolvedUserId = new Types.ObjectId(dto.userId);
+      if (dto.userId && PgId.isValid(dto.userId)) {
+        resolvedUserId = new PgId(dto.userId);
 
         // Fetch user snapshot if email or name is missing
         if (!userEmail || !userName) {
@@ -117,8 +117,7 @@ export class ActivityLogsService {
         ipAddress: dto.ipAddress || undefined,
         userAgent: dto.userAgent || undefined,
         status: dto.status || 'SUCCESS',
-        durationMs: dto.durationMs || 0,
-      });
+        durationMs: dto.durationMs || 0 });
 
       return created;
     } catch (err) {
@@ -150,8 +149,8 @@ export class ActivityLogsService {
       filter.status = query.status;
     }
 
-    if (query.userId && Types.ObjectId.isValid(query.userId)) {
-      filter.userId = new Types.ObjectId(query.userId);
+    if (query.userId && PgId.isValid(query.userId)) {
+      filter.userId = new PgId(query.userId);
     }
 
     if (query.userEmail) {
@@ -206,8 +205,7 @@ export class ActivityLogsService {
           ...item,
           actionLabel,
           categoryLabel,
-          statusLabel,
-        };
+          statusLabel };
       }),
     );
 
@@ -216,15 +214,14 @@ export class ActivityLogsService {
       total,
       page,
       limit,
-      totalPages: Math.ceil(total / limit) || 1,
-    };
+      totalPages: Math.ceil(total / limit) || 1 };
   }
 
   /**
    * View detail of a single activity log entry
    */
   async findById(id: string, customLang?: string) {
-    if (!Types.ObjectId.isValid(id)) {
+    if (!PgId.isValid(id)) {
       return null;
     }
     const item = await this.activityLogModel.findById(id).lean();
@@ -241,8 +238,7 @@ export class ActivityLogsService {
       ...item,
       actionLabel,
       categoryLabel,
-      statusLabel,
-    };
+      statusLabel };
   }
 
   /**
@@ -270,22 +266,19 @@ export class ActivityLogsService {
     const categories = await Promise.all(
       mergedCategories.map(async (category) => ({
         value: category,
-        label: await this.translateCategory(category, lang),
-      })),
+        label: await this.translateCategory(category, lang) })),
     );
 
     const actions = await Promise.all(
       mergedActions.map(async (action) => ({
         value: action,
         label: await this.translateAction(action, lang),
-        category: this.resolveCategory(action),
-      })),
+        category: this.resolveCategory(action) })),
     );
 
     return {
       categories,
-      actions,
-    };
+      actions };
   }
 
   /**
@@ -308,15 +301,13 @@ export class ActivityLogsService {
       SUCCESS: await this.translateStatus('SUCCESS', lang),
       FAILED: await this.translateStatus('FAILED', lang),
       INFO: await this.translateStatus('INFO', lang),
-      WARNING: await this.translateStatus('WARNING', lang),
-    };
+      WARNING: await this.translateStatus('WARNING', lang) };
 
     return {
       lang,
       actions,
       categories,
-      status,
-    };
+      status };
   }
 
   /**
@@ -377,11 +368,8 @@ export class ActivityLogsService {
         {
           $group: {
             _id: {
-              $dateToString: { format: '%Y-%m-%d', date: '$createdAt' },
-            },
-            count: { $sum: 1 },
-          },
-        },
+              $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+            count: { $sum: 1 } } },
         { $sort: { _id: 1 } },
       ]),
       // Top active users
@@ -389,18 +377,14 @@ export class ActivityLogsService {
         {
           $match: {
             ...rangeFilter,
-            userEmail: { $ne: null, $exists: true },
-          },
-        },
+            userEmail: { $ne: null, $exists: true } } },
         {
           $group: {
             _id: '$userEmail',
             userName: { $first: '$userName' },
             userId: { $first: '$userId' },
             count: { $sum: 1 },
-            lastActive: { $max: '$createdAt' },
-          },
-        },
+            lastActive: { $max: '$createdAt' } } },
         { $sort: { count: -1 } },
         { $limit: 8 },
       ]),
@@ -411,42 +395,35 @@ export class ActivityLogsService {
         category: c._id,
         label: await this.translateCategory(c._id, lang),
         count: c.count,
-        percentage: totalActivities ? Math.round((c.count / totalActivities) * 100) : 0,
-      })),
+        percentage: totalActivities ? Math.round((c.count / totalActivities) * 100) : 0 })),
     );
 
     const topActions = await Promise.all(
       actionCounts.map(async (a) => ({
         action: a._id,
         label: await this.translateAction(a._id, lang),
-        count: a.count,
-      })),
+        count: a.count })),
     );
 
     return {
       period: {
         days,
         startDate,
-        endDate,
-      },
+        endDate },
       summary: {
         totalActivities,
         activitiesToday,
-        uniqueUsers,
-      },
+        uniqueUsers },
       categoryBreakdown,
       topActions,
       dailyTimeline: dailyTimeline.map((d) => ({
         date: d._id,
-        count: d.count,
-      })),
+        count: d.count })),
       topActiveUsers: topUsers.map((u) => ({
         email: u._id,
         name: u.userName || u._id.split('@')[0],
         userId: u.userId,
         count: u.count,
-        lastActive: u.lastActive,
-      })),
-    };
+        lastActive: u.lastActive })) };
   }
 }

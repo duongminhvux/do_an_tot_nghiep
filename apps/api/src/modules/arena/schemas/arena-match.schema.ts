@@ -1,5 +1,6 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { type HydratedDocument, Types } from 'mongoose';
+import { PgId } from '../../../postgres/compat.js';
+import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
+import { type PgDocument } from '../../../postgres/compat.js';
 
 export type WordGuessFeedback = 'correct' | 'present' | 'absent';
 export type WordGuessAttempt = {
@@ -8,19 +9,17 @@ export type WordGuessAttempt = {
   feedback: WordGuessFeedback[];
 };
 
-export type ArenaMatchDocument = HydratedDocument<ArenaMatch>;
+export type ArenaMatchDocument = PgDocument<ArenaMatch>;
 
 export enum ArenaMatchType {
   RANK = 'RANK',
   FRIEND = 'FRIEND',
-  ROOM = 'ROOM',
-}
+  ROOM = 'ROOM' }
 
 export enum ArenaFriendMode {
   CLASSIC = 'CLASSIC',
   WORD_CHAIN = 'WORD_CHAIN',
-  WORD_GUESS = 'WORD_GUESS',
-}
+  WORD_GUESS = 'WORD_GUESS' }
 
 export enum ArenaMatchStatus {
   WAITING = 'WAITING',
@@ -28,87 +27,82 @@ export enum ArenaMatchStatus {
   PLAYING = 'PLAYING',
   FINISHING = 'FINISHING',
   FINISHED = 'FINISHED',
-  CANCELLED = 'CANCELLED',
-}
+  CANCELLED = 'CANCELLED' }
 
 export enum ArenaMatchFinishReason {
   TURN_TIMEOUT = 'TURN_TIMEOUT',
   NORMAL = 'NORMAL',
   PLAYER_LEFT = 'PLAYER_LEFT',
-  DISCONNECT_TIMEOUT = 'DISCONNECT_TIMEOUT',
-}
+  DISCONNECT_TIMEOUT = 'DISCONNECT_TIMEOUT' }
 
 export enum ArenaQuestionMode {
   MIXED = 'MIXED',
   WORD_TO_MEANING = 'WORD_TO_MEANING',
   MEANING_TO_WORD = 'MEANING_TO_WORD',
   LISTENING = 'LISTENING',
-  CONTEXT = 'CONTEXT',
-}
+  CONTEXT = 'CONTEXT' }
 
-@Schema({
-  timestamps: true,
-})
+@PgEntity({
+  timestamps: true })
 /** Trạng thái tổng quát và cấu hình của một trận Arena. */
 export class ArenaMatch {
-  @Prop({ type: Object, default: null, immutable: true })
+  @PgField({ type: Object, default: null, immutable: true })
   runtimePolicy?: {
     kFactor?: number;
     readyTimeout?: number;
     reconnectGrace?: number;
   } | null;
-  @Prop({ type: String, enum: Object.values(ArenaFriendMode), default: null })
+  @PgField({ type: String, enum: Object.values(ArenaFriendMode), default: null })
   friendMode?: ArenaFriendMode | null;
 
-  @Prop({ type: Types.ObjectId, ref: 'ArenaMatch', default: null })
-  nextMatchId?: Types.ObjectId | null;
+  @PgField({ type: PgId, ref: 'ArenaMatch', default: null })
+  nextMatchId?: PgId | null;
 
-  @Prop({ default: false })
+  @PgField({ default: false })
   lobbyStarting: boolean;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', default: null })
-  hostId?: Types.ObjectId | null;
+  @PgField({ type: PgId, ref: 'User', default: null })
+  hostId?: PgId | null;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', default: null })
-  currentTurnUserId?: Types.ObjectId | null;
+  @PgField({ type: PgId, ref: 'User', default: null })
+  currentTurnUserId?: PgId | null;
 
-  @Prop({ default: '' })
+  @PgField({ default: '' })
   currentWord: string;
 
-  @Prop({ default: '' })
+  @PgField({ default: '' })
   requiredLetter: string;
 
-  @Prop({ type: Date, default: null })
+  @PgField({ type: Date, default: null })
   turnStartedAt?: Date | null;
 
-  @Prop({ type: Date, default: null })
+  @PgField({ type: Date, default: null })
   turnDeadline?: Date | null;
 
-  @Prop({ type: Date, default: null })
+  @PgField({ type: Date, default: null })
   chainPausedAt?: Date | null;
 
-  @Prop({ type: [String], default: [] })
+  @PgField({ type: [String], default: [] })
   usedWords: string[];
 
-  @Prop({ type: String, default: null, select: false }) wordGuessAnswer:
+  @PgField({ type: String, default: null, select: false }) wordGuessAnswer:
     string | null;
-  @Prop({ type: [Object], default: [] }) wordGuessAttempts: WordGuessAttempt[];
-  @Prop({ default: 0 }) wordGuessRevision: number;
-  @Prop({ type: String, default: null }) wordGuessSolvedBy: string | null;
+  @PgField({ type: [Object], default: [] }) wordGuessAttempts: WordGuessAttempt[];
+  @PgField({ default: 0 }) wordGuessRevision: number;
+  @PgField({ type: String, default: null }) wordGuessSolvedBy: string | null;
 
-  @Prop({ default: 0 })
+  @PgField({ default: 0 })
   turnCount: number;
 
-  @Prop({
+  @PgField({
     type: String,
     enum: Object.values(ArenaMatchType),
     required: true,
-    index: true,
-  })
+    index: true })
   type: ArenaMatchType;
 
-  @Prop({
-    type: Types.ObjectId,
+  @PgField({
+    type: PgId,
     ref: function (this: ArenaMatch) {
       return this.type === ArenaMatchType.FRIEND ||
         this.type === ArenaMatchType.ROOM
@@ -116,19 +110,17 @@ export class ArenaMatch {
         : 'ArenaRoom';
     },
     default: null,
-    index: true,
-  })
-  roomId?: Types.ObjectId | null;
+    index: true })
+  roomId?: PgId | null;
 
-  @Prop({
+  @PgField({
     type: String,
     enum: Object.values(ArenaMatchStatus),
     default: ArenaMatchStatus.WAITING,
-    index: true,
-  })
+    index: true })
   status: ArenaMatchStatus;
 
-  @Prop({
+  @PgField({
     type: String,
     enum: Object.values(ArenaQuestionMode),
     required: function (this: ArenaMatch) {
@@ -139,75 +131,66 @@ export class ArenaMatch {
         this.friendMode === ArenaFriendMode.CLASSIC
       );
     },
-    default: null,
-  })
+    default: null })
   questionMode: ArenaQuestionMode | null;
 
-  @Prop({
+  @PgField({
     type: Number,
     default: 10,
-    min: 1,
-  })
+    min: 1 })
   questionCount: number;
 
-  @Prop({ type: [Types.ObjectId], default: [] })
-  eliminatedUserIds: Types.ObjectId[];
+  @PgField({ type: [PgId], default: [] })
+  eliminatedUserIds: PgId[];
 
-  @Prop({ default: 0 }) roomRevision: number;
+  @PgField({ default: 0 }) roomRevision: number;
 
-  @Prop({ default: 1, min: 1 })
+  @PgField({ default: 1, min: 1 })
   currentQuestionIndex: number;
 
-  @Prop({
+  @PgField({
     type: Number,
     default: 15,
-    min: 5,
-  })
+    min: 5 })
   secondsPerQuestion: number;
 
-  @Prop({
+  @PgField({
     type: Date,
-    default: null,
-  })
+    default: null })
   startedAt?: Date | null;
 
-  @Prop({
+  @PgField({
     type: Date,
-    default: null,
-  })
+    default: null })
   finishedAt?: Date | null;
 
-  @Prop({
-    type: Types.ObjectId,
+  @PgField({
+    type: PgId,
     ref: 'User',
     default: null,
-    index: true,
-  })
-  winnerId?: Types.ObjectId | null;
+    index: true })
+  winnerId?: PgId | null;
 
-  @Prop({
+  @PgField({
     type: Boolean,
-    default: false,
-  })
+    default: false })
   isDraw: boolean;
 
-  @Prop({
+  @PgField({
     type: String,
-    default: null,
-  })
+    default: null })
   cancelReason?: string | null;
 
-  @Prop({
+  @PgField({
     type: String,
     enum: Object.values(ArenaMatchFinishReason),
-    default: null,
-  })
+    default: null })
   finishReason?: ArenaMatchFinishReason | null;
 
-  @Prop({ default: null, type: String, immutable: true })
+  @PgField({ default: null, type: String, immutable: true })
   roomCodeSnapshot?: string | null;
 
-  @Prop({ type: Object, default: null, immutable: true })
+  @PgField({ type: Object, default: null, immutable: true })
   settingsSnapshot?: {
     questionCount?: number;
     timePerQuestion?: number;
@@ -218,5 +201,5 @@ export class ArenaMatch {
   updatedAt: Date;
 }
 
-export const ArenaMatchSchema = SchemaFactory.createForClass(ArenaMatch);
+export const ArenaMatchSchema = PgSchemaFactory.createForClass(ArenaMatch);
 ArenaMatchSchema.index({ status: 1, type: 1, finishedAt: -1 });

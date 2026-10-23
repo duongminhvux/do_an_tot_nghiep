@@ -5,25 +5,21 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  Min,
-} from 'class-validator';
+  Min } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
 
 export enum ExamType {
   TOEIC = 'TOEIC',
-  IELTS = 'IELTS',
-}
+  IELTS = 'IELTS' }
 
 export enum ExamMode {
   PRACTICE = 'PRACTICE',
-  FULL_TEST = 'FULL_TEST',
-}
+  FULL_TEST = 'FULL_TEST' }
 
 export enum ExamSection {
   LISTENING = 'LISTENING',
   READING = 'READING',
-  FULL_TEST = 'FULL_TEST',
-}
+  FULL_TEST = 'FULL_TEST' }
 
 export class CreateExamDto {
   @IsNotEmpty({ message: i18nValidationMessage('exam.EXAM_NAME_REQUIRED') })
@@ -36,13 +32,11 @@ export class CreateExamDto {
 
   @IsNotEmpty({ message: i18nValidationMessage('exam.EXAM_TYPE_REQUIRED') })
   @IsEnum(ExamType, {
-    message: i18nValidationMessage('exam.EXAM_TYPE_INVALID'),
-  })
+    message: i18nValidationMessage('exam.EXAM_TYPE_INVALID') })
   type!: ExamType;
 
   @IsString({
-    message: i18nValidationMessage('exam.EXAM_DESCRIPTION_MUST_BE_STRING'),
-  })
+    message: i18nValidationMessage('exam.EXAM_DESCRIPTION_MUST_BE_STRING') })
   @IsOptional()
   description?: string;
 

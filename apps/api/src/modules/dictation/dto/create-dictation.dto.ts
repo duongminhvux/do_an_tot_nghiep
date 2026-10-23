@@ -5,20 +5,18 @@ import {
   IsEnum,
   IsIn,
   IsInt,
-  IsMongoId,
+  IsUUID,
   IsNumber,
   IsOptional,
   IsString,
   Max,
   MaxLength,
   Min,
-  MinLength,
-} from 'class-validator';
+  MinLength } from 'class-validator';
 import { Type } from 'class-transformer';
 import {
   DictationAudioSource,
-  DictationLevel,
-} from '../schemas/dictation-lesson.schema.js';
+  DictationLevel } from '../schemas/dictation-lesson.schema.js';
 
 export class CreateDictationDto {
   @IsString()
@@ -45,11 +43,11 @@ export class CreateDictationDto {
   topic?: string;
 
   @IsOptional()
-  @IsMongoId()
+  @IsUUID('4')
   topicId?: string;
 
   @IsOptional()
-  @IsMongoId()
+  @IsUUID('4')
   sectionId?: string;
 
   @IsOptional()

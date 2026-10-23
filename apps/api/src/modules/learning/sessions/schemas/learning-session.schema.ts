@@ -1,59 +1,53 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { type HydratedDocument, Types } from 'mongoose';
+import { PgId } from '../../../../postgres/compat.js';
+import { PgField, PgEntity, PgSchemaFactory } from '../../../../postgres/compat.js';
+import { type PgDocument } from '../../../../postgres/compat.js';
 
-export type LearningSessionDocument = HydratedDocument<LearningSession>;
+export type LearningSessionDocument = PgDocument<LearningSession>;
 
 export class Session {}
-@Schema({ timestamps: true })
+@PgEntity({ timestamps: true })
 export class LearningSession {
-  @Prop({
-    type: Types.ObjectId,
+  @PgField({
+    type: PgId,
     ref: 'User',
     required: true,
-    index: true,
-  })
-  userId: Types.ObjectId;
+    index: true })
+  userId: PgId;
 
-  @Prop({
+  @PgField({
     type: String,
     enum: ['LESSON', 'REVIEW'],
-    required: true,
-  })
+    required: true })
   type: 'LESSON' | 'REVIEW';
 
-  @Prop({
-    type: Types.ObjectId,
-    ref: 'Lesson',
-  })
-  lessonId?: Types.ObjectId;
+  @PgField({
+    type: PgId,
+    ref: 'Lesson' })
+  lessonId?: PgId;
 
-  @Prop({
+  @PgField({
     type: Date,
-    required: true,
-  })
+    required: true })
   startedAt: Date;
 
-  @Prop()
+  @PgField()
   endedAt?: Date;
 
-  @Prop({
+  @PgField({
     type: Number,
-    default: 0,
-  })
+    default: 0 })
   durationSeconds?: number;
 
-  @Prop({
+  @PgField({
     type: Number,
-    default: 0,
-  })
+    default: 0 })
   totalWords: number;
 
-  @Prop({
+  @PgField({
     type: Number,
-    default: 0,
-  })
+    default: 0 })
   completedWords: number;
 }
 
 export const LearningSessionSchema =
-  SchemaFactory.createForClass(LearningSession);
+  PgSchemaFactory.createForClass(LearningSession);

@@ -1,3 +1,4 @@
+import { PgId } from '../../postgres/compat.js';
 import { randomUUID } from 'node:crypto';
 import {
   BadRequestException,
@@ -5,14 +6,13 @@ import {
   Inject,
   Injectable,
   NotFoundException,
-  Optional,
-} from '@nestjs/common';
+  Optional } from '@nestjs/common';
 import { dictationLessonXp } from '@repo/shared-types/learning-xp';
 import { LearningActivityClient } from '../../common/clients/learning-activity-client.js';
 import type { LearningActivityWriter } from '../learning-activity/learning-activity.service.js';
 import { ConfigService } from '@nestjs/config';
-import { InjectModel } from '@nestjs/mongoose';
-import { type Model, Types } from 'mongoose';
+import { InjectPgModel } from '../../postgres/compat.js';
+import { type Model } from '../../postgres/compat.js';
 import { AsrService } from '../asr/asr.service.js';
 import { ManagedMediaService } from '../upload/managed-media.service.js';
 import { TtsService } from '../tts/tts.service.js';
@@ -24,24 +24,20 @@ import {
   DictationAudioSource,
   DictationLesson,
   DictationLessonDocument,
-  DictationStatus,
-} from './schemas/dictation-lesson.schema.js';
+  DictationStatus } from './schemas/dictation-lesson.schema.js';
 import {
   DictationSegment,
-  DictationSegmentDocument,
-} from './schemas/dictation-segment.schema.js';
+  DictationSegmentDocument } from './schemas/dictation-segment.schema.js';
 import {
   DictationProgress,
-  DictationProgressDocument,
-} from './schemas/dictation-progress.schema.js';
+  DictationProgressDocument } from './schemas/dictation-progress.schema.js';
 import { DictationTopic, DictationTopicDocument } from './schemas/dictation-topic.schema.js';
 import { DictationSection, DictationSectionDocument } from './schemas/dictation-section.schema.js';
 import {
   CreateDictationSectionDto,
   CreateDictationTopicDto,
   UpdateDictationSectionDto,
-  UpdateDictationTopicDto,
-} from './dto/dictation-hierarchy.dto.js';
+  UpdateDictationTopicDto } from './dto/dictation-hierarchy.dto.js';
 
 interface EditableSegmentInput {
   order: number;
@@ -59,15 +55,15 @@ export class DictationService {
   private readonly autoNextDelayMs: number;
 
   constructor(
-    @InjectModel(DictationLesson.name)
+    @InjectPgModel(DictationLesson.name)
     private readonly lessonModel: Model<DictationLessonDocument>,
-    @InjectModel(DictationSegment.name)
+    @InjectPgModel(DictationSegment.name)
     private readonly segmentModel: Model<DictationSegmentDocument>,
-    @InjectModel(DictationProgress.name)
+    @InjectPgModel(DictationProgress.name)
     private readonly progressModel: Model<DictationProgressDocument>,
-    @InjectModel(DictationTopic.name)
+    @InjectPgModel(DictationTopic.name)
     private readonly topicModel: Model<DictationTopicDocument>,
-    @InjectModel(DictationSection.name)
+    @InjectPgModel(DictationSection.name)
     private readonly sectionModel: Model<DictationSectionDocument>,
     private readonly ttsService: TtsService,
     private readonly asrService: AsrService,
@@ -91,7 +87,7 @@ export class DictationService {
     const cleaned = sourceText
       .replace(/\r\n/g, '\n')
       .replace(/[ \t]+/g, ' ')
-      .replace(/\n{3,}/g, '\n\n')
+      .replace(/\n{3 }/g, '\n\n')
       .trim();
 
     if (!cleaned) return [];
@@ -112,8 +108,7 @@ export class DictationService {
     const sentences = this.splitIntoSentences(sourceText);
     return {
       count: sentences.length,
-      sentences: sentences.map((text, order) => ({ order, text })),
-    };
+      sentences: sentences.map((text, order) => ({ order, text })) };
   }
 
   private normalizeText(value: string): string {
@@ -145,17 +140,16 @@ export class DictationService {
       await this.topicModel.exists({
         slug,
         isDeleted: { $ne: true },
-        ...(excludeId && Types.ObjectId.isValid(excludeId)
-          ? { _id: { $ne: new Types.ObjectId(excludeId) } }
-          : {}),
-      })
+        ...(excludeId && PgId.isValid(excludeId)
+          ? { _id: { $ne: new PgId(excludeId) } }
+          : {}) })
     ) {
       slug = `${base}-${counter++}`;
     }
     return slug;
   }
 
-  private async uniqueSectionSlug(topicId: Types.ObjectId, raw: string, excludeId?: string) {
+  private async uniqueSectionSlug(topicId: PgId, raw: string, excludeId?: string) {
     const base = this.slugify(raw) || 'section';
     let slug = base;
     let counter = 1;
@@ -164,10 +158,9 @@ export class DictationService {
         topicId,
         slug,
         isDeleted: { $ne: true },
-        ...(excludeId && Types.ObjectId.isValid(excludeId)
-          ? { _id: { $ne: new Types.ObjectId(excludeId) } }
-          : {}),
-      })
+        ...(excludeId && PgId.isValid(excludeId)
+          ? { _id: { $ne: new PgId(excludeId) } }
+          : {}) })
     ) {
       slug = `${base}-${counter++}`;
     }
@@ -176,7 +169,7 @@ export class DictationService {
 
   private async resolveHierarchy(topicId?: string, sectionId?: string) {
     if (!topicId && !sectionId) return null;
-    if (!topicId || !sectionId || !Types.ObjectId.isValid(topicId) || !Types.ObjectId.isValid(sectionId)) {
+    if (!topicId || !sectionId || !PgId.isValid(topicId) || !PgId.isValid(sectionId)) {
       throw new BadRequestException('Choose both a valid Dictation topic and section.');
     }
     const [topic, section] = await Promise.all([
@@ -200,24 +193,23 @@ export class DictationService {
         slug: await this.uniqueTopicSlug(label),
         description: '',
         order: 0,
-        isActive: true,
-      });
+        isActive: true });
     }
+    if (!topic) throw new Error('Cannot create Dictation topic');
     let section = await this.sectionModel.findOne({
       topicId: topic._id,
       title: 'Section 1',
-      isDeleted: { $ne: true },
-    });
+      isDeleted: { $ne: true } });
     if (!section) {
       section = await this.sectionModel.create({
         topicId: topic._id,
         title: 'Section 1',
-        slug: await this.uniqueSectionSlug(topic._id as Types.ObjectId, 'Section 1'),
+        slug: await this.uniqueSectionSlug(topic._id as PgId, 'Section 1'),
         description: '',
         order: 0,
-        isActive: true,
-      });
+        isActive: true });
     }
+    if (!section) throw new Error('Cannot create Dictation section');
     return { topic, section };
   }
 
@@ -230,8 +222,7 @@ export class DictationService {
     const legacy = await this.lessonModel
       .find({
         isDeleted: { $ne: true },
-        $or: [{ topicId: { $exists: false } }, { sectionId: { $exists: false } }],
-      })
+        $or: [{ topicId: { $exists: false } }, { sectionId: { $exists: false } }] })
       .select('_id topic')
       .lean();
     if (!legacy.length) return;
@@ -245,30 +236,28 @@ export class DictationService {
           slug: await this.uniqueTopicSlug(label),
           description: '',
           order: 0,
-          isActive: true,
-        });
+          isActive: true });
       }
+      if (!topic) throw new Error('Cannot create legacy Dictation topic');
       let section = await this.sectionModel.findOne({
         topicId: topic._id,
         title: 'Section 1',
-        isDeleted: { $ne: true },
-      });
+        isDeleted: { $ne: true } });
       if (!section) {
         section = await this.sectionModel.create({
           topicId: topic._id,
           title: 'Section 1',
-          slug: await this.uniqueSectionSlug(topic._id as Types.ObjectId, 'Section 1'),
+          slug: await this.uniqueSectionSlug(topic._id as PgId, 'Section 1'),
           description: '',
           order: 0,
-          isActive: true,
-        });
+          isActive: true });
       }
+      if (!section) throw new Error('Cannot create legacy Dictation section');
       await this.lessonModel.updateMany(
         {
           isDeleted: { $ne: true },
           topic: label,
-          $or: [{ topicId: { $exists: false } }, { sectionId: { $exists: false } }],
-        },
+          $or: [{ topicId: { $exists: false } }, { sectionId: { $exists: false } }] },
         { $set: { topicId: topic._id, sectionId: section._id, topic: topic.title } },
       );
     }
@@ -289,8 +278,7 @@ export class DictationService {
       ...topic,
       sections: sections
         .filter((section) => String(section.topicId) === String(topic._id))
-        .map((section) => ({ ...section, lessonCount: countMap.get(String(section._id)) || 0 })),
-    }));
+        .map((section) => ({ ...section, lessonCount: countMap.get(String(section._id)) || 0 })) }));
   }
 
   async createTopic(dto: CreateDictationTopicDto) {
@@ -303,12 +291,11 @@ export class DictationService {
       thumbnailUrl: dto.thumbnailUrl?.trim() || '',
       thumbnailPublicId: dto.thumbnailPublicId?.trim() || '',
       order: dto.order ?? 0,
-      isActive: dto.isActive ?? true,
-    });
+      isActive: dto.isActive ?? true });
   }
 
   async updateTopic(id: string, dto: UpdateDictationTopicDto) {
-    if (!Types.ObjectId.isValid(id)) throw new NotFoundException('Dictation topic not found.');
+    if (!PgId.isValid(id)) throw new NotFoundException('Dictation topic not found.');
     const topic = await this.topicModel.findOne({ _id: id, isDeleted: { $ne: true } });
     if (!topic) throw new NotFoundException('Dictation topic not found.');
     const oldThumbnailPublicId = topic.thumbnailPublicId;
@@ -337,7 +324,7 @@ export class DictationService {
   }
 
   async removeTopic(id: string) {
-    if (!Types.ObjectId.isValid(id)) throw new NotFoundException('Dictation topic not found.');
+    if (!PgId.isValid(id)) throw new NotFoundException('Dictation topic not found.');
     const topic = await this.topicModel.findOne({ _id: id, isDeleted: { $ne: true } });
     if (!topic) throw new NotFoundException('Dictation topic not found.');
     const lessonCount = await this.lessonModel.countDocuments({ topicId: topic._id, isDeleted: { $ne: true } });
@@ -351,11 +338,11 @@ export class DictationService {
   }
 
   async createSection(dto: CreateDictationSectionDto) {
-    if (!Types.ObjectId.isValid(dto.topicId)) throw new BadRequestException('Invalid Dictation topic.');
+    if (!PgId.isValid(dto.topicId)) throw new BadRequestException('Invalid Dictation topic.');
     const topic = await this.topicModel.findOne({ _id: dto.topicId, isDeleted: { $ne: true } });
     if (!topic) throw new NotFoundException('Dictation topic not found.');
     const title = dto.title.trim();
-    const topicId = topic._id as Types.ObjectId;
+    const topicId = topic._id as PgId;
     return this.sectionModel.create({
       ...dto,
       topicId,
@@ -363,19 +350,18 @@ export class DictationService {
       slug: await this.uniqueSectionSlug(topicId, dto.slug || title),
       description: dto.description?.trim() || '',
       order: dto.order ?? 0,
-      isActive: dto.isActive ?? true,
-    });
+      isActive: dto.isActive ?? true });
   }
 
   async updateSection(id: string, dto: UpdateDictationSectionDto) {
-    if (!Types.ObjectId.isValid(id)) throw new NotFoundException('Dictation section not found.');
+    if (!PgId.isValid(id)) throw new NotFoundException('Dictation section not found.');
     const section = await this.sectionModel.findOne({ _id: id, isDeleted: { $ne: true } });
     if (!section) throw new NotFoundException('Dictation section not found.');
-    let topicId = section.topicId as Types.ObjectId;
+    let topicId = section.topicId as PgId;
     if (dto.topicId !== undefined) {
       const topic = await this.topicModel.findOne({ _id: dto.topicId, isDeleted: { $ne: true } });
       if (!topic) throw new NotFoundException('Dictation topic not found.');
-      topicId = topic._id as Types.ObjectId;
+      topicId = topic._id as PgId;
       section.topicId = topicId;
     }
     if (dto.title !== undefined) section.title = dto.title.trim();
@@ -397,7 +383,7 @@ export class DictationService {
   }
 
   async removeSection(id: string) {
-    if (!Types.ObjectId.isValid(id)) throw new NotFoundException('Dictation section not found.');
+    if (!PgId.isValid(id)) throw new NotFoundException('Dictation section not found.');
     const section = await this.sectionModel.findOne({ _id: id, isDeleted: { $ne: true } });
     if (!section) throw new NotFoundException('Dictation section not found.');
     const lessonCount = await this.lessonModel.countDocuments({ sectionId: section._id, isDeleted: { $ne: true } });
@@ -423,7 +409,7 @@ export class DictationService {
         .lean(),
     ]);
     const progresses = lessons.length
-      ? await this.progressModel.find({ userId: new Types.ObjectId(userId), lessonId: { $in: lessons.map((l) => l._id) } }).lean()
+      ? await this.progressModel.find({ userId: new PgId(userId), lessonId: { $in: lessons.map((l) => l._id) } }).lean()
       : [];
     const progressMap = new Map(progresses.map((progress) => [String(progress.lessonId), progress]));
     const levelOrder = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
@@ -441,8 +427,7 @@ export class DictationService {
           sentenceCount: topicLessons.reduce((sum, lesson) => sum + Number(lesson.sentenceCount || 0), 0),
           totalDurationMs: topicLessons.reduce((sum, lesson) => sum + Number(lesson.totalDurationMs || 0), 0),
           levels,
-          completedLessons,
-        };
+          completedLessons };
       })
       .filter((topic) => topic.lessonCount > 0);
   }
@@ -463,13 +448,12 @@ export class DictationService {
         topicId: topic._id,
         sectionId: { $in: sections.map((section) => section._id) },
         status: DictationStatus.PUBLISHED,
-        isDeleted: { $ne: true },
-      })
+        isDeleted: { $ne: true } })
       .select('-sourceText -processingError -fullAudioPublicId')
       .sort({ order: 1, title: 1 })
       .lean();
     const progresses = lessons.length
-      ? await this.progressModel.find({ userId: new Types.ObjectId(userId), lessonId: { $in: lessons.map((l) => l._id) } }).lean()
+      ? await this.progressModel.find({ userId: new PgId(userId), lessonId: { $in: lessons.map((l) => l._id) } }).lean()
       : [];
     const progressMap = new Map(progresses.map((progress) => [String(progress.lessonId), progress]));
     const hydratedSections = sections
@@ -477,8 +461,7 @@ export class DictationService {
         ...section,
         lessons: lessons
           .filter((lesson) => String(lesson.sectionId) === String(section._id))
-          .map((lesson) => ({ ...lesson, progress: progressMap.get(String(lesson._id)) || null })),
-      }))
+          .map((lesson) => ({ ...lesson, progress: progressMap.get(String(lesson._id)) || null })) }))
       .filter((section) => section.lessons.length > 0);
     const levelOrder = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
     const levels = [...new Set(lessons.map((lesson) => String(lesson.level)))].sort(
@@ -492,8 +475,7 @@ export class DictationService {
       totalDurationMs: lessons.reduce((sum, lesson) => sum + Number(lesson.totalDurationMs || 0), 0),
       levels,
       completedLessons: lessons.filter((lesson) => progressMap.get(String(lesson._id))?.completed).length,
-      sections: hydratedSections,
-    };
+      sections: hydratedSections };
   }
 
   private async uniqueSlug(raw: string, excludeId?: string): Promise<string> {
@@ -505,8 +487,7 @@ export class DictationService {
       await this.lessonModel.exists({
         slug,
         isDeleted: { $ne: true },
-        ...(excludeId ? { _id: { $ne: new Types.ObjectId(excludeId) } } : {}),
-      })
+        ...(excludeId ? { _id: { $ne: new PgId(excludeId) } } : {}) })
     ) {
       slug = `${base}-${counter++}`;
     }
@@ -546,8 +527,7 @@ export class DictationService {
       voiceIds: this.ensureVoiceIds(dto.voiceIds),
       sentenceCount: sentences.length,
       status: DictationStatus.DRAFT,
-      order: dto.order ?? 0,
-    });
+      order: dto.order ?? 0 });
 
     return lesson.save();
   }
@@ -570,7 +550,7 @@ export class DictationService {
 
   async getAdmin(id: string) {
     await this.ensureLegacyHierarchy();
-    if (!Types.ObjectId.isValid(id)) throw new NotFoundException('Dictation lesson not found.');
+    if (!PgId.isValid(id)) throw new NotFoundException('Dictation lesson not found.');
     const lesson = await this.lessonModel.findOne({ _id: id, isDeleted: { $ne: true } }).lean();
     if (!lesson) throw new NotFoundException('Dictation lesson not found.');
     const segments = await this.segmentModel.find({ lessonId: lesson._id }).sort({ order: 1 }).lean();
@@ -683,15 +663,13 @@ export class DictationService {
         voiceId: voices[order % voices.length],
         language: lesson.language,
         speed: lesson.speed,
-        pauseAfterMs: order === sentences.length - 1 ? 0 : lesson.pauseAfterMs,
-      }));
+        pauseAfterMs: order === sentences.length - 1 ? 0 : lesson.pauseAfterMs }));
 
       const fullResult = await this.ttsService.synthesizeSequence({
         segments: sequence,
         defaultVoiceId: voices[0],
         defaultLanguage: lesson.language,
-        defaultSpeed: lesson.speed,
-      });
+        defaultSpeed: lesson.speed });
 
       const timings = fullResult.segmentTimingsMs || [];
       if (timings.length !== sentences.length) {
@@ -704,7 +682,7 @@ export class DictationService {
       const fullUpload = await this.mediaStorage.saveBuffer(storageKey, fullResult.audio);
 
       const generatedSegments = sentences.map((text, order) => ({
-        lessonId: lesson._id as Types.ObjectId,
+        lessonId: lesson._id as PgId,
         order,
         text,
         normalizedText: this.normalizeText(text),
@@ -717,16 +695,14 @@ export class DictationService {
         endMs: timings[order].endMs,
         durationMs: timings[order].durationMs,
         confidence: 1,
-        words: [],
-      }));
+        words: [] }));
 
       await this.replaceProcessedAudio(lesson, generatedSegments, {
         url: fullUpload.url,
         storageKey: fullUpload.storageKey,
         durationMs: Number(fullResult.durationMs || 0),
         processor: fullResult.provider || 'kokoro',
-        device: fullResult.device || '',
-      });
+        device: fullResult.device || '' });
 
       return this.getAdmin(id);
     } catch (error) {
@@ -790,7 +766,7 @@ export class DictationService {
           segment.endMs + this.asrEndPaddingMs,
         );
         return {
-          lessonId: lesson._id as Types.ObjectId,
+          lessonId: lesson._id as PgId,
           order,
           text: segment.text.trim(),
           normalizedText: this.normalizeText(segment.text),
@@ -803,8 +779,7 @@ export class DictationService {
           endMs,
           durationMs: Math.max(0, endMs - startMs),
           confidence: Number(segment.confidence || 0),
-          words: segment.words || [],
-        };
+          words: segment.words || [] };
       });
 
       lesson.sourceText = segments.map((segment) => segment.text).join('\n');
@@ -815,8 +790,7 @@ export class DictationService {
         storageKey: upload.storageKey,
         durationMs: totalDurationMs,
         processor: `faster-whisper:${transcription.model}`,
-        device: transcription.device || '',
-      });
+        device: transcription.device || '' });
 
       return this.getAdmin(id);
     } catch (error) {
@@ -865,8 +839,7 @@ export class DictationService {
         endMs: Math.round(item.endMs),
         durationMs: Math.max(0, Math.round(item.endMs - item.startMs)),
         confidence: previous?.confidence || 0,
-        words: previous?.words || [],
-      };
+        words: previous?.words || [] };
     });
 
     await this.segmentModel.deleteMany({ lessonId: lesson._id });
@@ -937,8 +910,7 @@ export class DictationService {
     await this.ensureLegacyHierarchy();
     const filter: Record<string, unknown> = {
       isDeleted: { $ne: true },
-      status: DictationStatus.PUBLISHED,
-    };
+      status: DictationStatus.PUBLISHED };
     if (query.search) {
       filter.$or = [
         { title: { $regex: query.search, $options: 'i' } },
@@ -957,14 +929,13 @@ export class DictationService {
     if (!lessons.length) return [];
 
     const progresses = await this.progressModel
-      .find({ userId: new Types.ObjectId(userId), lessonId: { $in: lessons.map((l) => l._id) } })
+      .find({ userId: new PgId(userId), lessonId: { $in: lessons.map((l) => l._id) } })
       .lean();
     const progressMap = new Map(progresses.map((progress) => [progress.lessonId.toString(), progress]));
 
     return lessons.map((lesson) => ({
       ...lesson,
-      progress: progressMap.get(lesson._id.toString()) || null,
-    }));
+      progress: progressMap.get(lesson._id.toString()) || null }));
   }
 
   async getPublishedBySlug(slug: string, userId: string) {
@@ -977,9 +948,8 @@ export class DictationService {
     const [segments, progress, topic, section] = await Promise.all([
       this.segmentModel.find({ lessonId: lesson._id }).sort({ order: 1 }).lean(),
       this.progressModel.findOne({
-        userId: new Types.ObjectId(userId),
-        lessonId: lesson._id,
-      }).lean(),
+        userId: new PgId(userId),
+        lessonId: lesson._id }).lean(),
       lesson.topicId ? this.topicModel.findById(lesson.topicId).lean() : null,
       lesson.sectionId ? this.sectionModel.findById(lesson.sectionId).lean() : null,
     ]);
@@ -992,8 +962,7 @@ export class DictationService {
       sectionInfo: section ? { _id: section._id, title: section.title, slug: section.slug } : null,
       practiceSettings: {
         maxAttemptsBeforeReveal: this.maxAttemptsBeforeReveal,
-        autoNextDelayMs: this.autoNextDelayMs,
-      },
+        autoNextDelayMs: this.autoNextDelayMs },
       segments: segments.map(({ audioPublicId: _audioPublicId, ...segment }) => {
         const hasUnifiedTiming =
           Number.isFinite(segment.startMs) &&
@@ -1005,23 +974,20 @@ export class DictationService {
         }
         return segment;
       }),
-      progress: progress || null,
-    };
+      progress: progress || null };
   }
 
   async getProgress(userId: string, lessonId: string) {
-    if (!Types.ObjectId.isValid(lessonId)) throw new NotFoundException('Dictation lesson not found.');
+    if (!PgId.isValid(lessonId)) throw new NotFoundException('Dictation lesson not found.');
     const lesson = await this.lessonModel.findOne({
       _id: lessonId,
       status: DictationStatus.PUBLISHED,
-      isDeleted: { $ne: true },
-    }).lean();
+      isDeleted: { $ne: true } }).lean();
     if (!lesson) throw new NotFoundException('Dictation lesson not found.');
 
     const progress = await this.progressModel.findOne({
-      userId: new Types.ObjectId(userId),
-      lessonId: lesson._id,
-    }).lean();
+      userId: new PgId(userId),
+      lessonId: lesson._id }).lean();
 
     return progress || {
       userId,
@@ -1034,8 +1000,7 @@ export class DictationService {
       wrongCount: 0,
       attempts: 0,
       transcriptRevealed: false,
-      completed: false,
-    };
+      completed: false };
   }
 
   private ensureProgressSegment(progress: DictationProgressDocument, segmentIndex: number) {
@@ -1048,32 +1013,28 @@ export class DictationService {
       replayCount: 0,
       correct: false,
       firstTryCorrect: false,
-      revealed: false,
-    } as any);
+      revealed: false } as any);
     return progress.segmentProgress[progress.segmentProgress.length - 1];
   }
 
   async recordAttempt(userId: string, lessonId: string, segmentIndex: number, isCorrect: boolean) {
-    if (!Types.ObjectId.isValid(lessonId)) throw new NotFoundException('Dictation lesson not found.');
+    if (!PgId.isValid(lessonId)) throw new NotFoundException('Dictation lesson not found.');
     const lesson = await this.lessonModel.findOne({
       _id: lessonId,
       status: DictationStatus.PUBLISHED,
-      isDeleted: { $ne: true },
-    });
+      isDeleted: { $ne: true } });
     if (!lesson) throw new NotFoundException('Dictation lesson not found.');
     if (segmentIndex < 0 || segmentIndex >= lesson.sentenceCount) {
       throw new BadRequestException('Invalid dictation sentence index.');
     }
 
     let progress = await this.progressModel.findOne({
-      userId: new Types.ObjectId(userId),
-      lessonId: lesson._id,
-    });
+      userId: new PgId(userId),
+      lessonId: lesson._id });
     if (!progress) {
       progress = new this.progressModel({
-        userId: new Types.ObjectId(userId),
-        lessonId: lesson._id,
-      });
+        userId: new PgId(userId),
+        lessonId: lesson._id });
     }
 
     progress.completedSegments ||= [];
@@ -1130,7 +1091,7 @@ export class DictationService {
     progress.lastPracticedAt = new Date();
     const saved = await progress.save();
     if (!wasCompleted && saved.completed && this.learningActivity) {
-      const firstTry = (saved.segmentProgress || []).filter((s) => s.firstTryCorrect).length;
+      const firstTry = (saved.segmentProgress || []).filter((s: {firstTryCorrect?: boolean}) => s.firstTryCorrect).length;
       await this.learningActivity.record({
         userId: saved.userId,
         module: 'DICTATION',
@@ -1146,29 +1107,26 @@ export class DictationService {
         durationSec: lesson.totalDurationMs
           ? Math.round(lesson.totalDurationMs / 1000)
           : undefined,
-        metadata: { firstTryCorrect: firstTry, revealed: saved.revealedSegments?.length ?? 0 },
-      });
+        metadata: { firstTryCorrect: firstTry, revealed: saved.revealedSegments?.length ?? 0 } });
     }
     return saved;
   }
 
   async revealSegment(userId: string, lessonId: string, segmentIndex: number) {
-    if (!Types.ObjectId.isValid(lessonId)) throw new NotFoundException('Dictation lesson not found.');
+    if (!PgId.isValid(lessonId)) throw new NotFoundException('Dictation lesson not found.');
     const lesson = await this.lessonModel.findOne({
       _id: lessonId,
       status: DictationStatus.PUBLISHED,
-      isDeleted: { $ne: true },
-    });
+      isDeleted: { $ne: true } });
     if (!lesson) throw new NotFoundException('Dictation lesson not found.');
     if (segmentIndex < 0 || segmentIndex >= lesson.sentenceCount) {
       throw new BadRequestException('Invalid dictation sentence index.');
     }
     let progress = await this.progressModel.findOne({
-      userId: new Types.ObjectId(userId),
-      lessonId: lesson._id,
-    });
+      userId: new PgId(userId),
+      lessonId: lesson._id });
     if (!progress) {
-      progress = new this.progressModel({ userId: new Types.ObjectId(userId), lessonId: lesson._id });
+      progress = new this.progressModel({ userId: new PgId(userId), lessonId: lesson._id });
     }
     progress.revealedSegments ||= [];
     progress.segmentProgress ||= [];
@@ -1183,22 +1141,19 @@ export class DictationService {
   }
 
   async revealTranscript(userId: string, lessonId: string) {
-    if (!Types.ObjectId.isValid(lessonId)) throw new NotFoundException('Dictation lesson not found.');
+    if (!PgId.isValid(lessonId)) throw new NotFoundException('Dictation lesson not found.');
     const lesson = await this.lessonModel.exists({
       _id: lessonId,
       status: DictationStatus.PUBLISHED,
-      isDeleted: { $ne: true },
-    });
+      isDeleted: { $ne: true } });
     if (!lesson) throw new NotFoundException('Dictation lesson not found.');
     let progress = await this.progressModel.findOne({
-      userId: new Types.ObjectId(userId),
-      lessonId: new Types.ObjectId(lessonId),
-    });
+      userId: new PgId(userId),
+      lessonId: new PgId(lessonId) });
     if (!progress) {
       progress = new this.progressModel({
-        userId: new Types.ObjectId(userId),
-        lessonId: new Types.ObjectId(lessonId),
-      });
+        userId: new PgId(userId),
+        lessonId: new PgId(lessonId) });
     }
     progress.transcriptRevealed = true;
     progress.transcriptRevealedAt ||= new Date();
@@ -1207,25 +1162,22 @@ export class DictationService {
   }
 
   async recordReplay(userId: string, lessonId: string, segmentIndex: number) {
-    if (!Types.ObjectId.isValid(lessonId)) throw new NotFoundException('Dictation lesson not found.');
+    if (!PgId.isValid(lessonId)) throw new NotFoundException('Dictation lesson not found.');
     const lesson = await this.lessonModel.findOne({
       _id: lessonId,
       status: DictationStatus.PUBLISHED,
-      isDeleted: { $ne: true },
-    }).select('sentenceCount');
+      isDeleted: { $ne: true } }).select('sentenceCount');
     if (!lesson) throw new NotFoundException('Dictation lesson not found.');
     if (segmentIndex < 0 || segmentIndex >= lesson.sentenceCount) {
       throw new BadRequestException('Invalid dictation sentence index.');
     }
     let progress = await this.progressModel.findOne({
-      userId: new Types.ObjectId(userId),
-      lessonId: new Types.ObjectId(lessonId),
-    });
+      userId: new PgId(userId),
+      lessonId: new PgId(lessonId) });
     if (!progress) {
       progress = new this.progressModel({
-        userId: new Types.ObjectId(userId),
-        lessonId: new Types.ObjectId(lessonId),
-      });
+        userId: new PgId(userId),
+        lessonId: new PgId(lessonId) });
     }
     progress.segmentProgress ||= [];
     const segmentProgress = this.ensureProgressSegment(progress, segmentIndex);
@@ -1236,20 +1188,18 @@ export class DictationService {
 
   async resetProgress(userId: string, lessonId: string) {
     await this.progressModel.deleteOne({
-      userId: new Types.ObjectId(userId),
-      lessonId: new Types.ObjectId(lessonId),
-    });
+      userId: new PgId(userId),
+      lessonId: new PgId(lessonId) });
     return { success: true };
   }
 
   async progressOverview(userId: string) {
     const progresses = await this.progressModel
-      .find({ userId: new Types.ObjectId(userId) })
+      .find({ userId: new PgId(userId) })
       .populate({
         path: 'lessonId',
         match: { status: DictationStatus.PUBLISHED, isDeleted: { $ne: true } },
-        select: 'title slug level topic sentenceCount totalDurationMs',
-      })
+        select: 'title slug level topic sentenceCount totalDurationMs' })
       .sort({ lastPracticedAt: -1 })
       .lean();
 
@@ -1259,7 +1209,6 @@ export class DictationService {
       completed: items.filter((item) => item.completed).length,
       totalCorrect: items.reduce((sum, item) => sum + item.correctCount, 0),
       totalAttempts: items.reduce((sum, item) => sum + item.attempts, 0),
-      items,
-    };
+      items };
   }
 }

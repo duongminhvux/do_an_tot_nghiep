@@ -2,42 +2,35 @@ import { Module } from '@nestjs/common';
 import { UsersService } from './users.service.js';
 import { UsersController } from './users.controller.js';
 import { AdminUsersController } from './admin-users.controller.js';
-import { MongooseModule } from '@nestjs/mongoose';
+import { PgModelsModule } from '../../postgres/compat.js';
 import { User, UserSchema } from './schema/user.schema.js';
 import {
   UserLessonWord,
-  UserLessonWordSchema,
-} from '../learning/progress/schemas/user-lesson-word.schema.js';
+  UserLessonWordSchema } from '../learning/progress/schemas/user-lesson-word.schema.js';
 import {
   UserLessonProgress,
-  UserLessonProgressSchema,
-} from '../learning/progress/schemas/user-lesson-progress.schema.js';
+  UserLessonProgressSchema } from '../learning/progress/schemas/user-lesson-progress.schema.js';
 import {
   LearningSession,
-  LearningSessionSchema,
-} from '../learning/sessions/schemas/learning-session.schema.js';
+  LearningSessionSchema } from '../learning/sessions/schemas/learning-session.schema.js';
 import {
   UserWordReview,
-  UserWordReviewSchema,
-} from '../learning/reviews/schemas/user-word-review.schema.js';
+  UserWordReviewSchema } from '../learning/reviews/schemas/user-word-review.schema.js';
 import {
   UserDailyActivity,
-  UserDailyActivitySchema,
-} from '../learning/progress/schemas/user-daily-activity.schema.js';
+  UserDailyActivitySchema } from '../learning/progress/schemas/user-daily-activity.schema.js';
 import { Lesson, LessonSchema } from '../vocabulary/lessons/lesson.schema.js';
 import {
   LessonWord,
-  LessonWordSchema,
-} from '../vocabulary/lessons/lesson-word.schema.js';
+  LessonWordSchema } from '../vocabulary/lessons/lesson-word.schema.js';
 import { Word, WordSchema } from '../vocabulary/words/word.schema.js';
 import {
   Collection,
-  CollectionSchema,
-} from '../vocabulary/collections/collection.schema.js';
+  CollectionSchema } from '../vocabulary/collections/collection.schema.js';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([
+    PgModelsModule.forFeature([
       { name: User.name, schema: UserSchema },
       { name: UserLessonWord.name, schema: UserLessonWordSchema },
       { name: UserLessonProgress.name, schema: UserLessonProgressSchema },
@@ -52,7 +45,6 @@ import {
   ],
   controllers: [UsersController, AdminUsersController],
   providers: [UsersService],
-  exports: [UsersService],
-})
+  exports: [UsersService] })
 export class UsersModule {}
 

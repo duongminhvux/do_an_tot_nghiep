@@ -170,28 +170,28 @@ export default function UsersPage() {
     mutationFn: ({
       id,
       payload,
-      mongoId,
+      recordId,
     }: {
       id: string;
       payload: UpdateUserPayload;
-      mongoId?: string;
-    }) => userService.update(id, payload, mongoId),
+      recordId?: string;
+    }) => userService.update(id, payload, recordId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
     },
   });
 
   const banMutation = useMutation({
-    mutationFn: ({ id, mongoId }: { id: string; mongoId?: string }) =>
-      userService.toggleBan(id, mongoId),
+    mutationFn: ({ id, recordId }: { id: string; recordId?: string }) =>
+      userService.toggleBan(id, recordId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: ({ id, mongoId }: { id: string; mongoId?: string }) =>
-      userService.delete(id, mongoId),
+    mutationFn: ({ id, recordId }: { id: string; recordId?: string }) =>
+      userService.delete(id, recordId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       setSelectedCheckboxIds((prev) => prev.filter((i) => i !== deletingUser?.id));
@@ -660,7 +660,7 @@ export default function UsersPage() {
         open={!!editingUser}
         onOpenChange={(open) => !open && setEditingUser(null)}
         onSubmit={async (id, payload) => {
-          await updateMutation.mutateAsync({ id, payload, mongoId: editingUser?._id });
+          await updateMutation.mutateAsync({ id, payload, recordId: editingUser?._id });
         }}
       />
 
@@ -669,7 +669,7 @@ export default function UsersPage() {
         open={!!banningUser}
         onOpenChange={(open) => !open && setBanningUser(null)}
         onConfirm={async (id) => {
-          await banMutation.mutateAsync({ id, mongoId: banningUser?._id });
+          await banMutation.mutateAsync({ id, recordId: banningUser?._id });
         }}
       />
 
@@ -678,7 +678,7 @@ export default function UsersPage() {
         open={!!deletingUser}
         onOpenChange={(open) => !open && setDeletingUser(null)}
         onConfirm={async (id) => {
-          await deleteMutation.mutateAsync({ id, mongoId: deletingUser?._id });
+          await deleteMutation.mutateAsync({ id, recordId: deletingUser?._id });
         }}
       />
     </div>

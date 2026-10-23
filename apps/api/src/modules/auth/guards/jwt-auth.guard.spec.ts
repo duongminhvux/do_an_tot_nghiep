@@ -17,8 +17,7 @@ describe('JwtAuthGuard transport handling', () => {
     return {
       getType: () => 'ws',
       getClass: () => gateway,
-      switchToWs: () => ({ getClient: () => ({ data: { userId } }) }),
-    } as unknown as ExecutionContext;
+      switchToWs: () => ({ getClient: () => ({ data: { userId } }) }) } as unknown as ExecutionContext;
   }
 
   beforeEach(() => vi.restoreAllMocks());
@@ -50,8 +49,7 @@ describe('JwtAuthGuard transport handling', () => {
     const context = {
       getType: () => 'http',
       getHandler: () => () => {},
-      getClass: () => class {},
-    } as unknown as ExecutionContext;
+      getClass: () => class {} } as unknown as ExecutionContext;
     await expect(guard.canActivate(context)).resolves.toBe(true);
     expect(passport).toHaveBeenCalledWith(context);
   });
@@ -62,8 +60,7 @@ describe('JwtAuthGuard transport handling', () => {
     const context = {
       getType: () => 'http',
       getHandler: () => () => {},
-      getClass: () => class {},
-    } as unknown as ExecutionContext;
+      getClass: () => class {} } as unknown as ExecutionContext;
     expect(guard.canActivate(context)).toBe(true);
     expect(passport).not.toHaveBeenCalled();
   });

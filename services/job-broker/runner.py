@@ -1,5 +1,5 @@
 """Single durable RabbitMQ TTS consumer. GPU scaling deliberately deferred.
-MongoDB owns job state; RabbitMQ owns delivery, retry and DLQ.
+PostgreSQL owns job state; RabbitMQ owns delivery, retry and DLQ.
 """
 import json
 import os

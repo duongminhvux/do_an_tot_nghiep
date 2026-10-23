@@ -4,8 +4,7 @@ export enum ActivityCategory {
   VOCABULARY = 'VOCABULARY',
   DICTATION = 'DICTATION',
   ASSESSMENT = 'ASSESSMENT',
-  GENERAL = 'GENERAL',
-}
+  GENERAL = 'GENERAL' }
 
 export enum ActivityAction {
   // Auth & Session
@@ -31,6 +30,5 @@ export enum ActivityAction {
   TOEIC_SUBMIT = 'TOEIC_SUBMIT',
 
   // Other / Generic
-  CUSTOM = 'CUSTOM',
-}
+  CUSTOM = 'CUSTOM' }
 

@@ -39,7 +39,7 @@ export interface UserLearningStats {
 
 export interface UserItem {
   id: string; // e.g. "U001"
-  _id?: string; // mongo id
+  _id?: string; // record UUID
   name: string;
   email: string;
   avatarUrl?: string;

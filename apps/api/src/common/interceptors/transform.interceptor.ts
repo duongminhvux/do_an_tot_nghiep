@@ -2,8 +2,7 @@ import {
   Injectable,
   NestInterceptor,
   ExecutionContext,
-  CallHandler,
-} from '@nestjs/common';
+  CallHandler } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
@@ -38,8 +37,7 @@ export class TransformInterceptor<T> implements NestInterceptor<
           return {
             statusCode,
             message: data.message,
-            data: null as any,
-          };
+            data: null as any };
         }
 
         if (data && typeof data === 'object' && 'message' in data) {
@@ -50,15 +48,13 @@ export class TransformInterceptor<T> implements NestInterceptor<
             data:
               Object.keys(rest).length === 1 && 'data' in rest
                 ? rest.data
-                : rest,
-          };
+                : rest };
         }
 
         return {
           statusCode,
           message: 'SUCCESS',
-          data: data ?? null,
-        };
+          data: data ?? null };
       }),
     );
   }

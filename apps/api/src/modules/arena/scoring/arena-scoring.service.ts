@@ -6,8 +6,7 @@ export class ArenaScoringService {
   calculateQuestionScore({
     timeLimitMs,
     elapsedMs,
-    wrongAttempts,
-  }: {
+    wrongAttempts }: {
     timeLimitMs: number;
     elapsedMs: number;
     wrongAttempts: number;

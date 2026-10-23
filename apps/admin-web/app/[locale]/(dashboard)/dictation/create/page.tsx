@@ -272,7 +272,7 @@ export default function CreateDictationPage() {
               </button>
               <div className="mt-3 flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-5 text-amber-700">
                 <PlayCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                {audioSource === 'TTS' ? 'Kokoro chỉ lưu một full audio. Metadata từng câu được lấy ngay lúc ghép, không upload sentence WAV.' : 'Faster Whisper giữ nguyên một file upload và chỉ lưu timestamp từng câu/word trong MongoDB.'}
+                {audioSource === 'TTS' ? 'Kokoro chỉ lưu một full audio. Metadata từng câu được lấy ngay lúc ghép, không upload sentence WAV.' : 'Faster Whisper giữ nguyên một file upload và chỉ lưu timestamp từng câu/word trong PostgreSQL.'}
               </div>
             </section>
           </div>

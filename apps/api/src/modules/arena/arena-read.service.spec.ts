@@ -1,21 +1,17 @@
-import { Types } from 'mongoose';
+import { PgId } from '../../postgres/compat.js';
 import { ArenaReadService, arenaPeriodStart } from './arena-read.service.js';
 import { ArenaService, arenaTodayRange } from './arena.service.js';
 
 vi.mock('./schemas/arena-match.schema.js', () => ({
   ArenaMatch: class {},
   ArenaMatchStatus: { FINISHED: 'FINISHED' },
-  ArenaMatchType: { RANK: 'RANK', FRIEND: 'FRIEND' },
-}));
+  ArenaMatchType: { RANK: 'RANK', FRIEND: 'FRIEND' } }));
 vi.mock('./schemas/arena-match-player.schema.js', () => ({
-  ArenaMatchPlayer: class {},
-}));
+  ArenaMatchPlayer: class {} }));
 vi.mock('./schemas/arena-profile.schema.js', () => ({
-  ArenaProfile: class {},
-}));
+  ArenaProfile: class {} }));
 vi.mock('./schemas/arena-rating-history.schema.js', () => ({
-  ArenaRatingHistory: class {},
-}));
+  ArenaRatingHistory: class {} }));
 vi.mock('../users/schema/user.schema.js', () => ({ User: class {} }));
 
 const userId = '507f1f77bcf86cd799439011';
@@ -37,11 +33,9 @@ describe('Arena DB reads', () => {
     await f.service.getLeaderboard(userId, 'all');
     const pipeline = f.aggregate.mock.calls[0][0];
     expect(pipeline).toContainEqual({
-      $match: { 'match.status': 'FINISHED', 'match.type': 'RANK' },
-    });
+      $match: { 'match.status': 'FINISHED', 'match.type': 'RANK' } });
     expect(pipeline).toContainEqual({
-      $match: { 'user.isDeleted': { $ne: true } },
-    });
+      $match: { 'user.isDeleted': { $ne: true } } });
     expect(
       pipeline.findIndex((stage: Record<string, unknown>) => '$group' in stage),
     ).toBeGreaterThan(2);
@@ -56,8 +50,7 @@ describe('Arena DB reads', () => {
       {
         players: [],
         me: [{ userId, position: 12, rating: 1000 }],
-        total: [{ count: 30 }],
-      },
+        total: [{ count: 30 }] },
     ]);
     const result = await f.service.getLeaderboard(userId, 'all', 5);
     expect(result).toMatchObject({ me: { position: 12 }, totalPlayers: 30 });
@@ -66,15 +59,11 @@ describe('Arena DB reads', () => {
       $facet: {
         players: [{ $limit: 5 }],
         me: [{ $match: { userId } }, { $limit: 1 }],
-        total: [{ $count: 'count' }],
-      },
-    });
+        total: [{ $count: 'count' }] } });
     expect(pipeline).toContainEqual({
       $setWindowFields: {
         sortBy: { rating: -1 },
-        output: { position: { $rank: {} } },
-      },
-    });
+        output: { position: { $rank: {} } } } });
   });
 
   it('returns no fake rank for a user without a completed rank match', async () => {
@@ -83,8 +72,7 @@ describe('Arena DB reads', () => {
       period: 'week',
       players: [],
       me: null,
-      totalPlayers: 0,
-    });
+      totalPlayers: 0 });
   });
 
   it('limits history to the authenticated user, sorts newest first and includes draws', async () => {
@@ -92,12 +80,10 @@ describe('Arena DB reads', () => {
     await f.service.getRecentMatches(userId, 20);
     const pipeline = f.aggregate.mock.calls[0][0];
     expect(pipeline[0]).toEqual({
-      $match: { userId: new Types.ObjectId(userId) },
-    });
+      $match: { userId: new PgId(userId) } });
     expect(pipeline).toContainEqual({ $match: { 'match.status': 'FINISHED' } });
     expect(pipeline).toContainEqual({
-      $sort: { 'match.finishedAt': -1, matchId: -1 },
-    });
+      $sort: { 'match.finishedAt': -1, matchId: -1 } });
     expect(pipeline).toContainEqual({ $limit: 20 });
     expect(pipeline.at(-1).$project.result.$cond[1]).toBe('DRAW');
     expect(pipeline.at(-1).$project).not.toHaveProperty('email');
@@ -110,8 +96,7 @@ describe('Arena DB reads', () => {
         matches: 5,
         wins: 3,
         draws: 1,
-        outcomes: [true, false, false, true, true],
-      },
+        outcomes: [true, false, false, true, true] },
     ]);
     expect(await f.service.getRankedStatistics(userId)).toEqual({
       matches: 5,
@@ -120,8 +105,7 @@ describe('Arena DB reads', () => {
       draws: 1,
       winRate: 60,
       currentWinStreak: 2,
-      bestWinStreak: 2,
-    });
+      bestWinStreak: 2 });
   });
 
   it('rejects bad periods, IDs and unbounded query limits before querying', async () => {
@@ -161,19 +145,15 @@ describe('Arena DB reads', () => {
           draws: 0,
           winRate: 0,
           currentWinStreak: 0,
-          bestWinStreak: 0,
-        }),
-      };
+          bestWinStreak: 0 }) };
       const service = new ArenaService(
         read as never,
         {
           findOneAndUpdate: vi
             .fn()
             .mockResolvedValue({
-              userId: new Types.ObjectId(userId),
-              rating: 1240,
-            }),
-        } as never,
+              userId: new PgId(userId),
+              rating: 1240 }) } as never,
         { aggregate: vi.fn().mockResolvedValue([{ total: change }]) } as never,
       );
       const result = await service.getMyArenaOverview(userId);
@@ -189,9 +169,7 @@ describe('Arena DB reads', () => {
           draws: 0,
           winRate: 0,
           currentWinStreak: 0,
-          bestWinStreak: 0,
-        },
-      });
+          bestWinStreak: 0 } });
       expect(read.getRankedStatistics).toHaveBeenCalledWith(userId);
     },
   );
@@ -202,31 +180,25 @@ describe('Arena DB reads', () => {
         getRankedStatistics: vi.fn().mockResolvedValue({ matches: 0 }),
         getLeaderboard: vi
           .fn()
-          .mockResolvedValue({ me: null, totalPlayers: 0 }),
-      } as never,
+          .mockResolvedValue({ me: null, totalPlayers: 0 }) } as never,
       {
         findOneAndUpdate: vi
           .fn()
           .mockResolvedValue({
-            userId: new Types.ObjectId(userId),
-            rating: 1000,
-          }),
-      } as never,
+            userId: new PgId(userId),
+            rating: 1000 }) } as never,
       { aggregate } as never,
     );
     expect(await service.getMyArenaOverview(userId)).toMatchObject({
       rating: 1000,
       todayRatingChange: 0,
-      leaderboard: { position: null },
-    });
+      leaderboard: { position: null } });
     const { start, end } = arenaTodayRange();
     expect(aggregate).toHaveBeenCalledWith([
       {
         $match: {
-          userId: new Types.ObjectId(userId),
-          createdAt: { $gte: start, $lt: end },
-        },
-      },
+          userId: new PgId(userId),
+          createdAt: { $gte: start, $lt: end } } },
       { $group: { _id: null, total: { $sum: '$change' } } },
     ]);
   });

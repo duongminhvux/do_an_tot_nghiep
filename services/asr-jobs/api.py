@@ -15,7 +15,7 @@ def authenticate(request: Request):
 
 @app.get('/health')
 def health():
-    JOBS.database.command('ping')
+    JOBS.ping()
     return {'status':'ok'}
 
 @app.post('/jobs',status_code=202)

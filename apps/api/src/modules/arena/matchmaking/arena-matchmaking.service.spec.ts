@@ -1,6 +1,5 @@
 vi.mock('../matches/arena-match.service.js', () => ({
-  ArenaMatchService: class {},
-}));
+  ArenaMatchService: class {} }));
 import { ArenaMatchmakingService } from './arena-matchmaking.service.js';
 vi.mock('../../users/schema/user.schema.js', () => ({ User: class {} }));
 
@@ -50,12 +49,10 @@ function fixture() {
       [...queue]
         .filter(([, rating]) => rating >= min && rating <= max)
         .map(([id]) => id),
-    ),
-  };
+    ) };
   const presence = { isOnline: vi.fn(async (id: string) => online.has(id)) };
   const profiles = {
-    getOrCreateProfile: vi.fn(async () => ({ rating: 1000 })),
-  };
+    getOrCreateProfile: vi.fn(async () => ({ rating: 1000 })) };
   const matches = {
     findActiveMatchForUser: vi.fn(async (id: string) =>
       active.has(id) ? {} : null,
@@ -64,16 +61,12 @@ function fixture() {
       active.add(a);
       active.add(b);
       return { match: { _id: 'match-1' } };
-    }),
-  };
+    }) };
   const users = {
     find: vi.fn((filter: { _id: { $in: string[] } }) => ({
       select: () => ({
         lean: async () =>
-          filter._id.$in.map((id) => ({ _id: id, username: id })),
-      }),
-    })),
-  };
+          filter._id.$in.map((id) => ({ _id: id, username: id })) }) })) };
   const deps = [
     presence,
     { getClient: () => redis },
@@ -88,8 +81,7 @@ function fixture() {
     matches,
     locks,
     redis,
-    active,
-  };
+    active };
 }
 
 describe('Ranked matchmaking', () => {
@@ -99,8 +91,7 @@ describe('Ranked matchmaking', () => {
     f.online.delete('c');
     expect(await f.service.joinQueue('a')).toMatchObject({
       matched: false,
-      status: 'WAITING',
-    });
+      status: 'WAITING' });
     expect(f.matches.createRankedMatch).not.toHaveBeenCalled();
   });
   it('removes stale offline queue entries before searching for an opponent', async () => {

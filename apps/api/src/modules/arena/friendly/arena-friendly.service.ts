@@ -1,18 +1,18 @@
+import { PgId } from '../../../postgres/compat.js';
 import { ArenaSettingsService } from '../admin/arena-settings.service.js';
 import { ARENA_DEFAULTS } from '../admin/arena-settings.defaults.js';
 import { gradeWordGuess } from './word-guess.utils.js';
 import { ArenaFriendRoomService } from './arena-friend-room.service.js';
 import { Injectable, Optional } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
+import { InjectPgModel } from '../../../postgres/compat.js';
 import { WsException } from '@nestjs/websockets';
-import { type Model, Types } from 'mongoose';
+import { type Model } from '../../../postgres/compat.js';
 import {
   ArenaMatch,
   ArenaMatchStatus,
   ArenaMatchType,
   ArenaFriendMode,
-  ArenaMatchFinishReason,
-} from '../schemas/arena-match.schema.js';
+  ArenaMatchFinishReason } from '../schemas/arena-match.schema.js';
 import { ArenaInvitation } from '../schemas/arena-invitation.schema.js';
 import { ArenaMatchPlayer } from '../schemas/arena-match-player.schema.js';
 import { User } from '../../users/schema/user.schema.js';
@@ -20,8 +20,7 @@ import { Word } from '../../vocabulary/words/word.schema.js';
 import { ArenaMatchService } from '../matches/arena-match.service.js';
 import {
   ArenaRoundService,
-  ArenaRoundEvent,
-} from '../question/arena-round.service.js';
+  ArenaRoundEvent } from '../question/arena-round.service.js';
 import { ArenaQuestionService } from '../question/arena-question.service.js';
 import { ArenaPresenceService } from '../presence/arena-presence.service.js';
 import { ArenaService } from '../arena.service.js';
@@ -36,13 +35,13 @@ export type FriendlyDelivery = {
 @Injectable()
 export class ArenaFriendlyService {
   constructor(
-    @InjectModel(ArenaMatch.name) private readonly matches: Model<ArenaMatch>,
-    @InjectModel(ArenaInvitation.name)
+    @InjectPgModel(ArenaMatch.name) private readonly matches: Model<ArenaMatch>,
+    @InjectPgModel(ArenaInvitation.name)
     private readonly invites: Model<ArenaInvitation>,
-    @InjectModel(ArenaMatchPlayer.name)
+    @InjectPgModel(ArenaMatchPlayer.name)
     private readonly players: Model<ArenaMatchPlayer>,
-    @InjectModel(User.name) private readonly users: Model<User>,
-    @InjectModel(Word.name) private readonly words: Model<Word>,
+    @InjectPgModel(User.name) private readonly users: Model<User>,
+    @InjectPgModel(Word.name) private readonly words: Model<Word>,
     private readonly matchService: ArenaMatchService,
     private readonly rounds: ArenaRoundService,
     private readonly questions: ArenaQuestionService,
@@ -53,9 +52,9 @@ export class ArenaFriendlyService {
   ) {}
 
   private id(value: string) {
-    if (typeof value !== 'string' || !/^[a-f\d]{24}$/i.test(value))
+    if (typeof value !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value))
       throw new WsException('Invalid ID');
-    return new Types.ObjectId(value);
+    return new PgId(value);
   }
 
   private mode(value: ArenaFriendMode) {
@@ -84,8 +83,7 @@ export class ArenaFriendlyService {
       .limit(30);
     const opponents = await this.players.find({
       matchId: { $in: history.map((p) => p.matchId) },
-      userId: { $ne: this.id(userId) },
-    });
+      userId: { $ne: this.id(userId) } });
     const recent = new Set(opponents.map((p) => String(p.userId)));
     // The application has no social friendship model yet; only return previous opponents.
     const escaped = String(search)
@@ -96,8 +94,7 @@ export class ArenaFriendlyService {
         _id: { $ne: this.id(userId) },
         isDeleted: { $ne: true },
         isBanned: { $ne: true },
-        ...(escaped ? { username: { $regex: escaped, $options: 'i' } } : {}),
-      })
+        ...(escaped ? { username: { $regex: escaped, $options: 'i' } } : {}) })
       .select('_id username avatarUrl')
       .limit(100)
       .lean();
@@ -107,8 +104,7 @@ export class ArenaFriendlyService {
         username: user.username || 'Player',
         avatarUrl: user.avatarUrl,
         online: await this.presence.isOnline(String(user._id)),
-        recent: recent.has(String(user._id)),
-      })),
+        recent: recent.has(String(user._id)) })),
     );
     return entries.filter(
       (user) => user.recent && user.userId !== String(userId),
@@ -124,8 +120,7 @@ export class ArenaFriendlyService {
       !(await this.users.exists({
         _id: this.id(userId),
         isDeleted: { $ne: true },
-        isBanned: { $ne: true },
-      }))
+        isBanned: { $ne: true } }))
     )
       throw new WsException('Player unavailable');
   }
@@ -160,8 +155,7 @@ export class ArenaFriendlyService {
       await this.invites.exists({
         senderId: this.id(senderId),
         status: 'PENDING',
-        expiresAt: { $gt: new Date() },
-      })
+        expiresAt: { $gt: new Date() } })
     )
       throw new WsException('You already have a pending invitation');
     const config = this.settings
@@ -176,12 +170,11 @@ export class ArenaFriendlyService {
       roomId: room._id,
       mode: room.mode,
       rematchOf: rematchOf ? this.id(rematchOf) : null,
-      expiresAt: new Date(Date.now() + config.friendly.inviteTimeout * 1000),
-    });
+      expiresAt: new Date(Date.now() + config.friendly.inviteTimeout * 1000) });
     return this.inviteData(invite);
   }
 
-  private async inviteData(invite: ArenaInvitation & { _id: Types.ObjectId }) {
+  private async inviteData(invite: ArenaInvitation & { _id: PgId }) {
     const sender = await this.users
       .findById(invite.senderId)
       .select('username avatarUrl');
@@ -194,8 +187,7 @@ export class ArenaFriendlyService {
       avatarUrl: sender?.avatarUrl,
       mode: invite.mode,
       rematchOf: invite.rematchOf ? String(invite.rematchOf) : null,
-      expiresAt: invite.expiresAt?.toISOString(),
-    };
+      expiresAt: invite.expiresAt?.toISOString() };
   }
 
   async pending(userId: string) {
@@ -203,8 +195,7 @@ export class ArenaFriendlyService {
       $or: [{ senderId: this.id(userId) }, { receiverId: this.id(userId) }],
       type: 'DUEL',
       status: 'PENDING',
-      expiresAt: { $gt: new Date() },
-    });
+      expiresAt: { $gt: new Date() } });
     return Promise.all(invites.map((invite) => this.inviteData(invite)));
   }
 
@@ -215,8 +206,7 @@ export class ArenaFriendlyService {
         receiverId: this.id(userId),
         type: 'DUEL',
         status: 'PENDING',
-        expiresAt: { $gt: new Date() },
-      },
+        expiresAt: { $gt: new Date() } },
       { $set: { status: accept ? 'ACCEPTED' : 'DECLINED' } },
       { returnDocument: 'after' },
     );
@@ -235,8 +225,7 @@ export class ArenaFriendlyService {
       return {
         users,
         event: 'friend:invite-accepted',
-        data: { ...snapshot, inviteId },
-      };
+        data: { ...snapshot, inviteId } };
     } catch (error) {
       await this.invites.updateOne(
         { _id: invite._id },
@@ -248,9 +237,7 @@ export class ArenaFriendlyService {
         data: {
           inviteId,
           message:
-            error instanceof Error ? error.message : 'Player unavailable',
-        },
-      };
+            error instanceof Error ? error.message : 'Player unavailable' } };
     }
   }
 
@@ -264,8 +251,7 @@ export class ArenaFriendlyService {
     return {
       users: [String(invite.senderId), String(invite.receiverId)],
       event: 'friend:invite-cancelled',
-      data: { inviteId },
-    };
+      data: { inviteId } };
   }
 
   async cancelRoomInvites(roomId: string): Promise<FriendlyDelivery[]> {
@@ -273,8 +259,7 @@ export class ArenaFriendlyService {
     for (const invite of await this.invites.find({
       roomId: this.id(roomId),
       type: 'DUEL',
-      status: 'PENDING',
-    })) {
+      status: 'PENDING' })) {
       const cancelled = await this.invites.updateOne(
         { _id: invite._id, status: 'PENDING' },
         { $set: { status: 'CANCELLED' } },
@@ -283,8 +268,7 @@ export class ArenaFriendlyService {
         events.push({
           users: [String(invite.senderId), String(invite.receiverId)],
           event: 'friend:invite-cancelled',
-          data: { inviteId: String(invite._id) },
-        });
+          data: { inviteId: String(invite._id) } });
     }
     return events;
   }
@@ -318,10 +302,8 @@ export class ArenaFriendlyService {
           eliminated: (match.eliminatedUserIds ?? []).some(
             (id) => String(id) === String(p.userId),
           ),
-          disconnectedAt: p.disconnectedAt?.toISOString(),
-        };
-      }),
-    };
+          disconnectedAt: p.disconnectedAt?.toISOString() };
+      }) };
   }
 
   async returnToLobby(matchId: string, userId: string) {
@@ -377,9 +359,7 @@ export class ArenaFriendlyService {
           turnCount: match.turnCount,
           eliminatedUserIds: (match.eliminatedUserIds ?? []).map(String),
           usedWords: match.usedWords,
-          serverNow: new Date().toISOString(),
-        },
-      },
+          serverNow: new Date().toISOString() } },
     ];
   }
 
@@ -409,12 +389,10 @@ export class ArenaFriendlyService {
         ).length,
         eliminated: (match.eliminatedUserIds ?? []).some(
           (id) => String(id) === String(player.userId),
-        ),
-      })),
+        ) })),
       winnerId: finished && match.winnerId ? String(match.winnerId) : null,
       isDraw: finished && match.isDraw,
-      ...(finished ? { answer: secret?.wordGuessAnswer } : {}),
-    };
+      ...(finished ? { answer: secret?.wordGuessAnswer } : {}) };
   }
 
   async submitWordGuess(matchId: string, userId: string, value: string) {
@@ -436,8 +414,7 @@ export class ArenaFriendlyService {
       const player = await this.players.findOne({
         matchId: match._id,
         userId: this.id(userId),
-        status: 'PLAYING',
-      });
+        status: 'PLAYING' });
       if (
         !player ||
         (match.eliminatedUserIds ?? []).some((id) => String(id) === userId)
@@ -457,13 +434,11 @@ export class ArenaFriendlyService {
           status: ArenaMatchStatus.PLAYING,
           wordGuessRevision: match.wordGuessRevision,
           wordGuessSolvedBy: null,
-          roomRevision: match.roomRevision ?? 0,
-        },
+          roomRevision: match.roomRevision ?? 0 },
         {
           $push: { wordGuessAttempts: { userId, word, feedback } },
           $inc: { wordGuessRevision: 1 },
-          ...(solved ? { $set: { wordGuessSolvedBy: userId } } : {}),
-        },
+          ...(solved ? { $set: { wordGuessSolvedBy: userId } } : {}) },
         { returnDocument: 'after' },
       );
       if (!changed) continue;
@@ -532,8 +507,7 @@ export class ArenaFriendlyService {
       !(await this.words.exists({
         word: { $regex: `^${word}$`, $options: 'i' },
         isActive: true,
-        isDeleted: { $ne: true },
-      }))
+        isDeleted: { $ne: true } }))
     )
       return invalid('WORD_NOT_FOUND');
     const opponent =
@@ -554,8 +528,7 @@ export class ArenaFriendlyService {
           ? { roomRevision: match.roomRevision ?? 0 }
           : {}),
         turnDeadline: { $gt: now },
-        usedWords: { $ne: word },
-      },
+        usedWords: { $ne: word } },
       {
         $set: {
           currentWord: word,
@@ -564,11 +537,9 @@ export class ArenaFriendlyService {
           turnStartedAt: now,
           turnDeadline: new Date(
             now.getTime() + (match.settingsSnapshot?.turnTime ?? 20) * 1000,
-          ),
-        },
+          ) },
         $push: { usedWords: word },
-        $inc: { turnCount: 1 },
-      },
+        $inc: { turnCount: 1 } },
       { returnDocument: 'after' },
     );
     if (!updated) return invalid('TURN_EXPIRED');
@@ -582,8 +553,7 @@ export class ArenaFriendlyService {
         ? [
             {
               event: 'friend:snapshot',
-              data: await this.snapshot(matchId, userId),
-            },
+              data: await this.snapshot(matchId, userId) },
           ]
         : []),
       { event: 'word-chain:accepted', data: { matchId, userId, word } },
@@ -602,15 +572,11 @@ export class ArenaFriendlyService {
         {
           _id: match._id,
           status: {
-            $in: [ArenaMatchStatus.WAITING, ArenaMatchStatus.COUNTDOWN],
-          },
-        },
+            $in: [ArenaMatchStatus.WAITING, ArenaMatchStatus.COUNTDOWN] } },
         {
           $set: {
             status: ArenaMatchStatus.CANCELLED,
-            cancelReason: 'Player left the room',
-          },
-        },
+            cancelReason: 'Player left the room' } },
       );
       if (!cancelled.modifiedCount) return this.leave(matchId, userId);
       await this.players.updateMany(
@@ -620,8 +586,7 @@ export class ArenaFriendlyService {
       return [
         {
           event: 'friend:cancelled',
-          data: { matchId, message: 'The other player left the room.' },
-        },
+          data: { matchId, message: 'The other player left the room.' } },
       ];
     }
     if (
@@ -636,8 +601,7 @@ export class ArenaFriendlyService {
       return [
         {
           event: 'friend:snapshot',
-          data: await this.snapshot(matchId, userId),
-        },
+          data: await this.snapshot(matchId, userId) },
         ...(await this.gameSnapshot(matchId)),
       ];
     }
@@ -671,8 +635,7 @@ export class ArenaFriendlyService {
     for (const invite of await this.invites.find({
       type: 'DUEL',
       status: 'PENDING',
-      expiresAt: { $lte: new Date() },
-    })) {
+      expiresAt: { $lte: new Date() } })) {
       const expired = await this.invites.updateOne(
         { _id: invite._id, status: 'PENDING' },
         { $set: { status: 'EXPIRED' } },
@@ -681,16 +644,14 @@ export class ArenaFriendlyService {
         events.push({
           users: [String(invite.senderId), String(invite.receiverId)],
           event: 'friend:invite-expired',
-          data: { inviteId: String(invite._id) },
-        });
+          data: { inviteId: String(invite._id) } });
     }
     for (const match of await this.matches.find({
       type: { $in: [ArenaMatchType.FRIEND, ArenaMatchType.ROOM] },
       friendMode: ArenaFriendMode.WORD_CHAIN,
       status: ArenaMatchStatus.PLAYING,
       chainPausedAt: null,
-      turnDeadline: { $lte: new Date() },
-    })) {
+      turnDeadline: { $lte: new Date() } })) {
       if (match.type === ArenaMatchType.ROOM) {
         await this.matchService.dropRoomPlayer(
           String(match._id),
@@ -704,8 +665,7 @@ export class ArenaFriendlyService {
           data: await this.snapshot(
             String(match._id),
             String(match.currentTurnUserId),
-          ),
-        });
+          ) });
         for (const event of await this.gameSnapshot(String(match._id)))
           events.push({ matchId: String(match._id), ...event });
         continue;
@@ -724,13 +684,11 @@ export class ArenaFriendlyService {
       if (finished)
         events.push({
           matchId: String(match._id),
-          ...(await this.rounds.finishedEvent(String(match._id))),
-        });
+          ...(await this.rounds.finishedEvent(String(match._id))) });
     }
     for (const player of await this.players.find({
       status: 'DISCONNECTED',
-      disconnectedAt: { $lte: new Date(Date.now() - 5000) },
-    })) {
+      disconnectedAt: { $lte: new Date(Date.now() - 5000) } })) {
       const match = await this.matches.findById(player.matchId);
       if (
         !match ||
@@ -753,8 +711,7 @@ export class ArenaFriendlyService {
       events.push({
         matchId: String(match._id),
         event: 'friend:snapshot',
-        data: await this.snapshot(String(match._id), String(player.userId)),
-      });
+        data: await this.snapshot(String(match._id), String(player.userId)) });
       for (const event of await this.gameSnapshot(String(match._id)))
         events.push({ matchId: String(match._id), ...event });
     }

@@ -1,20 +1,20 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { type HydratedDocument, Types } from 'mongoose';
+import { PgId } from '../../../../postgres/compat.js';
+import { PgField, PgEntity, PgSchemaFactory } from '../../../../postgres/compat.js';
+import { type PgDocument } from '../../../../postgres/compat.js';
 import { GeneratedAudioMetadata, GeneratedAudioMetadataSchema } from '../../../../common/media/generated-audio.schema.js';
 
-export type PassageDocument = HydratedDocument<Passage>;
+export type PassageDocument = PgDocument<Passage>;
 
-@Schema({ timestamps: true })
+@PgEntity({ timestamps: true })
 export class Passage {
-  @Prop({
-    type: Types.ObjectId,
+  @PgField({
+    type: PgId,
     ref: 'PassageGroup',
     required: true,
-    index: true,
-  })
-  passageGroupId: Types.ObjectId;
+    index: true })
+  passageGroupId: PgId;
 
-  @Prop({
+  @PgField({
     required: true,
     enum: [
       'TEXT',
@@ -23,8 +23,7 @@ export class Passage {
       'ARTICLE',
       'NOTICE',
       'CHAT',
-    ],
-  })
+    ] })
   type:
     | 'TEXT'
     | 'EMAIL'
@@ -34,29 +33,25 @@ export class Passage {
     | 'CHAT';
 
 
-  @Prop({
-    trim: true,
-  })
+  @PgField({
+    trim: true })
   content?: string;
 
-  @Prop({
-    trim: true,
-  })
+  @PgField({
+    trim: true })
   audioUrl?: string;
 
-  @Prop({ type: GeneratedAudioMetadataSchema, default: {} })
+  @PgField({ type: GeneratedAudioMetadataSchema, default: {} })
   audioMeta?: GeneratedAudioMetadata;
 
-  @Prop({
-    trim: true,
-  })
+  @PgField({
+    trim: true })
   imageUrl?: string;
 
-  @Prop({
+  @PgField({
     default: 0,
-    min: 0,
-  })
+    min: 0 })
   order: number;
 }
 
-export const PassageSchema = SchemaFactory.createForClass(Passage);
+export const PassageSchema = PgSchemaFactory.createForClass(Passage);

@@ -1,13 +1,12 @@
 import {
   IsBoolean,
   IsInt,
-  IsMongoId,
+  IsUUID,
   IsOptional,
   IsString,
   MaxLength,
   Min,
-  MinLength,
-} from 'class-validator';
+  MinLength } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateDictationTopicDto {
@@ -82,7 +81,7 @@ export class UpdateDictationTopicDto {
 }
 
 export class CreateDictationSectionDto {
-  @IsMongoId()
+  @IsUUID('4')
   topicId!: string;
 
   @IsString()
@@ -113,7 +112,7 @@ export class CreateDictationSectionDto {
 
 export class UpdateDictationSectionDto {
   @IsOptional()
-  @IsMongoId()
+  @IsUUID('4')
   topicId?: string;
 
   @IsOptional()

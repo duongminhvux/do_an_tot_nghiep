@@ -14,8 +14,7 @@ export class RedisIoAdapter extends IoAdapter {
 
   async connectToRedis() {
     const pubClient = createClient({
-      url: this.configService.get<string>('REDIS_URL') || 'redis://localhost:6379',
-    });
+      url: this.configService.get<string>('REDIS_URL') || 'redis://localhost:6379' });
 
     const subClient = pubClient.duplicate();
 

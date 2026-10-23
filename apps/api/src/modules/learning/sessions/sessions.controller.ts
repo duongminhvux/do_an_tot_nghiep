@@ -6,8 +6,7 @@ import {
   Patch,
   Param,
   UseGuards,
-  Req,
-} from '@nestjs/common';
+  Req } from '@nestjs/common';
 import { SessionsService } from './sessions.service.js';
 import { CreateSessionDto } from './dto/create-session.dto.js';
 import { RecordActionDto } from './dto/record-action.dto.js';
@@ -37,8 +36,7 @@ export class SessionsController {
   ) {
     return this.sessionsService.recordAction(req.user._id, {
       ...recordActionDto,
-      sessionId,
-    });
+      sessionId });
   }
 
   @Patch([':id', ':id/complete'])

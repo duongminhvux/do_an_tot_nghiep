@@ -8,8 +8,7 @@ import {
   Delete,
   Query,
   UseInterceptors,
-  UploadedFile,
-} from '@nestjs/common';
+  UploadedFile } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { QuestionsService } from './questions.service.js';
 import { CreateQuestionDto } from './dto/create-question.dto.js';
@@ -28,8 +27,7 @@ export class QuestionsController {
   @Post('exam/:examId/parse')
   @UseInterceptors(
     FileInterceptor('file', {
-      limits: { fileSize: 25 * 1024 * 1024 },
-    }),
+      limits: { fileSize: 25 * 1024 * 1024 } }),
   )
   parse(
     @Param('examId') examId: string,
@@ -42,8 +40,7 @@ export class QuestionsController {
   @Post('exam/:examId/import')
   @UseInterceptors(
     FileInterceptor('file', {
-      limits: { fileSize: 25 * 1024 * 1024 },
-    }),
+      limits: { fileSize: 25 * 1024 * 1024 } }),
   )
   import(
     @Param('examId') examId: string,

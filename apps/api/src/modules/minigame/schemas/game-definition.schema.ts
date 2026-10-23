@@ -1,36 +1,33 @@
 import type {
   WordShooterSettings,
   MeaningTypingSettings,
-  TypingRushSettings,
-} from '../game-registry.js';
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+  TypingRushSettings } from '../game-registry.js';
+import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
 export enum GameCategory {
   SOLO = 'SOLO',
-  MULTIPLAYER = 'MULTIPLAYER',
-}
-@Schema({ timestamps: true, versionKey: false })
+  MULTIPLAYER = 'MULTIPLAYER' }
+@PgEntity({ timestamps: true, versionKey: false })
 export class GameDefinition {
-  @Prop({ type: Object, default: null })
+  @PgField({ type: Object, default: null })
   settings:
     TypingRushSettings | MeaningTypingSettings | WordShooterSettings | null;
-  @Prop({ required: true, unique: true }) code: string;
-  @Prop({ required: true, trim: true }) name: string;
-  @Prop({ default: '', trim: true }) nameEn: string;
-  @Prop({ default: '' }) description: string;
-  @Prop({ default: '' }) descriptionEn: string;
-  @Prop({ default: '' }) imageUrl: string;
-  @Prop({
+  @PgField({ required: true, unique: true }) code: string;
+  @PgField({ required: true, trim: true }) name: string;
+  @PgField({ default: '', trim: true }) nameEn: string;
+  @PgField({ default: '' }) description: string;
+  @PgField({ default: '' }) descriptionEn: string;
+  @PgField({ default: '' }) imageUrl: string;
+  @PgField({
     type: String,
     enum: ['NEW', 'POPULAR', 'FEATURED', null],
-    default: null,
-  })
+    default: null })
   badge: 'NEW' | 'POPULAR' | 'FEATURED' | null;
-  @Prop({ required: true }) destination: string;
-  @Prop({ enum: GameCategory, type: String, default: GameCategory.SOLO })
+  @PgField({ required: true }) destination: string;
+  @PgField({ enum: GameCategory, type: String, default: GameCategory.SOLO })
   category: GameCategory;
-  @Prop({ default: 0 }) order: number;
-  @Prop({ default: true }) isActive: boolean;
+  @PgField({ default: 0 }) order: number;
+  @PgField({ default: true }) isActive: boolean;
 }
 export const GameDefinitionSchema =
-  SchemaFactory.createForClass(GameDefinition);
+  PgSchemaFactory.createForClass(GameDefinition);
 GameDefinitionSchema.index({ isActive: 1, order: 1, _id: 1 });

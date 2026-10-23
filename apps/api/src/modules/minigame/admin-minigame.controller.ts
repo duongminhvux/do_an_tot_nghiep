@@ -7,8 +7,7 @@ import { GameCatalogService } from './services/game-catalog.service.js';
 import { MiniGameAdminService } from './services/minigame-admin.service.js';
 import {
   MiniGameResultQueryDto,
-  TopScoresQueryDto,
-} from './dto/minigame-result-query.dto.js';
+  TopScoresQueryDto } from './dto/minigame-result-query.dto.js';
 import { UpdateGameDto } from './dto/game-definition.dto.js';
 
 @AdminController('minigames')

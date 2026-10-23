@@ -2,8 +2,8 @@
 $ErrorActionPreference = 'Continue'
 Write-Host "`n=== Compose services ==="
 docker compose ps -a
-Write-Host "`n=== Identity, Notification and projection relay logs ==="
-docker compose logs --tail=70 identity-service notification-service projection-relay-identity projection-relay-notification gateway
+Write-Host "`n=== Identity and Notification service logs ==="
+docker compose logs --tail=70 identity-service notification-service gateway
 $root = 'http://localhost:5000'
 Write-Host "`n=== Gateway probes (direct HTTP; no credentials) ==="
 foreach ($endpoint in @('/gateway/health', '/gateway/identity-health', '/gateway/notification-health')) {

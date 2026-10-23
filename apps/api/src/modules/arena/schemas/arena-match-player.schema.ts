@@ -1,87 +1,84 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { type HydratedDocument, Types } from 'mongoose';
+import { PgId } from '../../../postgres/compat.js';
+import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
+import { type PgDocument } from '../../../postgres/compat.js';
 import { ArenaFriendMode } from './arena-match.schema.js';
 
-export type ArenaMatchPlayerDocument = HydratedDocument<ArenaMatchPlayer>;
+export type ArenaMatchPlayerDocument = PgDocument<ArenaMatchPlayer>;
 
-@Schema({ timestamps: true })
+@PgEntity({ timestamps: true })
 /** Điểm số, trạng thái ready và kết quả của một người trong trận. */
 export class ArenaMatchPlayer {
-  @Prop({ type: String, enum: Object.values(ArenaFriendMode), default: null })
+  @PgField({ type: String, enum: Object.values(ArenaFriendMode), default: null })
   readyMode?: ArenaFriendMode | null;
-  @Prop({
-    type: Types.ObjectId,
+  @PgField({
+    type: PgId,
     ref: 'ArenaMatch',
     required: true,
-    index: true,
-  })
-  matchId: Types.ObjectId;
+    index: true })
+  matchId: PgId;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
-  userId: Types.ObjectId;
+  @PgField({ type: PgId, ref: 'User', required: true, index: true })
+  userId: PgId;
 
-  @Prop({ default: false })
+  @PgField({ default: false })
   returnedToLobby: boolean;
 
-  @Prop({ default: false })
+  @PgField({ default: false })
   leftLobby: boolean;
 
-  @Prop({ default: 0 })
+  @PgField({ default: 0 })
   score: number;
 
-  @Prop({ default: 0, min: 0 })
+  @PgField({ default: 0, min: 0 })
   correctAnswers: number;
 
-  @Prop({ default: 0, min: 0 })
+  @PgField({ default: 0, min: 0 })
   wrongAnswers: number;
 
-  @Prop({ default: 0, min: 0 })
+  @PgField({ default: 0, min: 0 })
   unanswered: number;
 
-  @Prop({ default: 0, min: 0 })
+  @PgField({ default: 0, min: 0 })
   longestStreak: number;
 
-  @Prop({ default: 0, min: 0 })
+  @PgField({ default: 0, min: 0 })
   currentStreak: number;
 
-  @Prop({ default: 0, min: 0 })
+  @PgField({ default: 0, min: 0 })
   totalResponseTimeMs: number;
 
-  @Prop({ type: [Types.ObjectId], ref: 'ArenaMatchQuestion', default: [] })
-  scoredQuestionIds: Types.ObjectId[];
+  @PgField({ type: [PgId], ref: 'ArenaMatchQuestion', default: [] })
+  scoredQuestionIds: PgId[];
 
-  @Prop({ default: 0, min: 0 })
+  @PgField({ default: 0, min: 0 })
   ratingBefore: number;
 
-  @Prop({ default: 0, min: 0 })
+  @PgField({ default: 0, min: 0 })
   ratingAfter: number;
 
-  @Prop({ default: 0 })
+  @PgField({ default: 0 })
   ratingChange: number;
 
-  @Prop({
+  @PgField({
     type: Boolean,
-    default: false,
-  })
+    default: false })
   isReady: boolean;
 
-  @Prop({
+  @PgField({
     type: Date,
-    default: null,
-  })
+    default: null })
   readyAt?: Date | null;
 
-  @Prop({ type: Date, default: null })
+  @PgField({ type: Date, default: null })
   disconnectedAt?: Date | null;
 
-  @Prop({
+  @PgField({
     type: String,
     enum: ['PLAYING', 'FINISHED', 'LEFT', 'DISCONNECTED'],
-    default: 'PLAYING',
-  })
+    default: 'PLAYING' })
   status: 'PLAYING' | 'FINISHED' | 'LEFT' | 'DISCONNECTED';
 
-  @Prop({ type: Date })
+  @PgField({ type: Date })
   finishedAt?: Date;
 
   createdAt: Date;
@@ -89,5 +86,5 @@ export class ArenaMatchPlayer {
 }
 
 export const ArenaMatchPlayerSchema =
-  SchemaFactory.createForClass(ArenaMatchPlayer);
+  PgSchemaFactory.createForClass(ArenaMatchPlayer);
 ArenaMatchPlayerSchema.index({ matchId: 1, userId: 1 }, { unique: true });

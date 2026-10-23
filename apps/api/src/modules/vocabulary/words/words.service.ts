@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import type { Model } from 'mongoose';
+import { InjectPgModel } from '../../../postgres/compat.js';
+import type { Model } from '../../../postgres/compat.js';
 import { I18nContext, I18nService } from 'nestjs-i18n';
 import { Word, WordDocument } from './word.schema.js';
 import { CreateWordDto } from './dto/create-word.dto.js';
@@ -11,7 +11,7 @@ import { AudioGenerationStatus } from '../../../common/media/generated-audio.sch
 @Injectable()
 export class WordsService {
   constructor(
-    @InjectModel(Word.name) private readonly wordModel: Model<WordDocument>,
+    @InjectPgModel(Word.name) private readonly wordModel: Model<WordDocument>,
     private readonly i18n: I18nService,
   ) {}
 
@@ -36,8 +36,7 @@ export class WordsService {
     const lang = this.getLang();
     const existing = await this.wordModel.findOne({
       word: createWordDto.word.trim(),
-      isDeleted: { $ne: true },
-    });
+      isDeleted: { $ne: true } });
 
     if (existing) {
       throw new BadRequestException(
@@ -54,14 +53,12 @@ export class WordsService {
 
     const createdWord = new this.wordModel({
       ...createWordDto,
-      slug,
-    });
+      slug });
     const savedWord = await createdWord.save();
 
     return {
       message: await this.i18n.t('word.WORD_CREATED_SUCCESSFULLY', { lang }),
-      data: savedWord,
-    };
+      data: savedWord };
   }
 
   async findAll(query: QueryWordDto) {
@@ -75,8 +72,7 @@ export class WordsService {
       page = 1,
       limit = 10,
       sortBy = 'createdAt',
-      sortOrder = 'desc',
-    } = query;
+      sortOrder = 'desc' } = query;
     const filter: Record<string, any> = {};
 
     if (typeof isDeleted === 'boolean') {
@@ -106,8 +102,7 @@ export class WordsService {
     const sortField = sortBy || 'createdAt';
     const sortObj: Record<string, 1 | -1> = {
       [sortField]: sortDirection,
-      _id: sortDirection,
-    };
+      _id: sortDirection };
 
     const [data, total] = await Promise.all([
       this.wordModel
@@ -125,8 +120,7 @@ export class WordsService {
       data,
       total,
       page,
-      limit,
-    };
+      limit };
   }
 
   async findOne(id: string) {
@@ -139,8 +133,7 @@ export class WordsService {
     }
     return {
       message: await this.i18n.t('word.WORD_FETCHED_SUCCESSFULLY', { lang }),
-      data: word,
-    };
+      data: word };
   }
 
   async update(id: string, updateWordDto: UpdateWordDto) {
@@ -155,8 +148,7 @@ export class WordsService {
       const existing = await this.wordModel.findOne({
         _id: { $ne: id },
         word: updateWordDto.word.trim(),
-        isDeleted: { $ne: true },
-      });
+        isDeleted: { $ne: true } });
       if (existing) {
         throw new BadRequestException(
           await this.i18n.t('word.WORD_ALREADY_EXISTS', { lang }),
@@ -194,8 +186,7 @@ export class WordsService {
 
     return {
       message: await this.i18n.t('word.WORD_UPDATED_SUCCESSFULLY', { lang }),
-      data: updatedWord,
-    };
+      data: updatedWord };
   }
 
   async remove(id: string) {
@@ -212,8 +203,7 @@ export class WordsService {
 
     return {
       message: await this.i18n.t('word.WORD_DELETED_SUCCESSFULLY', { lang }),
-      data: deletedWord,
-    };
+      data: deletedWord };
   }
 
   async restore(id: string) {
@@ -230,8 +220,7 @@ export class WordsService {
 
     return {
       message: await this.i18n.t('word.WORD_RESTORED_SUCCESSFULLY', { lang }),
-      data: restoredWord,
-    };
+      data: restoredWord };
   }
 
   async toggleActive(id: string, isActive?: boolean) {
@@ -261,8 +250,7 @@ export class WordsService {
 
     return {
       message: await this.i18n.t(messageKey, { lang }),
-      data: updatedWord,
-    };
+      data: updatedWord };
   }
 
   async bulkToggleActive(ids: string[], isActive: boolean) {
@@ -284,8 +272,7 @@ export class WordsService {
 
     return {
       message: await this.i18n.t(messageKey, { lang }),
-      modifiedCount: ids.length,
-    };
+      modifiedCount: ids.length };
   }
 
   async bulkLookup(words: string[]) {
@@ -303,8 +290,7 @@ export class WordsService {
     const foundDocs = await this.wordModel
       .find({
         word: { $in: uniqueWords.map((w) => new RegExp(`^${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i')) },
-        isDeleted: { $ne: true },
-      })
+        isDeleted: { $ne: true } })
       .select('word ipa audio parts.partOfSpeech parts.meanings.definition parts.meanings.translation level isActive')
       .exec();
 
@@ -317,8 +303,7 @@ export class WordsService {
       notFound,
       totalInput: uniqueWords.length,
       totalFound: foundDocs.length,
-      totalNotFound: notFound.length,
-    };
+      totalNotFound: notFound.length };
   }
 }
 

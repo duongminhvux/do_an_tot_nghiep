@@ -21,8 +21,7 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
     AdminsModule,
     JwtModule.register({}),
     PassportModule.register({
-      defaultStrategy: 'jwt',
-    }),
+      defaultStrategy: 'jwt' }),
   ],
   controllers: [AuthController, AdminAuthController, IdentityIntrospectionController],
   providers: [
@@ -40,13 +39,10 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
         const secret = config.get<string>('GOOGLE_CLIENT_SECRET')?.trim();
         if (!clientId || !secret) return null;
         return new GoogleStrategy(config);
-      },
-    },
+      } },
     {
       provide: APP_GUARD,
-      useClass: JwtAuthGuard,
-    },
+      useClass: JwtAuthGuard },
   ],
-  exports: [AuthService],
-})
+  exports: [AuthService] })
 export class AuthModule { }

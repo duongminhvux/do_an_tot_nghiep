@@ -1,15 +1,16 @@
+import { PgId } from '../../../postgres/compat.js';
 import { BadRequestException, Injectable, Optional } from '@nestjs/common';
 import { XP } from '@repo/shared-types/learning-xp';
 import { LearningActivityService } from '../../learning-activity/learning-activity.service.js';
-import { InjectModel } from '@nestjs/mongoose';
-import { type Model, Types } from 'mongoose';
+import { InjectPgModel } from '../../../postgres/compat.js';
+import { type Model } from '../../../postgres/compat.js';
 import { MiniGameResult } from '../schemas/minigame-result.schema.js';
 import { MiniGameType } from '../minigame.types.js';
 import type { CreateMiniGameResultDto } from '../dto/create-minigame-result.dto.js';
 @Injectable()
 export class MiniGameResultService {
   constructor(
-    @InjectModel(MiniGameResult.name)
+    @InjectPgModel(MiniGameResult.name)
     private readonly results: Model<MiniGameResult>,
     @Optional()
     private readonly learningActivity?: LearningActivityService,
@@ -24,10 +25,9 @@ export class MiniGameResultService {
     if (!Number.isInteger(dto.score) || dto.score < 0 || dto.score > 10_000_000)
       throw new BadRequestException('MINIGAME_INVALID_SCORE');
     const result = await this.results.create({
-      userId: new Types.ObjectId(userId),
+      userId: new PgId(userId),
       gameType: dto.gameType,
-      score: dto.score,
-    });
+      score: dto.score });
     await this.learningActivity?.record({
       userId,
       module: 'MINIGAME',
@@ -38,19 +38,16 @@ export class MiniGameResultService {
       refId: String(result._id),
       link: '/games',
       score: result.score,
-      metadata: { gameType: result.gameType },
-    });
+      metadata: { gameType: result.gameType } });
     return {
       id: String(result._id),
       score: result.score,
-      createdAt: result.createdAt,
-    };
+      createdAt: result.createdAt };
   }
   async stats(userId: string, value: string) {
     const filter = {
-      userId: new Types.ObjectId(userId),
-      gameType: this.game(value),
-    };
+      userId: new PgId(userId),
+      gameType: this.game(value) };
     const [best, recent, totalPlays] = await Promise.all([
       this.results.findOne(filter).sort({ score: -1 }).select('score').lean(),
       this.results
@@ -67,8 +64,6 @@ export class MiniGameResultService {
       recentScores: recent.map((r) => ({
         id: String(r._id),
         score: r.score,
-        createdAt: r.createdAt,
-      })),
-    };
+        createdAt: r.createdAt })) };
   }
 }

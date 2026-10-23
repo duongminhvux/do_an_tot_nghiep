@@ -2,8 +2,7 @@ import {
   BadGatewayException,
   GatewayTimeoutException,
   Injectable,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+  ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 export interface AsrWordTiming {
@@ -78,8 +77,7 @@ export class AsrService {
 
     const response = await this.fetchAsr('/v1/transcribe', {
       method: 'POST',
-      body: form,
-    });
+      body: form });
     if (!response.ok) await this.throwUpstreamError(response, '/v1/transcribe');
     return response.json() as Promise<AsrTranscriptionResult>;
   }
@@ -91,8 +89,7 @@ export class AsrService {
     try {
       return await fetch(`${this.baseUrl}${path}`, {
         ...init,
-        signal: AbortSignal.timeout(this.timeoutMs),
-      });
+        signal: AbortSignal.timeout(this.timeoutMs) });
     } catch (error) {
       if (error instanceof Error && error.name === 'TimeoutError') {
         throw new GatewayTimeoutException(

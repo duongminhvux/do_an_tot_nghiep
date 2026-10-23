@@ -2,33 +2,27 @@ import { AdminGamesController } from './admin-games.controller.js';
 import { GameCatalogService } from './services/game-catalog.service.js';
 import {
   GameDefinition,
-  GameDefinitionSchema,
-} from './schemas/game-definition.schema.js';
+  GameDefinitionSchema } from './schemas/game-definition.schema.js';
 import { Module } from '@nestjs/common';
 import { LearningActivityModule } from '../learning-activity/learning-activity.module.js';
-import { MongooseModule } from '@nestjs/mongoose';
+import { PgModelsModule } from '../../postgres/compat.js';
 import {
   Collection,
-  CollectionSchema,
-} from '../vocabulary/collections/collection.schema.js';
+  CollectionSchema } from '../vocabulary/collections/collection.schema.js';
 import { Lesson, LessonSchema } from '../vocabulary/lessons/lesson.schema.js';
 import {
   LessonWord,
-  LessonWordSchema,
-} from '../vocabulary/lessons/lesson-word.schema.js';
+  LessonWordSchema } from '../vocabulary/lessons/lesson-word.schema.js';
 import { Word, WordSchema } from '../vocabulary/words/word.schema.js';
 import {
   VocabularyFolder,
-  VocabularyFolderSchema,
-} from '../learning/saved-words/schema/vocabulary-folder.schema.js';
+  VocabularyFolderSchema } from '../learning/saved-words/schema/vocabulary-folder.schema.js';
 import {
   UserSavedWord,
-  UserSavedWordSchema,
-} from '../learning/saved-words/schema/saved-word.schema.js';
+  UserSavedWordSchema } from '../learning/saved-words/schema/saved-word.schema.js';
 import {
   MiniGameResult,
-  MiniGameResultSchema,
-} from './schemas/minigame-result.schema.js';
+  MiniGameResultSchema } from './schemas/minigame-result.schema.js';
 import { User, UserSchema } from '../users/schema/user.schema.js';
 import { MiniGameController } from './minigame.controller.js';
 import { MiniGameWordSourceService } from './services/minigame-word-source.service.js';
@@ -38,7 +32,7 @@ import { AdminMinigameController } from './admin-minigame.controller.js';
 @Module({
   imports: [
     LearningActivityModule,
-    MongooseModule.forFeature([
+    PgModelsModule.forFeature([
       { name: GameDefinition.name, schema: GameDefinitionSchema },
       { name: Collection.name, schema: CollectionSchema },
       { name: Lesson.name, schema: LessonSchema },
@@ -60,6 +54,5 @@ import { AdminMinigameController } from './admin-minigame.controller.js';
     MiniGameResultService,
     GameCatalogService,
     MiniGameAdminService,
-  ],
-})
+  ] })
 export class MiniGameModule {}

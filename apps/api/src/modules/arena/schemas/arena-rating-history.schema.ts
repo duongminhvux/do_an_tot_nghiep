@@ -1,29 +1,29 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { type HydratedDocument, Types } from 'mongoose';
+import { PgId } from '../../../postgres/compat.js';
+import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
+import { type PgDocument } from '../../../postgres/compat.js';
 
-export type ArenaRatingHistoryDocument = HydratedDocument<ArenaRatingHistory>;
+export type ArenaRatingHistoryDocument = PgDocument<ArenaRatingHistory>;
 
-@Schema({ timestamps: true })
+@PgEntity({ timestamps: true })
 /** Lịch sử thay đổi rating dùng cho thống kê và audit kết quả trận. */
 export class ArenaRatingHistory {
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
-  userId: Types.ObjectId;
+  @PgField({ type: PgId, ref: 'User', required: true, index: true })
+  userId: PgId;
 
-  @Prop({
-    type: Types.ObjectId,
+  @PgField({
+    type: PgId,
     ref: 'ArenaMatch',
     required: true,
-    index: true,
-  })
-  matchId: Types.ObjectId;
+    index: true })
+  matchId: PgId;
 
-  @Prop({ required: true, min: 0 })
+  @PgField({ required: true, min: 0 })
   before: number;
 
-  @Prop({ required: true, min: 0 })
+  @PgField({ required: true, min: 0 })
   after: number;
 
-  @Prop({ required: true })
+  @PgField({ required: true })
   change: number;
 
   createdAt: Date;
@@ -31,5 +31,5 @@ export class ArenaRatingHistory {
 }
 
 export const ArenaRatingHistorySchema =
-  SchemaFactory.createForClass(ArenaRatingHistory);
+  PgSchemaFactory.createForClass(ArenaRatingHistory);
 ArenaRatingHistorySchema.index({ matchId: 1, userId: 1 }, { unique: true });

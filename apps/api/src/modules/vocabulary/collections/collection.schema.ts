@@ -1,37 +1,38 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { type HydratedDocument, Types } from 'mongoose';
+import { PgId } from '../../../postgres/compat.js';
+import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
+import { type PgDocument } from '../../../postgres/compat.js';
 import { VocabularyGroup } from '../groups/vocabulary-group.schema.js';
 
-export type CollectionDocument = HydratedDocument<Collection>;
+export type CollectionDocument = PgDocument<Collection>;
 
-@Schema({ timestamps: true })
+@PgEntity({ timestamps: true })
 export class Collection {
-  @Prop({ type: Types.ObjectId, ref: VocabularyGroup.name, index: true })
-  groupId?: Types.ObjectId;
+  @PgField({ type: PgId, ref: VocabularyGroup.name, index: true })
+  groupId?: PgId;
 
-  @Prop({ required: true, trim: true })
+  @PgField({ required: true, trim: true })
   name!: string;
 
-  @Prop({ required: true, trim: true })
+  @PgField({ required: true, trim: true })
   slug!: string;
 
-  @Prop({ trim: true })
+  @PgField({ trim: true })
   description?: string;
 
-  @Prop({ trim: true })
+  @PgField({ trim: true })
   coverUrl?: string;
 
-  @Prop({ default: 1 })
+  @PgField({ default: 1 })
   order?: number;
 
-  @Prop({ default: true })
+  @PgField({ default: true })
   isActive?: boolean;
 
-  @Prop({ default: false })
+  @PgField({ default: false })
   isDeleted?: boolean;
 }
 
-export const CollectionSchema = SchemaFactory.createForClass(Collection);
+export const CollectionSchema = PgSchemaFactory.createForClass(Collection);
 
 // Partial unique index: only active records must have unique name and slug
 CollectionSchema.index(

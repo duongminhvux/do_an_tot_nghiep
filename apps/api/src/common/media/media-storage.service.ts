@@ -90,8 +90,7 @@ export class MediaStorageService {
       method,
       headers: { 'x-internal-token': this.internalToken, ...(body ? { 'content-type': 'application/octet-stream' } : {}) },
       ...(body ? { body: new Uint8Array(body) } : {}),
-      signal: AbortSignal.timeout(120_000),
-    });
+      signal: AbortSignal.timeout(120_000) });
     return response;
   }
 
@@ -99,8 +98,7 @@ export class MediaStorageService {
     if (!this.internalToken) throw new Error('MEDIA_INTERNAL_TOKEN is required for S3 storage');
     return fetch(this.objectUrl(key), {
       headers: { 'x-internal-token': this.internalToken, ...(range ? { range } : {}) },
-      signal: AbortSignal.timeout(60_000),
-    });
+      signal: AbortSignal.timeout(60_000) });
   }
 
   useObjectStorage(): boolean { return this.backend === 's3'; }

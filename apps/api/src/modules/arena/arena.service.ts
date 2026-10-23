@@ -1,17 +1,16 @@
+import { PgId } from '../../postgres/compat.js';
 import { ArenaSettingsService } from './admin/arena-settings.service.js';
 import { ARENA_DEFAULTS } from './admin/arena-settings.defaults.js';
 import { Injectable, Optional } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { type Model, Types } from 'mongoose';
+import { InjectPgModel } from '../../postgres/compat.js';
+import { type Model } from '../../postgres/compat.js';
 import { ArenaReadService } from './arena-read.service.js';
 import {
   ArenaProfile,
-  ArenaProfileDocument,
-} from './schemas/arena-profile.schema.js';
+  ArenaProfileDocument } from './schemas/arena-profile.schema.js';
 import {
   ArenaRatingHistory,
-  ArenaRatingHistoryDocument,
-} from './schemas/arena-rating-history.schema.js';
+  ArenaRatingHistoryDocument } from './schemas/arena-rating-history.schema.js';
 
 export function arenaTodayRange(now = new Date()) {
   const local = new Date(now.getTime() + 7 * 3600000);
@@ -24,9 +23,9 @@ export function arenaTodayRange(now = new Date()) {
 export class ArenaService {
   constructor(
     private readonly arenaReadService: ArenaReadService,
-    @InjectModel(ArenaProfile.name)
+    @InjectPgModel(ArenaProfile.name)
     private readonly arenaProfileModel: Model<ArenaProfileDocument>,
-    @InjectModel(ArenaRatingHistory.name)
+    @InjectPgModel(ArenaRatingHistory.name)
     private readonly ratingHistory: Model<ArenaRatingHistoryDocument>,
     @Optional() private readonly settings?: ArenaSettingsService,
   ) {}
@@ -34,6 +33,7 @@ export class ArenaService {
   /** Elo hiện tại cùng tổng thay đổi trong ngày và thống kê ranked của chính người dùng. */
   async getMyArenaOverview(userId: string) {
     const profile = await this.getOrCreateProfile(userId);
+    if (!profile) throw new Error('Arena profile could not be created');
     const { start, end } = arenaTodayRange();
     const [ranked, leaderboard, changes] = await Promise.all([
       this.arenaReadService.getRankedStatistics(userId),
@@ -41,10 +41,8 @@ export class ArenaService {
       this.ratingHistory.aggregate<{ total: number }>([
         {
           $match: {
-            userId: new Types.ObjectId(userId),
-            createdAt: { $gte: start, $lt: end },
-          },
-        },
+            userId: new PgId(userId),
+            createdAt: { $gte: start, $lt: end } } },
         { $group: { _id: null, total: { $sum: '$change' } } },
       ]),
     ]);
@@ -63,23 +61,20 @@ export class ArenaService {
                 ),
               )
             : null,
-        totalPlayers: leaderboard.totalPlayers,
-      },
-      ranked,
-    };
+        totalPlayers: leaderboard.totalPlayers },
+      ranked };
   }
 
   /** Lấy profile có sẵn hoặc tạo profile Arena mặc định cho người dùng mới. */
   async getOrCreateProfile(userId: string) {
-    const objectUserId = new Types.ObjectId(userId);
+    const objectUserId = new PgId(userId);
     const config = this.settings
       ? await this.settings.current()
       : ARENA_DEFAULTS;
 
     return this.arenaProfileModel.findOneAndUpdate(
       {
-        userId: objectUserId,
-      },
+        userId: objectUserId },
       {
         $setOnInsert: {
           userId: objectUserId,
@@ -92,20 +87,16 @@ export class ArenaService {
           rankedDraws: 0,
 
           currentWinStreak: 0,
-          bestWinStreak: 0,
-        },
-      },
+          bestWinStreak: 0 } },
       {
         returnDocument: 'after',
-        upsert: true,
-      },
+        upsert: true },
     );
   }
 
   /** Lấy profile Arena thô theo user ID cho các service nội bộ. */
   async getProfile(userId: string) {
     return this.arenaProfileModel.findOne({
-      userId,
-    });
+      userId });
   }
 }

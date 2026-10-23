@@ -4,7 +4,7 @@ ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH
 RUN corepack enable && corepack prepare pnpm@11.25.0 --activate
 WORKDIR /app
 # Identical dependency stage for all Node services. BuildKit caches pnpm once.
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY package.json pnpm-workspace.yaml .npmrc ./
 COPY apps/api/package.json apps/api/package.json
 COPY apps/web/package.json apps/web/package.json
 COPY apps/admin-web/package.json apps/admin-web/package.json
@@ -17,7 +17,7 @@ RUN --mount=type=cache,target=/pnpm/store,sharing=locked \
     && pnpm config set fetch-retries 5 \
     && pnpm config set fetch-timeout 180000 \
     && pnpm config set network-concurrency 3 \
-    && pnpm install --frozen-lockfile
+    && pnpm install --no-frozen-lockfile
 
 FROM deps AS application
 COPY . .

@@ -1,75 +1,74 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
 import { IsEmail, IsEnum, IsOptional, IsUrl } from 'class-validator';
-import type { HydratedDocument } from 'mongoose';
+import type { PgDocument } from '../../../postgres/compat.js';
 
-export type UserDocument = HydratedDocument<User>;
+export type UserDocument = PgDocument<User>;
 
 export enum AuthProvider {
     LOCAL = 'local',
-    GOOGLE = 'google',
-}
+    GOOGLE = 'google' }
 
-@Schema({ timestamps: true })
+@PgEntity({ timestamps: true })
 export class User {
     @IsEmail()
-    @Prop({ unique: true, required: true, lowercase: true, trim: true })
+    @PgField({ unique: true, required: true, lowercase: true, trim: true })
     email!: string;
 
-    @Prop({ trim: true })
+    @PgField({ trim: true })
     username?: string;
 
     @IsOptional()
-    @Prop({ required: false })
+    @PgField({ required: false })
     password?: string;
 
     @IsOptional()
     @IsUrl()
-    @Prop()
+    @PgField()
     avatarUrl?: string;
 
     @IsEnum(AuthProvider)
-    @Prop({ enum: AuthProvider, default: AuthProvider.LOCAL })
+    @PgField({ enum: AuthProvider, default: AuthProvider.LOCAL })
     authProvider!: AuthProvider;
 
     @IsOptional()
-    @Prop({ unique: true, sparse: true })
+    @PgField({ unique: true, sparse: true })
     ggId?: string;
 
-    @Prop({ default: false })
+    @PgField({ default: false })
     isVerified!: boolean;
 
     @IsOptional()
-    @Prop()
+    @PgField()
     code?: string;
 
     @IsOptional()
-    @Prop()
+    @PgField()
     codeExpiresAt?: Date;
 
-    @Prop({ default: false })
+    @PgField({ default: false })
     isDeleted: boolean;
 
-    @Prop()
+    @PgField()
     deletedAt?: Date;
 
-    @Prop({ default: false })
+    @PgField({ default: false })
     isBanned!: boolean;
 
     @IsOptional()
-    @Prop()
+    @PgField()
     phone?: string;
 
     @IsOptional()
-    @Prop({ default: Date.now })
+    @PgField({ default: Date.now })
     lastActive?: Date;
 
     @IsOptional()
-    @Prop({ default: '' })
+    @PgField({ default: '' })
     notes?: string;
 
     @IsOptional()
-    @Prop()
+    @PgField()
     profileUpdatedAt?: Date;
 }
 
-export const UserSchema = SchemaFactory.createForClass(User);
+export const UserSchema = PgSchemaFactory.createForClass(User);

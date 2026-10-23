@@ -1,3 +1,4 @@
+import { PgId } from '../../../postgres/compat.js';
 import { ArenaSettingsService } from '../admin/arena-settings.service.js';
 import { arenaMatchXp } from '@repo/shared-types/learning-xp';
 import { LearningActivityClient } from '../../../common/clients/learning-activity-client.js';
@@ -6,11 +7,10 @@ import { ARENA_DEFAULTS } from '../admin/arena-settings.defaults.js';
 import {
   FriendRoom,
   FriendRoomStatus,
-  FriendRoomSettings,
-} from '../schemas/friend-room.schema.js';
+  FriendRoomSettings } from '../schemas/friend-room.schema.js';
 import { Inject, Injectable, Optional } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { type Model, Types } from 'mongoose';
+import { InjectPgModel } from '../../../postgres/compat.js';
+import { type Model } from '../../../postgres/compat.js';
 
 import {
   ArenaMatch,
@@ -19,24 +19,20 @@ import {
   ArenaMatchStatus,
   ArenaMatchType,
   ArenaQuestionMode,
-  ArenaFriendMode,
-} from '../schemas/arena-match.schema.js';
+  ArenaFriendMode } from '../schemas/arena-match.schema.js';
 
 import {
   ArenaMatchPlayer,
-  ArenaMatchPlayerDocument,
-} from '../schemas/arena-match-player.schema.js';
+  ArenaMatchPlayerDocument } from '../schemas/arena-match-player.schema.js';
 
 import {
   ArenaProfile,
-  ArenaProfileDocument,
-} from '../schemas/arena-profile.schema.js';
+  ArenaProfileDocument } from '../schemas/arena-profile.schema.js';
 import { WsException } from '@nestjs/websockets';
 import { ArenaQuestionService } from '../question/arena-question.service.js';
 import {
   ArenaRatingHistory,
-  ArenaRatingHistoryDocument,
-} from '../schemas/arena-rating-history.schema.js';
+  ArenaRatingHistoryDocument } from '../schemas/arena-rating-history.schema.js';
 import { ArenaRatingService } from '../rating/arena-rating.service.js';
 import { RedisService } from '../../../common/redis/redis.service.js';
 import { randomUUID } from 'node:crypto';
@@ -56,21 +52,21 @@ export type ArenaStartResult =
 export class ArenaMatchService {
   constructor(
     private readonly redisService: RedisService,
-    @InjectModel(ArenaMatch.name)
+    @InjectPgModel(ArenaMatch.name)
     private readonly arenaMatchModel: Model<ArenaMatchDocument>,
 
-    @InjectModel(ArenaMatchPlayer.name)
+    @InjectPgModel(ArenaMatchPlayer.name)
     private readonly arenaMatchPlayerModel: Model<ArenaMatchPlayerDocument>,
 
-    @InjectModel(ArenaProfile.name)
+    @InjectPgModel(ArenaProfile.name)
     private readonly arenaProfileModel: Model<ArenaProfileDocument>,
 
-    @InjectModel(ArenaRatingHistory.name)
+    @InjectPgModel(ArenaRatingHistory.name)
     private readonly arenaRatingHistoryModel: Model<ArenaRatingHistoryDocument>,
 
     private readonly arenaQuestionService: ArenaQuestionService,
     private readonly arenaRatingService: ArenaRatingService,
-    @InjectModel(FriendRoom.name)
+    @InjectPgModel(FriendRoom.name)
     private readonly friendRooms: Model<FriendRoom>,
     @Optional() private readonly settings?: ArenaSettingsService,
     @Optional() @Inject(LearningActivityClient) private readonly learningActivity?: LearningActivityWriter,
@@ -121,7 +117,7 @@ export class ArenaMatchService {
       settingsSnapshot?: FriendRoomSettings;
       questionCount?: number;
       secondsPerQuestion?: number;
-      roomId?: Types.ObjectId | null;
+      roomId?: PgId | null;
       friendMode?: ArenaFriendMode;
     } = {},
   ) {
@@ -160,26 +156,19 @@ export class ArenaMatchService {
       $or: [
         {
           'members.userId': {
-            $in: userIds.map((id) => new Types.ObjectId(id)),
-          },
-        },
+            $in: userIds.map((id) => new PgId(id)) } },
         {
           hostId: {
-            $in: userIds.map((id) => new Types.ObjectId(id)),
-          },
-        },
+            $in: userIds.map((id) => new PgId(id)) } },
         {
           guestId: {
-            $in: userIds.map((id) => new Types.ObjectId(id)),
-          },
-        },
-      ],
-    });
+            $in: userIds.map((id) => new PgId(id)) } },
+      ] });
     if (occupiedRoom) throw new WsException('ALREADY_IN_ROOM');
-    const playerAObjectId = new Types.ObjectId(playerAId);
+    const playerAPgId = new PgId(playerAId);
     const profiles = await Promise.all(
       userIds.map((id) =>
-        this.arenaProfileModel.findOne({ userId: new Types.ObjectId(id) }),
+        this.arenaProfileModel.findOne({ userId: new PgId(id) }),
       ),
     );
     if (profiles.some((profile) => !profile))
@@ -197,8 +186,7 @@ export class ArenaMatchService {
           ? config.ranked.reconnectGrace
           : type === ArenaMatchType.ROOM
             ? config.group.reconnectGrace
-            : config.friendly.reconnectGrace,
-    };
+            : config.friendly.reconnectGrace };
     const match = await this.arenaMatchModel.create({
       runtimePolicy,
       type: options.type ?? ArenaMatchType.RANK,
@@ -212,7 +200,7 @@ export class ArenaMatchService {
       hostId:
         options.type === ArenaMatchType.FRIEND ||
         options.type === ArenaMatchType.ROOM
-          ? playerAObjectId
+          ? playerAPgId
           : null,
 
       roomId: options.roomId ?? null,
@@ -233,13 +221,12 @@ export class ArenaMatchService {
       finishedAt: null,
 
       winnerId: null,
-      isDraw: false,
-    });
+      isDraw: false });
 
     const players = await this.arenaMatchPlayerModel.insertMany(
       userIds.map((id, index) => ({
         matchId: match._id,
-        userId: new Types.ObjectId(id),
+        userId: new PgId(id),
         ratingBefore: profiles[index]!.rating,
         ratingAfter: profiles[index]!.rating,
         ratingChange: 0,
@@ -248,14 +235,12 @@ export class ArenaMatchService {
         score: 0,
         correctAnswers: 0,
         wrongAnswers: 0,
-        unanswered: 0,
-      })),
+        unanswered: 0 })),
     );
 
     return {
       match,
-      players,
-    };
+      players };
   }
 
   /** Giữ API tương thích cho matchmaking ranked hiện tại. */
@@ -274,40 +259,36 @@ export class ArenaMatchService {
     winnerUserId?: string,
     expectedTurnCount?: number,
   ) {
-    const objectId = new Types.ObjectId(matchId);
+    const uuid = new PgId(matchId);
     const match = await this.arenaMatchModel.findOneAndUpdate(
       {
-        _id: objectId,
+        _id: uuid,
         status: ArenaMatchStatus.PLAYING,
         ...(expectedTurnCount !== undefined
           ? {
               turnCount: expectedTurnCount,
               chainPausedAt: null,
-              turnDeadline: { $lte: new Date() },
-            }
-          : {}),
-      },
+              turnDeadline: { $lte: new Date() } }
+          : {}) },
       { $set: { status: ArenaMatchStatus.FINISHING, finishReason } },
       { returnDocument: 'after' },
     );
 
     if (!match) {
-      const existing = await this.arenaMatchModel.findById(objectId);
+      const existing = await this.arenaMatchModel.findById(uuid);
       return existing?.status === ArenaMatchStatus.FINISHED ? existing : null;
     }
 
     const players = await this.arenaMatchPlayerModel
-      .find({ matchId: objectId })
+      .find({ matchId: uuid })
       .sort({ score: -1, userId: 1 });
     if (players.length < 2) {
       await this.arenaMatchModel.updateOne(
-        { _id: objectId, status: ArenaMatchStatus.FINISHING },
+        { _id: uuid, status: ArenaMatchStatus.FINISHING },
         {
           $set: {
             status: ArenaMatchStatus.CANCELLED,
-            cancelReason: 'Insufficient players',
-          },
-        },
+            cancelReason: 'Insufficient players' } },
       );
       return null;
     }
@@ -353,14 +334,11 @@ export class ArenaMatchService {
             playerA: {
               ratingBefore: playerA.ratingBefore,
               ratingAfter: playerA.ratingBefore,
-              ratingChange: 0,
-            },
+              ratingChange: 0 },
             playerB: {
               ratingBefore: playerB.ratingBefore,
               ratingAfter: playerB.ratingBefore,
-              ratingChange: 0,
-            },
-          };
+              ratingChange: 0 } };
     const now = new Date();
     const winningPlayer = isDraw
       ? null
@@ -375,16 +353,13 @@ export class ArenaMatchService {
           : {
               ratingBefore: player.ratingBefore,
               ratingAfter: player.ratingBefore,
-              ratingChange: 0,
-            },
-      won: player === winningPlayer,
-    }));
+              ratingChange: 0 },
+      won: player === winningPlayer }));
 
     for (const result of results) {
       if (match.type === ArenaMatchType.RANK) {
         const profile = await this.arenaProfileModel.findOne({
-          userId: result.player.userId,
-        });
+          userId: result.player.userId });
         const currentStreak = result.won
           ? (profile?.currentWinStreak ?? 0) + 1
           : 0;
@@ -397,15 +372,12 @@ export class ArenaMatchService {
               bestWinStreak: Math.max(
                 profile?.bestWinStreak ?? 0,
                 currentStreak,
-              ),
-            },
+              ) },
             $inc: {
               rankedMatches: 1,
               rankedWins: result.won ? 1 : 0,
               rankedLosses: !isDraw && !result.won ? 1 : 0,
-              rankedDraws: isDraw ? 1 : 0,
-            },
-          },
+              rankedDraws: isDraw ? 1 : 0 } },
         );
       }
       await this.arenaMatchPlayerModel.updateOne(
@@ -415,37 +387,31 @@ export class ArenaMatchService {
             ratingAfter: result.rating.ratingAfter,
             ratingChange: result.rating.ratingChange,
             status: 'FINISHED',
-            finishedAt: now,
-          },
-        },
+            finishedAt: now } },
       );
       if (match.type === ArenaMatchType.RANK) {
         await this.arenaRatingHistoryModel.updateOne(
-          { matchId: objectId, userId: result.player.userId },
+          { matchId: uuid, userId: result.player.userId },
           {
             $setOnInsert: {
-              matchId: objectId,
+              matchId: uuid,
               userId: result.player.userId,
               before: result.rating.ratingBefore,
               after: result.rating.ratingAfter,
-              change: result.rating.ratingChange,
-            },
-          },
+              change: result.rating.ratingChange } },
           { upsert: true },
         );
       }
     }
 
     const finished = await this.arenaMatchModel.findOneAndUpdate(
-      { _id: objectId, status: ArenaMatchStatus.FINISHING },
+      { _id: uuid, status: ArenaMatchStatus.FINISHING },
       {
         $set: {
           status: ArenaMatchStatus.FINISHED,
           finishedAt: now,
           isDraw,
-          winnerId: winningPlayer?.userId ?? null,
-        },
-      },
+          winnerId: winningPlayer?.userId ?? null } },
       { returnDocument: 'after' },
     );
     if (finished && this.learningActivity)
@@ -475,9 +441,7 @@ export class ArenaMatchService {
             matchType: match.type,
             won: result.won,
             isDraw,
-            ratingChange: result.rating.ratingChange,
-          },
-        });
+            ratingChange: result.rating.ratingChange } });
     if (
       finished &&
       (match.type === ArenaMatchType.FRIEND ||
@@ -485,7 +449,7 @@ export class ArenaMatchService {
       match.roomId
     )
       await this.friendRooms.updateOne(
-        { _id: match.roomId, currentMatchId: objectId },
+        { _id: match.roomId, currentMatchId: uuid },
         {
           $set: {
             status: FriendRoomStatus.WAITING,
@@ -493,10 +457,8 @@ export class ArenaMatchService {
             guestReady: false,
             ...(match.type === ArenaMatchType.ROOM
               ? { 'members.$[].isReady': false }
-              : {}),
-          },
-          $inc: { revision: 1 },
-        },
+              : {}) },
+          $inc: { revision: 1 } },
       );
     return finished;
   }
@@ -513,9 +475,8 @@ export class ArenaMatchService {
   /** Trả về trận COUNTDOWN/PLAYING hiện tại của người dùng nếu có. */
   async findActiveMatchForUser(userId: string) {
     const matchIds = await this.arenaMatchPlayerModel.distinct('matchId', {
-      userId: new Types.ObjectId(userId),
-      status: { $in: ['PLAYING', 'DISCONNECTED'] },
-    });
+      userId: new PgId(userId),
+      status: { $in: ['PLAYING', 'DISCONNECTED'] } });
     return this.arenaMatchModel.findOne({
       _id: { $in: matchIds },
       status: {
@@ -524,9 +485,7 @@ export class ArenaMatchService {
           ArenaMatchStatus.COUNTDOWN,
           ArenaMatchStatus.PLAYING,
           ArenaMatchStatus.FINISHING,
-        ],
-      },
-    });
+        ] } });
   }
 
   /** Đánh dấu disconnect sau khi xác nhận user không còn socket Arena nào. */
@@ -544,17 +503,15 @@ export class ArenaMatchService {
           _id: match._id,
           status: ArenaMatchStatus.PLAYING,
           chainPausedAt: null,
-          turnDeadline: { $gt: new Date() },
-        },
+          turnDeadline: { $gt: new Date() } },
         { $set: { chainPausedAt: new Date() } },
       );
     }
     return this.arenaMatchPlayerModel.updateOne(
       {
         matchId: match._id,
-        userId: new Types.ObjectId(userId),
-        status: 'PLAYING',
-      },
+        userId: new PgId(userId),
+        status: 'PLAYING' },
       { $set: { status: 'DISCONNECTED', disconnectedAt: new Date() } },
     );
   }
@@ -562,10 +519,9 @@ export class ArenaMatchService {
   /** Khôi phục player sau khi socket mới xác thực và vào lại trận. */
   async markReconnected(matchId: string, userId: string) {
     const player = await this.arenaMatchPlayerModel.findOne({
-      matchId: new Types.ObjectId(matchId),
-      userId: new Types.ObjectId(userId),
-      status: 'DISCONNECTED',
-    });
+      matchId: new PgId(matchId),
+      userId: new PgId(userId),
+      status: 'DISCONNECTED' });
     if (
       player?.disconnectedAt &&
       Date.now() - player.disconnectedAt.getTime() >= 20000
@@ -573,10 +529,9 @@ export class ArenaMatchService {
       throw new WsException('Reconnect grace period expired');
     const result = await this.arenaMatchPlayerModel.updateOne(
       {
-        matchId: new Types.ObjectId(matchId),
-        userId: new Types.ObjectId(userId),
-        status: 'DISCONNECTED',
-      },
+        matchId: new PgId(matchId),
+        userId: new PgId(userId),
+        status: 'DISCONNECTED' },
       { $set: { status: 'PLAYING', disconnectedAt: null } },
     );
     const match = await this.arenaMatchModel.findById(matchId);
@@ -588,15 +543,13 @@ export class ArenaMatchService {
         status: 'DISCONNECTED',
         ...(match.type === ArenaMatchType.ROOM
           ? { userId: match.currentTurnUserId }
-          : {}),
-      }))
+          : {}) }))
     ) {
       await this.arenaMatchModel.updateOne(
         {
           _id: match._id,
           status: ArenaMatchStatus.PLAYING,
-          chainPausedAt: match.chainPausedAt,
-        },
+          chainPausedAt: match.chainPausedAt },
         {
           $set: {
             turnDeadline: new Date(
@@ -604,9 +557,7 @@ export class ArenaMatchService {
                 Date.now() -
                 match.chainPausedAt.getTime(),
             ),
-            chainPausedAt: null,
-          },
-        },
+            chainPausedAt: null } },
       );
     }
     return result;
@@ -621,8 +572,7 @@ export class ArenaMatchService {
     const countdownMatches = await this.arenaMatchModel.find({
       status: ArenaMatchStatus.COUNTDOWN,
       type: ArenaMatchType.RANK,
-      createdAt: { $lte: readyDeadline },
-    });
+      createdAt: { $lte: readyDeadline } });
     for (const match of countdownMatches) {
       if (
         match.createdAt.getTime() +
@@ -635,9 +585,7 @@ export class ArenaMatchService {
         {
           $set: {
             status: ArenaMatchStatus.CANCELLED,
-            cancelReason: 'Ready timeout',
-          },
-        },
+            cancelReason: 'Ready timeout' } },
       );
       if (cancelled.modifiedCount)
         await this.arenaMatchPlayerModel.updateMany(
@@ -648,14 +596,12 @@ export class ArenaMatchService {
 
     const disconnected = await this.arenaMatchPlayerModel.find({
       status: 'DISCONNECTED',
-      disconnectedAt: { $lte: new Date(now.getTime() - 5_000) },
-    });
+      disconnectedAt: { $lte: new Date(now.getTime() - 5_000) } });
     const finished: string[] = [];
     for (const player of disconnected) {
       const match = await this.arenaMatchModel.findOne({
         _id: player.matchId,
-        status: { $in: [ArenaMatchStatus.PLAYING, ArenaMatchStatus.WAITING] },
-      });
+        status: { $in: [ArenaMatchStatus.PLAYING, ArenaMatchStatus.WAITING] } });
       if (!match || match.type === ArenaMatchType.ROOM) continue;
       if (
         player.disconnectedAt &&
@@ -670,9 +616,7 @@ export class ArenaMatchService {
           {
             $set: {
               status: ArenaMatchStatus.CANCELLED,
-              cancelReason: 'Reconnect timeout in lobby',
-            },
-          },
+              cancelReason: 'Reconnect timeout in lobby' } },
         );
         await this.arenaMatchPlayerModel.updateMany(
           { matchId: match._id },
@@ -702,10 +646,10 @@ export class ArenaMatchService {
     excluded: string[] = [],
   ) {
     const match = await this.arenaMatchModel.findById(
-      new Types.ObjectId(matchId),
+      new PgId(matchId),
     );
     const players = await this.arenaMatchPlayerModel
-      .find({ matchId: new Types.ObjectId(matchId) })
+      .find({ matchId: new PgId(matchId) })
       .sort({ _id: 1 });
     const removed = [
       ...(match?.eliminatedUserIds ?? []).map(String),
@@ -731,9 +675,9 @@ export class ArenaMatchService {
     reason: ArenaMatchFinishReason,
     expectedTurnCount?: number,
   ) {
-    const objectId = new Types.ObjectId(matchId);
+    const uuid = new PgId(matchId);
     for (let attempt = 0; attempt < 8; attempt++) {
-      const match = await this.arenaMatchModel.findById(objectId);
+      const match = await this.arenaMatchModel.findById(uuid);
       if (
         !match ||
         match.type !== ArenaMatchType.ROOM ||
@@ -743,13 +687,13 @@ export class ArenaMatchService {
       if ((match.eliminatedUserIds ?? []).some((id) => String(id) === userId))
         return null;
       const players = await this.arenaMatchPlayerModel
-        .find({ matchId: objectId })
+        .find({ matchId: uuid })
         .sort({ _id: 1 });
       if (!players.some((p) => String(p.userId) === userId))
         throw new WsException('NOT_ROOM_GUEST');
       const eliminated = [
         ...(match.eliminatedUserIds ?? []),
-        new Types.ObjectId(userId),
+        new PgId(userId),
       ];
       const remaining = players.filter(
         (p) => !eliminated.some((id) => String(id) === String(p.userId)),
@@ -759,7 +703,7 @@ export class ArenaMatchService {
       const now = new Date();
       const changed = await this.arenaMatchModel.updateOne(
         {
-          _id: objectId,
+          _id: uuid,
           status: ArenaMatchStatus.PLAYING,
           turnCount: match.turnCount,
           roomRevision: match.roomRevision ?? 0,
@@ -767,34 +711,29 @@ export class ArenaMatchService {
             ? {
                 turnCount: expectedTurnCount,
                 chainPausedAt: null,
-                turnDeadline: { $lte: now },
-              }
-            : {}),
-        },
+                turnDeadline: { $lte: now } }
+            : {}) },
         {
           $set: {
             eliminatedUserIds: eliminated,
             ...(switchTurn && next
               ? {
-                  currentTurnUserId: new Types.ObjectId(next),
+                  currentTurnUserId: new PgId(next),
                   turnStartedAt: now,
                   turnDeadline: new Date(
                     now.getTime() +
                       (match.settingsSnapshot?.turnTime ?? 20) * 1000,
                   ),
-                  chainPausedAt: null,
-                }
-              : {}),
-          },
-          $inc: { roomRevision: 1 },
-        },
+                  chainPausedAt: null }
+              : {}) },
+          $inc: { roomRevision: 1 } },
       );
       if (!changed.modifiedCount) {
         if (expectedTurnCount !== undefined) return null;
         continue;
       }
       await this.arenaMatchPlayerModel.updateOne(
-        { matchId: objectId, userId: new Types.ObjectId(userId) },
+        { matchId: uuid, userId: new PgId(userId) },
         { $set: { status: 'LEFT', disconnectedAt: null } },
       );
       if (remaining.length <= 1)
@@ -820,24 +759,23 @@ export class ArenaMatchService {
 
   async getOpponentUserId(matchId: string, userId: string) {
     const opponent = await this.arenaMatchPlayerModel.findOne({
-      matchId: new Types.ObjectId(matchId),
-      userId: { $ne: new Types.ObjectId(userId) },
-    });
+      matchId: new PgId(matchId),
+      userId: { $ne: new PgId(userId) } });
     return opponent ? String(opponent.userId) : null;
   }
 
   /** Đánh dấu người chơi sẵn sàng và bắt đầu trận khi đủ hai người. */
   async markReady(matchId: string, userId: string): Promise<ArenaStartResult> {
-    if (!/^[a-f\d]{24}$/i.test(matchId) || !/^[a-f\d]{24}$/i.test(userId))
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(matchId) || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId))
       throw new WsException('Invalid match or player ID');
-    const matchObjectId = new Types.ObjectId(matchId);
+    const matchPgId = new PgId(matchId);
 
-    const userObjectId = new Types.ObjectId(userId);
+    const userPgId = new PgId(userId);
 
     /*
      * 1. Kiểm tra match
      */
-    const match = await this.arenaMatchModel.findById(matchObjectId);
+    const match = await this.arenaMatchModel.findById(matchPgId);
 
     // Match không tồn tại thì không thể tiếp tục quy trình ready.
     if (!match) {
@@ -850,9 +788,8 @@ export class ArenaMatchService {
       throw new WsException('Friendly matches require host Start');
 
     const member = await this.arenaMatchPlayerModel.exists({
-      matchId: matchObjectId,
-      userId: userObjectId,
-    });
+      matchId: matchPgId,
+      userId: userPgId });
     // Chặn user không thuộc trận gửi yêu cầu ready giả mạo.
     if (!member) throw new WsException('You are not a player in this match');
 
@@ -864,8 +801,7 @@ export class ArenaMatchService {
     if (match.status === ArenaMatchStatus.PLAYING) {
       return {
         shouldStart: false,
-        alreadyStarted: true,
-      };
+        alreadyStarted: true };
     }
 
     if (match.status !== ArenaMatchStatus.COUNTDOWN) {
@@ -877,19 +813,15 @@ export class ArenaMatchService {
      */
     const player = await this.arenaMatchPlayerModel.findOneAndUpdate(
       {
-        matchId: matchObjectId,
+        matchId: matchPgId,
 
-        userId: userObjectId,
-      },
+        userId: userPgId },
       {
         $set: {
           isReady: true,
-          readyAt: new Date(),
-        },
-      },
+          readyAt: new Date() } },
       {
-        returnDocument: 'after',
-      },
+        returnDocument: 'after' },
     );
 
     if (!player) {
@@ -900,17 +832,15 @@ export class ArenaMatchService {
      * 3. Kiểm tra bao nhiêu người ready
      */
     const readyCount = await this.arenaMatchPlayerModel.countDocuments({
-      matchId: matchObjectId,
+      matchId: matchPgId,
 
-      isReady: true,
-    });
+      isReady: true });
 
     // Chờ người chơi còn lại ready trước khi sinh câu hỏi.
     if (readyCount < 2) {
       return {
         shouldStart: false,
-        readyCount,
-      };
+        readyCount };
     }
 
     /*
@@ -930,21 +860,17 @@ export class ArenaMatchService {
      */
     const match = await this.arenaMatchModel.findOneAndUpdate(
       {
-        _id: new Types.ObjectId(matchId),
+        _id: new PgId(matchId),
 
         status: ArenaMatchStatus.COUNTDOWN,
-        type: ArenaMatchType.RANK,
-      },
+        type: ArenaMatchType.RANK },
       {
         $set: {
           status: ArenaMatchStatus.PLAYING,
 
-          startedAt: new Date(),
-        },
-      },
+          startedAt: new Date() } },
       {
-        returnDocument: 'after',
-      },
+        returnDocument: 'after' },
     );
 
     /*
@@ -955,8 +881,7 @@ export class ArenaMatchService {
     if (!match) {
       return {
         shouldStart: false,
-        alreadyStarted: true,
-      };
+        alreadyStarted: true };
     }
 
     /*
@@ -976,8 +901,7 @@ export class ArenaMatchService {
         {
           _id: match._id,
           status: ArenaMatchStatus.PLAYING,
-          startedAt: match.startedAt,
-        },
+          startedAt: match.startedAt },
         { $set: { status: ArenaMatchStatus.COUNTDOWN, startedAt: null } },
       );
       throw error;
@@ -986,7 +910,6 @@ export class ArenaMatchService {
     return {
       shouldStart: true,
       match,
-      questions,
-    };
+      questions };
   }
 }

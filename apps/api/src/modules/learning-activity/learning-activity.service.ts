@@ -1,15 +1,14 @@
+import { PgId } from '../../postgres/compat.js';
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { InjectPgModel } from '../../postgres/compat.js';
+import { Model } from '../../postgres/compat.js';
 import {
   DAILY_GOAL_XP,
-  LEARNING_MODULES,
-} from '@repo/shared-types/learning-xp';
+  LEARNING_MODULES } from '@repo/shared-types/learning-xp';
 import type { LearningModule } from '@repo/shared-types/learning-xp';
 import {
   LearningActivity,
-  type LearningActivityType,
-} from './schemas/learning-activity.schema.js';
+  type LearningActivityType } from './schemas/learning-activity.schema.js';
 
 export const DEFAULT_TIMEZONE = process.env.APP_TIMEZONE || 'Asia/Ho_Chi_Minh';
 const HEATMAP_DAYS = 90;
@@ -19,7 +18,7 @@ const WORD_TYPES: LearningActivityType[] = ['WORD_LEARNED', 'WORD_REVIEWED'];
 const GROWTH_DAYS = 7;
 
 export interface RecordActivityInput {
-  userId: string | Types.ObjectId;
+  userId: string | PgId;
   module: LearningModule;
   type: LearningActivityType;
   sourceKey: string;
@@ -64,7 +63,7 @@ export class LearningActivityService {
   private readonly logger = new Logger(LearningActivityService.name);
 
   constructor(
-    @InjectModel(LearningActivity.name)
+    @InjectPgModel(LearningActivity.name)
     private readonly activities: Model<LearningActivity>,
   ) {}
 
@@ -77,14 +76,12 @@ export class LearningActivityService {
       const { userId, sourceKey, ...fields } = input;
       const result = await this.activities
         .updateOne(
-          { userId: new Types.ObjectId(String(userId)), sourceKey },
+          { userId: new PgId(String(userId)), sourceKey },
           {
             $setOnInsert: {
               ...fields,
               xp: Math.max(0, Math.round(fields.xp)),
-              occurredAt: fields.occurredAt ?? new Date(),
-            },
-          },
+              occurredAt: fields.occurredAt ?? new Date() } },
           { upsert: true },
         )
         .exec();
@@ -105,7 +102,7 @@ export class LearningActivityService {
         count: number;
         durationSec: number;
       }>([
-        { $match: { userId: new Types.ObjectId(userId) } },
+        { $match: { userId: new PgId(userId) } },
         {
           $group: {
             _id: {
@@ -113,18 +110,12 @@ export class LearningActivityService {
                 $dateToString: {
                   format: '%Y-%m-%d',
                   date: '$occurredAt',
-                  timezone,
-                },
-              },
-              module: '$module',
-            },
+                  timezone } },
+              module: '$module' },
             xp: { $sum: '$xp' },
             count: {
-              $sum: { $cond: [{ $in: ['$type', WORD_TYPES] }, 0, 1] },
-            },
-            durationSec: { $sum: { $ifNull: ['$durationSec', 0] } },
-          },
-        },
+              $sum: { $cond: [{ $in: ['$type', WORD_TYPES] }, 0, 1] } },
+            durationSec: { $sum: { $ifNull: ['$durationSec', 0] } } } },
       ])
       .exec();
 
@@ -144,8 +135,7 @@ export class LearningActivityService {
       day.byModule[row._id.module] = {
         xp: row.xp,
         count: row.count,
-        durationSec: row.durationSec,
-      };
+        durationSec: row.durationSec };
       days.set(row._id.day, day);
       for (const target of [totals, byModule[row._id.module]]) {
         target.xp += row.xp;
@@ -155,8 +145,7 @@ export class LearningActivityService {
     }
 
     const today = new Intl.DateTimeFormat('en-CA', {
-      timeZone: timezone,
-    }).format(new Date());
+      timeZone: timezone }).format(new Date());
     const sum = (from: number, to: number) => {
       const result = emptyTotals();
       for (let i = from; i < to; i++) {
@@ -197,36 +186,32 @@ export class LearningActivityService {
         xp: todayTotals.xp,
         goalXp: DAILY_GOAL_XP,
         activities: todayTotals.count,
-        durationSec: todayTotals.durationSec,
-      },
+        durationSec: todayTotals.durationSec },
       streak: { current, longest, activeToday: days.has(today) },
       totals: { ...totals, activeDays: days.size },
       week: thisWeek,
       growth: {
         xp: growth(thisWeek.xp, lastWeek.xp),
         count: growth(thisWeek.count, lastWeek.count),
-        durationSec: growth(thisWeek.durationSec, lastWeek.durationSec),
-      },
+        durationSec: growth(thisWeek.durationSec, lastWeek.durationSec) },
       byModule,
       heatmap: [...days.entries()]
         .filter(([day]) => day >= heatmapStart)
         .sort(([a], [b]) => a.localeCompare(b))
-        .map(([date, day]) => ({ date, ...day })),
-    };
+        .map(([date, day]) => ({ date, ...day })) };
   }
 
   async recent(userId: string, limit = 20, before?: Date) {
     const rows = await this.activities
       .find({
-        userId: new Types.ObjectId(userId),
+        userId: new PgId(userId),
         type: { $nin: WORD_TYPES },
-        ...(before ? { occurredAt: { $lt: before } } : {}),
-      })
+        ...(before ? { occurredAt: { $lt: before } } : {}) })
       .sort({ occurredAt: -1, _id: -1 })
       .limit(Math.max(1, Math.min(50, limit)))
       .select('-userId -sourceKey')
       .lean()
       .exec();
-    return rows.map(({ _id, ...row }) => ({ id: String(_id), ...row }));
+    return rows.map(({ _id, ...row }) => ({ ...row, id: String(_id) }));
   }
 }

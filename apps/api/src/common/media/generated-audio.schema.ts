@@ -1,78 +1,76 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { PgField, PgEntity, PgSchemaFactory } from '../../postgres/compat.js';
 
 export enum AudioSourceType {
   TTS = 'TTS',
-  UPLOAD = 'UPLOAD',
-}
+  UPLOAD = 'UPLOAD' }
 
 export enum AudioGenerationStatus {
   NONE = 'NONE',
   PROCESSING = 'PROCESSING',
   READY = 'READY',
   STALE = 'STALE',
-  FAILED = 'FAILED',
-}
+  FAILED = 'FAILED' }
 
-@Schema({ _id: false })
+@PgEntity({ _id: false })
 export class AudioSegmentMetadata {
-  @Prop({ trim: true, default: '' })
+  @PgField({ trim: true, default: '' })
   text?: string;
 
-  @Prop({ trim: true, default: '' })
+  @PgField({ trim: true, default: '' })
   speaker?: string;
 
-  @Prop({ trim: true, default: '' })
+  @PgField({ trim: true, default: '' })
   voiceId?: string;
 
-  @Prop({ default: 0, min: 0 })
+  @PgField({ default: 0, min: 0 })
   startMs!: number;
 
-  @Prop({ default: 0, min: 0 })
+  @PgField({ default: 0, min: 0 })
   endMs!: number;
 }
 
-export const AudioSegmentMetadataSchema = SchemaFactory.createForClass(AudioSegmentMetadata);
+export const AudioSegmentMetadataSchema = PgSchemaFactory.createForClass(AudioSegmentMetadata);
 
-@Schema({ _id: false })
+@PgEntity({ _id: false })
 export class GeneratedAudioMetadata {
-  @Prop({ type: String, enum: Object.values(AudioSourceType), default: AudioSourceType.TTS })
+  @PgField({ type: String, enum: Object.values(AudioSourceType), default: AudioSourceType.TTS })
   source!: AudioSourceType;
 
-  @Prop({ type: String, enum: Object.values(AudioGenerationStatus), default: AudioGenerationStatus.NONE })
+  @PgField({ type: String, enum: Object.values(AudioGenerationStatus), default: AudioGenerationStatus.NONE })
   status!: AudioGenerationStatus;
 
-  @Prop({ trim: true, default: '' })
+  @PgField({ trim: true, default: '' })
   storageKey?: string;
 
-  @Prop({ trim: true, default: '' })
+  @PgField({ trim: true, default: '' })
   provider?: string;
 
-  @Prop({ trim: true, default: '' })
+  @PgField({ trim: true, default: '' })
   device?: string;
 
-  @Prop({ enum: ['en-US', 'en-GB'], default: 'en-US' })
+  @PgField({ enum: ['en-US', 'en-GB'], default: 'en-US' })
   language?: 'en-US' | 'en-GB';
 
-  @Prop({ type: [String], default: [] })
+  @PgField({ type: [String], default: [] })
   voiceIds?: string[];
 
-  @Prop({ default: 1, min: 0.5, max: 2 })
+  @PgField({ default: 1, min: 0.5, max: 2 })
   speed?: number;
 
-  @Prop({ default: 0, min: 0 })
+  @PgField({ default: 0, min: 0 })
   durationMs?: number;
 
-  @Prop({ trim: true, default: '' })
+  @PgField({ trim: true, default: '' })
   scriptHash?: string;
 
-  @Prop()
+  @PgField()
   generatedAt?: Date;
 
-  @Prop({ trim: true, default: '' })
+  @PgField({ trim: true, default: '' })
   error?: string;
 
-  @Prop({ type: [AudioSegmentMetadataSchema], default: [] })
+  @PgField({ type: [AudioSegmentMetadataSchema], default: [] })
   segments?: AudioSegmentMetadata[];
 }
 
-export const GeneratedAudioMetadataSchema = SchemaFactory.createForClass(GeneratedAudioMetadata);
+export const GeneratedAudioMetadataSchema = PgSchemaFactory.createForClass(GeneratedAudioMetadata);

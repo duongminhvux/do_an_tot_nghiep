@@ -8,7 +8,7 @@ import {
   IsEnum,
   IsInt,
   IsIn,
-  IsMongoId,
+  IsUUID,
   IsNotEmpty,
   ValidateIf,
   IsString,
@@ -16,8 +16,7 @@ import {
   Max,
   MaxLength,
   Min,
-  ValidateNested,
-} from 'class-validator';
+  ValidateNested } from 'class-validator';
 import { GameCategory } from '../schemas/game-definition.schema.js';
 const trim = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim() : value;
@@ -52,10 +51,9 @@ class GameMetadataDto {
   @IsBoolean() isActive: boolean;
 }
 export class UpdateGameDto extends PartialType(GameMetadataDto, {
-  skipNullProperties: false,
-}) {}
+  skipNullProperties: false }) {}
 export class GameOrderItemDto {
-  @IsMongoId() id: string;
+  @IsUUID('4') id: string;
   @IsInt() @Min(0) @Max(100000) order: number;
 }
 export class ReorderGamesDto {

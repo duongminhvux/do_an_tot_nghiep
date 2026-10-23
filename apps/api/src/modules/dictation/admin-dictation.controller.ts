@@ -7,8 +7,7 @@ import {
   Post,
   Query,
   UploadedFile,
-  UseInterceptors,
-} from '@nestjs/common';
+  UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AdminController } from '../auth/decorators/admin-controller.decorator.js';
 import { DictationService } from './dictation.service.js';
@@ -23,8 +22,7 @@ import {
   CreateDictationSectionDto,
   CreateDictationTopicDto,
   UpdateDictationSectionDto,
-  UpdateDictationTopicDto,
-} from './dto/dictation-hierarchy.dto.js';
+  UpdateDictationTopicDto } from './dto/dictation-hierarchy.dto.js';
 
 @AdminController('dictation')
 export class AdminDictationController {
@@ -47,8 +45,7 @@ export class AdminDictationController {
     ]);
     return {
       tts: tts.status === 'fulfilled' ? tts.value : { ready: false, error: String(tts.reason) },
-      asr: asr.status === 'fulfilled' ? asr.value : { ready: false, error: String(asr.reason) },
-    };
+      asr: asr.status === 'fulfilled' ? asr.value : { ready: false, error: String(asr.reason) } };
   }
 
   @Get('hierarchy')
@@ -127,8 +124,7 @@ export class AdminDictationController {
   @Post(':id/analyze-audio')
   @UseInterceptors(
     FileInterceptor('file', {
-      limits: { fileSize: 100 * 1024 * 1024 },
-    }),
+      limits: { fileSize: 100 * 1024 * 1024 } }),
   )
   analyzeAudio(
     @Param('id') id: string,

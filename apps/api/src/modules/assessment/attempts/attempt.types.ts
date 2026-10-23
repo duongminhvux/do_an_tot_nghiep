@@ -1,7 +1,6 @@
 export enum ExamMode {
   TEST = 'TEST',
-  PRACTICE = 'PRACTICE',
-}
+  PRACTICE = 'PRACTICE' }
 
 export interface RawSectionResult {
   total: number;
@@ -15,8 +14,7 @@ export interface RawSectionResult {
 export enum ToeicAttemptStatus {
   IN_PROGRESS = 'IN_PROGRESS',
   FINISHED = 'FINISHED',
-  ABANDONED = 'ABANDONED',
-}
+  ABANDONED = 'ABANDONED' }
 
 export interface SnapshotQuestion {
   _id: string;

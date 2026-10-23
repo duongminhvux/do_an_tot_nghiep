@@ -8,8 +8,7 @@ import {
   ArenaDashboardQuery,
   ArenaPlayerQuery,
   ArenaRoomQuery,
-  UpdateArenaSettingsDto,
-} from './arena-admin.dto.js';
+  UpdateArenaSettingsDto } from './arena-admin.dto.js';
 type AdminRequest = { user: { _id: string } };
 @AdminController('arena')
 export class ArenaAdminController {

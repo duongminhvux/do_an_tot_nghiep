@@ -1,12 +1,12 @@
+import { PgId } from '../../../postgres/compat.js';
 import {
   BadRequestException,
   Injectable,
   NotFoundException,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+  ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectModel } from '@nestjs/mongoose';
-import { type Model, Types } from 'mongoose';
+import { InjectPgModel } from '../../../postgres/compat.js';
+import { type Model } from '../../../postgres/compat.js';
 import { validateImportDraft } from '@repo/shared-types/assessment-import';
 import { Exam, ExamDocument } from '../exams/schemas/exam.schema.js';
 
@@ -14,11 +14,11 @@ import { Exam, ExamDocument } from '../exams/schemas/exam.schema.js';
 export class PdfAiService {
   constructor(
     private readonly config: ConfigService,
-    @InjectModel(Exam.name) private readonly exams: Model<ExamDocument>,
+    @InjectPgModel(Exam.name) private readonly exams: Model<ExamDocument>,
   ) {}
 
   private async checkExam(examId: string) {
-    if (!Types.ObjectId.isValid(examId))
+    if (!PgId.isValid(examId))
       throw new NotFoundException('Exam not found');
     const exam = await this.exams.findById(examId).lean().exec();
     if (!exam || exam.isDeleted) throw new NotFoundException('Exam not found');
@@ -34,8 +34,7 @@ export class PdfAiService {
     try {
       response = await fetch(`${base}${path}`, {
         ...init,
-        signal: AbortSignal.timeout(30_000),
-      });
+        signal: AbortSignal.timeout(30_000) });
     } catch {
       throw new ServiceUnavailableException(
         'Chưa kết nối được AI PDF local. Hãy khởi động dịch vụ pdf-ai và Ollama.',
@@ -174,7 +173,6 @@ export class PdfAiService {
 
   async learningRequest(path: string, payload?: Record<string, any>) {
     return this.request(`/learning${path}`, payload ? {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
-    } : {});
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) } : {});
   }
 }

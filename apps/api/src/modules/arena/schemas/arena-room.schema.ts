@@ -1,80 +1,78 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { type HydratedDocument, Types } from 'mongoose';
+import { PgId } from '../../../postgres/compat.js';
+import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
+import { type PgDocument } from '../../../postgres/compat.js';
 
-export type ArenaRoomDocument = HydratedDocument<ArenaRoom>;
+export type ArenaRoomDocument = PgDocument<ArenaRoom>;
 
-@Schema({ _id: false })
+@PgEntity({ _id: false })
 export class ArenaRoomMember {
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
-  userId: Types.ObjectId;
+  @PgField({ type: PgId, ref: 'User', required: true })
+  userId: PgId;
 
-  @Prop({ type: String, enum: ['HOST', 'PLAYER'], default: 'PLAYER' })
+  @PgField({ type: String, enum: ['HOST', 'PLAYER'], default: 'PLAYER' })
   role: 'HOST' | 'PLAYER';
 
-  @Prop({ default: false })
+  @PgField({ default: false })
   isReady: boolean;
 
-  @Prop({ type: Date, default: Date.now })
+  @PgField({ type: Date, default: Date.now })
   joinedAt: Date;
 }
 
 export const ArenaRoomMemberSchema =
-  SchemaFactory.createForClass(ArenaRoomMember);
+  PgSchemaFactory.createForClass(ArenaRoomMember);
 
-@Schema({ timestamps: true })
+@PgEntity({ timestamps: true })
 /** Metadata của phòng đấu, dùng cho các mode friend/room. */
 export class ArenaRoom {
-  @Prop({ required: true, trim: true })
+  @PgField({ required: true, trim: true })
   name: string;
 
-  @Prop({ required: true, unique: true, uppercase: true, trim: true })
+  @PgField({ required: true, unique: true, uppercase: true, trim: true })
   code: string;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
-  ownerId: Types.ObjectId;
+  @PgField({ type: PgId, ref: 'User', required: true, index: true })
+  ownerId: PgId;
 
-  @Prop({
+  @PgField({
     type: String,
     enum: ['WAITING', 'PLAYING', 'FINISHED', 'CANCELLED'],
     default: 'WAITING',
-    index: true,
-  })
+    index: true })
   status: 'WAITING' | 'PLAYING' | 'FINISHED' | 'CANCELLED';
 
-  @Prop({ type: String, enum: ['PUBLIC', 'PRIVATE'], default: 'PRIVATE' })
+  @PgField({ type: String, enum: ['PUBLIC', 'PRIVATE'], default: 'PRIVATE' })
   visibility: 'PUBLIC' | 'PRIVATE';
 
-  @Prop({
+  @PgField({
     type: String,
     enum: ['MIXED', 'MEANING', 'ENGLISH', 'LISTENING', 'CONTEXT'],
-    default: 'MIXED',
-  })
+    default: 'MIXED' })
   questionMode: 'MIXED' | 'MEANING' | 'ENGLISH' | 'LISTENING' | 'CONTEXT';
 
-  @Prop({ default: 20, min: 5, max: 100 })
+  @PgField({ default: 20, min: 5, max: 100 })
   questionCount: number;
 
-  @Prop({ default: 15, min: 5 })
+  @PgField({ default: 15, min: 5 })
   secondsPerQuestion: number;
 
-  @Prop({ default: 8, min: 3, max: 8, validate: Number.isInteger })
+  @PgField({ default: 8, min: 3, max: 8, validate: Number.isInteger })
   maxPlayers: number;
 
-  @Prop({
+  @PgField({
     type: String,
     enum: ['GLOBAL', 'COLLECTION', 'LEARNED'],
-    default: 'GLOBAL',
-  })
+    default: 'GLOBAL' })
   vocabularySource: 'GLOBAL' | 'COLLECTION' | 'LEARNED';
 
-  @Prop({ type: Types.ObjectId, ref: 'Collection' })
-  collectionId?: Types.ObjectId;
+  @PgField({ type: PgId, ref: 'Collection' })
+  collectionId?: PgId;
 
-  @Prop({ type: [ArenaRoomMemberSchema], default: [] })
+  @PgField({ type: [ArenaRoomMemberSchema], default: [] })
   members: ArenaRoomMember[];
 
   createdAt: Date;
   updatedAt: Date;
 }
 
-export const ArenaRoomSchema = SchemaFactory.createForClass(ArenaRoom);
+export const ArenaRoomSchema = PgSchemaFactory.createForClass(ArenaRoom);

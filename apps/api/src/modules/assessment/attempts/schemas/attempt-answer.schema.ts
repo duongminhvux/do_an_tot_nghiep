@@ -1,48 +1,43 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { type HydratedDocument, Types } from 'mongoose';
+import { PgId } from '../../../../postgres/compat.js';
+import { PgField, PgEntity, PgSchemaFactory } from '../../../../postgres/compat.js';
+import { type PgDocument } from '../../../../postgres/compat.js';
 
-export type AttemptAnswerDocument = HydratedDocument<AttemptAnswer>;
+export type AttemptAnswerDocument = PgDocument<AttemptAnswer>;
 
-@Schema({ timestamps: true })
+@PgEntity({ timestamps: true })
 export class AttemptAnswer {
-  @Prop({
-    type: Types.ObjectId,
+  @PgField({
+    type: PgId,
     ref: 'Attempt',
     required: true,
-    index: true,
-  })
-  attemptId: Types.ObjectId;
+    index: true })
+  attemptId: PgId;
 
-  @Prop({
-    type: Types.ObjectId,
+  @PgField({
+    type: PgId,
     ref: 'Question',
     required: true,
-    index: true,
-  })
-  questionId: Types.ObjectId;
+    index: true })
+  questionId: PgId;
 
-  @Prop({
-    enum: ['A', 'B', 'C', 'D'],
-  })
+  @PgField({
+    enum: ['A', 'B', 'C', 'D'] })
   selectedAnswer?: 'A' | 'B' | 'C' | 'D';
 
-  @Prop({
-    default: false,
-  })
+  @PgField({
+    default: false })
   isCorrect: boolean;
 
-  @Prop()
+  @PgField()
   answeredAt?: Date;
 }
 
-export const AttemptAnswerSchema = SchemaFactory.createForClass(AttemptAnswer);
+export const AttemptAnswerSchema = PgSchemaFactory.createForClass(AttemptAnswer);
 
 AttemptAnswerSchema.index(
   {
     attemptId: 1,
-    questionId: 1,
-  },
+    questionId: 1 },
   {
-    unique: true,
-  },
+    unique: true },
 );

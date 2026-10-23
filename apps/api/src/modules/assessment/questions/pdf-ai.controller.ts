@@ -6,8 +6,7 @@ import {
   UploadedFiles,
   UseInterceptors,
   Body,
-  BadRequestException,
-} from '@nestjs/common';
+  BadRequestException } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { AdminController } from '../../auth/decorators/admin-controller.decorator.js';
 import { PdfAiService } from './pdf-ai.service.js';
@@ -85,8 +84,7 @@ export class PdfAiController {
         { name: 'answers', maxCount: 1 },
       ],
       {
-        limits: { fileSize: 25 * 1024 * 1024, files: 2, fields: 0 },
-      },
+        limits: { fileSize: 25 * 1024 * 1024, files: 2, fields: 0 } },
     ),
   )
   start(

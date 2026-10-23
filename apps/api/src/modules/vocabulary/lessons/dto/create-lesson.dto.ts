@@ -1,9 +1,9 @@
-import { IsBoolean, IsMongoId, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsUUID, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
 
 export class CreateLessonDto {
   @IsNotEmpty({ message: i18nValidationMessage('lesson.COLLECTION_ID_REQUIRED') })
-  @IsMongoId({ message: i18nValidationMessage('lesson.COLLECTION_ID_INVALID') })
+  @IsUUID('4', { message: i18nValidationMessage('lesson.COLLECTION_ID_INVALID') })
   collectionId!: string;
 
   @IsNotEmpty({ message: i18nValidationMessage('lesson.LESSON_TITLE_REQUIRED') })

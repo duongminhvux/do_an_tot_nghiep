@@ -1,54 +1,51 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { type HydratedDocument, Types } from 'mongoose';
+import { PgId } from '../../../../postgres/compat.js';
+import { PgField, PgEntity, PgSchemaFactory } from '../../../../postgres/compat.js';
+import { type PgDocument } from '../../../../postgres/compat.js';
 
 export type UserLessonProgressDocument =
-  HydratedDocument<UserLessonProgress>;
+  PgDocument<UserLessonProgress>;
 
-@Schema({ timestamps: true })
+@PgEntity({ timestamps: true })
 export class UserLessonProgress {
-  @Prop({
-    type: Types.ObjectId,
+  @PgField({
+    type: PgId,
     ref: 'User',
     required: true,
-    index: true,
-  })
-  userId: Types.ObjectId;
+    index: true })
+  userId: PgId;
 
-  @Prop({
-    type: Types.ObjectId,
+  @PgField({
+    type: PgId,
     ref: 'Lesson',
     required: true,
-    index: true,
-  })
-  lessonId: Types.ObjectId;
+    index: true })
+  lessonId: PgId;
 
-  @Prop({
+  @PgField({
     type: String,
     enum: ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED'],
-    default: 'NOT_STARTED',
-  })
+    default: 'NOT_STARTED' })
   status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
 
-  @Prop({
+  @PgField({
     type: Number,
     default: 0,
     min: 0,
-    max: 100,
-  })
+    max: 100 })
   progress: number;
 
-  @Prop()
+  @PgField()
   startedAt?: Date;
 
-  @Prop()
+  @PgField()
   lastStudiedAt?: Date;
 
-  @Prop()
+  @PgField()
   completedAt?: Date;
 }
 
 export const UserLessonProgressSchema =
-  SchemaFactory.createForClass(UserLessonProgress);
+  PgSchemaFactory.createForClass(UserLessonProgress);
 
 UserLessonProgressSchema.index(
   { userId: 1, lessonId: 1 },

@@ -1,15 +1,16 @@
+import { PgId } from '../../../postgres/compat.js';
 import { ArenaSettingsService } from '../admin/arena-settings.service.js';
 import { ARENA_DEFAULTS } from '../admin/arena-settings.defaults.js';
 import { Injectable, Optional, ForbiddenException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
+import { InjectPgModel } from '../../../postgres/compat.js';
 import { WsException } from '@nestjs/websockets';
-import { type Model, Types } from 'mongoose';
+import { type Model } from '../../../postgres/compat.js';
 import { ArenaRoom, ArenaRoomDocument } from '../schemas/arena-room.schema.js';
 
 @Injectable()
 export class ArenaRoomService {
   constructor(
-    @InjectModel(ArenaRoom.name)
+    @InjectPgModel(ArenaRoom.name)
     private readonly roomModel: Model<ArenaRoomDocument>,
     @Optional() private readonly settings?: ArenaSettingsService,
   ) {}
@@ -44,7 +45,7 @@ export class ArenaRoomService {
     return this.roomModel.create({
       name: options.name.trim(),
       code,
-      ownerId: new Types.ObjectId(ownerId),
+      ownerId: new PgId(ownerId),
       visibility: options.visibility ?? 'PRIVATE',
       questionMode: options.questionMode ?? 'MIXED',
       questionCount: options.questionCount ?? 20,
@@ -52,12 +53,10 @@ export class ArenaRoomService {
       maxPlayers: options.maxPlayers ?? config.group.maxPlayers,
       members: [
         {
-          userId: new Types.ObjectId(ownerId),
+          userId: new PgId(ownerId),
           role: 'HOST',
-          isReady: false,
-        },
-      ],
-    });
+          isReady: false },
+      ] });
   }
 
   /** Thêm người chơi atomically và không vượt quá giới hạn phòng. */
@@ -67,17 +66,13 @@ export class ArenaRoomService {
         code: roomCode.trim().toUpperCase(),
         status: 'WAITING',
         $expr: { $lt: [{ $size: '$members' }, '$maxPlayers'] },
-        'members.userId': { $ne: new Types.ObjectId(userId) },
-      },
+        'members.userId': { $ne: new PgId(userId) } },
       {
         $push: {
           members: {
-            userId: new Types.ObjectId(userId),
+            userId: new PgId(userId),
             role: 'PLAYER',
-            isReady: false,
-          },
-        },
-      },
+            isReady: false } } },
       { returnDocument: 'after' },
     );
     if (!room) throw new WsException('Room is unavailable');

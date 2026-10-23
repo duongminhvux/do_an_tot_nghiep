@@ -1,18 +1,18 @@
+import { PgId } from '../../../postgres/compat.js';
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { type Model, Types } from 'mongoose';
+import { InjectPgModel } from '../../../postgres/compat.js';
+import { type Model } from '../../../postgres/compat.js';
 import {
   UserWordReview,
-  UserWordReviewDocument,
-} from './schemas/user-word-review.schema.js';
+  UserWordReviewDocument } from './schemas/user-word-review.schema.js';
 import { Word, WordDocument } from '../../vocabulary/words/word.schema.js';
 
 @Injectable()
 export class ReviewsService {
   constructor(
-    @InjectModel(UserWordReview.name)
+    @InjectPgModel(UserWordReview.name)
     private reviewModel: Model<UserWordReviewDocument>,
-    @InjectModel(Word.name)
+    @InjectPgModel(Word.name)
     private wordModel: Model<WordDocument>,
   ) {}
 
@@ -20,14 +20,13 @@ export class ReviewsService {
    * Lấy danh sách các từ đến hạn ôn tập (Spaced Repetition)
    */
   async getDueReviews(userId: string, limit: number = 30) {
-    const userObjId = new Types.ObjectId(userId);
+    const userObjId = new PgId(userId);
     const now = new Date();
 
     return this.reviewModel
       .find({
         userId: userObjId,
-        nextReviewAt: { $lte: now },
-      })
+        nextReviewAt: { $lte: now } })
       .populate('wordId')
       .sort({ nextReviewAt: 1 })
       .limit(limit);
@@ -37,7 +36,7 @@ export class ReviewsService {
    * Thống kê tổng quan ôn tập của user
    */
   async getStats(userId: string) {
-    const userObjId = new Types.ObjectId(userId);
+    const userObjId = new PgId(userId);
     const now = new Date();
     const endOfDay = new Date();
     endOfDay.setHours(23, 59, 59, 999);
@@ -47,31 +46,27 @@ export class ReviewsService {
         this.reviewModel.countDocuments({ userId: userObjId }),
         this.reviewModel.countDocuments({
           userId: userObjId,
-          status: 'LEARNING',
-        }),
+          status: 'LEARNING' }),
         this.reviewModel.countDocuments({
           userId: userObjId,
-          status: 'MASTERED',
-        }),
+          status: 'MASTERED' }),
         this.reviewModel.countDocuments({
           userId: userObjId,
-          nextReviewAt: { $lte: endOfDay },
-        }),
+          nextReviewAt: { $lte: endOfDay } }),
       ]);
 
     return {
       totalWords,
       learningWords,
       masteredWords,
-      dueToday,
-    };
+      dueToday };
   }
 
   /**
    * Kiểm tra nhanh số từ đến hạn ôn tập cho popup và thanh thông báo
    */
   async checkDue(userId: string) {
-    const userObjId = new Types.ObjectId(userId);
+    const userObjId = new PgId(userId);
     const now = new Date();
     const endOfDay = new Date();
     endOfDay.setHours(23, 59, 59, 999);
@@ -79,16 +74,13 @@ export class ReviewsService {
     const [dueCount, dueToday, totalLearning] = await Promise.all([
       this.reviewModel.countDocuments({
         userId: userObjId,
-        nextReviewAt: { $lte: now },
-      }),
+        nextReviewAt: { $lte: now } }),
       this.reviewModel.countDocuments({
         userId: userObjId,
-        nextReviewAt: { $lte: endOfDay },
-      }),
+        nextReviewAt: { $lte: endOfDay } }),
       this.reviewModel.countDocuments({
         userId: userObjId,
-        status: 'LEARNING',
-      }),
+        status: 'LEARNING' }),
     ]);
 
     let previewWords: string[] = [];
@@ -96,8 +88,7 @@ export class ReviewsService {
       const sampleReviews = await this.reviewModel
         .find({
           userId: userObjId,
-          nextReviewAt: { $lte: now },
-        })
+          nextReviewAt: { $lte: now } })
         .populate('wordId', 'word')
         .limit(3)
         .lean();
@@ -112,8 +103,7 @@ export class ReviewsService {
       dueCount,
       dueToday,
       totalLearning,
-      previewWords,
-    };
+      previewWords };
   }
 
   /**
@@ -124,14 +114,13 @@ export class ReviewsService {
     wordId: string,
     rating: 'AGAIN' | 'HARD' | 'GOOD' | 'EASY',
   ) {
-    const userObjId = new Types.ObjectId(userId);
-    const wordObjId = new Types.ObjectId(wordId);
+    const userObjId = new PgId(userId);
+    const wordObjId = new PgId(wordId);
     const now = new Date();
 
     let review = await this.reviewModel.findOne({
       userId: userObjId,
-      wordId: wordObjId,
-    });
+      wordId: wordObjId });
 
     if (!review) {
       review = new this.reviewModel({
@@ -141,8 +130,7 @@ export class ReviewsService {
         reviewCount: 0,
         correctCount: 0,
         incorrectCount: 0,
-        intervalDays: 0,
-      });
+        intervalDays: 0 });
     }
 
     review.reviewCount += 1;
@@ -197,7 +185,7 @@ export class ReviewsService {
    * Lấy toàn bộ danh sách ôn tập
    */
   async findAll(userId: string, status?: string) {
-    const query: any = { userId: new Types.ObjectId(userId) };
+    const query: any = { userId: new PgId(userId) };
     if (status) {
       query.status = status;
     }

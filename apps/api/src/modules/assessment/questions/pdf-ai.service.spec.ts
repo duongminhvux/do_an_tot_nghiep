@@ -1,8 +1,7 @@
 import {
   BadRequestException,
   NotFoundException,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+  ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PdfAiService } from './pdf-ai.service.js';
 
@@ -10,8 +9,7 @@ describe('PdfAiService', () => {
   const examId = '507f1f77bcf86cd799439011';
   const jobId = '38b10029-2541-401c-bfa4-e9a16dac175e';
   const file = {
-    buffer: Buffer.from('%PDF-1.7\nexample'),
-  } as Express.Multer.File;
+    buffer: Buffer.from('%PDF-1.7\nexample') } as Express.Multer.File;
   const exams = { findById: vi.fn() };
   const fetchMock = vi.fn();
   let service: PdfAiService;
@@ -20,8 +18,7 @@ describe('PdfAiService', () => {
     vi.stubGlobal('fetch', fetchMock);
     fetchMock.mockReset();
     exams.findById.mockReturnValue({
-      lean: () => ({ exec: async () => ({ type: 'TOEIC' }) }),
-    });
+      lean: () => ({ exec: async () => ({ type: 'TOEIC' }) }) });
     service = new PdfAiService(
       new ConfigService({ PDF_AI_URL: 'http://pdf-ai:8003' }),
       exams as never,
@@ -53,8 +50,7 @@ describe('PdfAiService', () => {
       lc: [file],
       rc: [file],
       lc_answers: [file],
-      rc_answers: [file],
-    });
+      rc_answers: [file] });
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe('http://pdf-ai:8003/bundle-jobs');
     expect(init.body.get('test_number')).toBe('1');
@@ -69,8 +65,7 @@ describe('PdfAiService', () => {
     );
     await expect(
       service.start(examId, {
-        buffer: Buffer.from('not PDF'),
-      } as Express.Multer.File),
+        buffer: Buffer.from('not PDF') } as Express.Multer.File),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -124,14 +119,9 @@ describe('PdfAiService', () => {
                     correctAnswer: '',
                     options: ['A', 'B', 'C', 'D'].map((key) => ({
                       key,
-                      text: key,
-                    })),
-                  },
-                ],
-              },
-            ],
-          },
-        }),
+                      text: key })) },
+                ] },
+            ] } }),
       ),
     );
     const result = await service.status(examId, jobId);

@@ -1,74 +1,65 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { type HydratedDocument, Types } from 'mongoose';
+import { PgId } from '../../../../postgres/compat.js';
+import { PgField, PgEntity, PgSchemaFactory } from '../../../../postgres/compat.js';
+import { type PgDocument } from '../../../../postgres/compat.js';
 
-export type ExamDocument = HydratedDocument<Exam>;
+export type ExamDocument = PgDocument<Exam>;
 
-@Schema({ timestamps: true })
+@PgEntity({ timestamps: true })
 export class Exam {
-  @Prop({
+  @PgField({
     required: true,
-    trim: true,
-  })
+    trim: true })
   name: string;
 
-  @Prop({
+  @PgField({
     required: true,
-    trim: true,
-  })
+    trim: true })
   slug: string;
 
-  @Prop({
+  @PgField({
     required: true,
-    enum: ['TOEIC', 'IELTS'],
-  })
+    enum: ['TOEIC', 'IELTS'] })
   type: 'TOEIC' | 'IELTS';
 
-  @Prop({
+  @PgField({
     default: 0,
-    min: 0,
-  })
+    min: 0 })
   totalQuestions?: number;
 
-  @Prop({
-    trim: true,
-  })
+  @PgField({
+    trim: true })
   description?: string;
 
-  @Prop({
+  @PgField({
     default: 0,
-    min: 0,
-  })
+    min: 0 })
   durationMinutes: number;
 
-  @Prop({
-    default: true,
-  })
+  @PgField({
+    default: true })
   isActive: boolean;
 
-  @Prop({
+  @PgField({
     default: 0,
-    min: 0,
-  })
+    min: 0 })
   order: number;
 
-  @Prop({
-    type: Types.ObjectId,
+  @PgField({
+    type: PgId,
     ref: 'ExamGroup',
-    default: null,
-  })
-  groupId?: Types.ObjectId | null;
+    default: null })
+  groupId?: PgId | null;
 
   // Position inside `groupId` (1-based, set by admins via drag & drop).
-  @Prop({ default: 0, min: 0 })
+  @PgField({ default: 0, min: 0 })
   groupOrder: number;
 
-  @Prop({
-    default: false,
-  })
+  @PgField({
+    default: false })
   isDeleted: boolean;
 }
 
-export const ExamSchema = SchemaFactory.createForClass(Exam);
+export const ExamSchema = PgSchemaFactory.createForClass(Exam);
 
 ExamSchema.index(
   { name: 1 },

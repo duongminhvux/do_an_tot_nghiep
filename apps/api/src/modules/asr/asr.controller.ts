@@ -16,8 +16,7 @@ export class AsrController {
       const response = await fetch(`${base.replace(/\/$/, '')}${path}`, {
         ...init,
         headers: { ...init.headers, 'x-internal-token': token },
-        signal: AbortSignal.timeout(120_000),
-      });
+        signal: AbortSignal.timeout(120_000) });
       if (!response.ok) throw new Error(`Job API returned ${response.status}`);
       return response.json();
     } catch {

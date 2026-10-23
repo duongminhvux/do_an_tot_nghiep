@@ -1,30 +1,30 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { type HydratedDocument, Types } from 'mongoose';
+import { PgField, PgEntity, PgSchemaFactory } from '../../../../postgres/compat.js';
+import { type PgDocument } from '../../../../postgres/compat.js';
 
-export type ExamGroupDocument = HydratedDocument<ExamGroup>;
+export type ExamGroupDocument = PgDocument<ExamGroup>;
 
-@Schema({ timestamps: true })
+@PgEntity({ timestamps: true })
 export class ExamGroup {
-  @Prop({ required: true, trim: true })
+  @PgField({ required: true, trim: true })
   name: string;
 
-  @Prop({ required: true, trim: true })
+  @PgField({ required: true, trim: true })
   slug: string;
 
-  @Prop({ trim: true })
+  @PgField({ trim: true })
   description?: string;
 
-  @Prop({ default: 0, min: 0 })
+  @PgField({ default: 0, min: 0 })
   order: number;
 
-  @Prop({ default: true })
+  @PgField({ default: true })
   isActive: boolean;
 
-  @Prop({ default: false })
+  @PgField({ default: false })
   isDeleted: boolean;
 }
 
-export const ExamGroupSchema = SchemaFactory.createForClass(ExamGroup);
+export const ExamGroupSchema = PgSchemaFactory.createForClass(ExamGroup);
 
 ExamGroupSchema.index(
   { name: 1 },

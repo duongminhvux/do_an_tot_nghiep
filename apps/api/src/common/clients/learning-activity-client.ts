@@ -2,8 +2,7 @@ import { Global, Injectable, Logger, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type {
   LearningActivityWriter,
-  RecordActivityInput,
-} from '../../modules/learning-activity/learning-activity.service.js';
+  RecordActivityInput } from '../../modules/learning-activity/learning-activity.service.js';
 
 /**
  * Cross-service recorder. Only the Learning process writes learning_db;
@@ -29,8 +28,7 @@ export class LearningActivityClient implements LearningActivityWriter {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-internal-token': token },
         body: JSON.stringify({ ...input, userId: String(input.userId) }),
-        signal: AbortSignal.timeout(5000),
-      });
+        signal: AbortSignal.timeout(5000) });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const json = (await response.json()) as {
         data?: { created?: boolean }; created?: boolean;

@@ -1,0 +1,3190 @@
+{
+  "version": 1,
+  "description": "Fresh PostgreSQL database design. This is a generated starting model; review against each NestJS DTO/service before production.",
+  "id_strategy": "UUID for all business ids; cross-service references remain UUID without cross-database foreign keys.",
+  "domains": {
+    "identity": {
+      "tables": {
+        "admins": {
+          "comment": "identity owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "email": {
+              "type": "text",
+              "required": true
+            },
+            "username": {
+              "type": "text",
+              "required": true
+            },
+            "avatar_url": {
+              "type": "text",
+              "required": false
+            },
+            "is_deleted": {
+              "type": "boolean",
+              "required": true,
+              "default": false
+            },
+            "deleted_at": {
+              "type": "timestamptz",
+              "required": false
+            },
+            "password_hash": {
+              "type": "text",
+              "required": true
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "email"
+              ],
+              "unique": true
+            }
+          ]
+        },
+        "users": {
+          "comment": "identity owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "email": {
+              "type": "text",
+              "required": true
+            },
+            "username": {
+              "type": "text",
+              "required": false
+            },
+            "avatar_url": {
+              "type": "text",
+              "required": false
+            },
+            "auth_provider": {
+              "type": "text",
+              "required": false
+            },
+            "gg_id": {
+              "type": "text",
+              "required": false
+            },
+            "is_verified": {
+              "type": "boolean",
+              "required": false
+            },
+            "code": {
+              "type": "text",
+              "required": false
+            },
+            "code_expires_at": {
+              "type": "timestamptz",
+              "required": false
+            },
+            "is_deleted": {
+              "type": "boolean",
+              "required": true,
+              "default": false
+            },
+            "deleted_at": {
+              "type": "timestamptz",
+              "required": false
+            },
+            "is_banned": {
+              "type": "boolean",
+              "required": false
+            },
+            "phone": {
+              "type": "text",
+              "required": false
+            },
+            "last_active": {
+              "type": "timestamptz",
+              "required": false
+            },
+            "notes": {
+              "type": "text",
+              "required": false
+            },
+            "profile_updated_at": {
+              "type": "timestamptz",
+              "required": false
+            },
+            "password_hash": {
+              "type": "text",
+              "required": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "email"
+              ],
+              "unique": true
+            },
+            {
+              "columns": [
+                "gg_id"
+              ],
+              "unique": true,
+              "where": "\"gg_id\" IS NOT NULL"
+            }
+          ]
+        }
+      }
+    },
+    "content": {
+      "tables": {
+        "collections": {
+          "comment": "content owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "group_id": {
+              "type": "uuid",
+              "required": false
+            },
+            "name": {
+              "type": "text",
+              "required": true
+            },
+            "slug": {
+              "type": "text",
+              "required": true
+            },
+            "description": {
+              "type": "text",
+              "required": false
+            },
+            "cover_url": {
+              "type": "text",
+              "required": false
+            },
+            "order": {
+              "type": "double_precision",
+              "required": false
+            },
+            "is_active": {
+              "type": "boolean",
+              "required": false
+            },
+            "is_deleted": {
+              "type": "boolean",
+              "required": true,
+              "default": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "group_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "name"
+              ],
+              "unique": true,
+              "where": "\"is_deleted\" IS FALSE"
+            },
+            {
+              "columns": [
+                "slug"
+              ],
+              "unique": true,
+              "where": "\"is_deleted\" IS FALSE"
+            }
+          ]
+        },
+        "dictationlessons": {
+          "comment": "content owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "title": {
+              "type": "text",
+              "required": true
+            },
+            "slug": {
+              "type": "text",
+              "required": true
+            },
+            "description": {
+              "type": "text",
+              "required": false
+            },
+            "level": {
+              "type": "jsonb",
+              "required": false
+            },
+            "topic": {
+              "type": "text",
+              "required": false
+            },
+            "topic_id": {
+              "type": "uuid",
+              "required": false
+            },
+            "section_id": {
+              "type": "uuid",
+              "required": false
+            },
+            "order": {
+              "type": "double_precision",
+              "required": false
+            },
+            "thumbnail_url": {
+              "type": "text",
+              "required": false
+            },
+            "audio_source": {
+              "type": "jsonb",
+              "required": false
+            },
+            "source_text": {
+              "type": "text",
+              "required": false
+            },
+            "language": {
+              "type": "text",
+              "required": false
+            },
+            "voice_ids": {
+              "type": "text",
+              "required": false
+            },
+            "speed": {
+              "type": "double_precision",
+              "required": false
+            },
+            "pause_after_ms": {
+              "type": "double_precision",
+              "required": false
+            },
+            "status": {
+              "type": "text",
+              "required": false
+            },
+            "sentence_count": {
+              "type": "double_precision",
+              "required": false
+            },
+            "total_duration_ms": {
+              "type": "double_precision",
+              "required": false
+            },
+            "full_audio_url": {
+              "type": "text",
+              "required": false
+            },
+            "full_audio_storage_key": {
+              "type": "text",
+              "required": false
+            },
+            "full_audio_public_id": {
+              "type": "text",
+              "required": false
+            },
+            "processing_error": {
+              "type": "text",
+              "required": false
+            },
+            "audio_processor": {
+              "type": "text",
+              "required": false
+            },
+            "audio_processor_device": {
+              "type": "text",
+              "required": false
+            },
+            "is_deleted": {
+              "type": "boolean",
+              "required": true,
+              "default": false
+            },
+            "published_at": {
+              "type": "timestamptz",
+              "required": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "level"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "topic"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "topic_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "section_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "order"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "audio_source"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "status"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "slug"
+              ],
+              "unique": true,
+              "where": "\"is_deleted\" IS FALSE"
+            }
+          ]
+        },
+        "dictationprogresses": {
+          "comment": "content owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "segment_index": {
+              "type": "double_precision",
+              "required": false
+            },
+            "attempts": {
+              "type": "double_precision",
+              "required": false
+            },
+            "wrong_attempts": {
+              "type": "double_precision",
+              "required": false
+            },
+            "replay_count": {
+              "type": "double_precision",
+              "required": false
+            },
+            "correct": {
+              "type": "boolean",
+              "required": false
+            },
+            "first_try_correct": {
+              "type": "boolean",
+              "required": false
+            },
+            "revealed": {
+              "type": "boolean",
+              "required": false
+            },
+            "completed_at": {
+              "type": "timestamptz",
+              "required": false
+            },
+            "user_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "lesson_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "current_segment": {
+              "type": "double_precision",
+              "required": false
+            },
+            "completed_segments": {
+              "type": "jsonb",
+              "required": true,
+              "default": []
+            },
+            "revealed_segments": {
+              "type": "jsonb",
+              "required": true,
+              "default": []
+            },
+            "segment_progress": {
+              "type": "jsonb",
+              "required": false
+            },
+            "correct_count": {
+              "type": "double_precision",
+              "required": false
+            },
+            "wrong_count": {
+              "type": "double_precision",
+              "required": false
+            },
+            "transcript_revealed": {
+              "type": "boolean",
+              "required": false
+            },
+            "transcript_revealed_at": {
+              "type": "timestamptz",
+              "required": false
+            },
+            "completed": {
+              "type": "boolean",
+              "required": false
+            },
+            "last_practiced_at": {
+              "type": "timestamptz",
+              "required": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "user_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "lesson_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "user_id",
+                "lesson_id"
+              ],
+              "unique": true
+            }
+          ]
+        },
+        "dictationsections": {
+          "comment": "content owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "topic_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "title": {
+              "type": "text",
+              "required": true
+            },
+            "slug": {
+              "type": "text",
+              "required": true
+            },
+            "description": {
+              "type": "text",
+              "required": false
+            },
+            "order": {
+              "type": "double_precision",
+              "required": false
+            },
+            "is_active": {
+              "type": "boolean",
+              "required": false
+            },
+            "is_deleted": {
+              "type": "boolean",
+              "required": true,
+              "default": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "topic_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "order"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "is_active"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "topic_id",
+                "slug"
+              ],
+              "unique": true,
+              "where": "\"is_deleted\" IS FALSE"
+            },
+            {
+              "columns": [
+                "topic_id",
+                "order"
+              ],
+              "unique": false
+            }
+          ]
+        },
+        "dictationsegments": {
+          "comment": "content owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "word": {
+              "type": "text",
+              "required": false
+            },
+            "start_ms": {
+              "type": "double_precision",
+              "required": true
+            },
+            "end_ms": {
+              "type": "double_precision",
+              "required": true
+            },
+            "probability": {
+              "type": "double_precision",
+              "required": false
+            },
+            "lesson_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "order": {
+              "type": "double_precision",
+              "required": true
+            },
+            "text": {
+              "type": "text",
+              "required": true
+            },
+            "normalized_text": {
+              "type": "text",
+              "required": false
+            },
+            "source": {
+              "type": "text",
+              "required": true
+            },
+            "speaker": {
+              "type": "text",
+              "required": false
+            },
+            "voice_id": {
+              "type": "text",
+              "required": false
+            },
+            "language": {
+              "type": "text",
+              "required": true
+            },
+            "speed": {
+              "type": "double_precision",
+              "required": false
+            },
+            "duration_ms": {
+              "type": "double_precision",
+              "required": true
+            },
+            "confidence": {
+              "type": "double_precision",
+              "required": false
+            },
+            "words": {
+              "type": "jsonb",
+              "required": false
+            },
+            "audio_url": {
+              "type": "text",
+              "required": false
+            },
+            "audio_public_id": {
+              "type": "text",
+              "required": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "lesson_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "lesson_id",
+                "order"
+              ],
+              "unique": true
+            }
+          ]
+        },
+        "dictationtopics": {
+          "comment": "content owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "title": {
+              "type": "text",
+              "required": true
+            },
+            "slug": {
+              "type": "text",
+              "required": true
+            },
+            "description": {
+              "type": "text",
+              "required": false
+            },
+            "thumbnail_url": {
+              "type": "text",
+              "required": false
+            },
+            "thumbnail_public_id": {
+              "type": "text",
+              "required": false
+            },
+            "order": {
+              "type": "double_precision",
+              "required": false
+            },
+            "is_active": {
+              "type": "boolean",
+              "required": false
+            },
+            "is_deleted": {
+              "type": "boolean",
+              "required": true,
+              "default": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "order"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "is_active"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "slug"
+              ],
+              "unique": true,
+              "where": "\"is_deleted\" IS FALSE"
+            }
+          ]
+        },
+        "lessons": {
+          "comment": "content owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "collection_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "title": {
+              "type": "text",
+              "required": true
+            },
+            "slug": {
+              "type": "text",
+              "required": true
+            },
+            "description": {
+              "type": "text",
+              "required": false
+            },
+            "cover_url": {
+              "type": "text",
+              "required": false
+            },
+            "order": {
+              "type": "double_precision",
+              "required": false
+            },
+            "is_active": {
+              "type": "boolean",
+              "required": false
+            },
+            "is_deleted": {
+              "type": "boolean",
+              "required": true,
+              "default": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "collection_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "slug"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "collection_id",
+                "slug"
+              ],
+              "unique": true
+            }
+          ]
+        },
+        "lessonwords": {
+          "comment": "content owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "lesson_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "word_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "section_id": {
+              "type": "uuid",
+              "required": false
+            },
+            "order": {
+              "type": "double_precision",
+              "required": false
+            },
+            "custom_note": {
+              "type": "text",
+              "required": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "lesson_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "word_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "section_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "lesson_id",
+                "word_id"
+              ],
+              "unique": true
+            },
+            {
+              "columns": [
+                "lesson_id",
+                "section_id",
+                "order"
+              ],
+              "unique": false
+            }
+          ]
+        },
+        "sections": {
+          "comment": "content owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "lesson_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "name": {
+              "type": "text",
+              "required": true
+            },
+            "slug": {
+              "type": "text",
+              "required": true
+            },
+            "order": {
+              "type": "double_precision",
+              "required": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "lesson_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "slug"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "lesson_id",
+                "slug"
+              ],
+              "unique": true
+            },
+            {
+              "columns": [
+                "lesson_id",
+                "order"
+              ],
+              "unique": false
+            }
+          ]
+        },
+        "vocabularygroups": {
+          "comment": "content owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "name": {
+              "type": "text",
+              "required": true
+            },
+            "slug": {
+              "type": "text",
+              "required": true
+            },
+            "description": {
+              "type": "text",
+              "required": false
+            },
+            "order": {
+              "type": "double_precision",
+              "required": false
+            },
+            "is_active": {
+              "type": "boolean",
+              "required": false
+            },
+            "is_deleted": {
+              "type": "boolean",
+              "required": true,
+              "default": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "name"
+              ],
+              "unique": true,
+              "where": "\"is_deleted\" IS FALSE"
+            },
+            {
+              "columns": [
+                "slug"
+              ],
+              "unique": true,
+              "where": "\"is_deleted\" IS FALSE"
+            }
+          ]
+        },
+        "words": {
+          "comment": "content owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "us": {
+              "type": "jsonb",
+              "required": false
+            },
+            "uk": {
+              "type": "jsonb",
+              "required": false
+            },
+            "en": {
+              "type": "text",
+              "required": false
+            },
+            "vi": {
+              "type": "text",
+              "required": false
+            },
+            "definition": {
+              "type": "text",
+              "required": false
+            },
+            "translation": {
+              "type": "text",
+              "required": false
+            },
+            "synonyms": {
+              "type": "text",
+              "required": false
+            },
+            "antonyms": {
+              "type": "text",
+              "required": false
+            },
+            "examples": {
+              "type": "jsonb",
+              "required": false
+            },
+            "part_of_speech": {
+              "type": "text",
+              "required": false
+            },
+            "meanings": {
+              "type": "jsonb",
+              "required": false
+            },
+            "word": {
+              "type": "text",
+              "required": true
+            },
+            "slug": {
+              "type": "text",
+              "required": true
+            },
+            "level": {
+              "type": "text",
+              "required": true
+            },
+            "ipa": {
+              "type": "jsonb",
+              "required": false
+            },
+            "audio": {
+              "type": "jsonb",
+              "required": false
+            },
+            "audio_meta": {
+              "type": "jsonb",
+              "required": false
+            },
+            "image": {
+              "type": "text",
+              "required": false
+            },
+            "variations": {
+              "type": "text",
+              "required": false
+            },
+            "related_words": {
+              "type": "text",
+              "required": false
+            },
+            "parts": {
+              "type": "jsonb",
+              "required": false
+            },
+            "is_active": {
+              "type": "boolean",
+              "required": false
+            },
+            "is_deleted": {
+              "type": "boolean",
+              "required": true,
+              "default": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "word"
+              ],
+              "unique": true
+            },
+            {
+              "columns": [
+                "slug"
+              ],
+              "unique": true
+            },
+            {
+              "columns": [
+                "level"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "is_deleted"
+              ],
+              "unique": false
+            }
+          ]
+        },
+        "youtubelessons": {
+          "comment": "content owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {},
+          "indexes": []
+        }
+      }
+    },
+    "assessment": {
+      "tables": {
+        "attemptanswers": {
+          "comment": "assessment owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "attempt_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "question_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "selected_answer": {
+              "type": "text",
+              "required": false
+            },
+            "is_correct": {
+              "type": "boolean",
+              "required": false
+            },
+            "answered_at": {
+              "type": "timestamptz",
+              "required": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "attempt_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "question_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "attempt_id",
+                "question_id"
+              ],
+              "unique": true
+            }
+          ]
+        },
+        "attempts": {
+          "comment": "assessment owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "user_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "exam_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "status": {
+              "type": "text",
+              "required": true,
+              "default": "IN_PROGRESS"
+            },
+            "started_at": {
+              "type": "timestamptz",
+              "required": true
+            },
+            "completed_at": {
+              "type": "timestamptz",
+              "required": false
+            },
+            "total_questions": {
+              "type": "double_precision",
+              "required": false
+            },
+            "answered_questions": {
+              "type": "double_precision",
+              "required": false
+            },
+            "correct_answers": {
+              "type": "double_precision",
+              "required": false
+            },
+            "score": {
+              "type": "double_precision"
+            },
+            "question_snapshot": {
+              "type": "jsonb"
+            },
+            "answers": {
+              "type": "jsonb",
+              "default": {}
+            },
+            "selected_parts": {
+              "type": "jsonb",
+              "required": true,
+              "default": []
+            },
+            "submitted_at": {
+              "type": "timestamptz"
+            },
+            "total_correct": {
+              "type": "integer"
+            },
+            "accuracy": {
+              "type": "double_precision"
+            },
+            "duration_spent": {
+              "type": "integer"
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "user_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "exam_id"
+              ],
+              "unique": false
+            }
+          ]
+        },
+        "examgroups": {
+          "comment": "assessment owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "name": {
+              "type": "text",
+              "required": true
+            },
+            "slug": {
+              "type": "text",
+              "required": true
+            },
+            "description": {
+              "type": "text",
+              "required": false
+            },
+            "order": {
+              "type": "double_precision",
+              "required": false
+            },
+            "is_active": {
+              "type": "boolean",
+              "required": false
+            },
+            "is_deleted": {
+              "type": "boolean",
+              "required": true,
+              "default": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "name"
+              ],
+              "unique": true,
+              "where": "\"is_deleted\" IS FALSE"
+            },
+            {
+              "columns": [
+                "slug"
+              ],
+              "unique": true,
+              "where": "\"is_deleted\" IS FALSE"
+            },
+            {
+              "columns": [
+                "order"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "is_active",
+                "order"
+              ],
+              "unique": false
+            }
+          ]
+        },
+        "exams": {
+          "comment": "assessment owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "name": {
+              "type": "text",
+              "required": true
+            },
+            "slug": {
+              "type": "text",
+              "required": true
+            },
+            "type": {
+              "type": "text",
+              "required": true
+            },
+            "total_questions": {
+              "type": "double_precision",
+              "required": false
+            },
+            "description": {
+              "type": "text",
+              "required": false
+            },
+            "duration_minutes": {
+              "type": "double_precision",
+              "required": false
+            },
+            "is_active": {
+              "type": "boolean",
+              "required": false
+            },
+            "order": {
+              "type": "double_precision",
+              "required": false
+            },
+            "group_id": {
+              "type": "uuid",
+              "required": false
+            },
+            "is_deleted": {
+              "type": "boolean",
+              "required": true,
+              "default": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "name"
+              ],
+              "unique": true,
+              "where": "\"is_deleted\" IS FALSE"
+            },
+            {
+              "columns": [
+                "slug"
+              ],
+              "unique": true,
+              "where": "\"is_deleted\" IS FALSE"
+            },
+            {
+              "columns": [
+                "group_id"
+              ],
+              "unique": false
+            }
+          ]
+        },
+        "passagegroups": {
+          "comment": "assessment owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "exam_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "section": {
+              "type": "text",
+              "required": true
+            },
+            "part": {
+              "type": "double_precision",
+              "required": true
+            },
+            "title": {
+              "type": "text",
+              "required": false
+            },
+            "order": {
+              "type": "double_precision",
+              "required": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "exam_id"
+              ],
+              "unique": false
+            }
+          ]
+        },
+        "passages": {
+          "comment": "assessment owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "passage_group_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "type": {
+              "type": "text",
+              "required": true
+            },
+            "content": {
+              "type": "text",
+              "required": false
+            },
+            "audio_url": {
+              "type": "text",
+              "required": false
+            },
+            "audio_meta": {
+              "type": "jsonb",
+              "required": false
+            },
+            "image_url": {
+              "type": "text",
+              "required": false
+            },
+            "order": {
+              "type": "double_precision",
+              "required": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "passage_group_id"
+              ],
+              "unique": false
+            }
+          ]
+        },
+        "questions": {
+          "comment": "assessment owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "exam_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "passage_group_id": {
+              "type": "uuid",
+              "required": false
+            },
+            "section": {
+              "type": "text",
+              "required": true
+            },
+            "part": {
+              "type": "double_precision",
+              "required": true
+            },
+            "content": {
+              "type": "text",
+              "required": false
+            },
+            "options": {
+              "type": "jsonb",
+              "required": true
+            },
+            "correct_answer": {
+              "type": "text",
+              "required": true
+            },
+            "explanation": {
+              "type": "text",
+              "required": false
+            },
+            "image_url": {
+              "type": "text",
+              "required": false
+            },
+            "audio_url": {
+              "type": "text",
+              "required": false
+            },
+            "audio_meta": {
+              "type": "jsonb",
+              "required": false
+            },
+            "import_batch_id": {
+              "type": "text",
+              "required": false
+            },
+            "import_index": {
+              "type": "double_precision",
+              "required": false
+            },
+            "import_fingerprint": {
+              "type": "text",
+              "required": false
+            },
+            "source_order": {
+              "type": "double_precision",
+              "required": false
+            },
+            "order": {
+              "type": "double_precision",
+              "required": false
+            },
+            "is_active": {
+              "type": "boolean",
+              "required": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "exam_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "passage_group_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "exam_id",
+                "import_batch_id",
+                "import_index"
+              ],
+              "unique": true,
+              "where": "\"import_batch_id\" IS NOT NULL"
+            }
+          ]
+        },
+        "pdf_ai_correction_events": {
+          "comment": "Assessment-owned durable queue for PDF-AI correction delivery.",
+          "fields": {
+            "event_id": {
+              "type": "text",
+              "required": false
+            },
+            "state": {
+              "type": "text",
+              "required": true,
+              "default": "pending"
+            },
+            "last_error": {
+              "type": "text",
+              "required": true,
+              "default": ""
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "event_id"
+              ],
+              "unique": true,
+              "where": "\"event_id\" IS NOT NULL"
+            }
+          ]
+        }
+      }
+    },
+    "arena": {
+      "tables": {
+        "arenainvitations": {
+          "comment": "arena owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "mode": {
+              "type": "text",
+              "required": false
+            },
+            "rematch_of": {
+              "type": "uuid",
+              "required": false
+            },
+            "sender_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "receiver_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "type": {
+              "type": "text",
+              "required": true
+            },
+            "room_id": {
+              "type": "uuid",
+              "required": false
+            },
+            "status": {
+              "type": "text",
+              "required": false
+            },
+            "expires_at": {
+              "type": "timestamptz",
+              "required": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "sender_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "receiver_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "status"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "sender_id",
+                "type"
+              ],
+              "unique": true,
+              "where": "\"status\" = 'PENDING' AND \"type\" = 'DUEL'"
+            },
+            {
+              "columns": [
+                "expires_at"
+              ],
+              "unique": false,
+              "where": "\"status\" = 'EXPIRED'"
+            }
+          ]
+        },
+        "arenamatches": {
+          "comment": "arena owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "runtime_policy": {
+              "type": "jsonb",
+              "required": false
+            },
+            "friend_mode": {
+              "type": "text",
+              "required": false
+            },
+            "next_match_id": {
+              "type": "uuid",
+              "required": false
+            },
+            "lobby_starting": {
+              "type": "boolean",
+              "required": false
+            },
+            "host_id": {
+              "type": "uuid",
+              "required": false
+            },
+            "current_turn_user_id": {
+              "type": "uuid",
+              "required": false
+            },
+            "current_word": {
+              "type": "text",
+              "required": false
+            },
+            "required_letter": {
+              "type": "text",
+              "required": false
+            },
+            "turn_started_at": {
+              "type": "timestamptz",
+              "required": false
+            },
+            "turn_deadline": {
+              "type": "timestamptz",
+              "required": false
+            },
+            "chain_paused_at": {
+              "type": "timestamptz",
+              "required": false
+            },
+            "used_words": {
+              "type": "text",
+              "required": false
+            },
+            "word_guess_answer": {
+              "type": "text",
+              "required": false
+            },
+            "word_guess_attempts": {
+              "type": "jsonb",
+              "required": false
+            },
+            "word_guess_revision": {
+              "type": "double_precision",
+              "required": false
+            },
+            "word_guess_solved_by": {
+              "type": "text",
+              "required": false
+            },
+            "turn_count": {
+              "type": "double_precision",
+              "required": false
+            },
+            "type": {
+              "type": "text",
+              "required": true
+            },
+            "room_id": {
+              "type": "uuid",
+              "required": false
+            },
+            "status": {
+              "type": "text",
+              "required": false
+            },
+            "question_mode": {
+              "type": "jsonb",
+              "required": false
+            },
+            "question_count": {
+              "type": "double_precision",
+              "required": false
+            },
+            "eliminated_user_ids": {
+              "type": "jsonb",
+              "required": true,
+              "default": []
+            },
+            "room_revision": {
+              "type": "double_precision",
+              "required": false
+            },
+            "current_question_index": {
+              "type": "double_precision",
+              "required": false
+            },
+            "seconds_per_question": {
+              "type": "double_precision",
+              "required": false
+            },
+            "started_at": {
+              "type": "timestamptz",
+              "required": false
+            },
+            "finished_at": {
+              "type": "timestamptz",
+              "required": false
+            },
+            "winner_id": {
+              "type": "uuid",
+              "required": false
+            },
+            "is_draw": {
+              "type": "boolean",
+              "required": false
+            },
+            "cancel_reason": {
+              "type": "text",
+              "required": false
+            },
+            "finish_reason": {
+              "type": "jsonb",
+              "required": false
+            },
+            "room_code_snapshot": {
+              "type": "text",
+              "required": false
+            },
+            "settings_snapshot": {
+              "type": "jsonb",
+              "required": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "type"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "room_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "status"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "winner_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "status",
+                "type",
+                "finished_at"
+              ],
+              "unique": false
+            }
+          ]
+        },
+        "arenamatchplayers": {
+          "comment": "arena owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "ready_mode": {
+              "type": "jsonb",
+              "required": false
+            },
+            "match_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "user_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "returned_to_lobby": {
+              "type": "boolean",
+              "required": false
+            },
+            "left_lobby": {
+              "type": "boolean",
+              "required": false
+            },
+            "score": {
+              "type": "double_precision",
+              "required": false
+            },
+            "correct_answers": {
+              "type": "double_precision",
+              "required": false
+            },
+            "wrong_answers": {
+              "type": "double_precision",
+              "required": false
+            },
+            "unanswered": {
+              "type": "double_precision",
+              "required": false
+            },
+            "longest_streak": {
+              "type": "double_precision",
+              "required": false
+            },
+            "current_streak": {
+              "type": "double_precision",
+              "required": false
+            },
+            "total_response_time_ms": {
+              "type": "double_precision",
+              "required": false
+            },
+            "scored_question_ids": {
+              "type": "jsonb",
+              "required": true,
+              "default": []
+            },
+            "rating_before": {
+              "type": "double_precision",
+              "required": false
+            },
+            "rating_after": {
+              "type": "double_precision",
+              "required": false
+            },
+            "rating_change": {
+              "type": "double_precision",
+              "required": false
+            },
+            "is_ready": {
+              "type": "boolean",
+              "required": false
+            },
+            "ready_at": {
+              "type": "timestamptz",
+              "required": false
+            },
+            "disconnected_at": {
+              "type": "timestamptz",
+              "required": false
+            },
+            "status": {
+              "type": "text",
+              "required": false
+            },
+            "finished_at": {
+              "type": "timestamptz",
+              "required": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "match_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "user_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "match_id",
+                "user_id"
+              ],
+              "unique": true
+            }
+          ]
+        },
+        "arenamatchquestions": {
+          "comment": "arena owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "key": {
+              "type": "text",
+              "required": false
+            },
+            "text": {
+              "type": "text",
+              "required": false
+            },
+            "match_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "vocabulary_id": {
+              "type": "uuid",
+              "required": false
+            },
+            "order": {
+              "type": "double_precision",
+              "required": true
+            },
+            "type": {
+              "type": "text",
+              "required": true
+            },
+            "question": {
+              "type": "text",
+              "required": true
+            },
+            "audio_url": {
+              "type": "text",
+              "required": false
+            },
+            "image_url": {
+              "type": "text",
+              "required": false
+            },
+            "options": {
+              "type": "jsonb",
+              "required": false
+            },
+            "correct_answer": {
+              "type": "text",
+              "required": true
+            },
+            "explanation": {
+              "type": "text",
+              "required": false
+            },
+            "example": {
+              "type": "text",
+              "required": false
+            },
+            "translation": {
+              "type": "text",
+              "required": false
+            },
+            "word_type": {
+              "type": "text",
+              "required": false
+            },
+            "started_at": {
+              "type": "timestamptz",
+              "required": false
+            },
+            "resolved_at": {
+              "type": "timestamptz",
+              "required": false
+            },
+            "winner_id": {
+              "type": "uuid",
+              "required": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "match_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "match_id",
+                "order"
+              ],
+              "unique": true
+            }
+          ]
+        },
+        "arenaplayeranswers": {
+          "comment": "arena owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "match_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "match_question_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "user_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "selected_answer": {
+              "type": "text",
+              "required": false
+            },
+            "attempts": {
+              "type": "double_precision",
+              "required": false
+            },
+            "is_correct": {
+              "type": "boolean",
+              "required": false
+            },
+            "timed_out": {
+              "type": "boolean",
+              "required": false
+            },
+            "response_time_ms": {
+              "type": "double_precision",
+              "required": false
+            },
+            "earned_score": {
+              "type": "double_precision",
+              "required": false
+            },
+            "streak_at_answer": {
+              "type": "double_precision",
+              "required": false
+            },
+            "answered_at": {
+              "type": "timestamptz",
+              "required": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "match_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "match_question_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "user_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "match_id",
+                "match_question_id",
+                "user_id"
+              ],
+              "unique": true
+            }
+          ]
+        },
+        "arenaprofiles": {
+          "comment": "arena owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "user_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "rating": {
+              "type": "double_precision",
+              "required": false
+            },
+            "ranked_matches": {
+              "type": "double_precision",
+              "required": false
+            },
+            "ranked_wins": {
+              "type": "double_precision",
+              "required": false
+            },
+            "ranked_losses": {
+              "type": "double_precision",
+              "required": false
+            },
+            "ranked_draws": {
+              "type": "double_precision",
+              "required": false
+            },
+            "current_win_streak": {
+              "type": "double_precision",
+              "required": false
+            },
+            "best_win_streak": {
+              "type": "double_precision",
+              "required": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "user_id"
+              ],
+              "unique": true
+            }
+          ]
+        },
+        "arenaratinghistories": {
+          "comment": "arena owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "user_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "match_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "before": {
+              "type": "double_precision",
+              "required": true
+            },
+            "after": {
+              "type": "double_precision",
+              "required": true
+            },
+            "change": {
+              "type": "double_precision",
+              "required": true
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "user_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "match_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "match_id",
+                "user_id"
+              ],
+              "unique": true
+            }
+          ]
+        },
+        "arenarooms": {
+          "comment": "arena owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "user_id": {
+              "type": "uuid",
+              "required": false
+            },
+            "role": {
+              "type": "text",
+              "required": false
+            },
+            "is_ready": {
+              "type": "boolean",
+              "required": false
+            },
+            "joined_at": {
+              "type": "timestamptz",
+              "required": false
+            },
+            "name": {
+              "type": "text",
+              "required": true
+            },
+            "code": {
+              "type": "text",
+              "required": true
+            },
+            "owner_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "status": {
+              "type": "text",
+              "required": false
+            },
+            "visibility": {
+              "type": "text",
+              "required": false
+            },
+            "question_mode": {
+              "type": "text",
+              "required": false
+            },
+            "question_count": {
+              "type": "double_precision",
+              "required": false
+            },
+            "seconds_per_question": {
+              "type": "double_precision",
+              "required": false
+            },
+            "max_players": {
+              "type": "double_precision",
+              "required": false
+            },
+            "vocabulary_source": {
+              "type": "text",
+              "required": false
+            },
+            "collection_id": {
+              "type": "uuid",
+              "required": false
+            },
+            "members": {
+              "type": "jsonb",
+              "required": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "code"
+              ],
+              "unique": true
+            },
+            {
+              "columns": [
+                "owner_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "status"
+              ],
+              "unique": false
+            }
+          ]
+        },
+        "arenasettings": {
+          "comment": "arena owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "key": {
+              "type": "text",
+              "required": true
+            },
+            "revision": {
+              "type": "double_precision",
+              "required": false
+            },
+            "config": {
+              "type": "jsonb",
+              "required": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "key"
+              ],
+              "unique": true
+            }
+          ]
+        },
+        "friendrooms": {
+          "comment": "arena owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "user_id": {
+              "type": "uuid",
+              "required": false
+            },
+            "is_ready": {
+              "type": "boolean",
+              "required": false
+            },
+            "disconnected_at": {
+              "type": "timestamptz",
+              "required": false
+            },
+            "runtime_policy": {
+              "type": "double_precision",
+              "required": false
+            },
+            "code": {
+              "type": "text",
+              "required": true
+            },
+            "host_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "guest_id": {
+              "type": "uuid",
+              "required": false
+            },
+            "mode": {
+              "type": "text",
+              "required": true
+            },
+            "status": {
+              "type": "text",
+              "required": false
+            },
+            "max_players": {
+              "type": "double_precision",
+              "required": false
+            },
+            "members": {
+              "type": "jsonb",
+              "required": false
+            },
+            "guest_ready": {
+              "type": "boolean",
+              "required": false
+            },
+            "settings": {
+              "type": "jsonb",
+              "required": true
+            },
+            "current_match_id": {
+              "type": "uuid",
+              "required": false
+            },
+            "match_count": {
+              "type": "double_precision",
+              "required": false
+            },
+            "revision": {
+              "type": "double_precision",
+              "required": false
+            },
+            "host_disconnected_at": {
+              "type": "timestamptz",
+              "required": false
+            },
+            "guest_disconnected_at": {
+              "type": "timestamptz",
+              "required": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "code"
+              ],
+              "unique": true
+            },
+            {
+              "columns": [
+                "host_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "guest_id"
+              ],
+              "unique": false
+            }
+          ]
+        }
+      }
+    },
+    "learning": {
+      "tables": {
+        "gamedefinitions": {
+          "comment": "learning owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "settings": {
+              "type": "jsonb",
+              "required": false
+            },
+            "code": {
+              "type": "text",
+              "required": true
+            },
+            "name": {
+              "type": "text",
+              "required": true
+            },
+            "name_en": {
+              "type": "text",
+              "required": false
+            },
+            "description": {
+              "type": "text",
+              "required": false
+            },
+            "description_en": {
+              "type": "text",
+              "required": false
+            },
+            "image_url": {
+              "type": "text",
+              "required": false
+            },
+            "badge": {
+              "type": "jsonb",
+              "required": false
+            },
+            "destination": {
+              "type": "text",
+              "required": true
+            },
+            "category": {
+              "type": "jsonb",
+              "required": false
+            },
+            "order": {
+              "type": "double_precision",
+              "required": false
+            },
+            "is_active": {
+              "type": "boolean",
+              "required": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "code"
+              ],
+              "unique": true
+            },
+            {
+              "columns": [
+                "is_active",
+                "order",
+                "id"
+              ],
+              "unique": false
+            }
+          ]
+        },
+        "learningsessions": {
+          "comment": "learning owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "user_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "type": {
+              "type": "text",
+              "required": true
+            },
+            "lesson_id": {
+              "type": "uuid",
+              "required": false
+            },
+            "started_at": {
+              "type": "timestamptz",
+              "required": true
+            },
+            "ended_at": {
+              "type": "timestamptz",
+              "required": false
+            },
+            "duration_seconds": {
+              "type": "double_precision",
+              "required": false
+            },
+            "total_words": {
+              "type": "double_precision",
+              "required": false
+            },
+            "completed_words": {
+              "type": "double_precision",
+              "required": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "user_id"
+              ],
+              "unique": false
+            }
+          ]
+        },
+        "learningsessionwords": {
+          "comment": "learning owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "session_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "word_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "lesson_word_id": {
+              "type": "uuid",
+              "required": false
+            },
+            "mode": {
+              "type": "text",
+              "required": true
+            },
+            "rating": {
+              "type": "text",
+              "required": false
+            },
+            "is_correct": {
+              "type": "boolean",
+              "required": false
+            },
+            "answered_at": {
+              "type": "timestamptz",
+              "required": true
+            },
+            "scheduled_at": {
+              "type": "timestamptz",
+              "required": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "session_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "word_id"
+              ],
+              "unique": false
+            }
+          ]
+        },
+        "minigameresults": {
+          "comment": "learning owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "user_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "game_type": {
+              "type": "text",
+              "required": true
+            },
+            "score": {
+              "type": "double_precision",
+              "required": true
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "user_id",
+                "game_type",
+                "score"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "user_id",
+                "game_type",
+                "created_at"
+              ],
+              "unique": false
+            }
+          ]
+        },
+        "userdailyactivities": {
+          "comment": "learning owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "user_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "date": {
+              "type": "timestamptz",
+              "required": true
+            },
+            "study_minutes": {
+              "type": "double_precision",
+              "required": false
+            },
+            "words_learned": {
+              "type": "double_precision",
+              "required": false
+            },
+            "words_reviewed": {
+              "type": "double_precision",
+              "required": false
+            },
+            "session_count": {
+              "type": "double_precision",
+              "required": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "user_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "user_id",
+                "date"
+              ],
+              "unique": true
+            }
+          ]
+        },
+        "userlessonprogresses": {
+          "comment": "learning owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "user_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "lesson_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "status": {
+              "type": "text",
+              "required": false
+            },
+            "progress": {
+              "type": "double_precision",
+              "required": false
+            },
+            "started_at": {
+              "type": "timestamptz",
+              "required": false
+            },
+            "last_studied_at": {
+              "type": "timestamptz",
+              "required": false
+            },
+            "completed_at": {
+              "type": "timestamptz",
+              "required": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "user_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "lesson_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "user_id",
+                "lesson_id"
+              ],
+              "unique": true
+            }
+          ]
+        },
+        "userlessonwords": {
+          "comment": "learning owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "user_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "lesson_word_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "learned_at": {
+              "type": "timestamptz",
+              "required": false
+            },
+            "completed_at": {
+              "type": "timestamptz",
+              "required": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "user_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "lesson_word_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "user_id",
+                "lesson_word_id"
+              ],
+              "unique": true
+            }
+          ]
+        },
+        "usersavedwords": {
+          "comment": "learning owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "user_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "word_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "folder_id": {
+              "type": "uuid",
+              "required": false
+            },
+            "saved_at": {
+              "type": "timestamptz",
+              "required": false
+            },
+            "note": {
+              "type": "text",
+              "required": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "user_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "word_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "folder_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "user_id",
+                "word_id"
+              ],
+              "unique": true
+            },
+            {
+              "columns": [
+                "user_id",
+                "saved_at"
+              ],
+              "unique": false
+            }
+          ]
+        },
+        "userwordreviews": {
+          "comment": "learning owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "user_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "word_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "status": {
+              "type": "text",
+              "required": false
+            },
+            "review_count": {
+              "type": "double_precision",
+              "required": false
+            },
+            "correct_count": {
+              "type": "double_precision",
+              "required": false
+            },
+            "incorrect_count": {
+              "type": "double_precision",
+              "required": false
+            },
+            "interval_days": {
+              "type": "double_precision",
+              "required": false
+            },
+            "last_reviewed_at": {
+              "type": "timestamptz",
+              "required": false
+            },
+            "next_review_at": {
+              "type": "timestamptz",
+              "required": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "user_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "word_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "user_id",
+                "word_id"
+              ],
+              "unique": true
+            },
+            {
+              "columns": [
+                "user_id",
+                "next_review_at"
+              ],
+              "unique": false
+            }
+          ]
+        },
+        "vocabularyfolders": {
+          "comment": "learning owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "user_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "name": {
+              "type": "text",
+              "required": true
+            },
+            "slug": {
+              "type": "text",
+              "required": false
+            },
+            "description": {
+              "type": "text",
+              "required": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "user_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "slug"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "user_id",
+                "name"
+              ],
+              "unique": true
+            },
+            {
+              "columns": [
+                "user_id",
+                "slug"
+              ],
+              "unique": true,
+              "where": "\"user_id\" IS NOT NULL AND \"slug\" IS NOT NULL"
+            }
+          ]
+        },
+        "learning_activities": {
+          "comment": "learning owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "user_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "module": {
+              "type": "text",
+              "required": true
+            },
+            "type": {
+              "type": "text",
+              "required": true
+            },
+            "source_key": {
+              "type": "text",
+              "required": true
+            },
+            "xp": {
+              "type": "integer",
+              "required": true
+            },
+            "occurred_at": {
+              "type": "timestamptz",
+              "required": true
+            },
+            "title": {
+              "type": "text"
+            },
+            "ref_id": {
+              "type": "text"
+            },
+            "link": {
+              "type": "text"
+            },
+            "correct": {
+              "type": "integer"
+            },
+            "total": {
+              "type": "integer"
+            },
+            "score": {
+              "type": "double_precision"
+            },
+            "duration_sec": {
+              "type": "integer"
+            },
+            "metadata": {
+              "type": "jsonb",
+              "default": {}
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "user_id",
+                "source_key"
+              ],
+              "unique": true
+            },
+            {
+              "columns": [
+                "user_id",
+                "occurred_at"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "user_id",
+                "module",
+                "occurred_at"
+              ],
+              "unique": false
+            }
+          ]
+        }
+      }
+    },
+    "media": {
+      "tables": {
+        "asr_jobs": {
+          "comment": "media owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "status": {
+              "type": "text",
+              "required": true,
+              "default": "PENDING"
+            },
+            "owner_id": {
+              "type": "uuid"
+            },
+            "job_type": {
+              "type": "text"
+            },
+            "attempts": {
+              "type": "integer",
+              "default": 0
+            },
+            "error": {
+              "type": "text"
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "status",
+                "created_at"
+              ]
+            }
+          ]
+        },
+        "audio_jobs": {
+          "comment": "media owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "status": {
+              "type": "text",
+              "required": true,
+              "default": "PENDING"
+            },
+            "owner_id": {
+              "type": "uuid"
+            },
+            "job_type": {
+              "type": "text"
+            },
+            "attempts": {
+              "type": "integer",
+              "default": 0
+            },
+            "error": {
+              "type": "text"
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "status",
+                "created_at"
+              ]
+            }
+          ]
+        },
+        "media_assets": {
+          "comment": "media owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {},
+          "indexes": []
+        },
+        "system_settings": {
+          "comment": "media owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {},
+          "indexes": []
+        }
+      }
+    },
+    "ai_import": {
+      "tables": {
+        "pdf_ai_correction_events": {
+          "comment": "ai_import owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "status": {
+              "type": "text",
+              "required": true,
+              "default": "PENDING"
+            },
+            "exam_id": {
+              "type": "uuid"
+            },
+            "actor_id": {
+              "type": "uuid"
+            },
+            "result": {
+              "type": "jsonb"
+            }
+          },
+          "indexes": []
+        }
+      }
+    },
+    "notification": {
+      "tables": {
+        "activitylogs": {
+          "comment": "notification owned business table. JSONB payload stores unmodeled nested data.",
+          "fields": {
+            "user_id": {
+              "type": "uuid",
+              "required": false
+            },
+            "user_email": {
+              "type": "text",
+              "required": false
+            },
+            "user_name": {
+              "type": "text",
+              "required": false
+            },
+            "role": {
+              "type": "text",
+              "required": false
+            },
+            "action": {
+              "type": "text",
+              "required": true
+            },
+            "category": {
+              "type": "jsonb",
+              "required": true
+            },
+            "description": {
+              "type": "text",
+              "required": true
+            },
+            "metadata": {
+              "type": "text",
+              "required": false
+            },
+            "ip_address": {
+              "type": "text",
+              "required": false
+            },
+            "user_agent": {
+              "type": "text",
+              "required": false
+            },
+            "status": {
+              "type": "text",
+              "required": false
+            },
+            "duration_ms": {
+              "type": "double_precision",
+              "required": false
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "user_id"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "user_email"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "action"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "category"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "status"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "created_at"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "user_id",
+                "created_at"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "category",
+                "created_at"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "action",
+                "created_at"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "user_email",
+                "created_at"
+              ],
+              "unique": false
+            },
+            {
+              "columns": [
+                "status",
+                "created_at"
+              ],
+              "unique": false
+            }
+          ]
+        },
+        "notifications": {
+          "fields": {
+            "recipient_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "type": {
+              "type": "text",
+              "required": true
+            },
+            "title": {
+              "type": "text",
+              "required": true
+            },
+            "body": {
+              "type": "text"
+            },
+            "is_read": {
+              "type": "boolean",
+              "required": true,
+              "default": false
+            },
+            "read_at": {
+              "type": "timestamptz"
+            }
+          },
+          "indexes": [
+            {
+              "columns": [
+                "recipient_id",
+                "created_at"
+              ]
+            },
+            {
+              "columns": [
+                "recipient_id",
+                "is_read"
+              ]
+            }
+          ],
+          "comment": "Notification-owned messages and read status."
+        }
+      }
+    }
+  }
+}

@@ -1,66 +1,61 @@
-name: vocalearn-clean
+# PostgreSQL only. Configuration and service secrets come from ROOT .env.
+name: vocalearn-postgres
 services:
-  mongo:
-    image: mongo:8.0
-    command:
-      - mongod
-      - --replSet
-      - rs0
-      - --bind_ip_all
+  postgres:
+    image: postgres:17-alpine
     restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PG_SUPERUSER:-vocalearn_root}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: postgres
+      PG_IDENTITY_PASSWORD: ${PG_IDENTITY_PASSWORD:?Set service password}
+      PG_CONTENT_PASSWORD: ${PG_CONTENT_PASSWORD:?Set service password}
+      PG_ASSESSMENT_PASSWORD: ${PG_ASSESSMENT_PASSWORD:?Set service password}
+      PG_ARENA_PASSWORD: ${PG_ARENA_PASSWORD:?Set service password}
+      PG_LEARNING_PASSWORD: ${PG_LEARNING_PASSWORD:?Set service password}
+      PG_MEDIA_PASSWORD: ${PG_MEDIA_PASSWORD:?Set service password}
+      PG_AI_IMPORT_PASSWORD: ${PG_AI_IMPORT_PASSWORD:?Set service password}
+      PG_NOTIFICATION_PASSWORD: ${PG_NOTIFICATION_PASSWORD:?Set service password}
+    ports:
+    - 127.0.0.1:5432:5432
     volumes:
-      - mongo_data:/data/db
+    - postgres_data:/var/lib/postgresql/data
+    - ./database/postgres/01-init.sql:/opt/vocalearn-bootstrap/01-init.sql:ro
+    - ./database/postgres/01-init.sh:/docker-entrypoint-initdb.d/01-init.sh:ro
     healthcheck:
       test:
-        - CMD
-        - mongosh
-        - --quiet
-        - --eval
-        - db.adminCommand("ping").ok
-      interval: 10s
+      - CMD-SHELL
+      - pg_isready -h 127.0.0.1 -U "$${POSTGRES_USER}" -d postgres
+      interval: 5s
       timeout: 5s
-      retries: 15
+      retries: 25
+      start_period: 15s
     networks:
-      - toeic-network
-  # Initialize rs0 or additively reconcile service databases against the manifest.
-  # A schema change rebuilds this one-shot image; no legacy import on startup.
-  db-init:
-    image: vocalearn-clean-db-init:local
-    pull_policy: never
-    build:
-      context: .
-      dockerfile: database/Dockerfile
-      provenance: false
-      sbom: false
-    entrypoint: ["mongosh"]
-    command: ["--norc", "--quiet", "mongodb://mongo:27017/?directConnection=true", "--file", "/bootstrap/init.js"]
-    restart: "no"
-    depends_on:
-      mongo:
-        condition: service_healthy
-    networks:
-      - toeic-network
+    - toeic-network
   redis:
     image: redis:7-alpine
     command:
-      - redis-server
-      - --appendonly
-      - 'yes'
-      - --appendfsync
-      - everysec
+    - redis-server
+    - --appendonly
+    - 'yes'
+    - --appendfsync
+    - everysec
     restart: unless-stopped
     volumes:
-      - redis_data:/data
+    - redis_data:/data
     healthcheck:
       test:
-        - CMD
-        - redis-cli
-        - ping
+      - CMD
+      - redis-cli
+      - ping
       interval: 5s
       timeout: 3s
       retries: 10
     networks:
-      - toeic-network
+    - toeic-network
+    environment: {}
+    ports:
+    - 127.0.0.1:6379:6379
   rabbitmq:
     image: rabbitmq:4-management-alpine
     restart: unless-stopped
@@ -68,69 +63,74 @@ services:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?Set RABBITMQ_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}
     volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-      - ./infra/rabbitmq/rabbitmq.conf:/etc/rabbitmq/conf.d/99-consumer.conf:ro
+    - rabbitmq_data:/var/lib/rabbitmq
+    - ./infra/rabbitmq/rabbitmq.conf:/etc/rabbitmq/conf.d/99-consumer.conf:ro
     ports:
-      - 127.0.0.1:15672:15672
+    - 127.0.0.1:15672:15672
+    - 127.0.0.1:5672:5672
     healthcheck:
       test:
-        - CMD
-        - rabbitmq-diagnostics
-        - -q
-        - ping
+      - CMD
+      - rabbitmq-diagnostics
+      - -q
+      - ping
       interval: 10s
       timeout: 5s
       retries: 15
     networks:
-      - toeic-network
-  # S3-compatible SeaweedFS (MinIO images unavailable since Sep 2026).
+    - toeic-network
   objectstore:
     image: chrislusf/seaweedfs:4.30
     command:
-      - mini
-      - -dir=/data
-      - -s3.port=9000
+    - mini
+    - -dir=/data
+    - -s3.port=9000
     restart: unless-stopped
     environment:
       AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:?Set S3_ACCESS_KEY}
       AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:?Set S3_SECRET_KEY}
       S3_BUCKET: ${S3_BUCKET:-vocalearn-media}
     volumes:
-      - objectstore_data:/data
+    - objectstore_data:/data
     ports:
-      - 127.0.0.1:9000:9000
+    - 127.0.0.1:9000:9000
     networks:
-      - toeic-network
+    - toeic-network
     healthcheck:
       test:
-        - CMD
-        - wget
-        - -q
-        - --spider
-        - http://127.0.0.1:9000/readyz
+      - CMD
+      - wget
+      - -q
+      - --spider
+      - http://127.0.0.1:9000/readyz
       interval: 10s
       timeout: 5s
       retries: 20
       start_period: 30s
-  # Idempotent admin seed: after db-init, before identity-service.
-  # Disabled by default. Never overwrites an existing password on restart.
   admin-seed:
     image: vocalearn-clean-api:local
     pull_policy: never
-    command: ["node", "apps/api/src/scripts/seed-admin.mjs", "--auto"]
-    restart: "no"
+    command:
+    - node
+    - apps/api/src/scripts/seed-admin.mjs
+    - --auto
+    restart: 'no'
     environment:
-      MONGO_URI: ${MONGO_IDENTITY_URI:-mongodb://mongo:27017/identity_db?replicaSet=rs0}
       DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-admin@gmail.com}
       DEFAULT_ADMIN_USERNAME: ${DEFAULT_ADMIN_USERNAME:-admin}
       DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-}
-      ADMIN_SEED_ENABLED: ${ADMIN_SEED_ENABLED:-false}
+      ADMIN_SEED_ENABLED: ${ADMIN_SEED_ENABLED:-true}
       ADMIN_SEED_ALLOW_WEAK_PASSWORD: ${ADMIN_SEED_ALLOW_WEAK_PASSWORD:-false}
+      PGHOST: postgres
+      PGPORT: '5432'
+      PGDATABASE: identity_db
+      PGUSER: vl_identity
+      PGPASSWORD: ${PG_IDENTITY_PASSWORD:?Set service PG password}
     depends_on:
-      db-init:
-        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
     networks:
-      - toeic-network
+    - toeic-network
   identity-service:
     image: vocalearn-clean-api:local
     pull_policy: never
@@ -140,13 +140,12 @@ services:
       provenance: false
       sbom: false
     command:
-      - node
-      - apps/api/dist/entrypoints/identity.js
+    - node
+    - apps/api/dist/entrypoints/identity.js
     restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: '5000'
-      MONGO_URI: ${MONGO_IDENTITY_URI:-mongodb://mongo:27017/identity_db?replicaSet=rs0}
       REDIS_URL: redis://redis:6379
       MEDIA_STORAGE_BACKEND: s3
       MEDIA_BRIDGE_URL: http://media-bridge:8010
@@ -184,15 +183,17 @@ services:
       CONTENT_INTERNAL_URL: http://content-service:5000
       ASSESSMENT_INTERNAL_URL: http://assessment-service:5000
       SERVICE_ROLE: identity
-      MONGO_DB_NAME: identity_db
       NOTIFICATION_INTERNAL_URL: http://notification-service:5000
       LEARNING_INTERNAL_URL: http://learning-service:5000
+      PGHOST: postgres
+      PGPORT: '5432'
+      PGDATABASE: identity_db
+      PGUSER: vl_identity
+      PGPASSWORD: ${PG_IDENTITY_PASSWORD:?Set service PG password}
     volumes:
-      - ./storage:/app/storage:ro
+    - ./storage:/app/storage:ro
     depends_on:
       admin-seed:
-        condition: service_completed_successfully
-      db-init:
         condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
@@ -200,29 +201,30 @@ services:
         condition: service_healthy
       objectstore:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
     healthcheck:
       test:
-        - CMD
-        - node
-        - -e
-        - fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      - CMD
+      - node
+      - -e
+      - fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
       interval: 15s
       timeout: 5s
       start_period: 60s
       retries: 8
     networks:
-      - toeic-network
+    - toeic-network
   content-service:
     image: vocalearn-clean-api:local
     pull_policy: never
     command:
-      - node
-      - apps/api/dist/entrypoints/content.js
+    - node
+    - apps/api/dist/entrypoints/content.js
     restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: '5000'
-      MONGO_URI: ${MONGO_CONTENT_URI:-mongodb://mongo:27017/content_db?replicaSet=rs0}
       REDIS_URL: redis://redis:6379
       MEDIA_STORAGE_BACKEND: s3
       MEDIA_BRIDGE_URL: http://media-bridge:8010
@@ -260,43 +262,46 @@ services:
       CONTENT_INTERNAL_URL: http://content-service:5000
       ASSESSMENT_INTERNAL_URL: http://assessment-service:5000
       SERVICE_ROLE: content
-      MONGO_DB_NAME: content_db
       NOTIFICATION_INTERNAL_URL: http://notification-service:5000
       LEARNING_INTERNAL_URL: http://learning-service:5000
+      PGHOST: postgres
+      PGPORT: '5432'
+      PGDATABASE: content_db
+      PGUSER: vl_content
+      PGPASSWORD: ${PG_CONTENT_PASSWORD:?Set service PG password}
     volumes:
-      - ./storage:/app/storage
+    - ./storage:/app/storage
     depends_on:
-      db-init:
-        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
       redis:
         condition: service_healthy
       objectstore:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
     healthcheck:
       test:
-        - CMD
-        - node
-        - -e
-        - fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      - CMD
+      - node
+      - -e
+      - fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
       interval: 15s
       timeout: 5s
       start_period: 60s
       retries: 8
     networks:
-      - toeic-network
+    - toeic-network
   assessment-service:
     image: vocalearn-clean-api:local
     pull_policy: never
     command:
-      - node
-      - apps/api/dist/entrypoints/assessment.js
+    - node
+    - apps/api/dist/entrypoints/assessment.js
     restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: '5000'
-      MONGO_URI: ${MONGO_ASSESSMENT_URI:-mongodb://mongo:27017/assessment_db?replicaSet=rs0}
       REDIS_URL: redis://redis:6379
       MEDIA_STORAGE_BACKEND: s3
       MEDIA_BRIDGE_URL: http://media-bridge:8010
@@ -334,43 +339,46 @@ services:
       CONTENT_INTERNAL_URL: http://content-service:5000
       ASSESSMENT_INTERNAL_URL: http://assessment-service:5000
       SERVICE_ROLE: assessment
-      MONGO_DB_NAME: assessment_db
       NOTIFICATION_INTERNAL_URL: http://notification-service:5000
       LEARNING_INTERNAL_URL: http://learning-service:5000
+      PGHOST: postgres
+      PGPORT: '5432'
+      PGDATABASE: assessment_db
+      PGUSER: vl_assessment
+      PGPASSWORD: ${PG_ASSESSMENT_PASSWORD:?Set service PG password}
     volumes:
-      - ./storage:/app/storage:ro
+    - ./storage:/app/storage:ro
     depends_on:
-      db-init:
-        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
       redis:
         condition: service_healthy
       objectstore:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
     healthcheck:
       test:
-        - CMD
-        - node
-        - -e
-        - fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      - CMD
+      - node
+      - -e
+      - fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
       interval: 15s
       timeout: 5s
       start_period: 60s
       retries: 8
     networks:
-      - toeic-network
+    - toeic-network
   arena-service:
     image: vocalearn-clean-api:local
     pull_policy: never
     command:
-      - node
-      - apps/api/dist/entrypoints/arena.js
+    - node
+    - apps/api/dist/entrypoints/arena.js
     restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: '5000'
-      MONGO_URI: ${MONGO_ARENA_URI:-mongodb://mongo:27017/arena_db?replicaSet=rs0}
       REDIS_URL: redis://redis:6379
       MEDIA_STORAGE_BACKEND: s3
       MEDIA_BRIDGE_URL: http://media-bridge:8010
@@ -408,43 +416,46 @@ services:
       CONTENT_INTERNAL_URL: http://content-service:5000
       ASSESSMENT_INTERNAL_URL: http://assessment-service:5000
       SERVICE_ROLE: arena
-      MONGO_DB_NAME: arena_db
       NOTIFICATION_INTERNAL_URL: http://notification-service:5000
       LEARNING_INTERNAL_URL: http://learning-service:5000
+      PGHOST: postgres
+      PGPORT: '5432'
+      PGDATABASE: arena_db
+      PGUSER: vl_arena
+      PGPASSWORD: ${PG_ARENA_PASSWORD:?Set service PG password}
     volumes:
-      - ./storage:/app/storage:ro
+    - ./storage:/app/storage:ro
     depends_on:
-      db-init:
-        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
       redis:
         condition: service_healthy
       objectstore:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
     healthcheck:
       test:
-        - CMD
-        - node
-        - -e
-        - fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      - CMD
+      - node
+      - -e
+      - fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
       interval: 15s
       timeout: 5s
       start_period: 60s
       retries: 8
     networks:
-      - toeic-network
+    - toeic-network
   learning-service:
     image: vocalearn-clean-api:local
     pull_policy: never
     command:
-      - node
-      - apps/api/dist/entrypoints/learning.js
+    - node
+    - apps/api/dist/entrypoints/learning.js
     restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: '5000'
-      MONGO_URI: ${MONGO_LEARNING_URI:-mongodb://mongo:27017/learning_db?replicaSet=rs0}
       REDIS_URL: redis://redis:6379
       MEDIA_STORAGE_BACKEND: s3
       MEDIA_BRIDGE_URL: http://media-bridge:8010
@@ -482,43 +493,46 @@ services:
       CONTENT_INTERNAL_URL: http://content-service:5000
       ASSESSMENT_INTERNAL_URL: http://assessment-service:5000
       SERVICE_ROLE: learning
-      MONGO_DB_NAME: learning_db
       NOTIFICATION_INTERNAL_URL: http://notification-service:5000
       LEARNING_INTERNAL_URL: http://learning-service:5000
+      PGHOST: postgres
+      PGPORT: '5432'
+      PGDATABASE: learning_db
+      PGUSER: vl_learning
+      PGPASSWORD: ${PG_LEARNING_PASSWORD:?Set service PG password}
     volumes:
-      - ./storage:/app/storage:ro
+    - ./storage:/app/storage:ro
     depends_on:
-      db-init:
-        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
       redis:
         condition: service_healthy
       objectstore:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
     healthcheck:
       test:
-        - CMD
-        - node
-        - -e
-        - fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      - CMD
+      - node
+      - -e
+      - fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
       interval: 15s
       timeout: 5s
       start_period: 60s
       retries: 8
     networks:
-      - toeic-network
+    - toeic-network
   media-jobs-service:
     image: vocalearn-clean-api:local
     pull_policy: never
     command:
-      - node
-      - apps/api/dist/entrypoints/media-jobs.js
+    - node
+    - apps/api/dist/entrypoints/media-jobs.js
     restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: '5000'
-      MONGO_URI: ${MONGO_MEDIA_JOBS_URI:-mongodb://mongo:27017/media_db?replicaSet=rs0}
       REDIS_URL: redis://redis:6379
       MEDIA_STORAGE_BACKEND: s3
       MEDIA_BRIDGE_URL: http://media-bridge:8010
@@ -556,43 +570,46 @@ services:
       CONTENT_INTERNAL_URL: http://content-service:5000
       ASSESSMENT_INTERNAL_URL: http://assessment-service:5000
       SERVICE_ROLE: media-jobs
-      MONGO_DB_NAME: media_db
       NOTIFICATION_INTERNAL_URL: http://notification-service:5000
       LEARNING_INTERNAL_URL: http://learning-service:5000
+      PGHOST: postgres
+      PGPORT: '5432'
+      PGDATABASE: media_db
+      PGUSER: vl_media
+      PGPASSWORD: ${PG_MEDIA_PASSWORD:?Set service PG password}
     volumes:
-      - ./storage:/app/storage
+    - ./storage:/app/storage
     depends_on:
-      db-init:
-        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
       redis:
         condition: service_healthy
       objectstore:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
     healthcheck:
       test:
-        - CMD
-        - node
-        - -e
-        - fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      - CMD
+      - node
+      - -e
+      - fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
       interval: 15s
       timeout: 5s
       start_period: 60s
       retries: 8
     networks:
-      - toeic-network
+    - toeic-network
   ai-import-service:
     image: vocalearn-clean-api:local
     pull_policy: never
     command:
-      - node
-      - apps/api/dist/entrypoints/ai-import.js
+    - node
+    - apps/api/dist/entrypoints/ai-import.js
     restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: '5000'
-      MONGO_URI: ${MONGO_AI_IMPORT_URI:-mongodb://mongo:27017/ai_import_db?replicaSet=rs0}
       REDIS_URL: redis://redis:6379
       MEDIA_STORAGE_BACKEND: s3
       MEDIA_BRIDGE_URL: http://media-bridge:8010
@@ -630,43 +647,46 @@ services:
       CONTENT_INTERNAL_URL: http://content-service:5000
       ASSESSMENT_INTERNAL_URL: http://assessment-service:5000
       SERVICE_ROLE: ai-import
-      MONGO_DB_NAME: ai_import_db
       NOTIFICATION_INTERNAL_URL: http://notification-service:5000
       LEARNING_INTERNAL_URL: http://learning-service:5000
+      PGHOST: postgres
+      PGPORT: '5432'
+      PGDATABASE: ai_import_db
+      PGUSER: vl_ai_import
+      PGPASSWORD: ${PG_AI_IMPORT_PASSWORD:?Set service PG password}
     volumes:
-      - ./storage:/app/storage
+    - ./storage:/app/storage
     depends_on:
-      db-init:
-        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
       redis:
         condition: service_healthy
       objectstore:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
     healthcheck:
       test:
-        - CMD
-        - node
-        - -e
-        - fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      - CMD
+      - node
+      - -e
+      - fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
       interval: 15s
       timeout: 5s
       start_period: 60s
       retries: 8
     networks:
-      - toeic-network
+    - toeic-network
   notification-service:
     image: vocalearn-clean-api:local
     pull_policy: never
     command:
-      - node
-      - apps/api/dist/entrypoints/notification.js
+    - node
+    - apps/api/dist/entrypoints/notification.js
     restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: '5000'
-      MONGO_URI: ${MONGO_NOTIFICATION_URI:-mongodb://mongo:27017/notification_db?replicaSet=rs0}
       REDIS_URL: redis://redis:6379
       MEDIA_STORAGE_BACKEND: s3
       MEDIA_BRIDGE_URL: http://media-bridge:8010
@@ -704,39 +724,43 @@ services:
       CONTENT_INTERNAL_URL: http://content-service:5000
       ASSESSMENT_INTERNAL_URL: http://assessment-service:5000
       SERVICE_ROLE: notification
-      MONGO_DB_NAME: notification_db
       NOTIFICATION_INTERNAL_URL: http://notification-service:5000
       LEARNING_INTERNAL_URL: http://learning-service:5000
+      PGHOST: postgres
+      PGPORT: '5432'
+      PGDATABASE: notification_db
+      PGUSER: vl_notification
+      PGPASSWORD: ${PG_NOTIFICATION_PASSWORD:?Set service PG password}
     volumes:
-      - ./storage:/app/storage:ro
+    - ./storage:/app/storage:ro
     depends_on:
-      db-init:
-        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
       redis:
         condition: service_healthy
       objectstore:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
     healthcheck:
       test:
-        - CMD
-        - node
-        - -e
-        - fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      - CMD
+      - node
+      - -e
+      - fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
       interval: 15s
       timeout: 5s
       start_period: 60s
       retries: 8
     networks:
-      - toeic-network
+    - toeic-network
   gateway:
     image: nginx:1.27-alpine
     restart: unless-stopped
     volumes:
-      - ./infra/gateway/nginx.conf:/etc/nginx/nginx.conf:ro
+    - ./infra/gateway/nginx.conf:/etc/nginx/nginx.conf:ro
     ports:
-      - ${API_PUBLISHED_PORT:-5000}:5000
+    - ${API_PUBLISHED_PORT:-5000}:5000
     depends_on:
       identity-service:
         condition: service_started
@@ -755,7 +779,8 @@ services:
       notification-service:
         condition: service_started
     networks:
-      - toeic-network
+    - toeic-network
+    environment: {}
   web:
     build:
       context: .
@@ -769,12 +794,12 @@ services:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000/api}
     ports:
-      - 3000:3000
+    - 3000:3000
     depends_on:
       gateway:
         condition: service_started
     networks:
-      - toeic-network
+    - toeic-network
   admin-web:
     build:
       context: .
@@ -788,12 +813,12 @@ services:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000/api}
     ports:
-      - 3001:3001
+    - 3001:3001
     depends_on:
       gateway:
         condition: service_started
     networks:
-      - toeic-network
+    - toeic-network
   media-bridge:
     build:
       context: .
@@ -811,7 +836,9 @@ services:
       objectstore:
         condition: service_healthy
     networks:
-      - toeic-network
+    - toeic-network
+    ports:
+    - 127.0.0.1:8010:8010
   job-broker:
     build:
       context: .
@@ -820,27 +847,32 @@ services:
       sbom: false
     restart: unless-stopped
     environment:
-      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:?Set RABBITMQ_USER}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}@rabbitmq:5672/%2F
       JOB_INTERNAL_TOKEN: ${JOB_INTERNAL_TOKEN:?Set JOB_INTERNAL_TOKEN}
-      MONGO_URI: ${MONGO_MEDIA_JOBS_URI:-mongodb://mongo:27017/media_db?replicaSet=rs0}
+      PGHOST: postgres
+      PGPORT: '5432'
+      PGDATABASE: media_db
+      PGUSER: vl_media
+      PGPASSWORD: ${PG_MEDIA_PASSWORD:?Set service PG password}
     depends_on:
       rabbitmq:
         condition: service_healthy
-      db-init:
-        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
     networks:
-      - toeic-network
+    - toeic-network
+    ports:
+    - 127.0.0.1:8020:8020
   audio-worker:
     image: vocalearn-clean-api:local
     pull_policy: never
     command:
-      - node
-      - apps/api/dist/audio-worker-main.js
+    - node
+    - apps/api/dist/audio-worker-main.js
     restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: '5000'
-      MONGO_URI: ${MONGO_MEDIA_JOBS_URI:-mongodb://mongo:27017/media_db?replicaSet=rs0}
       REDIS_URL: redis://redis:6379
       MEDIA_STORAGE_BACKEND: s3
       MEDIA_BRIDGE_URL: http://media-bridge:8010
@@ -877,27 +909,32 @@ services:
       TOEIC_TTS_SPEED: ${TOEIC_TTS_SPEED:-1}
       CONTENT_INTERNAL_URL: http://content-service:5000
       ASSESSMENT_INTERNAL_URL: http://assessment-service:5000
-      MONGO_DB_NAME: media_db
       AUDIO_WORKER_PORT: '5001'
+      SERVICE_ROLE: audio-worker
+      PGHOST: postgres
+      PGPORT: '5432'
+      PGDATABASE: media_db
+      PGUSER: vl_media
+      PGPASSWORD: ${PG_MEDIA_PASSWORD:?Set service PG password}
     volumes:
-      - ./storage:/app/storage
+    - ./storage:/app/storage
     depends_on:
-      db-init:
-        condition: service_completed_successfully
       rabbitmq:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
     healthcheck:
       test:
-        - CMD
-        - node
-        - -e
-        - fetch('http://127.0.0.1:5001/_internal/audio/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      - CMD
+      - node
+      - -e
+      - fetch('http://127.0.0.1:5001/_internal/audio/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
       interval: 15s
       timeout: 5s
       start_period: 60s
       retries: 8
     networks:
-      - toeic-network
+    - toeic-network
   job-runner:
     build:
       context: .
@@ -906,20 +943,24 @@ services:
       sbom: false
     restart: unless-stopped
     environment:
-      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:?Set RABBITMQ_USER}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}@rabbitmq:5672/%2F
       JOB_INTERNAL_TOKEN: ${JOB_INTERNAL_TOKEN:?Set JOB_INTERNAL_TOKEN}
-      AUDIO_WORKER_URL: http://audio-worker:5001
+      AUDIO_WORKER_URL: ${AUDIO_WORKER_URL:-http://audio-worker:5001}
       AUDIO_JOB_RETRIES: ${AUDIO_JOB_RETRIES:-3}
-      MONGO_URI: ${MONGO_MEDIA_JOBS_URI:-mongodb://mongo:27017/media_db?replicaSet=rs0}
+      PGHOST: postgres
+      PGPORT: '5432'
+      PGDATABASE: media_db
+      PGUSER: vl_media
+      PGPASSWORD: ${PG_MEDIA_PASSWORD:?Set service PG password}
     depends_on:
       rabbitmq:
         condition: service_healthy
       audio-worker:
         condition: service_healthy
-      db-init:
-        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
     networks:
-      - toeic-network
+    - toeic-network
   asr-job-api:
     image: vocalearn-clean-asr-jobs:local
     pull_policy: never
@@ -930,32 +971,37 @@ services:
       sbom: false
     restart: unless-stopped
     environment:
-      MONGO_URI: ${MONGO_MEDIA_JOBS_URI:-mongodb://mongo:27017/media_db?replicaSet=rs0}
-      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:?Set RABBITMQ_USER}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}@rabbitmq:5672/%2F
       JOB_INTERNAL_TOKEN: ${JOB_INTERNAL_TOKEN:?Set JOB_INTERNAL_TOKEN}
       S3_ENDPOINT: http://objectstore:9000
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:?Set S3_ACCESS_KEY}
       S3_SECRET_KEY: ${S3_SECRET_KEY:?Set S3_SECRET_KEY}
       S3_BUCKET: ${S3_BUCKET:-vocalearn-media}
+      PGHOST: postgres
+      PGPORT: '5432'
+      PGDATABASE: media_db
+      PGUSER: vl_media
+      PGPASSWORD: ${PG_MEDIA_PASSWORD:?Set service PG password}
     depends_on:
-      db-init:
-        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
       objectstore:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
     networks:
-      - toeic-network
+    - toeic-network
+    ports:
+    - 127.0.0.1:8021:8021
   asr-job-runner:
     image: vocalearn-clean-asr-jobs:local
     pull_policy: never
     command:
-      - python
-      - worker.py
+    - python
+    - worker.py
     restart: unless-stopped
     environment:
-      MONGO_URI: ${MONGO_MEDIA_JOBS_URI:-mongodb://mongo:27017/media_db?replicaSet=rs0}
-      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:?Set RABBITMQ_USER}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}@rabbitmq:5672/%2F
       JOB_INTERNAL_TOKEN: ${JOB_INTERNAL_TOKEN:?Set JOB_INTERNAL_TOKEN}
       S3_ENDPOINT: http://objectstore:9000
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:?Set S3_ACCESS_KEY}
@@ -963,15 +1009,20 @@ services:
       S3_BUCKET: ${S3_BUCKET:-vocalearn-media}
       ASR_SERVICE_URL: http://asr-service:8002
       REDIS_URL: redis://redis:6379
+      PGHOST: postgres
+      PGPORT: '5432'
+      PGDATABASE: media_db
+      PGUSER: vl_media
+      PGPASSWORD: ${PG_MEDIA_PASSWORD:?Set service PG password}
     depends_on:
-      db-init:
-        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
       asr-service:
         condition: service_started
+      postgres:
+        condition: service_healthy
     networks:
-      - toeic-network
+    - toeic-network
   tts-service:
     build:
       context: .
@@ -987,9 +1038,11 @@ services:
       KOKORO_MODEL_ID: ${KOKORO_MODEL_ID:-hexgrad/Kokoro-82M}
       HF_HOME: /models/huggingface
     volumes:
-      - kokoro_models:/models/huggingface
+    - kokoro_models:/models/huggingface
     networks:
-      - toeic-network
+    - toeic-network
+    ports:
+    - 127.0.0.1:8001:8001
   asr-service:
     build:
       context: .
@@ -1003,24 +1056,26 @@ services:
       ASR_MODEL: ${ASR_MODEL:-small.en}
       ASR_MODEL_DIR: /models/faster-whisper
     volumes:
-      - whisper_models:/models/faster-whisper
+    - whisper_models:/models/faster-whisper
     networks:
-      - toeic-network
+    - toeic-network
+    ports:
+    - 127.0.0.1:8002:8002
   ollama:
     profiles:
-      - ai
+    - ai
     image: ollama/ollama:latest
     restart: unless-stopped
     environment:
       OLLAMA_NUM_PARALLEL: '1'
       OLLAMA_MAX_LOADED_MODELS: '1'
     volumes:
-      - ollama_models:/root/.ollama
+    - ollama_models:/root/.ollama
     networks:
-      - toeic-network
+    - toeic-network
   pdf-ai:
     profiles:
-      - ai
+    - ai
     image: vocalearn-clean-pdf-ai:local
     pull_policy: never
     build:
@@ -1031,260 +1086,47 @@ services:
     restart: unless-stopped
     environment:
       PDF_AI_QUEUE_BACKEND: rabbitmq
-      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:?Set RABBITMQ_USER}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}@rabbitmq:5672/%2F
       OLLAMA_URL: http://ollama:11434
       OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b}
       PDF_AI_ASSET_DIR: /app/assets
       PDF_AI_LEARNING_DIR: /app/learning
     volumes:
-      - ./storage/pdf-ai:/app/assets
-      - ./.local/pdf-ai-learning:/app/learning
+    - ./storage/pdf-ai:/app/assets
+    - ./.local/pdf-ai-learning:/app/learning
     depends_on:
       rabbitmq:
         condition: service_healthy
       ollama:
         condition: service_started
     networks:
-      - toeic-network
+    - toeic-network
   pdf-ai-worker:
     profiles:
-      - ai
+    - ai
     image: vocalearn-clean-pdf-ai:local
     pull_policy: never
     restart: unless-stopped
     environment:
       PDF_AI_QUEUE_BACKEND: rabbitmq
-      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:?Set RABBITMQ_USER}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}@rabbitmq:5672/%2F
       OLLAMA_URL: http://ollama:11434
       OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b}
       PDF_AI_ASSET_DIR: /app/assets
       PDF_AI_LEARNING_DIR: /app/learning
     volumes:
-      - ./storage/pdf-ai:/app/assets
-      - ./.local/pdf-ai-learning:/app/learning
+    - ./storage/pdf-ai:/app/assets
+    - ./.local/pdf-ai-learning:/app/learning
     depends_on:
       rabbitmq:
         condition: service_healthy
       ollama:
         condition: service_started
     networks:
-      - toeic-network
+    - toeic-network
     command:
-      - python
-      - worker.py
-  projection-consumer-identity:
-    image: vocalearn-clean-projections:local
-    pull_policy: never
-    build:
-      context: .
-      dockerfile: services/projections/Dockerfile
-      provenance: false
-      sbom: false
-    restart: unless-stopped
-    environment:
-      MONGO_URI: ${MONGO_IDENTITY_URI:-mongodb://mongo:27017/identity_db?replicaSet=rs0}
-      SERVICE_ROLE: identity
-      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
-      PROJECTION_MODE: consume
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - toeic-network
-  projection-relay-identity:
-    image: vocalearn-clean-projections:local
-    pull_policy: never
-    restart: unless-stopped
-    environment:
-      MONGO_URI: ${MONGO_IDENTITY_URI:-mongodb://mongo:27017/identity_db?replicaSet=rs0}
-      SERVICE_ROLE: identity
-      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
-      PROJECTION_MODE: relay
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - toeic-network
-  projection-consumer-content:
-    image: vocalearn-clean-projections:local
-    pull_policy: never
-    restart: unless-stopped
-    environment:
-      MONGO_URI: ${MONGO_CONTENT_URI:-mongodb://mongo:27017/content_db?replicaSet=rs0}
-      SERVICE_ROLE: content
-      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
-      PROJECTION_MODE: consume
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - toeic-network
-  projection-relay-content:
-    image: vocalearn-clean-projections:local
-    pull_policy: never
-    restart: unless-stopped
-    environment:
-      MONGO_URI: ${MONGO_CONTENT_URI:-mongodb://mongo:27017/content_db?replicaSet=rs0}
-      SERVICE_ROLE: content
-      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
-      PROJECTION_MODE: relay
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - toeic-network
-  projection-consumer-assessment:
-    image: vocalearn-clean-projections:local
-    pull_policy: never
-    restart: unless-stopped
-    environment:
-      MONGO_URI: ${MONGO_ASSESSMENT_URI:-mongodb://mongo:27017/assessment_db?replicaSet=rs0}
-      SERVICE_ROLE: assessment
-      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
-      PROJECTION_MODE: consume
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - toeic-network
-  projection-relay-assessment:
-    image: vocalearn-clean-projections:local
-    pull_policy: never
-    restart: unless-stopped
-    environment:
-      MONGO_URI: ${MONGO_ASSESSMENT_URI:-mongodb://mongo:27017/assessment_db?replicaSet=rs0}
-      SERVICE_ROLE: assessment
-      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
-      PROJECTION_MODE: relay
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - toeic-network
-  projection-consumer-arena:
-    image: vocalearn-clean-projections:local
-    pull_policy: never
-    restart: unless-stopped
-    environment:
-      MONGO_URI: ${MONGO_ARENA_URI:-mongodb://mongo:27017/arena_db?replicaSet=rs0}
-      SERVICE_ROLE: arena
-      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
-      PROJECTION_MODE: consume
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - toeic-network
-  projection-consumer-learning:
-    image: vocalearn-clean-projections:local
-    pull_policy: never
-    restart: unless-stopped
-    environment:
-      MONGO_URI: ${MONGO_LEARNING_URI:-mongodb://mongo:27017/learning_db?replicaSet=rs0}
-      SERVICE_ROLE: learning
-      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
-      PROJECTION_MODE: consume
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - toeic-network
-  projection-relay-learning:
-    image: vocalearn-clean-projections:local
-    pull_policy: never
-    restart: unless-stopped
-    environment:
-      MONGO_URI: ${MONGO_LEARNING_URI:-mongodb://mongo:27017/learning_db?replicaSet=rs0}
-      SERVICE_ROLE: learning
-      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
-      PROJECTION_MODE: relay
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - toeic-network
-  projection-consumer-media-jobs:
-    image: vocalearn-clean-projections:local
-    pull_policy: never
-    restart: unless-stopped
-    environment:
-      MONGO_URI: ${MONGO_MEDIA_JOBS_URI:-mongodb://mongo:27017/media_db?replicaSet=rs0}
-      SERVICE_ROLE: media-jobs
-      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
-      PROJECTION_MODE: consume
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - toeic-network
-  projection-consumer-ai-import:
-    image: vocalearn-clean-projections:local
-    pull_policy: never
-    restart: unless-stopped
-    environment:
-      MONGO_URI: ${MONGO_AI_IMPORT_URI:-mongodb://mongo:27017/ai_import_db?replicaSet=rs0}
-      SERVICE_ROLE: ai-import
-      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
-      PROJECTION_MODE: consume
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - toeic-network
-  projection-consumer-notification:
-    image: vocalearn-clean-projections:local
-    pull_policy: never
-    restart: unless-stopped
-    environment:
-      MONGO_URI: ${MONGO_NOTIFICATION_URI:-mongodb://mongo:27017/notification_db?replicaSet=rs0}
-      SERVICE_ROLE: notification
-      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
-      PROJECTION_MODE: consume
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - toeic-network
-  projection-relay-notification:
-    image: vocalearn-clean-projections:local
-    pull_policy: never
-    restart: unless-stopped
-    environment:
-      MONGO_URI: ${MONGO_NOTIFICATION_URI:-mongodb://mongo:27017/notification_db?replicaSet=rs0}
-      SERVICE_ROLE: notification
-      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
-      PROJECTION_MODE: relay
-    depends_on:
-      db-init:
-        condition: service_completed_successfully
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - toeic-network
+    - python
+    - worker.py
   outbox-identity:
     image: vocalearn-clean-domain-events:local
     pull_policy: never
@@ -1295,87 +1137,107 @@ services:
       sbom: false
     restart: unless-stopped
     environment:
-      MONGO_URI: ${MONGO_IDENTITY_URI:-mongodb://mongo:27017/identity_db?replicaSet=rs0}
-      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:?Set RABBITMQ_USER}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}@rabbitmq:5672/%2F
+      PGHOST: postgres
+      PGPORT: '5432'
+      PGDATABASE: identity_db
+      PGUSER: vl_identity
+      PGPASSWORD: ${PG_IDENTITY_PASSWORD:?Set service PG password}
     depends_on:
       rabbitmq:
         condition: service_healthy
-      db-init:
-        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
     networks:
-      - toeic-network
+    - toeic-network
   outbox-assessment:
     image: vocalearn-clean-domain-events:local
     pull_policy: never
     restart: unless-stopped
     environment:
-      MONGO_URI: ${MONGO_ASSESSMENT_URI:-mongodb://mongo:27017/assessment_db?replicaSet=rs0}
-      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:?Set RABBITMQ_USER}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}@rabbitmq:5672/%2F
+      PGHOST: postgres
+      PGPORT: '5432'
+      PGDATABASE: assessment_db
+      PGUSER: vl_assessment
+      PGPASSWORD: ${PG_ASSESSMENT_PASSWORD:?Set service PG password}
     depends_on:
       rabbitmq:
         condition: service_healthy
-      db-init:
-        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
     networks:
-      - toeic-network
+    - toeic-network
   outbox-arena:
     image: vocalearn-clean-domain-events:local
     pull_policy: never
     restart: unless-stopped
     environment:
-      MONGO_URI: ${MONGO_ARENA_URI:-mongodb://mongo:27017/arena_db?replicaSet=rs0}
-      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:?Set RABBITMQ_USER}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}@rabbitmq:5672/%2F
+      PGHOST: postgres
+      PGPORT: '5432'
+      PGDATABASE: arena_db
+      PGUSER: vl_arena
+      PGPASSWORD: ${PG_ARENA_PASSWORD:?Set service PG password}
     depends_on:
       rabbitmq:
         condition: service_healthy
-      db-init:
-        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
     networks:
-      - toeic-network
+    - toeic-network
   domain-consumer-learning:
     image: vocalearn-clean-domain-events:local
     pull_policy: never
     command:
-      - python
-      - consumer.py
+    - python
+    - consumer.py
     restart: unless-stopped
     environment:
-      EVENT_CONSUMER: learning
-      MONGO_URI: ${MONGO_LEARNING_URI:-mongodb://mongo:27017/learning_db?replicaSet=rs0}
-      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+      CONSUMER_NAME: learning
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:?Set RABBITMQ_USER}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}@rabbitmq:5672/%2F
+      PGHOST: postgres
+      PGPORT: '5432'
+      PGDATABASE: learning_db
+      PGUSER: vl_learning
+      PGPASSWORD: ${PG_LEARNING_PASSWORD:?Set service PG password}
     depends_on:
-      db-init:
-        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
     networks:
-      - toeic-network
+    - toeic-network
   domain-consumer-notification:
     image: vocalearn-clean-domain-events:local
     pull_policy: never
     command:
-      - python
-      - consumer.py
+    - python
+    - consumer.py
     restart: unless-stopped
     environment:
-      EVENT_CONSUMER: notification
-      MONGO_URI: ${MONGO_NOTIFICATION_URI:-mongodb://mongo:27017/notification_db?replicaSet=rs0}
-      RABBITMQ_URL: ${RABBITMQ_URL:?Set RABBITMQ_URL}
+      CONSUMER_NAME: notification
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:?Set RABBITMQ_USER}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}@rabbitmq:5672/%2F
+      PGHOST: postgres
+      PGPORT: '5432'
+      PGDATABASE: notification_db
+      PGUSER: vl_notification
+      PGPASSWORD: ${PG_NOTIFICATION_PASSWORD:?Set service PG password}
     depends_on:
-      db-init:
-        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
     networks:
-      - toeic-network
+    - toeic-network
 volumes:
-  mongo_data: {}
   redis_data: {}
   rabbitmq_data: {}
   kokoro_models: {}
   whisper_models: {}
   ollama_models: {}
   objectstore_data: {}
+  postgres_data: {}
 networks:
   toeic-network:
     driver: bridge

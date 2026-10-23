@@ -1,11 +1,11 @@
+import { PgId } from '../../postgres/compat.js';
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { type Model, type PipelineStage, Types } from 'mongoose';
+import { InjectPgModel } from '../../postgres/compat.js';
+import { type Model, type PipelineStage } from '../../postgres/compat.js';
 import {
   ArenaMatch,
   ArenaMatchStatus,
-  ArenaMatchType,
-} from './schemas/arena-match.schema.js';
+  ArenaMatchType } from './schemas/arena-match.schema.js';
 import { ArenaMatchPlayer } from './schemas/arena-match-player.schema.js';
 import { ArenaProfile } from './schemas/arena-profile.schema.js';
 import { User } from '../users/schema/user.schema.js';
@@ -45,19 +45,19 @@ export function arenaPeriodStart(period: ArenaRankingPeriod, now = new Date()) {
 @Injectable()
 export class ArenaReadService {
   constructor(
-    @InjectModel(ArenaMatchPlayer.name)
+    @InjectPgModel(ArenaMatchPlayer.name)
     private readonly players: Model<ArenaMatchPlayer>,
-    @InjectModel(ArenaMatch.name) private readonly matches: Model<ArenaMatch>,
-    @InjectModel(ArenaProfile.name)
+    @InjectPgModel(ArenaMatch.name) private readonly matches: Model<ArenaMatch>,
+    @InjectPgModel(ArenaProfile.name)
     private readonly profiles: Model<ArenaProfile>,
-    @InjectModel(User.name) private readonly users: Model<User>,
+    @InjectPgModel(User.name) private readonly users: Model<User>,
   ) {}
 
-  /** Kiểm tra và chuyển user ID từ request sang ObjectId an toàn. */
+  /** Kiểm tra và chuyển user ID từ request sang PgId an toàn. */
   private userId(value: string) {
-    if (typeof value !== 'string' || !/^[a-f\d]{24}$/i.test(value))
+    if (typeof value !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value))
       throw new BadRequestException('Invalid user ID');
-    return new Types.ObjectId(value);
+    return new PgId(value);
   }
 
   /** Giới hạn kích thước kết quả để tránh truy vấn quá lớn. */
@@ -75,17 +75,13 @@ export class ArenaReadService {
           from: this.matches.collection.name,
           localField: 'matchId',
           foreignField: '_id',
-          as: 'match',
-        },
-      },
+          as: 'match' } },
       { $unwind: '$match' },
       {
         $match: {
           'match.status': ArenaMatchStatus.FINISHED,
           ...(rankOnly ? { 'match.type': ArenaMatchType.RANK } : {}),
-          ...(since ? { 'match.finishedAt': { $gte: since } } : {}),
-        },
-      },
+          ...(since ? { 'match.finishedAt': { $gte: since } } : {}) } },
     ];
   }
 
@@ -107,10 +103,7 @@ export class ArenaReadService {
                   $and: [
                     { $eq: ['$matchId', '$$matchId'] },
                     { $ne: ['$userId', '$$userId'] },
-                  ],
-                },
-              },
-            },
+                  ] } } },
             { $sort: { score: -1, userId: 1 } },
             { $limit: 1 },
             {
@@ -118,14 +111,10 @@ export class ArenaReadService {
                 from: this.users.collection.name,
                 localField: 'userId',
                 foreignField: '_id',
-                as: 'user',
-              },
-            },
+                as: 'user' } },
             { $set: { user: { $arrayElemAt: ['$user', 0] } } },
           ],
-          as: 'opponents',
-        },
-      },
+          as: 'opponents' } },
       { $set: { opponent: { $arrayElemAt: ['$opponents', 0] } } },
       {
         $project: {
@@ -136,57 +125,44 @@ export class ArenaReadService {
               { $eq: ['$opponent.user.isDeleted', true] },
               'Người chơi',
               { $ifNull: ['$opponent.user.username', 'Người chơi'] },
-            ],
-          },
+            ] },
           avatarUrl: {
             $cond: [
               { $eq: ['$opponent.user.isDeleted', true] },
               null,
               '$opponent.user.avatarUrl',
-            ],
-          },
+            ] },
           score: ['$score', { $ifNull: ['$opponent.score', 0] }],
           result: {
             $cond: [
               '$match.isDraw',
               'DRAW',
               {
-                $cond: [{ $eq: ['$match.winnerId', '$userId'] }, 'WIN', 'LOSS'],
-              },
-            ],
-          },
+                $cond: [{ $eq: ['$match.winnerId', '$userId'] }, 'WIN', 'LOSS'] },
+            ] },
           mode: {
             $switch: {
               branches: [
                 {
                   case: { $eq: ['$match.friendMode', 'WORD_GUESS'] },
-                  then: 'word-guess',
-                },
+                  then: 'word-guess' },
                 {
                   case: { $eq: ['$match.type', ArenaMatchType.RANK] },
-                  then: 'rank',
-                },
+                  then: 'rank' },
                 {
                   case: {
                     $and: [
                       { $eq: ['$match.type', ArenaMatchType.FRIEND] },
                       { $eq: ['$match.friendMode', 'WORD_CHAIN'] },
-                    ],
-                  },
-                  then: 'word-chain',
-                },
+                    ] },
+                  then: 'word-chain' },
                 {
                   case: { $eq: ['$match.type', ArenaMatchType.FRIEND] },
-                  then: 'friend',
-                },
+                  then: 'friend' },
               ],
-              default: 'room',
-            },
-          },
+              default: 'room' } },
           points: { $ifNull: ['$ratingChange', 0] },
-          finishedAt: '$match.finishedAt',
-        },
-      },
+          finishedAt: '$match.finishedAt' } },
     ]);
   }
 
@@ -211,29 +187,21 @@ export class ArenaReadService {
           _id: '$userId',
           matches: { $sum: 1 },
           wins: {
-            $sum: { $cond: [{ $eq: ['$match.winnerId', '$userId'] }, 1, 0] },
-          },
+            $sum: { $cond: [{ $eq: ['$match.winnerId', '$userId'] }, 1, 0] } },
           fallbackRating: {
-            $max: { $ifNull: ['$ratingAfter', '$ratingBefore'] },
-          },
-        },
-      },
+            $max: { $ifNull: ['$ratingAfter', '$ratingBefore'] } } } },
       {
         $lookup: {
           from: this.profiles.collection.name,
           localField: '_id',
           foreignField: 'userId',
-          as: 'profile',
-        },
-      },
+          as: 'profile' } },
       {
         $lookup: {
           from: this.users.collection.name,
           localField: '_id',
           foreignField: '_id',
-          as: 'user',
-        },
-      },
+          as: 'user' } },
       { $unwind: '$user' },
       { $match: { 'user.isDeleted': { $ne: true } } },
       {
@@ -248,31 +216,23 @@ export class ArenaReadService {
             $ifNull: [
               { $arrayElemAt: ['$profile.rating', 0] },
               '$fallbackRating',
-            ],
-          },
-        },
-      },
+            ] } } },
       {
         $setWindowFields: {
           sortBy: { rating: -1 },
-          output: { position: { $rank: {} } },
-        },
-      },
+          output: { position: { $rank: {} } } } },
       { $sort: { position: 1, wins: -1, userId: 1 } },
       {
         $facet: {
           players: [{ $limit: this.limit(limit) }],
           me: [{ $match: { userId: id } }, { $limit: 1 }],
-          total: [{ $count: 'count' }],
-        },
-      },
+          total: [{ $count: 'count' }] } },
     ]);
     return {
       period: period as ArenaRankingPeriod,
       players: result[0]?.players ?? [],
       me: result[0]?.me[0] ?? null,
-      totalPlayers: result[0]?.total[0]?.count ?? 0,
-    };
+      totalPlayers: result[0]?.total[0]?.count ?? 0 };
   }
 
   /** Tính số trận, thắng, thua, hòa và chuỗi thắng từ lịch sử ranked. */
@@ -291,12 +251,9 @@ export class ArenaReadService {
           _id: null,
           matches: { $sum: 1 },
           wins: {
-            $sum: { $cond: [{ $eq: ['$match.winnerId', '$userId'] }, 1, 0] },
-          },
+            $sum: { $cond: [{ $eq: ['$match.winnerId', '$userId'] }, 1, 0] } },
           draws: { $sum: { $cond: ['$match.isDraw', 1, 0] } },
-          outcomes: { $push: { $eq: ['$match.winnerId', '$userId'] } },
-        },
-      },
+          outcomes: { $push: { $eq: ['$match.winnerId', '$userId'] } } } },
     ]);
     const stats = result[0];
     let currentWinStreak = 0;
@@ -314,7 +271,6 @@ export class ArenaReadService {
         ? Number(((stats.wins / stats.matches) * 100).toFixed(1))
         : 0,
       currentWinStreak,
-      bestWinStreak,
-    };
+      bestWinStreak };
   }
 }

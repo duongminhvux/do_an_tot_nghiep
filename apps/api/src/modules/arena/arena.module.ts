@@ -3,8 +3,7 @@ import { ArenaAdminService } from './admin/arena-admin.service.js';
 import { ArenaSettingsService } from './admin/arena-settings.service.js';
 import {
   ArenaSettings,
-  ArenaSettingsSchema,
-} from './admin/arena-settings.schema.js';
+  ArenaSettingsSchema } from './admin/arena-settings.schema.js';
 import { FriendRoom, FriendRoomSchema } from './schemas/friend-room.schema.js';
 import { ArenaFriendRoomService } from './friendly/arena-friend-room.service.js';
 import { Module } from '@nestjs/common';
@@ -19,33 +18,27 @@ import { ArenaScoringService } from './scoring/arena-scoring.service.js';
 import { ArenaMatchService } from './matches/arena-match.service.js';
 import { ArenaService } from './arena.service.js';
 import { ArenaReadService } from './arena-read.service.js';
-import { MongooseModule } from '@nestjs/mongoose';
+import { PgModelsModule } from '../../postgres/compat.js';
 import {
   ArenaProfile,
-  ArenaProfileSchema,
-} from './schemas/arena-profile.schema.js';
+  ArenaProfileSchema } from './schemas/arena-profile.schema.js';
 import {
   ArenaInvitation,
-  ArenaInvitationSchema,
-} from './schemas/arena-invitation.schema.js';
+  ArenaInvitationSchema } from './schemas/arena-invitation.schema.js';
 import { ArenaRoom, ArenaRoomSchema } from './schemas/arena-room.schema.js';
 import { ArenaMatch, ArenaMatchSchema } from './schemas/arena-match.schema.js';
 import {
   ArenaMatchPlayer,
-  ArenaMatchPlayerSchema,
-} from './schemas/arena-match-player.schema.js';
+  ArenaMatchPlayerSchema } from './schemas/arena-match-player.schema.js';
 import {
   ArenaMatchQuestion,
-  ArenaMatchQuestionSchema,
-} from './schemas/arena-match-question.schema.js';
+  ArenaMatchQuestionSchema } from './schemas/arena-match-question.schema.js';
 import {
   ArenaPlayerAnswer,
-  ArenaPlayerAnswerSchema,
-} from './schemas/arena-player-answer.schema.js';
+  ArenaPlayerAnswerSchema } from './schemas/arena-player-answer.schema.js';
 import {
   ArenaRatingHistory,
-  ArenaRatingHistorySchema,
-} from './schemas/arena-rating-history.schema.js';
+  ArenaRatingHistorySchema } from './schemas/arena-rating-history.schema.js';
 import { ArenaController } from './arena.controller.js';
 import { User, UserSchema } from '../users/schema/user.schema.js';
 import { ArenaQuestionService } from './question/arena-question.service.js';
@@ -56,7 +49,7 @@ import { ArenaRatingService } from './rating/arena-rating.service.js';
 @Module({
   imports: [
     ServiceJwtModule,
-    MongooseModule.forFeature([
+    PgModelsModule.forFeature([
       { name: ArenaSettings.name, schema: ArenaSettingsSchema },
       { name: FriendRoom.name, schema: FriendRoomSchema },
       { name: Word.name, schema: WordSchema },
@@ -95,7 +88,6 @@ import { ArenaRatingService } from './rating/arena-rating.service.js';
     ArenaMatchService,
     ArenaPresenceService,
     ArenaScoringService,
-  ],
-})
+  ] })
 /** Đăng ký toàn bộ model, service, controller và gateway của Arena. */
 export class ArenaModule {}

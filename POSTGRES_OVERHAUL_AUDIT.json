@@ -1,0 +1,46 @@
+{
+  "status": "STATIC_CHECK_ONLY_NOT_PRODUCTION_READY",
+  "checks": {
+    "eight_owned_databases": true,
+    "no_old_db_service": true,
+    "fresh_sql_bootstrap": true,
+    "root_env_template": true,
+    "local_infra_excludes_backends": true,
+    "local_infra_has_redis_rabbitmq_ai": true,
+    "no_migration_tree": true,
+    "seed_before_identity": true,
+    "distinct_consumers": true,
+    "compose_dependencies_valid_full": true,
+    "no_old_db_runtime_imports": true,
+    "no_jsonb_btree_indexes": true,
+    "full_typescript_typecheck": null,
+    "postgres_sql_executed": null,
+    "docker_build_and_start": null,
+    "http_end_to_end": null
+  },
+  "details": {
+    "legacy_db_references": [],
+    "sql_business_tables": 49,
+    "sql_database_names": [
+      "identity_db",
+      "content_db",
+      "assessment_db",
+      "arena_db",
+      "learning_db",
+      "media_db",
+      "ai_import_db",
+      "notification_db"
+    ],
+    "compose_services_full": 32,
+    "compose_services_local_infra": 10,
+    "source_files_scanned": 749,
+    "invalid_index_lines": [],
+    "known_blockers": [
+      "PostgreSQL repository compatibility adapter is not a complete service-specific SQL rewrite.",
+      "Complex aggregation pipelines and old populate relationships across service databases are not fully implemented.",
+      "Domain-event inbox records receipt but does not yet perform all business projections.",
+      "Live PostgreSQL bootstrap, full TypeScript typecheck, Docker build, auth/TOEIC/XP/arena end-to-end NOT run in this environment.",
+      "Local PostgreSQL must allow host.docker.internal connections by Docker-hosted Python workers."
+    ]
+  }
+}

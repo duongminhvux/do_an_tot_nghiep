@@ -1,6 +1,7 @@
+import { PgId } from '../../../postgres/compat.js';
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { type Model, Types } from 'mongoose';
+import { InjectPgModel } from '../../../postgres/compat.js';
+import { type Model } from '../../../postgres/compat.js';
 import { I18nContext, I18nService } from 'nestjs-i18n';
 import { Collection, CollectionDocument } from './collection.schema.js';
 import { Lesson, LessonDocument } from '../lessons/lesson.schema.js';
@@ -11,8 +12,8 @@ import { QueryCollectionDto } from './dto/query-collection.dto.js';
 @Injectable()
 export class CollectionsService {
   constructor(
-    @InjectModel(Collection.name) private readonly collectionModel: Model<CollectionDocument>,
-    @InjectModel(Lesson.name) private readonly lessonModel: Model<LessonDocument>,
+    @InjectPgModel(Collection.name) private readonly collectionModel: Model<CollectionDocument>,
+    @InjectPgModel(Lesson.name) private readonly lessonModel: Model<LessonDocument>,
     private readonly i18n: I18nService,
   ) {}
 
@@ -41,8 +42,7 @@ export class CollectionsService {
     const escapedName = trimmedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const existingActive = await this.collectionModel.findOne({
       name: { $regex: new RegExp(`^${escapedName}$`, 'i') },
-      isDeleted: { $ne: true },
-    });
+      isDeleted: { $ne: true } });
     if (existingActive) {
       throw new ConflictException(
         await this.i18n.t('collection.COLLECTION_ALREADY_EXISTS', { lang }),
@@ -60,14 +60,12 @@ export class CollectionsService {
     // Free any legacy deleted records
     const legacyDeleted = await this.collectionModel.find({
       $or: [{ name: trimmedName }, { slug }],
-      isDeleted: true,
-    });
+      isDeleted: true });
     for (const legacy of legacyDeleted) {
       const ts = Date.now();
       await this.collectionModel.findByIdAndUpdate(legacy._id, {
         name: `${legacy.name}_deleted_${ts}`,
-        slug: `${legacy.slug}_deleted_${ts}`,
-      });
+        slug: `${legacy.slug}_deleted_${ts}` });
     }
 
     let order = createCollectionDto.order;
@@ -79,10 +77,9 @@ export class CollectionsService {
     const createdCollection = new this.collectionModel({
       ...createCollectionDto,
       name: trimmedName,
-      groupId: createCollectionDto.groupId ? new Types.ObjectId(createCollectionDto.groupId) : undefined,
+      groupId: createCollectionDto.groupId ? new PgId(createCollectionDto.groupId) : undefined,
       slug,
-      order,
-    });
+      order });
     return createdCollection.save();
   }
 
@@ -91,7 +88,7 @@ export class CollectionsService {
     const filter: Record<string, any> = { isDeleted: { $ne: true } };
 
     if (groupId) {
-      filter.groupId = new Types.ObjectId(groupId);
+      filter.groupId = new PgId(groupId);
     }
 
     if (search) {
@@ -130,15 +127,13 @@ export class CollectionsService {
 
     const data = rawCollections.map((c) => ({
       ...c,
-      lessonsCount: lessonCountMap.get(c._id.toString()) || 0,
-    }));
+      lessonsCount: lessonCountMap.get(c._id.toString()) || 0 }));
 
     return {
       data,
       total,
       page,
-      limit,
-    };
+      limit };
   }
 
   async findOne(id: string): Promise<any> {
@@ -154,13 +149,11 @@ export class CollectionsService {
       );
     }
     const lessonsCount = await this.lessonModel.countDocuments({
-      collectionId: new Types.ObjectId(id),
-      isDeleted: { $ne: true },
-    }).exec();
+      collectionId: new PgId(id),
+      isDeleted: { $ne: true } }).exec();
     return {
       ...collection,
-      lessonsCount,
-    };
+      lessonsCount };
   }
 
   async findBySlug(slug: string): Promise<any> {
@@ -177,12 +170,10 @@ export class CollectionsService {
     }
     const lessonsCount = await this.lessonModel.countDocuments({
       collectionId: collection._id,
-      isDeleted: { $ne: true },
-    }).exec();
+      isDeleted: { $ne: true } }).exec();
     return {
       ...collection,
-      lessonsCount,
-    };
+      lessonsCount };
   }
 
   async update(id: string, updateCollectionDto: UpdateCollectionDto): Promise<Collection> {
@@ -191,7 +182,7 @@ export class CollectionsService {
 
     if (updateCollectionDto.groupId !== undefined) {
       updateData.groupId = updateCollectionDto.groupId
-        ? new Types.ObjectId(updateCollectionDto.groupId)
+        ? new PgId(updateCollectionDto.groupId)
         : (null as any);
     }
 
@@ -201,8 +192,7 @@ export class CollectionsService {
       const existingActive = await this.collectionModel.findOne({
         _id: { $ne: id },
         name: { $regex: new RegExp(`^${escapedName}$`, 'i') },
-        isDeleted: { $ne: true },
-      });
+        isDeleted: { $ne: true } });
       if (existingActive) {
         throw new ConflictException(
           await this.i18n.t('collection.COLLECTION_ALREADY_EXISTS', { lang }),
@@ -214,14 +204,12 @@ export class CollectionsService {
       const legacyDeleted = await this.collectionModel.find({
         _id: { $ne: id },
         name: trimmedName,
-        isDeleted: true,
-      });
+        isDeleted: true });
       for (const legacy of legacyDeleted) {
         const ts = Date.now();
         await this.collectionModel.findByIdAndUpdate(legacy._id, {
           name: `${legacy.name}_deleted_${ts}`,
-          slug: `${legacy.slug}_deleted_${ts}`,
-        });
+          slug: `${legacy.slug}_deleted_${ts}` });
       }
     }
 
@@ -235,8 +223,7 @@ export class CollectionsService {
           await this.collectionModel.exists({
             _id: { $ne: id },
             slug,
-            isDeleted: { $ne: true },
-          })
+            isDeleted: { $ne: true } })
         ) {
           slug = `${baseSlug}-${counter++}`;
         }
@@ -246,14 +233,12 @@ export class CollectionsService {
         const legacySlugDeleted = await this.collectionModel.find({
           _id: { $ne: id },
           slug,
-          isDeleted: true,
-        });
+          isDeleted: true });
         for (const legacy of legacySlugDeleted) {
           const ts = Date.now();
           await this.collectionModel.findByIdAndUpdate(legacy._id, {
             name: `${legacy.name}_deleted_${ts}`,
-            slug: `${legacy.slug}_deleted_${ts}`,
-          });
+            slug: `${legacy.slug}_deleted_${ts}` });
         }
       }
     }
@@ -307,8 +292,7 @@ export class CollectionsService {
         {
           isDeleted: true,
           name: deletedName,
-          slug: deletedSlug,
-        },
+          slug: deletedSlug },
         { returnDocument: 'after' },
       )
       .exec();
@@ -332,19 +316,17 @@ export class CollectionsService {
   async reorderCollections(items: { id: string; order: number }[]): Promise<void> {
     const operations = items.map((item) => ({
       updateOne: {
-        filter: { _id: new Types.ObjectId(item.id) },
-        update: { $set: { order: item.order } },
-      },
-    }));
+        filter: { _id: new PgId(item.id) },
+        update: { $set: { order: item.order } } } }));
     if (operations.length > 0) {
       await this.collectionModel.bulkWrite(operations);
     }
   }
 
   async assignGroup(collectionIds: string[], groupId: string | null): Promise<void> {
-    const targetGroupId = groupId ? new Types.ObjectId(groupId) : null;
+    const targetGroupId = groupId ? new PgId(groupId) : null;
     await this.collectionModel.updateMany(
-      { _id: { $in: collectionIds.map((id) => new Types.ObjectId(id)) } },
+      { _id: { $in: collectionIds.map((id) => new PgId(id)) } },
       { $set: { groupId: targetGroupId } },
     );
   }

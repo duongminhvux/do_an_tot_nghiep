@@ -1,4 +1,4 @@
-// MongoDB admin seeding logic kept separate so it can be tested without a live DB.
+// Shared admin seed input validation. PostgreSQL remains the sole database.
 export function isEnabled(value) {
   return ['1', 'true', 'yes', 'on'].includes(String(value ?? '').trim().toLowerCase());
 }
@@ -26,59 +26,32 @@ export function parseSeedOptions(argv, env) {
   };
 }
 
-function validateNewPassword(password, allowWeakPassword) {
-  if (!password) {
-    throw new Error('DEFAULT_ADMIN_PASSWORD is required to create/reset an admin.');
-  }
-  if (password.length < 12 && !allowWeakPassword) {
-    throw new Error('Password must contain at least 12 characters. For local DEV ONLY, explicitly set ADMIN_SEED_ALLOW_WEAK_PASSWORD=true.');
-  }
-}
 
 /**
- * Create only if absent. Never reset a real admin password on ordinary startup.
- * Reject ambiguous email/username matches instead of modifying someone else.
+ * SQL-only admin seed logic. Caller holds an explicit BEGIN/COMMIT transaction.
+ * No destructive inserts and no silent password resets on repeated deployments.
  */
-export async function seedAdminRecord(collection, options, hashPassword) {
-  const { email, username, password, resetPassword, reactivate, allowWeakPassword } = options;
-  const [byEmail, byUsername] = await Promise.all([
-    collection.findOne({ email }),
-    collection.findOne({ username }),
-  ]);
-
-  if (byEmail && byUsername && String(byEmail._id) !== String(byUsername._id)) {
-    throw new Error('Email and username belong to different admin accounts; refusing to merge.');
+export async function seedAdminSql(client, options, hashPassword) {
+  const {email,username,password,allowWeakPassword,resetPassword,reactivate}=options;
+  const result=await client.query('SELECT * FROM public.admins WHERE email=$1 OR username=$2 FOR UPDATE',[email,username]);
+  if(result.rows.length>1)throw new Error('Email and username belong to different admin accounts');
+  const existing=result.rows[0];
+  if(existing && (existing.email!==email || existing.username!==username))throw new Error('Admin identity differs from seed settings');
+  if((!existing||resetPassword)&&(!password || password.length<12&&!allowWeakPassword))
+    throw new Error('Admin password must contain at least 12 characters unless explicitly allowed for local development');
+  if(!existing){
+    const digest=await hashPassword(password,12);
+    await client.query(`INSERT INTO public.admins(email,username,password_hash,is_deleted,payload)
+      VALUES ($1,$2,$3,false,$4::jsonb)`,[email,username,digest,JSON.stringify({email,username,password:digest,isDeleted:false})]);
+    return {status:'created',email};
   }
-
-  const existing = byEmail || byUsername;
-  if (existing) {
-    if (existing.email !== email || existing.username !== username) {
-      throw new Error('Existing admin identity differs from the seed settings; refusing to overwrite.');
-    }
-    if (!resetPassword && !reactivate) {
-      return { status: existing.isDeleted ? 'existing-disabled' : 'existing', email, username };
-    }
-    const changes = { updatedAt: new Date() };
-    if (resetPassword) {
-      validateNewPassword(password, allowWeakPassword);
-      changes.password = await hashPassword(password);
-    }
-    if (reactivate) changes.isDeleted = false;
-    const update = { $set: changes };
-    if (reactivate) update.$unset = { deletedAt: '' };
-    await collection.updateOne({ _id: existing._id }, update);
-    return { status: 'updated', email, username };
+  if(resetPassword||reactivate){
+    const digest=resetPassword?await hashPassword(password,12):existing.password_hash;
+    await client.query(`UPDATE public.admins SET password_hash=$2,is_deleted=$3,deleted_at=$4,
+      payload=payload || $5::jsonb WHERE id=$1`,
+     [existing.id,digest,reactivate?false:existing.is_deleted,reactivate?null:existing.deleted_at,
+      JSON.stringify({password:digest,isDeleted:reactivate?false:existing.is_deleted})]);
+    return {status:'updated',email};
   }
-
-  validateNewPassword(password, allowWeakPassword);
-  const now = new Date();
-  await collection.insertOne({
-    email,
-    username,
-    password: await hashPassword(password),
-    isDeleted: false,
-    createdAt: now,
-    updatedAt: now,
-  });
-  return { status: 'created', email, username };
+  return {status:existing.is_deleted?'existing-disabled':'existing',email};
 }

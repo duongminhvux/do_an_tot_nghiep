@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { InjectConnection } from '@nestjs/mongoose';
-import type { Connection } from 'mongoose';
+import { InjectPgConnection } from '../../postgres/compat.js';
+import {makePgModel,type PgConnection} from '../../postgres/compat.js';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
 import { AudioProcessingService } from './audio-processing.service.js';
@@ -26,7 +26,7 @@ interface StoredAudioJob {
   finishedAt?: string;
 }
 
-/** RabbitMQ only. MongoDB is the durable job state and lease store;
+/** RabbitMQ only. PostgreSQL is the durable job state and lease store;
  * Redis is reserved for Arena/Socket.IO and is not an audio task queue.
  */
 @Injectable()
@@ -34,22 +34,20 @@ export class AudioQueueService {
   constructor(
     private readonly config: ConfigService,
     private readonly audioProcessing: AudioProcessingService,
-    @InjectConnection() private readonly connection: Connection,
+    @InjectPgConnection() private readonly connection: PgConnection,
   ) {}
 
   private jobs() {
-    const db=this.connection.db;
-    if(!db || db.databaseName!=='media_db') throw new Error('Media database unavailable');
-    return db.collection('audio_jobs');
+    return makePgModel('AudioJob',this.connection.pool);
   }
 
   private async enqueue(name:string,data:AudioJobData) {
     const id=randomUUID();
     const job:StoredAudioJob = {id,name,data,state:'waiting',createdAt:new Date().toISOString(),
       progress:{processed:0,total:0,succeeded:0,failed:0}};
-    await this.jobs().insertOne({...job});
+    await this.jobs().create({...job});
     // Publishing can time out after broker accepted a message. If that happens,
-    // keep a retryable job, never silently delete it from MongoDB.
+    // keep a retryable job, never silently delete it from PostgreSQL.
     const url=this.config.get<string>('RABBIT_JOB_BROKER_URL')||'http://job-broker:8020';
     const token=this.config.get<string>('JOB_INTERNAL_TOKEN')||'';
     if(token.length<24) throw new Error('JOB_INTERNAL_TOKEN not configured');
@@ -78,7 +76,7 @@ export class AudioQueueService {
   }
 
   /** Called from the authenticated worker endpoint. RabbitMQ ACK comes only
-   * after durable completion. Mongo lease allows retry after worker death.
+   * after durable completion. PostgreSQL lease allows retry after worker death.
    */
   async executeQueuedJob(jobId:string) {
     const jobs=this.jobs(), now=new Date(), lockOwner=randomUUID();
@@ -128,7 +126,7 @@ export class AudioQueueService {
   }
 
   async workerConfig() {
-    const config=await this.connection.db?.collection<AudioWorkerSettingsDocument>('system_settings').findOne({_id:'audio_worker'});
+    const config=await makePgModel('SystemSetting',this.connection.pool).findOne({key:'audio_worker'});
     return {maxWorkers:config?.maxWorkers===2?2:1,backlogThreshold:config?.backlogThreshold||10,
       note:'Worker count is provisioned by Docker/operations; no GPU autoscaler is enabled.'};
   }
@@ -136,7 +134,7 @@ export class AudioQueueService {
     const maxWorkers=Number(input?.maxWorkers),backlogThreshold=Number(input?.backlogThreshold);
     if(![1,2].includes(maxWorkers)||!Number.isInteger(backlogThreshold)||backlogThreshold<1||backlogThreshold>1000)
       throw new Error('Invalid worker settings');
-    await this.connection.db!.collection<AudioWorkerSettingsDocument>('system_settings').updateOne({_id:'audio_worker'},
+    await makePgModel('SystemSetting',this.connection.pool).updateOne({key:'audio_worker'},
       {$set:{maxWorkers,backlogThreshold}},{upsert:true});
     return this.workerConfig();
   }

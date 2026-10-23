@@ -1,71 +1,62 @@
+import { PgId } from '../../../postgres/compat.js';
 import {
   BadRequestException,
   Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+  NotFoundException } from '@nestjs/common';
 import { XP } from '@repo/shared-types/learning-xp';
 import { LearningActivityService } from '../../learning-activity/learning-activity.service.js';
-import { InjectModel } from '@nestjs/mongoose';
-import { type Model, Types } from 'mongoose';
+import { InjectPgModel } from '../../../postgres/compat.js';
+import { type Model } from '../../../postgres/compat.js';
 import {
   LearningSession,
-  LearningSessionDocument,
-} from './schemas/learning-session.schema.js';
+  LearningSessionDocument } from './schemas/learning-session.schema.js';
 import {
   LearningSessionWord,
-  LearningSessionWordDocument,
-} from './schemas/learning-session-word.schema.js';
+  LearningSessionWordDocument } from './schemas/learning-session-word.schema.js';
 import {
   UserLessonProgress,
-  UserLessonProgressDocument,
-} from '../progress/schemas/user-lesson-progress.schema.js';
+  UserLessonProgressDocument } from '../progress/schemas/user-lesson-progress.schema.js';
 import {
   UserLessonWord,
-  UserLessonWordDocument,
-} from '../progress/schemas/user-lesson-word.schema.js';
+  UserLessonWordDocument } from '../progress/schemas/user-lesson-word.schema.js';
 import {
   UserWordReview,
-  UserWordReviewDocument,
-} from '../reviews/schemas/user-word-review.schema.js';
+  UserWordReviewDocument } from '../reviews/schemas/user-word-review.schema.js';
 import {
   UserDailyActivity,
-  UserDailyActivityDocument,
-} from '../progress/schemas/user-daily-activity.schema.js';
+  UserDailyActivityDocument } from '../progress/schemas/user-daily-activity.schema.js';
 import {
   Lesson,
-  LessonDocument,
-} from '../../vocabulary/lessons/lesson.schema.js';
+  LessonDocument } from '../../vocabulary/lessons/lesson.schema.js';
 import {
   LessonWord,
-  LessonWordDocument,
-} from '../../vocabulary/lessons/lesson-word.schema.js';
+  LessonWordDocument } from '../../vocabulary/lessons/lesson-word.schema.js';
 import { CreateSessionDto } from './dto/create-session.dto.js';
 import { RecordActionDto } from './dto/record-action.dto.js';
 import { I18nService } from 'nestjs-i18n';
 import { NotificationClient } from '../../../common/clients/notification-client.js';
 import {
   ActivityAction,
-  ActivityCategory,
-} from '../../activity-logs/schemas/activity-log.schema.js';
+  ActivityCategory } from '../../activity-logs/schemas/activity-log.schema.js';
 
 @Injectable()
 export class SessionsService {
   constructor(
-    @InjectModel(LearningSession.name)
+    @InjectPgModel(LearningSession.name)
     private sessionModel: Model<LearningSessionDocument>,
-    @InjectModel(LearningSessionWord.name)
+    @InjectPgModel(LearningSessionWord.name)
     private sessionWordModel: Model<LearningSessionWordDocument>,
-    @InjectModel(UserLessonProgress.name)
+    @InjectPgModel(UserLessonProgress.name)
     private progressModel: Model<UserLessonProgressDocument>,
-    @InjectModel(UserLessonWord.name)
+    @InjectPgModel(UserLessonWord.name)
     private userLessonWordModel: Model<UserLessonWordDocument>,
-    @InjectModel(UserWordReview.name)
+    @InjectPgModel(UserWordReview.name)
     private reviewModel: Model<UserWordReviewDocument>,
-    @InjectModel(Lesson.name)
+    @InjectPgModel(Lesson.name)
     private lessonModel: Model<LessonDocument>,
-    @InjectModel(LessonWord.name)
+    @InjectPgModel(LessonWord.name)
     private lessonWordModel: Model<LessonWordDocument>,
-    @InjectModel(UserDailyActivity.name)
+    @InjectPgModel(UserDailyActivity.name)
     private dailyActivityModel: Model<UserDailyActivityDocument>,
     private readonly i18n: I18nService,
     private readonly activityLogsService: NotificationClient,
@@ -84,36 +75,30 @@ export class SessionsService {
     }
 
     const totalWords = await this.lessonWordModel.countDocuments({
-      lessonId: lesson._id,
-    });
+      lessonId: lesson._id });
 
     const session = await this.sessionModel.create({
-      userId: new Types.ObjectId(userId),
+      userId: new PgId(userId),
       type: createSessionDto.type || 'LESSON',
       lessonId: lesson._id,
       startedAt: createSessionDto.startedAt
         ? new Date(createSessionDto.startedAt)
         : new Date(),
       totalWords,
-      completedWords: 0,
-    });
+      completedWords: 0 });
 
     if (session.lessonId) {
       await this.progressModel.findOneAndUpdate(
         {
-          userId: new Types.ObjectId(userId),
-          lessonId: session.lessonId,
-        },
+          userId: new PgId(userId),
+          lessonId: session.lessonId },
         {
           $set: {
-            lastStudiedAt: session.startedAt,
-          },
+            lastStudiedAt: session.startedAt },
           $setOnInsert: {
             status: 'IN_PROGRESS',
             progress: 0,
-            startedAt: session.startedAt,
-          },
-        },
+            startedAt: session.startedAt } },
         { upsert: true },
       );
     }
@@ -126,17 +111,16 @@ export class SessionsService {
    * Tự động khởi tạo Session nếu client chưa có sessionId
    */
   async recordAction(userId: string, dto: RecordActionDto) {
-    const userObjId = new Types.ObjectId(userId);
-    const wordObjId = new Types.ObjectId(dto.wordId);
+    const userObjId = new PgId(userId);
+    const wordObjId = new PgId(dto.wordId);
     const now = dto.answeredAt ? new Date(dto.answeredAt) : new Date();
 
     // 1. Tìm hoặc Khởi tạo LearningSession
     let session: LearningSessionDocument | null = null;
     if (dto.sessionId) {
       session = await this.sessionModel.findOne({
-        _id: new Types.ObjectId(dto.sessionId),
-        userId: userObjId,
-      });
+        _id: new PgId(dto.sessionId),
+        userId: userObjId });
       if (!session) {
         throw new NotFoundException(
           await this.i18n.t('learning.SESSION_NOT_FOUND'),
@@ -155,8 +139,7 @@ export class SessionsService {
         );
       }
       const totalWords = await this.lessonWordModel.countDocuments({
-        lessonId: lesson._id,
-      });
+        lessonId: lesson._id });
 
       session = await this.sessionModel.create({
         userId: userObjId,
@@ -164,19 +147,21 @@ export class SessionsService {
         lessonId: lesson._id,
         startedAt: dto.sessionStartedAt ? new Date(dto.sessionStartedAt) : now,
         totalWords,
-        completedWords: 0,
-      });
+        completedWords: 0 });
+    }
+
+    if (!session) {
+      throw new NotFoundException(await this.i18n.t('learning.SESSION_NOT_FOUND'));
     }
 
     // 2. Xác định LessonWord ID tương ứng (nếu chưa truyền)
-    let lessonWordId: Types.ObjectId | undefined = undefined;
+    let lessonWordId: PgId | undefined = undefined;
     if (dto.lessonWordId) {
-      lessonWordId = new Types.ObjectId(dto.lessonWordId);
+      lessonWordId = new PgId(dto.lessonWordId);
     } else if (session.lessonId) {
       const lw = await this.lessonWordModel.findOne({
         lessonId: session.lessonId,
-        wordId: wordObjId,
-      });
+        wordId: wordObjId });
       if (lw) {
         lessonWordId = lw._id;
       }
@@ -190,13 +175,11 @@ export class SessionsService {
       mode: dto.mode,
       rating: dto.rating,
       isCorrect: dto.isCorrect,
-      answeredAt: now,
-    });
+      answeredAt: now });
 
     // Cập nhật số từ độc lập đã làm trong session
     const evaluatedWordIds = await this.sessionWordModel.distinct('wordId', {
-      sessionId: session._id,
-    });
+      sessionId: session._id });
     session.completedWords = evaluatedWordIds.length;
     await session.save();
 
@@ -214,12 +197,10 @@ export class SessionsService {
         await this.userLessonWordModel.findOneAndUpdate(
           {
             userId: userObjId,
-            lessonWordId,
-          },
+            lessonWordId },
           {
             $setOnInsert: { learnedAt: now },
-            ...(isMasteredRating ? { $set: { completedAt: now } } : {}),
-          },
+            ...(isMasteredRating ? { $set: { completedAt: now } } : {}) },
           { upsert: true, returnDocument: 'after' },
         );
       }
@@ -227,8 +208,7 @@ export class SessionsService {
       // 4.2. Cập nhật UserWordReview (Thuật toán lặp lại ngắt quãng SRS)
       review = await this.reviewModel.findOne({
         userId: userObjId,
-        wordId: wordObjId,
-      });
+        wordId: wordObjId });
 
       if (!review) {
         review = new this.reviewModel({
@@ -238,8 +218,7 @@ export class SessionsService {
           reviewCount: 0,
           correctCount: 0,
           incorrectCount: 0,
-          intervalDays: 0,
-        });
+          intervalDays: 0 });
       }
 
       review.reviewCount += 1;
@@ -305,8 +284,7 @@ export class SessionsService {
         sourceKey: `vocab-word:${review._id}:${review.reviewCount}`,
         xp: learned ? XP.WORD_LEARNED : XP.WORD_REVIEWED,
         occurredAt: now,
-        refId: String(review._id),
-      });
+        refId: String(review._id) });
 
       // 4.3. Tính toán và cập nhật UserLessonProgress
       if (session.lessonId) {
@@ -319,8 +297,7 @@ export class SessionsService {
 
         const learnedCount = await this.userLessonWordModel.countDocuments({
           userId: userObjId,
-          lessonWordId: { $in: allLessonWordIds },
-        });
+          lessonWordId: { $in: allLessonWordIds } });
 
         const progressPercent = Math.min(
           100,
@@ -332,19 +309,15 @@ export class SessionsService {
         lessonProgress = await this.progressModel.findOneAndUpdate(
           {
             userId: userObjId,
-            lessonId: session.lessonId,
-          },
+            lessonId: session.lessonId },
           {
             $set: {
               progress: progressPercent,
               status: lessonStatus,
               lastStudiedAt: now,
-              ...(progressPercent >= 100 ? { completedAt: now } : {}),
-            },
+              ...(progressPercent >= 100 ? { completedAt: now } : {}) },
             $setOnInsert: {
-              startedAt: session.startedAt || now,
-            },
-          },
+              startedAt: session.startedAt || now } },
           { upsert: true, returnDocument: 'after' },
         );
       }
@@ -353,13 +326,11 @@ export class SessionsService {
       if (session.lessonId) {
         lessonProgress = await this.progressModel.findOne({
           userId: userObjId,
-          lessonId: session.lessonId,
-        });
+          lessonId: session.lessonId });
       }
       review = await this.reviewModel.findOne({
         userId: userObjId,
-        wordId: wordObjId,
-      });
+        wordId: wordObjId });
     }
 
     return {
@@ -373,10 +344,8 @@ export class SessionsService {
         ? {
             status: review.status,
             intervalDays: review.intervalDays,
-            nextReviewAt: review.nextReviewAt,
-          }
-        : undefined,
-    };
+            nextReviewAt: review.nextReviewAt }
+        : undefined };
   }
 
   /**
@@ -384,9 +353,8 @@ export class SessionsService {
    */
   async complete(userId: string, sessionId: string, endedAt?: string) {
     const session = await this.sessionModel.findOne({
-      _id: new Types.ObjectId(sessionId),
-      userId: new Types.ObjectId(userId),
-    });
+      _id: new PgId(sessionId),
+      userId: new PgId(userId) });
     if (!session) {
       throw new NotFoundException(
         await this.i18n.t('learning.SESSION_NOT_FOUND'),
@@ -406,8 +374,7 @@ export class SessionsService {
     const studyMinutes = Math.max(1, Math.round(durationSeconds / 60));
     await this.incrementDailyActivity(session.userId, session.endedAt, {
       sessionCount: 1,
-      studyMinutes,
-    });
+      studyMinutes });
 
     {
       const lesson = session.lessonId
@@ -430,8 +397,7 @@ export class SessionsService {
         correct: session.completedWords,
         total: session.totalWords,
         durationSec: durationSeconds,
-        metadata: { sessionType: session.type },
-      });
+        metadata: { sessionType: session.type } });
     }
 
     void this.activityLogsService.log({
@@ -446,18 +412,15 @@ export class SessionsService {
         lessonId: session.lessonId ? String(session.lessonId) : null,
         totalWords: session.totalWords,
         completedWords: session.completedWords,
-        durationSeconds,
-      },
-    }).catch(err => this.activityLogsService.reportError('activity log',err));
+        durationSeconds } }).catch(err => this.activityLogsService.reportError('activity log',err));
 
     return session;
   }
 
   async findOne(userId: string, id: string) {
     const session = await this.sessionModel.findOne({
-      _id: new Types.ObjectId(id),
-      userId: new Types.ObjectId(userId),
-    });
+      _id: new PgId(id),
+      userId: new PgId(userId) });
     if (!session) {
       throw new NotFoundException(
         await this.i18n.t('learning.SESSION_NOT_FOUND'),
@@ -468,13 +431,13 @@ export class SessionsService {
 
   async findAll(userId: string) {
     return this.sessionModel
-      .find({ userId: new Types.ObjectId(userId) })
+      .find({ userId: new PgId(userId) })
       .sort({ startedAt: -1 })
       .limit(50);
   }
 
   async incrementDailyActivity(
-    userId: Types.ObjectId,
+    userId: PgId,
     date: Date,
     inc: {
       studyMinutes?: number;

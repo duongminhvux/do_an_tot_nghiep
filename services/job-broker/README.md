@@ -1,3 +1,3 @@
-# RabbitMQ Audio Broker
+# Media Job Broker (PostgreSQL)
 
-Media Jobs owns audio job status in **MongoDB `media_db.audio_jobs`**, never Redis Lists or BullMQ. Private HTTP publisher validates a persisted waiting job, then sends persistent RabbitMQ message. One separate consumer receives, POSTs to the isolated Nest Audio Worker, and ACKs only after processing. Retry queue and DLQ are durable. Redis remains Arena-specific. No GPU autoscaler is deployed in this phase.
+The media service persists audio jobs in `media_db.audio_jobs` and ASR jobs in `media_db.asr_jobs`. RabbitMQ is the background queue; SeaweedFS stores media bytes. The broker and worker use psycopg. See `README_POSTGRES_V8.md`.

@@ -5,8 +5,7 @@ import {
   Param,
   Patch,
   Post,
-  Query,
-} from '@nestjs/common';
+  Query } from '@nestjs/common';
 import { AdminController } from '../../auth/decorators/admin-controller.decorator.js';
 import { CreateWordDto } from './dto/create-word.dto.js';
 import { UpdateWordDto } from './dto/update-word.dto.js';

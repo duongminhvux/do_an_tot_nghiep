@@ -2,8 +2,8 @@ import { ArenaSettingsService } from '../admin/arena-settings.service.js';
 import { ARENA_DEFAULTS } from '../admin/arena-settings.defaults.js';
 import { Injectable, Optional } from '@nestjs/common';
 import { WsException } from '@nestjs/websockets';
-import { InjectModel } from '@nestjs/mongoose';
-import type { Model } from 'mongoose';
+import { InjectPgModel } from '../../../postgres/compat.js';
+import type { Model } from '../../../postgres/compat.js';
 
 import { RedisService } from '../../../common/redis/redis.service.js';
 import { ArenaService } from '../arena.service.js';
@@ -37,7 +37,7 @@ export class ArenaMatchmakingService {
     private readonly redisService: RedisService,
     private readonly arenaProfileService: ArenaService,
     private readonly arenaMatchService: ArenaMatchService,
-    @InjectModel(User.name)
+    @InjectPgModel(User.name)
     private readonly userModel: Model<User>,
     @Optional() private readonly settings?: ArenaSettingsService,
   ) {}
@@ -94,8 +94,7 @@ export class ArenaMatchmakingService {
 
     await redis.zAdd(this.queueKey, {
       score: rating,
-      value: userId,
-    });
+      value: userId });
 
     const opponent = await this.findOpponent(userId, rating);
 
@@ -104,16 +103,14 @@ export class ArenaMatchmakingService {
       return {
         matched: false,
         status: 'WAITING',
-        rating,
-      };
+        rating };
     }
 
     const users = await this.userModel
       .find({
         _id: { $in: [userId, opponent.userId] },
         isDeleted: { $ne: true },
-        isBanned: { $ne: true },
-      })
+        isBanned: { $ne: true } })
       .select('_id username avatarUrl')
       .lean();
     const userById = new Map(users.map((user) => [String(user._id), user]));
@@ -145,16 +142,13 @@ export class ArenaMatchmakingService {
           userId,
           rating: profile.rating,
           username: playerA.username,
-          avatar: playerA.avatarUrl,
-        },
+          avatar: playerA.avatarUrl },
         {
           userId: opponent.userId,
           rating: opponent.rating,
           username: playerB.username,
-          avatar: playerB.avatarUrl,
-        },
-      ],
-    };
+          avatar: playerB.avatarUrl },
+      ] };
   }
 
   /** Xóa người chơi khỏi queue khi họ hủy tìm trận. */
@@ -164,8 +158,7 @@ export class ArenaMatchmakingService {
     const removed = await redis.zRem(this.queueKey, userId);
 
     return {
-      success: removed > 0,
-    };
+      success: removed > 0 };
   }
 
   /** Tìm một người chơi khác trong khoảng rating cho phép. */

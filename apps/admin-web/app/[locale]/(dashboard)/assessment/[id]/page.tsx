@@ -73,7 +73,7 @@ export default function ExamDetailPage() {
   const [audioJobError, setAudioJobError] = useState<string | null>(null);
   const [isStartingAudioJob, setIsStartingAudioJob] = useState(false);
 
-  // 1. Query Real Exam details from MongoDB via API
+  // 1. Query Real Exam details from PostgreSQL via API
   const {
     data: examResponse,
     isLoading: isExamLoading,
@@ -106,7 +106,7 @@ export default function ExamDetailPage() {
     };
   }, [examResponse, examId]);
 
-  // 2. Query Real Questions of this exam from MongoDB
+  // 2. Query Real Questions of this exam from PostgreSQL
   const { data: questionsResponse } = useQuery({
     queryKey: ['admin-exam-questions', examId],
     queryFn: async () => {
@@ -133,7 +133,7 @@ export default function ExamDetailPage() {
     setSelectedQuestionForEdit(target);
   }, [examId, editQuestionOrder, questionsList]);
 
-  // 3. Query Real Passages of this exam from MongoDB
+  // 3. Query Real Passages of this exam from PostgreSQL
   const { data: passagesResponse } = useQuery({
     queryKey: ['admin-exam-passages', examId],
     queryFn: async () => {
@@ -486,7 +486,7 @@ export default function ExamDetailPage() {
             </div>
             {audioJob.state === 'completed' && (
               <div className="mt-2 flex items-center gap-1 text-[11px] font-medium text-emerald-700">
-                <CheckCircle2 className="h-3.5 w-3.5" /> Audio đã được cập nhật từ Mongo/local storage.
+                <CheckCircle2 className="h-3.5 w-3.5" /> Audio đã được cập nhật từ PostgreSQL/object storage.
               </div>
             )}
           </div>

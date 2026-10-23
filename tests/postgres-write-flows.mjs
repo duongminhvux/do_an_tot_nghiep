@@ -1,0 +1,111 @@
+/** Run in content-service and assessment-service. Database fixtures always roll back. */
+import { createRequire } from 'node:module';
+import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import assert from 'node:assert/strict';
+const require=createRequire(new URL('../apps/api/package.json',import.meta.url));
+require('reflect-metadata');
+const {Pool}=require('pg'),{ConfigService}=require('@nestjs/config');
+const {makePgModel}=await import('../apps/api/dist/postgres/compat.js');
+const role=process.env.SERVICE_ROLE;
+assert(['content','assessment','arena'].includes(role),'Run in Content, Assessment or Arena');
+const pool=new Pool(),client=await pool.connect();
+const model=name=>makePgModel(name,client);
+try {
+  await client.query('BEGIN');
+  const prefix=`regression-${randomUUID()}`;
+  if(role==='content') {
+    const {WordsService}=await import('../apps/api/dist/modules/vocabulary/words/words.service.js');
+    const words=model('Word');
+    const service=new WordsService(words,{t:async key=>key});
+    const result=await service.create({word:prefix,level:'A1',parts:[{partOfSpeech:'noun',meanings:[{definition:'A fixture'}]}]});
+    assert.equal(result.data.parts[0].partOfSpeech,'noun');
+    assert.equal((await words.findById(result.data._id)).word,prefix);
+    assert.equal((await client.query('SELECT part_of_speech FROM words WHERE id=$1',[String(result.data._id)])).rows[0].part_of_speech,null);
+    const {DictationService}=await import('../apps/api/dist/modules/dictation/dictation.service.js');
+    const lessons=model('DictationLesson'),segments=model('DictationSegment');
+    const tts={synthesizeSequence:async({segments})=>({audio:Buffer.from('fixture'),durationMs:segments.length*1000,segmentTimingsMs:segments.map((_,i)=>({startMs:i*1000,endMs:(i+1)*1000,durationMs:1000}))})};
+    const storage={saveBuffer:async key=>({url:`http://fixture.invalid/${key}`,storageKey:key}),delete:async()=>{}};
+    const dictation=new DictationService(lessons,segments,model('DictationProgress'),model('DictationTopic'),model('DictationSection'),tts,{}, {deleteFile:async()=>{}},storage,new ConfigService());
+    const lesson=await dictation.create({title:prefix,level:'A1',sourceText:'Hello world. How are you?',language:'en-US',voiceIds:['af_heart'],speed:1,pauseAfterMs:0});
+    const generated=await dictation.generateAudio(String(lesson._id));
+    assert.equal(generated.status,'READY');
+    assert.equal(generated.segments.length,2);
+    assert(generated.segments.every(segment=>segment.text&&segment.durationMs===1000));
+    const raw=await client.query('SELECT word, words FROM dictationsegments WHERE lesson_id=$1',[String(lesson._id)]);
+    assert(raw.rows.every(segment=>segment.word===null&&Array.isArray(segment.words)));
+    await dictation.publish(String(lesson._id));
+    const learner=randomUUID(),lessonId=String(lesson._id);
+    let progress=await dictation.recordReplay(learner,lessonId,0);
+    assert.deepEqual(progress.completedSegments,[]);assert.deepEqual(progress.revealedSegments,[]);
+    assert.equal(progress.segmentProgress[0].replayCount,1);
+    progress=await dictation.revealTranscript(learner,lessonId);
+    assert.equal(progress.transcriptRevealed,true);
+    await dictation.recordAttempt(learner,lessonId,0,true);
+    progress=await dictation.revealSegment(learner,lessonId,1);
+    assert.deepEqual(progress.completedSegments,[0]);assert.deepEqual(progress.revealedSegments,[1]);
+    assert.equal(progress.completed,true);
+    const storedProgress=(await client.query('SELECT completed_segments, revealed_segments FROM dictationprogresses WHERE user_id=$1 AND lesson_id=$2',[learner,lessonId])).rows[0];
+    assert.deepEqual(storedProgress.completed_segments,[0]);assert.deepEqual(storedProgress.revealed_segments,[1]);
+    await client.query(await readFile(new URL('../database/postgres/repair-dictation-progress-arrays.sql',import.meta.url),'utf8'));
+    const afterRepair=await dictation.getProgress(learner,lessonId);
+    assert.deepEqual(afterRepair.completedSegments,[0]);assert.deepEqual(afterRepair.revealedSegments,[1]);
+    // Transcript reveal also works as the first action, before a progress row exists.
+    await dictation.revealTranscript(randomUUID(),lessonId);
+    console.log('Content: replay, transcript reveal, answers and revealed index arrays passed on PostgreSQL');
+    console.log('Content: real PostgreSQL word creation and dictation audio persistence passed (TTS/storage stubbed)');
+  } else if(role==='assessment') {
+    const {ExamGroupsService}=await import('../apps/api/dist/modules/assessment/exams/exam-groups.service.js');
+    const groups=model('ExamGroup'),exams=model('Exam');
+    const service=new ExamGroupsService(groups,exams,model('Attempt'));
+    const a=await service.create({name:prefix+'-a'}),b=await service.create({name:prefix+'-b'});
+    await exams.create({name:prefix+'-exam',slug:prefix+'-exam',type:'TOEIC',groupId:a._id,isDeleted:false});
+    await exams.create({name:prefix+'-deleted',slug:prefix+'-deleted',type:'TOEIC',groupId:b._id,isDeleted:true});
+    const listed=await service.findAll({search:prefix,page:1,limit:100});
+    assert.equal(listed.data.length,2);
+    const listedA=listed.data.find(row=>String(row._id)===String(a._id));
+    const listedB=listed.data.find(row=>String(row._id)===String(b._id));
+    assert.equal(listedA.examCount,1);assert.equal(listedB.examCount,0);
+    assert(listedA.slug&&!('examCountObj' in listedA));
+    assert.equal((await service.findOne(String(listedA._id))).name,a.name);
+    assert.equal((await service.getExams(String(listedA._id))).length,1);
+    const {AttemptsService}=await import('../apps/api/dist/modules/assessment/attempts/attempts.service.js');
+    const questions=model('Question'),attempts=model('Attempt');
+    const attemptService=new AttemptsService(attempts,exams,questions,model('Passage'));
+    const exam=(await service.getExams(String(listedA._id)))[0],learner=randomUUID();
+    const question=await questions.create({examId:exam._id,section:'READING',part:5,content:'Choose the correct word.',options:[{key:'A',text:'First'},{key:'B',text:'Second'}],correctAnswer:'A',isActive:true});
+    const created=await attemptService.create(learner,{examId:String(exam._id),mode:'TEST',selectedParts:[5]});
+    const opened=await attemptService.findOne(learner,created._id);
+    assert.equal(opened.status,'IN_PROGRESS');assert.equal(opened.questions.length,1);
+    assert.equal(opened.questions[0]._id,String(question._id));assert(!('correctAnswer' in opened.questions[0]));
+    // Frozen prompts/answer keys survive later exam edits; no synthetic legacy backfill.
+    await questions.updateOne({_id:question._id},{$set:{content:'Edited after attempt started',correctAnswer:'B'}});
+    assert.equal((await attemptService.findOne(learner,created._id)).questions[0].content,'Choose the correct word.');
+    await attemptService.saveAnswer(learner,created._id,{questionId:String(question._id),answer:'A'});
+    assert.equal((await attemptService.findOne(learner,created._id)).answers[String(question._id)],'A');
+    await assert.rejects(()=>attemptService.saveAnswer(learner,created._id,{questionId:String(question._id),answer:'B'}),/already been answered/);
+    const submitted=await attemptService.submit(learner,created._id);
+    assert.equal(submitted.status,'FINISHED');assert.equal(submitted.correctAnswers,1);
+    assert.equal(submitted.answeredQuestions,1);assert.equal(submitted.questions[0].correctAnswer,'A');
+    assert(Number.isFinite(submitted.durationSpent));assert(submitted.submittedAt);
+    await assert.rejects(()=>attemptService.findOne(randomUUID(),created._id),/Attempt not found/);
+    const legacy=await attempts.create({userId:learner,examId:exam._id,mode:'PRACTICE',selectedParts:[5],questionSnapshot:[],status:'IN_PROGRESS',startedAt:new Date()});
+    await assert.rejects(()=>attemptService.findOne(learner,String(legacy._id)),/legacy attempt/);
+    console.log('Assessment: resume, snapshot isolation, answer persistence and submission passed on PostgreSQL');
+    console.log('Assessment: correlated group counts, exclusion projection, IDs and group detail passed on PostgreSQL');
+  } else {
+    await import('../apps/api/dist/modules/arena/schemas/arena-match.schema.js');
+    await import('../apps/api/dist/modules/arena/schemas/arena-match-player.schema.js');
+    const matches=model('ArenaMatch'),players=model('ArenaMatchPlayer'),userId=randomUUID(),questionId=randomUUID();
+    const match=await matches.create({type:'RANK',eliminatedUserIds:[]});
+    const player=await players.create({matchId:match._id,userId,scoredQuestionIds:[]});
+    await matches.updateOne({_id:match._id},{$set:{eliminatedUserIds:[userId]}});
+    await players.updateOne({_id:player._id},{$set:{scoredQuestionIds:[questionId]}});
+    await client.query(await readFile(new URL('../database/postgres/repair-arena-nested-fields.sql',import.meta.url),'utf8'));
+    assert.deepEqual((await matches.findById(match._id)).eliminatedUserIds,[userId]);
+    assert.deepEqual((await players.findById(player._id)).scoredQuestionIds,[questionId]);
+    console.log('Arena: UUID lists round-trip as JSONB and survive repeat repairs');
+  }
+} finally {
+  await client.query('ROLLBACK');client.release();await pool.end();
+}

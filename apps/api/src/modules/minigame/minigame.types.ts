@@ -1,17 +1,14 @@
 export enum MiniGameType {
   WORD_SHOOTER = 'WORD_SHOOTER',
   TYPING_RUSH = 'TYPING_RUSH',
-  MEANING_TYPING = 'MEANING_TYPING',
-}
+  MEANING_TYPING = 'MEANING_TYPING' }
 export enum TypingRushDifficulty {
   EASY = 'EASY',
   NORMAL = 'NORMAL',
-  HARD = 'HARD',
-}
+  HARD = 'HARD' }
 export enum MiniGameSourceType {
   SYSTEM = 'SYSTEM',
-  USER = 'USER',
-}
+  USER = 'USER' }
 export type GameWord = { id: string; word: string; meaning?: string };
 export type VocabularySource = {
   id: string;

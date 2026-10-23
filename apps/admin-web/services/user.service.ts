@@ -43,20 +43,20 @@ export const userService = {
     return res.data.data;
   },
 
-  update: async (id: string, payload: UpdateUserPayload, mongoId?: string): Promise<UserItem> => {
-    const targetId = mongoId || id;
+  update: async (id: string, payload: UpdateUserPayload, recordId?: string): Promise<UserItem> => {
+    const targetId = recordId || id;
     const res = await apiClient.patch<ApiResponse<UserItem>>(`/admin/users/${targetId}`, payload);
     return res.data.data;
   },
 
-  toggleBan: async (id: string, mongoId?: string): Promise<any> => {
-    const targetId = mongoId || id;
+  toggleBan: async (id: string, recordId?: string): Promise<any> => {
+    const targetId = recordId || id;
     const res = await apiClient.patch<ApiResponse<any>>(`/admin/users/${targetId}/toggle-ban`);
     return res.data.data;
   },
 
-  delete: async (id: string, mongoId?: string): Promise<boolean> => {
-    const targetId = mongoId || id;
+  delete: async (id: string, recordId?: string): Promise<boolean> => {
+    const targetId = recordId || id;
     await apiClient.delete(`/admin/users/${targetId}`);
     return true;
   },

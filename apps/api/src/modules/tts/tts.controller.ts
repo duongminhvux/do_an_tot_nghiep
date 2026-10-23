@@ -3,8 +3,7 @@ import type { Response } from 'express';
 import { Public } from '../auth/decorators/public.decorator.js';
 import {
   SynthesizeSequenceTtsDto,
-  SynthesizeTtsDto,
-} from './tts.dto.js';
+  SynthesizeTtsDto } from './tts.dto.js';
 import { TtsService, type TtsAudioResult } from './tts.service.js';
 
 @Controller('tts')

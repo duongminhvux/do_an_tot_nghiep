@@ -1,13 +1,13 @@
+import { PgId } from '../../../postgres/compat.js';
 import type { WordShooterSettingsDto } from '../dto/word-shooter-settings.dto.js';
 import {
   BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
-  OnModuleInit,
-} from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { type Model, Types } from 'mongoose';
+  OnModuleInit } from '@nestjs/common';
+import { InjectPgModel } from '../../../postgres/compat.js';
+import { type Model } from '../../../postgres/compat.js';
 import {
   WORD_SHOOTER_DEFAULT_SETTINGS,
   type WordShooterSettings,
@@ -16,20 +16,18 @@ import {
   MEANING_TYPING_DEFAULT_SETTINGS,
   TYPING_RUSH_DEFAULT_SETTINGS,
   type MeaningTypingSettings,
-  type TypingRushSettings,
-} from '../game-registry.js';
+  type TypingRushSettings } from '../game-registry.js';
 import { MiniGameType } from '../minigame.types.js';
 import type { TypingRushSettingsDto } from '../dto/typing-rush-settings.dto.js';
 import type { MeaningTypingSettingsDto } from '../dto/meaning-typing-settings.dto.js';
 import {
   GameCategory,
-  GameDefinition,
-} from '../schemas/game-definition.schema.js';
+  GameDefinition } from '../schemas/game-definition.schema.js';
 import { ReorderGamesDto, UpdateGameDto } from '../dto/game-definition.dto.js';
 @Injectable()
 export class GameCatalogService implements OnModuleInit {
   constructor(
-    @InjectModel(GameDefinition.name)
+    @InjectPgModel(GameDefinition.name)
     private readonly games: Model<GameDefinition>,
   ) {}
   async onModuleInit() {
@@ -48,9 +46,7 @@ export class GameCatalogService implements OnModuleInit {
           settings: { ...TYPING_RUSH_DEFAULT_SETTINGS },
           category: GameCategory.SOLO,
           order: 0,
-          isActive: true,
-        },
-      },
+          isActive: true } },
       { upsert: true },
     );
     await this.games.updateOne(
@@ -68,9 +64,7 @@ export class GameCatalogService implements OnModuleInit {
           settings: { ...MEANING_TYPING_DEFAULT_SETTINGS },
           category: GameCategory.SOLO,
           order: 1,
-          isActive: true,
-        },
-      },
+          isActive: true } },
       { upsert: true },
     );
     await this.games.updateOne(
@@ -89,9 +83,7 @@ export class GameCatalogService implements OnModuleInit {
           settings: { ...WORD_SHOOTER_DEFAULT_SETTINGS },
           category: GameCategory.SOLO,
           order: 2,
-          isActive: true,
-        },
-      },
+          isActive: true } },
       { upsert: true },
     );
   }
@@ -100,13 +92,12 @@ export class GameCatalogService implements OnModuleInit {
     return this.games
       .find({
         code: { $in: IMPLEMENTED_GAME_CODES },
-        ...(publicOnly ? { isActive: true } : {}),
-      })
+        ...(publicOnly ? { isActive: true } : {}) })
       .sort({ order: 1, _id: 1 })
       .lean();
   }
   async update(id: string, dto: UpdateGameDto) {
-    if (!Types.ObjectId.isValid(id))
+    if (!PgId.isValid(id))
       throw new BadRequestException('INVALID_GAME_ID');
     const game = await this.games
       .findOneAndUpdate(
@@ -260,9 +251,7 @@ export class GameCatalogService implements OnModuleInit {
         dto.items.map((item) => ({
           updateOne: {
             filter: { _id: item.id },
-            update: { $set: { order: item.order } },
-          },
-        })),
+            update: { $set: { order: item.order } } } })),
       );
     return this.list();
   }

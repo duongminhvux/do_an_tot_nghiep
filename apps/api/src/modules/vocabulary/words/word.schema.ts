@@ -1,177 +1,166 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import type { HydratedDocument } from 'mongoose';
+import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
+import type { PgDocument } from '../../../postgres/compat.js';
 import { GeneratedAudioMetadata, GeneratedAudioMetadataSchema } from '../../../common/media/generated-audio.schema.js';
 
-export type WordDocument = HydratedDocument<Word>;
+export type WordDocument = PgDocument<Word>;
 
 /**
  * IPA
  */
-@Schema({ _id: false })
+@PgEntity({ _id: false })
 export class WordIpa {
-  @Prop()
+  @PgField()
   us?: string;
 
-  @Prop()
+  @PgField()
   uk?: string;
 }
 
-export const WordIpaSchema = SchemaFactory.createForClass(WordIpa);
+export const WordIpaSchema = PgSchemaFactory.createForClass(WordIpa);
 
 /**
  * Audio
  */
-@Schema({ _id: false })
+@PgEntity({ _id: false })
 export class WordAudio {
-  @Prop()
+  @PgField()
   us?: string;
 
-  @Prop()
+  @PgField()
   uk?: string;
 }
 
-export const WordAudioSchema = SchemaFactory.createForClass(WordAudio);
-@Schema({ _id: false })
+export const WordAudioSchema = PgSchemaFactory.createForClass(WordAudio);
+@PgEntity({ _id: false })
 export class WordAudioMetadata {
-  @Prop({ type: GeneratedAudioMetadataSchema, default: {} })
+  @PgField({ type: GeneratedAudioMetadataSchema, default: {} })
   us?: GeneratedAudioMetadata;
 
-  @Prop({ type: GeneratedAudioMetadataSchema, default: {} })
+  @PgField({ type: GeneratedAudioMetadataSchema, default: {} })
   uk?: GeneratedAudioMetadata;
 }
 
-export const WordAudioMetadataSchema = SchemaFactory.createForClass(WordAudioMetadata);
+export const WordAudioMetadataSchema = PgSchemaFactory.createForClass(WordAudioMetadata);
 
 
 /**
  * Example
  */
-@Schema({ _id: false })
+@PgEntity({ _id: false })
 export class WordExample {
-  @Prop({ default: '' })
+  @PgField({ default: '' })
   en?: string;
 
-  @Prop({ default: '' })
+  @PgField({ default: '' })
   vi?: string;
 }
 
-export const WordExampleSchema = SchemaFactory.createForClass(WordExample);
+export const WordExampleSchema = PgSchemaFactory.createForClass(WordExample);
 
 /**
  * Meaning
  */
-@Schema({ _id: false })
+@PgEntity({ _id: false })
 export class WordMeaning {
-  @Prop({ default: '' })
+  @PgField({ default: '' })
   definition?: string;
 
-  @Prop({ type: [String], default: [] })
+  @PgField({ type: [String], default: [] })
   translation: string[];
 
-  @Prop({ type: [String], default: [] })
+  @PgField({ type: [String], default: [] })
   synonyms: string[];
 
-  @Prop({ type: [String], default: [] })
+  @PgField({ type: [String], default: [] })
   antonyms: string[];
 
-  @Prop({
+  @PgField({
     type: [WordExampleSchema],
-    default: [],
-  })
+    default: [] })
   examples: WordExample[];
 }
 
-export const WordMeaningSchema = SchemaFactory.createForClass(WordMeaning);
+export const WordMeaningSchema = PgSchemaFactory.createForClass(WordMeaning);
 
 /**
  * Part of speech
  */
-@Schema({ _id: false })
+@PgEntity({ _id: false })
 export class WordPart {
-  @Prop({ required: true })
+  @PgField({ required: true })
   partOfSpeech: string;
 
-  @Prop({
+  @PgField({
     type: [WordMeaningSchema],
-    default: [],
-  })
+    default: [] })
   meanings: WordMeaning[];
 }
 
-export const WordPartSchema = SchemaFactory.createForClass(WordPart);
+export const WordPartSchema = PgSchemaFactory.createForClass(WordPart);
 
 /**
  * Word
  */
-@Schema({
-  timestamps: true,
-})
+@PgEntity({
+  timestamps: true })
 export class Word {
-  @Prop({
+  @PgField({
     required: true,
     trim: true,
     unique: true,
-    index: true,
-  })
+    index: true })
   word: string;
 
-  @Prop({
+  @PgField({
     required: true,
     trim: true,
     unique: true,
-    index: true,
-  })
+    index: true })
   slug: string;
 
-  @Prop({
+  @PgField({
     required: true,
     uppercase: true,
     enum: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'],
-    index: true,
-  })
+    index: true })
   level: string;
 
-  @Prop({
+  @PgField({
     type: WordIpaSchema,
-    default: {},
-  })
+    default: {} })
   ipa: WordIpa;
 
-  @Prop({
+  @PgField({
     type: WordAudioSchema,
-    default: {},
-  })
+    default: {} })
   audio: WordAudio;
 
-  @Prop({ type: WordAudioMetadataSchema, default: {} })
+  @PgField({ type: WordAudioMetadataSchema, default: {} })
   audioMeta: WordAudioMetadata;
 
-  @Prop()
+  @PgField()
   image?: string;
 
-  @Prop({
+  @PgField({
     type: [String],
-    default: [],
-  })
+    default: [] })
   variations: string[];
 
-  @Prop({
+  @PgField({
     type: [String],
-    default: [],
-  })
+    default: [] })
   relatedWords: string[];
 
-  @Prop({
+  @PgField({
     type: [WordPartSchema],
-    default: [],
-  })
+    default: [] })
   parts: WordPart[];
 
-  @Prop({ default: true })
+  @PgField({ default: true })
   isActive: boolean;
 
-  @Prop({ default: false, index: true })
+  @PgField({ default: false, index: true })
   isDeleted: boolean;
 }
 
-export const WordSchema = SchemaFactory.createForClass(Word);
+export const WordSchema = PgSchemaFactory.createForClass(Word);

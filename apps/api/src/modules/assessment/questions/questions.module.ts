@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
+import { PgModelsModule } from '../../../postgres/compat.js';
 import { QuestionsService } from './questions.service.js';
 import { QuestionsController } from './questions.controller.js';
 import { PdfAiService } from './pdf-ai.service.js';
@@ -13,7 +13,7 @@ import { Exam, ExamSchema } from '../exams/schemas/exam.schema.js';
 @Module({
   imports: [
     UploadModule,
-    MongooseModule.forFeature([
+    PgModelsModule.forFeature([
       { name: Question.name, schema: QuestionSchema },
       { name: PassageGroup.name, schema: PassageGroupSchema },
       { name: Passage.name, schema: PassageSchema },
@@ -23,6 +23,5 @@ import { Exam, ExamSchema } from '../exams/schemas/exam.schema.js';
   ],
   controllers: [QuestionsController],
   providers: [QuestionsService, PdfAiService, PdfAiLearningService],
-  exports: [QuestionsService],
-})
+  exports: [QuestionsService] })
 export class QuestionsModule {}

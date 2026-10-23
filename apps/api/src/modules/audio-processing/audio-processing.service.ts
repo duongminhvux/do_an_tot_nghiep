@@ -1,9 +1,10 @@
+import { PgId } from '../../postgres/compat.js';
 /// <reference types="multer" />
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectModel } from '@nestjs/mongoose';
+import { InjectPgModel } from '../../postgres/compat.js';
 import { createHash, randomUUID } from 'node:crypto';
-import { type Model, Types } from 'mongoose';
+import { type Model } from '../../postgres/compat.js';
 import { AudioGenerationStatus, AudioSourceType, GeneratedAudioMetadata } from '../../common/media/generated-audio.schema.js';
 import { MediaStorageService } from '../../common/media/media-storage.service.js';
 import { TtsService } from '../tts/tts.service.js';
@@ -11,6 +12,7 @@ import { Word, WordDocument } from '../vocabulary/words/word.schema.js';
 import { PassageGroup, PassageGroupDocument } from '../assessment/questions/schemas/passage-group.schema.js';
 import { Passage, PassageDocument } from '../assessment/questions/schemas/passage.schema.js';
 import { Question, QuestionDocument } from '../assessment/questions/schemas/question.schema.js';
+import { serviceRole, serviceUrl } from '../../postgres/ownership.js';
 
 export type VocabularyAccent = 'us' | 'uk';
 
@@ -26,10 +28,10 @@ interface SequenceSegmentInput {
 @Injectable()
 export class AudioProcessingService {
   constructor(
-    @InjectModel(Word.name) private readonly wordModel: Model<WordDocument>,
-    @InjectModel(Question.name) private readonly questionModel: Model<QuestionDocument>,
-    @InjectModel(Passage.name) private readonly passageModel: Model<PassageDocument>,
-    @InjectModel(PassageGroup.name) private readonly passageGroupModel: Model<PassageGroupDocument>,
+    @InjectPgModel(Word.name) private readonly wordModel: Model<WordDocument>,
+    @InjectPgModel(Question.name) private readonly questionModel: Model<QuestionDocument>,
+    @InjectPgModel(Passage.name) private readonly passageModel: Model<PassageDocument>,
+    @InjectPgModel(PassageGroup.name) private readonly passageGroupModel: Model<PassageGroupDocument>,
     private readonly ttsService: TtsService,
     private readonly mediaStorage: MediaStorageService,
     private readonly configService: ConfigService,
@@ -37,6 +39,22 @@ export class AudioProcessingService {
 
   voices() {
     return this.ttsService.voices();
+  }
+
+  /** Media workers submit narrow audio commands; only the owner writes business rows. */
+  private async writeAudio(resource:'words'|'questions'|'passages',id:unknown,update:{$set:Record<string,unknown>}) {
+    const owner=resource==='words'?'content':'assessment';
+    const model=resource==='words'?this.wordModel:resource==='questions'?this.questionModel:this.passageModel;
+    if(serviceRole()===owner)return model.findByIdAndUpdate(id,update,{returnDocument:'after'}).lean().exec();
+    const token=this.configService.get<string>('INTERNAL_SERVICE_TOKEN');
+    if(!token||token.length<24)throw new ServiceUnavailableException('Audio owner authentication not configured');
+    const response=await fetch(`${serviceUrl(owner)}/api/_internal/${owner}/audio/${resource}/${String(id)}`,{
+      method:'POST',headers:{'content-type':'application/json','x-internal-token':token},
+      body:JSON.stringify(update),signal:AbortSignal.timeout(10000),
+    });
+    if(response.status===404)throw new NotFoundException('Audio owner record missing');
+    if(!response.ok)throw new ServiceUnavailableException(`Audio owner ${owner} rejected update (${response.status})`);
+    return model.findById(id).lean().exec();
   }
 
   private envNumber(key: string, fallback: number): number {
@@ -76,9 +94,7 @@ export class AudioProcessingService {
         speaker: segment.speaker || '',
         voiceId: segment.voiceId,
         startMs: timings[index]?.startMs || 0,
-        endMs: timings[index]?.endMs || 0,
-      })),
-    };
+        endMs: timings[index]?.endMs || 0 })) };
   }
 
   private singleAudioMeta(
@@ -107,9 +123,7 @@ export class AudioProcessingService {
         speaker: '',
         voiceId,
         startMs: 0,
-        endMs: Number(result.durationMs || 0),
-      }],
-    };
+        endMs: Number(result.durationMs || 0) }] };
   }
 
 
@@ -126,8 +140,7 @@ export class AudioProcessingService {
       scriptHash,
       generatedAt: new Date(),
       error: '',
-      segments: [],
-    };
+      segments: [] };
   }
 
   private extensionFromFile(file: Express.Multer.File, fallback = 'audio'): string {
@@ -154,9 +167,8 @@ export class AudioProcessingService {
     const storageKey = `vocab/${word._id.toString()}/${accent}-${randomUUID()}.${ext}`;
     const stored = await this.mediaStorage.saveBuffer(storageKey, file.buffer);
     const meta = this.uploadedMeta(storageKey, this.hash({ word: word.word, accent }));
-    const updated = await this.wordModel.findByIdAndUpdate(word._id, {
-      $set: { [`audio.${accent}`]: stored.url, [`audioMeta.${accent}`]: meta },
-    }, { returnDocument: 'after' }).lean().exec();
+    const updated = await this.writeAudio('words',word._id, {
+      $set: { [`audio.${accent}`]: stored.url, [`audioMeta.${accent}`]: meta } });
     await this.cleanupReplacedLocalAudio(word.audio?.[accent], word.audioMeta?.[accent]?.storageKey, storageKey);
     return updated;
   }
@@ -170,7 +182,7 @@ export class AudioProcessingService {
     const storageKey = `toeic/questions/${question._id.toString()}/audio-${randomUUID()}.${ext}`;
     const stored = await this.mediaStorage.saveBuffer(storageKey, file.buffer);
     const meta = this.uploadedMeta(storageKey, this.hash({ part: question.part, content: question.content, options: question.options }));
-    const updated = await this.questionModel.findByIdAndUpdate(question._id, { $set: { audioUrl: stored.url, audioMeta: meta } }, { returnDocument: 'after' }).lean().exec();
+    const updated = await this.writeAudio('questions',question._id, { $set: { audioUrl: stored.url, audioMeta: meta } });
     await this.cleanupReplacedLocalAudio(question.audioUrl, question.audioMeta?.storageKey, storageKey);
     return updated;
   }
@@ -185,7 +197,7 @@ export class AudioProcessingService {
     const storageKey = `toeic/passages/${passage._id.toString()}/audio-${randomUUID()}.${ext}`;
     const stored = await this.mediaStorage.saveBuffer(storageKey, file.buffer);
     const meta = this.uploadedMeta(storageKey, this.hash({ part: group.part, content: passage.content || '' }));
-    const updated = await this.passageModel.findByIdAndUpdate(passage._id, { $set: { audioUrl: stored.url, audioMeta: meta } }, { returnDocument: 'after' }).lean().exec();
+    const updated = await this.writeAudio('passages',passage._id, { $set: { audioUrl: stored.url, audioMeta: meta } });
     await this.cleanupReplacedLocalAudio(passage.audioUrl, passage.audioMeta?.storageKey, storageKey);
     return updated;
   }
@@ -203,13 +215,11 @@ export class AudioProcessingService {
     const scriptHash = this.hash({ script, language, voiceId, speed });
     const metadataPath = `audioMeta.${accent}`;
 
-    await this.wordModel.updateOne({ _id: word._id }, {
+    await this.writeAudio('words',word._id, {
       $set: {
         [`${metadataPath}.source`]: AudioSourceType.TTS,
         [`${metadataPath}.status`]: AudioGenerationStatus.PROCESSING,
-        [`${metadataPath}.error`]: '',
-      },
-    });
+        [`${metadataPath}.error`]: '' } });
 
     try {
       const result = await this.ttsService.synthesize({ text: script, language, voiceId, speed });
@@ -218,21 +228,17 @@ export class AudioProcessingService {
       const meta = this.singleAudioMeta(storageKey, language, voiceId, speed, scriptHash, result);
       meta.segments = [{ text: script, speaker: '', voiceId, startMs: 0, endMs: Number(result.durationMs || 0) }];
 
-      const updated = await this.wordModel.findByIdAndUpdate(word._id, {
+      const updated = await this.writeAudio('words',word._id, {
         $set: {
           [`audio.${accent}`]: stored.url,
-          [metadataPath]: meta,
-        },
-      }, { returnDocument: 'after' }).lean().exec();
+          [metadataPath]: meta } });
       await this.cleanupReplacedLocalAudio(word.audio?.[accent], word.audioMeta?.[accent]?.storageKey, storageKey);
       return updated;
     } catch (error) {
-      await this.wordModel.updateOne({ _id: word._id }, {
+      await this.writeAudio('words',word._id, {
         $set: {
           [`${metadataPath}.status`]: AudioGenerationStatus.FAILED,
-          [`${metadataPath}.error`]: error instanceof Error ? error.message : String(error),
-        },
-      });
+          [`${metadataPath}.error`]: error instanceof Error ? error.message : String(error) } });
       throw error;
     }
   }
@@ -247,8 +253,7 @@ export class AudioProcessingService {
     const labels = [...content.matchAll(/(?:^|\n)[ \t]*\(?([A-D])\)[ \t]*/g)];
     const scriptOptions = labels.map((label, i) => ({
       key: label[1],
-      text: content.slice(label.index! + label[0].length, labels[i + 1]?.index ?? content.length).trim(),
-    }));
+      text: content.slice(label.index! + label[0].length, labels[i + 1]?.index ?? content.length).trim() }));
     if (labels.length) {
       const expected = part === 2 ? 'ABC' : 'ABCD';
       if (scriptOptions.map(o => o.key).join('') !== expected || scriptOptions.some(o => !o.text)) {
@@ -265,8 +270,7 @@ export class AudioProcessingService {
         voiceId: primary,
         language: 'en-US',
         speed,
-        pauseAfterMs: index === options.length - 1 ? 0 : pause,
-      }));
+        pauseAfterMs: index === options.length - 1 ? 0 : pause }));
     }
 
     if (part === 2) {
@@ -282,8 +286,7 @@ export class AudioProcessingService {
           voiceId: secondary,
           language: 'en-US' as const,
           speed,
-          pauseAfterMs: index === responses.length - 1 ? 0 : pause,
-        })),
+          pauseAfterMs: index === responses.length - 1 ? 0 : pause })),
       ];
     }
 
@@ -299,25 +302,23 @@ export class AudioProcessingService {
 
     const sequence = this.part12Sequence(question, primaryVoice, secondaryVoice);
     const scriptHash = this.hash({ part: question.part, sequence });
-    await this.questionModel.updateOne({ _id: question._id }, {
-      $set: { 'audioMeta.source': AudioSourceType.TTS, 'audioMeta.status': AudioGenerationStatus.PROCESSING, 'audioMeta.error': '' },
-    });
+    await this.writeAudio('questions',question._id, {
+      $set: { 'audioMeta.source': AudioSourceType.TTS, 'audioMeta.status': AudioGenerationStatus.PROCESSING, 'audioMeta.error': '' } });
 
     try {
       const result = await this.ttsService.synthesizeSequence({
         segments: sequence,
         defaultVoiceId: sequence[0]!.voiceId,
         defaultLanguage: 'en-US',
-        defaultSpeed: sequence[0]!.speed,
-      });
+        defaultSpeed: sequence[0]!.speed });
       const storageKey = `toeic/questions/${question._id.toString()}/audio-${randomUUID()}.wav`;
       const stored = await this.mediaStorage.saveBuffer(storageKey, result.audio);
       const meta = this.audioMeta(storageKey, 'en-US', [...new Set(sequence.map((item) => item.voiceId))], sequence[0]!.speed, scriptHash, result, sequence);
-      const updated = await this.questionModel.findByIdAndUpdate(question._id, { $set: { audioUrl: stored.url, audioMeta: meta } }, { returnDocument: 'after' }).lean().exec();
+      const updated = await this.writeAudio('questions',question._id, { $set: { audioUrl: stored.url, audioMeta: meta } });
       await this.cleanupReplacedLocalAudio(question.audioUrl, question.audioMeta?.storageKey, storageKey);
       return updated;
     } catch (error) {
-      await this.questionModel.updateOne({ _id: question._id }, { $set: { 'audioMeta.status': AudioGenerationStatus.FAILED, 'audioMeta.error': error instanceof Error ? error.message : String(error) } });
+      await this.writeAudio('questions',question._id, { $set: { 'audioMeta.status': AudioGenerationStatus.FAILED, 'audioMeta.error': error instanceof Error ? error.message : String(error) } });
       throw error;
     }
   }
@@ -384,26 +385,24 @@ export class AudioProcessingService {
     if (!sequence.length) throw new BadRequestException('No speakable transcript segments were found.');
 
     const scriptHash = this.hash({ part: group.part, sequence });
-    await this.passageModel.updateOne({ _id: passage._id }, {
-      $set: { 'audioMeta.source': AudioSourceType.TTS, 'audioMeta.status': AudioGenerationStatus.PROCESSING, 'audioMeta.error': '' },
-    });
+    await this.writeAudio('passages',passage._id, {
+      $set: { 'audioMeta.source': AudioSourceType.TTS, 'audioMeta.status': AudioGenerationStatus.PROCESSING, 'audioMeta.error': '' } });
 
     try {
       const result = await this.ttsService.synthesizeSequence({
         segments: sequence,
         defaultVoiceId: sequence[0]!.voiceId,
         defaultLanguage: sequence[0]!.language,
-        defaultSpeed: sequence[0]!.speed,
-      });
+        defaultSpeed: sequence[0]!.speed });
       const storageKey = `toeic/passages/${passage._id.toString()}/audio-${randomUUID()}.wav`;
       const stored = await this.mediaStorage.saveBuffer(storageKey, result.audio);
       const voices = [...new Set(sequence.map((item) => item.voiceId))];
       const meta = this.audioMeta(storageKey, sequence[0]!.language, voices, sequence[0]!.speed, scriptHash, result, sequence);
-      const updated = await this.passageModel.findByIdAndUpdate(passage._id, { $set: { audioUrl: stored.url, audioMeta: meta } }, { returnDocument: 'after' }).lean().exec();
+      const updated = await this.writeAudio('passages',passage._id, { $set: { audioUrl: stored.url, audioMeta: meta } });
       await this.cleanupReplacedLocalAudio(passage.audioUrl, passage.audioMeta?.storageKey, storageKey);
       return updated;
     } catch (error) {
-      await this.passageModel.updateOne({ _id: passage._id }, { $set: { 'audioMeta.status': AudioGenerationStatus.FAILED, 'audioMeta.error': error instanceof Error ? error.message : String(error) } });
+      await this.writeAudio('passages',passage._id, { $set: { 'audioMeta.status': AudioGenerationStatus.FAILED, 'audioMeta.error': error instanceof Error ? error.message : String(error) } });
       throw error;
     }
   }
@@ -432,10 +431,10 @@ export class AudioProcessingService {
   async generateToeicExamBatch(examId: string, parts: number[] = [1, 2, 3, 4], onProgress?: (progress: any) => Promise<void> | void) {
     const normalizedParts = [...new Set(parts.map(Number).filter((part) => [1, 2, 3, 4].includes(part)))];
     const questions = normalizedParts.some((p) => [1, 2].includes(p))
-      ? await this.questionModel.find({ examId: new Types.ObjectId(examId), part: { $in: normalizedParts.filter((p) => [1, 2].includes(p)) } }).sort({ order: 1 }).lean().exec()
+      ? await this.questionModel.find({ examId: new PgId(examId), part: { $in: normalizedParts.filter((p) => [1, 2].includes(p)) } }).sort({ order: 1 }).lean().exec()
       : [];
     const groups = normalizedParts.some((p) => [3, 4].includes(p))
-      ? await this.passageGroupModel.find({ examId: new Types.ObjectId(examId), part: { $in: normalizedParts.filter((p) => [3, 4].includes(p)) } }).lean().exec()
+      ? await this.passageGroupModel.find({ examId: new PgId(examId), part: { $in: normalizedParts.filter((p) => [3, 4].includes(p)) } }).lean().exec()
       : [];
     const passages = groups.length
       ? await this.passageModel.find({ passageGroupId: { $in: groups.map((g) => g._id) } }).sort({ order: 1 }).lean().exec()

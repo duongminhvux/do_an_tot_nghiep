@@ -1,13 +1,12 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
 import {
   ARENA_DEFAULTS,
-  type ArenaConfiguration,
-} from './arena-settings.defaults.js';
-@Schema({ timestamps: true, versionKey: false })
+  type ArenaConfiguration } from './arena-settings.defaults.js';
+@PgEntity({ timestamps: true, versionKey: false })
 export class ArenaSettings {
-  @Prop({ required: true, unique: true }) key: string;
-  @Prop({ default: 0 }) revision: number;
-  @Prop({ type: Object, default: () => structuredClone(ARENA_DEFAULTS) })
+  @PgField({ required: true, unique: true }) key: string;
+  @PgField({ default: 0 }) revision: number;
+  @PgField({ type: Object, default: () => structuredClone(ARENA_DEFAULTS) })
   config: ArenaConfiguration;
 }
-export const ArenaSettingsSchema = SchemaFactory.createForClass(ArenaSettings);
+export const ArenaSettingsSchema = PgSchemaFactory.createForClass(ArenaSettings);

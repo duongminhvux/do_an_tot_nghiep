@@ -3,13 +3,12 @@ import {
   IsArray,
   IsIn,
   IsInt,
-  IsMongoId,
+  IsUUID,
   IsOptional,
-  Min,
-} from 'class-validator';
+  Min } from 'class-validator';
 
 export class SaveAnswerDto {
-  @IsMongoId()
+  @IsUUID('4')
   questionId: string;
 
   @IsIn(['A', 'B', 'C', 'D'])
@@ -17,16 +16,16 @@ export class SaveAnswerDto {
 }
 
 export class CheckAnswerDto {
-  @IsMongoId()
+  @IsUUID('4')
   questionId: string;
 }
 
 export class AudioPlayDto {
-  @IsMongoId()
+  @IsUUID('4')
   questionId: string;
 
   @IsOptional()
-  @IsMongoId()
+  @IsUUID('4')
   passageId?: string;
 
   @IsOptional()
@@ -39,7 +38,7 @@ export class UpdateAttemptDto {
   @IsOptional()
   @IsArray()
   @ArrayUnique()
-  @IsMongoId({ each: true })
+  @IsUUID('4',{ each: true })
   flaggedQuestions?: string[];
 
   @IsOptional()

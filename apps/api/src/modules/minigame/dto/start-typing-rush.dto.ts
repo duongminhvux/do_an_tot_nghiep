@@ -4,13 +4,12 @@ import {
   ArrayMinSize,
   IsArray,
   IsEnum,
-  IsMongoId,
-  ValidateNested,
-} from 'class-validator';
+  IsUUID,
+  ValidateNested } from 'class-validator';
 import { MiniGameSourceType, TypingRushDifficulty } from '../minigame.types.js';
 export class MiniGameSourceDto {
   @IsEnum(MiniGameSourceType) type: MiniGameSourceType;
-  @IsMongoId() id: string;
+  @IsUUID('4') id: string;
 }
 export class StartTypingRushDto {
   @IsEnum(TypingRushDifficulty) difficulty: TypingRushDifficulty;

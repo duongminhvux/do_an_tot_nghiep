@@ -6,8 +6,7 @@ import {
   Patch,
   Param,
   Query,
-  Req,
-} from '@nestjs/common';
+  Req } from '@nestjs/common';
 import { AttemptsService } from './attempts.service.js';
 import { QueryAttemptDto } from './dto/query-attempt.dto.js';
 import { CreateAttemptDto } from './dto/create-attempt.dto.js';
@@ -15,8 +14,7 @@ import {
   CheckAnswerDto,
   AudioPlayDto,
   SaveAnswerDto,
-  UpdateAttemptDto,
-} from './dto/update-attempt.dto.js';
+  UpdateAttemptDto } from './dto/update-attempt.dto.js';
 
 type UserRequest = { user: { _id: string } };
 

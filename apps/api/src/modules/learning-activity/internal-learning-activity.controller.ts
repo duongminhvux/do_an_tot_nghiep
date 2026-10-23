@@ -1,13 +1,12 @@
+import { PgId } from '../../postgres/compat.js';
 import {
   BadRequestException,
   Body,
   Controller,
   ForbiddenException,
   Headers,
-  Post,
-} from '@nestjs/common';
+  Post } from '@nestjs/common';
 import { timingSafeEqual } from 'node:crypto';
-import { Types } from 'mongoose';
 import { Public } from '../auth/decorators/public.decorator.js';
 import { LEARNING_MODULES } from '@repo/shared-types/learning-xp';
 import type { LearningModule } from '@repo/shared-types/learning-xp';
@@ -34,8 +33,8 @@ export class InternalLearningActivityController {
     }
     if (!payload || typeof payload !== 'object' ||
       typeof payload.userId !== 'string' ||
-      !/^[a-f0-9]{24}$/i.test(payload.userId) ||
-      !Types.ObjectId.isValid(payload.userId) ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(payload.userId) ||
+      !PgId.isValid(payload.userId) ||
       typeof payload.sourceKey !== 'string' ||
       payload.sourceKey.length < 1 || payload.sourceKey.length > 250 ||
       typeof payload.module !== 'string' ||
@@ -52,7 +51,7 @@ export class InternalLearningActivityController {
       throw new BadRequestException('Invalid occurredAt');
     }
     // Never blindly persist arbitrary client fields. An internal access token
-    // authorizes delivery, not unrestricted writes to the Mongo collection.
+    // authorizes delivery, not unrestricted writes to the SQL table.
     const text = (name: string, max = 500) =>
       typeof payload[name] === 'string' ? payload[name].slice(0, max) : undefined;
     const number = (name: string) =>
@@ -75,8 +74,7 @@ export class InternalLearningActivityController {
       total: number('total'),
       score: number('score'),
       durationSec: number('durationSec'),
-      metadata,
-    };
+      metadata };
     return { created: await this.activities.record(input) };
   }
 }

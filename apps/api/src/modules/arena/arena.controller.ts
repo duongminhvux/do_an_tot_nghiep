@@ -7,8 +7,7 @@ import {
   DefaultValuePipe,
   ParseIntPipe,
   Post,
-  Param,
-} from '@nestjs/common';
+  Param } from '@nestjs/common';
 import { ArenaService } from './arena.service.js';
 import { ArenaFriendlyService } from './friendly/arena-friendly.service.js';
 import { ArenaFriendMode } from './schemas/arena-match.schema.js';
@@ -19,8 +18,7 @@ import { ArenaPresenceService } from './presence/arena-presence.service.js';
 import {
   CreateArenaRoomDto,
   CreateFriendMatchDto,
-  JoinArenaRoomDto,
-} from './dto/arena-match.dto.js';
+  JoinArenaRoomDto } from './dto/arena-match.dto.js';
 
 type ArenaRequest = { user: { _id: string } };
 

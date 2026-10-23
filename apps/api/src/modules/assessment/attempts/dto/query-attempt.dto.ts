@@ -2,13 +2,12 @@ import { Type } from 'class-transformer';
 import {
   IsIn,
   IsInt,
-  IsMongoId,
+  IsUUID,
   IsOptional,
   IsString,
   IsTimeZone,
   Max,
-  Min,
-} from 'class-validator';
+  Min } from 'class-validator';
 
 export class QueryAttemptDto {
   @IsOptional() @IsString() examId?: string;
@@ -27,5 +26,5 @@ export class QueryAttemptDto {
 }
 
 export class AdminQueryAttemptDto extends QueryAttemptDto {
-  @IsOptional() @IsMongoId() userId?: string;
+  @IsOptional() @IsUUID('4') userId?: string;
 }

@@ -1,9 +1,10 @@
+import { PgId } from '../../postgres/compat.js';
 import { BadRequestException, Injectable, Logger, Optional } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import { UpdateProfileDto } from './dto/update-profile.dto.js';
-import { InjectModel } from '@nestjs/mongoose';
+import { InjectPgModel } from '../../postgres/compat.js';
 import { AuthProvider, User, UserDocument } from './schema/user.schema.js';
-import { type Model, type UpdateQuery, isValidObjectId, Types } from 'mongoose';
+import { type Model, type UpdateQuery, isValidPgId } from '../../postgres/compat.js';
 import { I18nService } from 'nestjs-i18n';
 import { QueryAdminUserDto } from './dto/query-admin-user.dto.js';
 import { CreateAdminUserDto, UpdateAdminUserDto } from './dto/create-admin-user.dto.js';
@@ -26,8 +27,7 @@ function formatVietnamDate(dateInput: Date | string | null | undefined): string 
     timeZone: 'Asia/Ho_Chi_Minh',
     day: '2-digit',
     month: '2-digit',
-    year: 'numeric',
-  }).format(date); // DD/MM/YYYY
+    year: 'numeric' }).format(date); // DD/MM/YYYY
 }
 
 function formatVietnamTime(dateInput: Date | string | null | undefined): string {
@@ -39,8 +39,7 @@ function formatVietnamTime(dateInput: Date | string | null | undefined): string 
     timeZone: 'Asia/Ho_Chi_Minh',
     hour: '2-digit',
     minute: '2-digit',
-    hour12: false,
-  }).format(date); // HH:mm
+    hour12: false }).format(date); // HH:mm
 }
 
 function formatVietnamLastActive(dateInput: Date | string | null | undefined, isBanned?: boolean): string {
@@ -56,8 +55,7 @@ function formatVietnamLastActive(dateInput: Date | string | null | undefined, is
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
-    hour12: false,
-  });
+    hour12: false });
 
   const parts = vnFormatter.formatToParts(date);
   const getPart = (type: string) => parts.find((p) => p.type === type)?.value || '';
@@ -122,24 +120,24 @@ export class UsersService {
   private readonly logger = new Logger(UsersService.name);
 
   constructor(
-    @InjectModel(User.name) private readonly userModel: Model<User>,
-    @InjectModel(UserLessonWord.name)
+    @InjectPgModel(User.name) private readonly userModel: Model<User>,
+    @InjectPgModel(UserLessonWord.name)
     private readonly userLessonWordModel: Model<UserLessonWord>,
-    @InjectModel(UserLessonProgress.name)
+    @InjectPgModel(UserLessonProgress.name)
     private readonly userLessonProgressModel: Model<UserLessonProgress>,
-    @InjectModel(LearningSession.name)
+    @InjectPgModel(LearningSession.name)
     private readonly learningSessionModel: Model<LearningSession>,
-    @InjectModel(UserWordReview.name)
+    @InjectPgModel(UserWordReview.name)
     private readonly userWordReviewModel: Model<UserWordReview>,
-    @InjectModel(Lesson.name)
+    @InjectPgModel(Lesson.name)
     private readonly lessonModel: Model<Lesson>,
-    @InjectModel(LessonWord.name)
+    @InjectPgModel(LessonWord.name)
     private readonly lessonWordModel: Model<LessonWord>,
-    @InjectModel(Word.name)
+    @InjectPgModel(Word.name)
     private readonly wordModel: Model<Word>,
-    @InjectModel(Collection.name)
+    @InjectPgModel(Collection.name)
     private readonly collectionModel: Model<Collection>,
-    @InjectModel(UserDailyActivity.name)
+    @InjectPgModel(UserDailyActivity.name)
     private readonly userDailyActivityModel: Model<UserDailyActivity>,
     private readonly i18n: I18nService,
     @Optional() private readonly domainOutbox?: DomainOutboxService,
@@ -153,8 +151,7 @@ export class UsersService {
     const created = await this.userModel.create({ ...data });
     try {
       await this.domainOutbox?.enqueue('identity.user.created.v1', String(created._id), {
-        userId: String(created._id),
-      });
+        userId: String(created._id) });
     } catch (error) {
       // User was already saved; failing registration here could encourage a
       // duplicate request. Reconciliation is required until transactions are enabled.
@@ -189,9 +186,7 @@ export class UsersService {
       {
         $set: {
           ...updateProfileDto,
-          profileUpdatedAt: new Date(),
-        },
-      },
+          profileUpdatedAt: new Date() } },
       { returnDocument: 'after', select: '-password -code -codeExpiresAt -__v' }
     );
 
@@ -206,9 +201,7 @@ export class UsersService {
         username: updatedUser.username,
         email: updatedUser.email,
         avatarUrl: updatedUser.avatarUrl,
-        role: 'USER',
-      },
-    };
+        role: 'USER' } };
   }
 
   // ==========================================
@@ -216,8 +209,7 @@ export class UsersService {
   // ==========================================
   async findAllAdmin(query: QueryAdminUserDto) {
     const filter: Record<string, any> = {
-      isDeleted: { $ne: true },
-    };
+      isDeleted: { $ne: true } };
 
     if (query.search) {
       const q = query.search.trim();
@@ -242,8 +234,7 @@ export class UsersService {
           timeZone: 'Asia/Ho_Chi_Minh',
           year: 'numeric',
           month: '2-digit',
-          day: '2-digit',
-        }).format(now);
+          day: '2-digit' }).format(now);
         const startOfDayVN = new Date(`${vnDateString}T00:00:00+07:00`);
         filter.createdAt = { $gte: startOfDayVN };
       } else if (query.dateRange === '7days') {
@@ -255,8 +246,7 @@ export class UsersService {
       } else if (query.dateRange === 'year') {
         const vnYear = new Intl.DateTimeFormat('en-CA', {
           timeZone: 'Asia/Ho_Chi_Minh',
-          year: 'numeric',
-        }).format(now);
+          year: 'numeric' }).format(now);
         const startOfYearVN = new Date(`${vnYear}-01-01T00:00:00+07:00`);
         filter.createdAt = { $gte: startOfYearVN };
       }
@@ -284,8 +274,7 @@ export class UsersService {
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const newUsers7d = await this.userModel.countDocuments({
       isDeleted: { $ne: true },
-      createdAt: { $gte: sevenDaysAgo },
-    });
+      createdAt: { $gte: sevenDaysAgo } });
 
     const userIds = rawUsers.map((u: any) => u._id);
     const wordCounts = await this.userLessonWordModel.aggregate([
@@ -329,16 +318,13 @@ export class UsersService {
           authProvider: user.authProvider || 'local',
           isVerified: user.isVerified ?? false,
           createdAt: formattedCreated,
-          bio: '',
-        },
+          bio: '' },
         learningStats: {
           totalWordsLearned: 0,
           accuracyRate: 0,
           testScoresAvg: 0,
           studyTimeMinutes: 0,
-          dailyGoalStreak: 0,
-        },
-      };
+          dailyGoalStreak: 0 } };
     });
 
     const totalPages = Math.ceil(totalMatched / limit) || 1;
@@ -357,14 +343,12 @@ export class UsersService {
         growthTotal: 0,
         growthActive: 0,
         growthNew: 0,
-        growthBanned: 0,
-      },
-    };
+        growthBanned: 0 } };
   }
 
   async findOneAdmin(id: string) {
     const filter: Record<string, any> = { isDeleted: false };
-    if (isValidObjectId(id)) {
+    if (isValidPgId(id)) {
       filter._id = id;
     } else {
       filter._id = id;
@@ -385,14 +369,12 @@ export class UsersService {
 
     // 1. Query real count of learned words
     const wordsLearned = await this.userLessonWordModel.countDocuments({
-      userId: user._id,
-    });
+      userId: user._id });
 
     // 2. Query real completed lessons count
     const completedLessonsCount = await this.userLessonProgressModel.countDocuments({
       userId: user._id,
-      status: 'COMPLETED',
-    });
+      status: 'COMPLETED' });
 
     // 3. Query study sessions to calculate real study time
     const sessions = await this.learningSessionModel
@@ -464,10 +446,9 @@ export class UsersService {
           .lean()
           .exec();
         const totalLessons = await this.lessonModel.countDocuments({
-          collectionId: new Types.ObjectId(colId),
+          collectionId: new PgId(colId),
           isActive: true,
-          isDeleted: false,
-        });
+          isDeleted: false });
 
         const completedLessons = userLps.filter(
           (p: any) => p.status === 'COMPLETED',
@@ -494,8 +475,7 @@ export class UsersService {
           percentage,
           completedItems: completedLessons,
           totalItems: totalLessons || userLps.length,
-          type: 'lessons',
-        });
+          type: 'lessons' });
       } else {
         for (const lp of userLps) {
           const lessonTitle = lp.lessonId?.title || 'Bài học';
@@ -508,8 +488,7 @@ export class UsersService {
             percentage: lp.progress || 0,
             completedItems: lp.status === 'COMPLETED' ? 1 : 0,
             totalItems: 1,
-            type: 'lessons',
-          });
+            type: 'lessons' });
         }
       }
     }
@@ -522,8 +501,7 @@ export class UsersService {
         title: 'Đăng nhập hệ thống',
         time: formatVietnamLastActive(user.lastActive),
         type: 'login',
-        timestamp: new Date(user.lastActive).getTime(),
-      });
+        timestamp: new Date(user.lastActive).getTime() });
     }
 
     // Lesson activities: "Hoàn thành bài học: <title> - <col>"
@@ -550,8 +528,7 @@ export class UsersService {
           title: displayActivityTitle,
           time: formatVietnamLastActive(time),
           type: 'lesson',
-          timestamp: new Date(time).getTime(),
-        });
+          timestamp: new Date(time).getTime() });
       }
     }
 
@@ -581,8 +558,7 @@ export class UsersService {
             title: `Học từ mới: ${w.word}`,
             time: formatVietnamLastActive(time),
             type: 'word',
-            timestamp: new Date(time).getTime(),
-          });
+            timestamp: new Date(time).getTime() });
         }
       }
     }
@@ -593,8 +569,7 @@ export class UsersService {
         title: 'Cập nhật thông tin cá nhân',
         time: formatVietnamLastActive(user.profileUpdatedAt),
         type: 'profile',
-        timestamp: new Date(user.profileUpdatedAt).getTime(),
-      });
+        timestamp: new Date(user.profileUpdatedAt).getTime() });
     }
 
     recentActivities.push({
@@ -602,8 +577,7 @@ export class UsersService {
       title: 'Tài khoản được tạo',
       time: formatVietnamLastActive(createdDate),
       type: 'profile',
-      timestamp: createdDate.getTime(),
-    });
+      timestamp: createdDate.getTime() });
 
     recentActivities.sort((a, b) => b.timestamp - a.timestamp);
 
@@ -649,21 +623,18 @@ export class UsersService {
         authProvider: user.authProvider || 'local',
         isVerified: user.isVerified ?? false,
         createdAt: formattedCreated,
-        bio: '',
-      },
+        bio: '' },
       learningStats: {
         totalWordsLearned: wordsLearned,
         accuracyRate,
         testScoresAvg,
         studyTimeMinutes: totalStudyTimeMinutes,
-        dailyGoalStreak: streakDays,
-      },
-    };
+        dailyGoalStreak: streakDays } };
   }
 
   async updateNotes(id: string, notes: string) {
     const filter: Record<string, any> = { isDeleted: false };
-    if (isValidObjectId(id)) {
+    if (isValidPgId(id)) {
       filter._id = id;
     } else {
       filter._id = id;
@@ -693,8 +664,7 @@ export class UsersService {
       isDeleted: false,
       isVerified: true,
       authProvider: AuthProvider.LOCAL,
-      lastActive: new Date(),
-    });
+      lastActive: new Date() });
 
     return created;
   }
@@ -736,8 +706,7 @@ export class UsersService {
     return {
       _id: String(user._id),
       isBanned: user.isBanned,
-      status: user.isBanned ? 'banned' : 'active',
-    };
+      status: user.isBanned ? 'banned' : 'active' };
   }
 
   async removeAdmin(id: string) {
@@ -758,7 +727,7 @@ export class UsersService {
    */
   async getUserOverviewAdmin(userId: string) {
     const filter: Record<string, any> = { isDeleted: false };
-    if (isValidObjectId(userId)) {
+    if (isValidPgId(userId)) {
       filter._id = userId;
     } else {
       filter._id = userId;
@@ -768,7 +737,7 @@ export class UsersService {
       throw new BadRequestException(await this.i18n.t('user.USER_NOT_FOUND'));
     }
 
-    const userObjId = new Types.ObjectId(String(user._id));
+    const userObjId = new PgId(String(user._id));
 
     // 1. Tổng từ đã học
     const [totalUserLessonWords, totalReviewedWords] = await Promise.all([
@@ -796,22 +765,15 @@ export class UsersService {
         $match: {
           userId: userObjId,
           startedAt: { $exists: true },
-          endedAt: { $exists: true },
-        },
-      },
+          endedAt: { $exists: true } } },
       {
         $project: {
           durationMinutes: {
-            $divide: [{ $subtract: ['$endedAt', '$startedAt'] }, 60000],
-          },
-        },
-      },
+            $divide: [{ $subtract: ['$endedAt', '$startedAt'] }, 60000] } } },
       {
         $group: {
           _id: null,
-          total: { $sum: '$durationMinutes' },
-        },
-      },
+          total: { $sum: '$durationMinutes' } } },
     ]);
     const sessionMinutes = Math.round(sessionAgg[0]?.total || 0);
     const studyMinutes = Math.max(dailyMinutes, sessionMinutes);
@@ -905,8 +867,7 @@ export class UsersService {
       totalWordsReviewed,
       studyMinutes,
       currentStreak,
-      longestStreak,
-    };
+      longestStreak };
   }
 
   /**
@@ -915,7 +876,7 @@ export class UsersService {
    */
   async getUserProgressAdmin(userId: string) {
     const filter: Record<string, any> = { isDeleted: false };
-    if (isValidObjectId(userId)) {
+    if (isValidPgId(userId)) {
       filter._id = userId;
     } else {
       filter._id = userId;
@@ -925,7 +886,7 @@ export class UsersService {
       throw new BadRequestException(await this.i18n.t('user.USER_NOT_FOUND'));
     }
 
-    const userObjId = new Types.ObjectId(String(user._id));
+    const userObjId = new PgId(String(user._id));
 
     const collections = await this.collectionModel
       .find({ isActive: true, isDeleted: false })
@@ -939,8 +900,7 @@ export class UsersService {
         .find({
           collectionId: col._id,
           isActive: true,
-          isDeleted: false,
-        })
+          isDeleted: false })
         .sort({ order: 1 })
         .lean();
 
@@ -950,13 +910,11 @@ export class UsersService {
         this.userLessonProgressModel
           .find({
             userId: userObjId,
-            lessonId: { $in: lessonIds },
-          })
+            lessonId: { $in: lessonIds } })
           .lean(),
         this.lessonWordModel
           .find({
-            lessonId: { $in: lessonIds },
-          })
+            lessonId: { $in: lessonIds } })
           .select('_id lessonId')
           .lean(),
       ]);
@@ -968,8 +926,7 @@ export class UsersService {
       const allLwIds = allLessonWords.map((lw) => lw._id);
       const learnedWordsCount = await this.userLessonWordModel.countDocuments({
         userId: userObjId,
-        lessonWordId: { $in: allLwIds },
-      });
+        lessonWordId: { $in: allLwIds } });
 
       const totalWords = allLessonWords.length;
       let completedLessons = 0;
@@ -986,8 +943,7 @@ export class UsersService {
           slug: l.slug,
           status,
           progress: prog,
-          lastStudiedAt: p?.lastStudiedAt,
-        };
+          lastStudiedAt: p?.lastStudiedAt };
       });
 
       const colProgress =
@@ -1005,8 +961,7 @@ export class UsersService {
         totalWords,
         learnedWords: learnedWordsCount,
         progress: colProgress,
-        lessons: lessonList,
-      });
+        lessons: lessonList });
     }
 
     return result;
@@ -1018,7 +973,7 @@ export class UsersService {
    */
   async getUserActivityAdmin(userId: string) {
     const filter: Record<string, any> = { isDeleted: false };
-    if (isValidObjectId(userId)) {
+    if (isValidPgId(userId)) {
       filter._id = userId;
     } else {
       filter._id = userId;
@@ -1028,7 +983,7 @@ export class UsersService {
       throw new BadRequestException(await this.i18n.t('user.USER_NOT_FOUND'));
     }
 
-    const userObjId = new Types.ObjectId(String(user._id));
+    const userObjId = new PgId(String(user._id));
 
     const [recentProgresses, recentSessions, dailyActivities] =
       await Promise.all([
@@ -1064,8 +1019,7 @@ export class UsersService {
         type: 'LESSON',
         title,
         time: formatVietnamLastActive(time),
-        createdAt: time,
-      });
+        createdAt: time });
     }
 
     for (const s of recentSessions) {
@@ -1083,8 +1037,7 @@ export class UsersService {
         type: s.type || 'LESSON',
         title,
         time: formatVietnamLastActive(s.startedAt),
-        createdAt: s.startedAt,
-      });
+        createdAt: s.startedAt });
     }
 
     recentActivities.sort(
@@ -1098,8 +1051,6 @@ export class UsersService {
         studyMinutes: d.studyMinutes || 0,
         wordsLearned: d.wordsLearned || 0,
         wordsReviewed: d.wordsReviewed || 0,
-        sessionCount: d.sessionCount || 0,
-      })),
-    };
+        sessionCount: d.sessionCount || 0 })) };
   }
 }

@@ -1,24 +1,22 @@
+import { PgId } from '../../../postgres/compat.js';
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
+import { InjectPgModel } from '../../../postgres/compat.js';
 import { WsException } from '@nestjs/websockets';
-import { type Model, Types } from 'mongoose';
+import { type Model } from '../../../postgres/compat.js';
 import {
   ArenaMatch,
   ArenaMatchStatus,
   ArenaFriendMode,
-  ArenaMatchType,
-} from '../schemas/arena-match.schema.js';
+  ArenaMatchType } from '../schemas/arena-match.schema.js';
 import {
   ArenaMatchQuestion,
-  ArenaMatchQuestionDocument,
-} from '../schemas/arena-match-question.schema.js';
+  ArenaMatchQuestionDocument } from '../schemas/arena-match-question.schema.js';
 import { ArenaMatchPlayer } from '../schemas/arena-match-player.schema.js';
 import { ArenaPlayerAnswer } from '../schemas/arena-player-answer.schema.js';
 import {
   arenaHintLetters,
   maskArenaAnswer,
-  normalizeArenaAnswer,
-} from './arena-round.utils.js';
+  normalizeArenaAnswer } from './arena-round.utils.js';
 import { ArenaScoringService } from '../scoring/arena-scoring.service.js';
 import { ArenaMatchService } from '../matches/arena-match.service.js';
 
@@ -28,31 +26,30 @@ export type ArenaRoundEvent = { event: string; data: Record<string, unknown> };
 export class ArenaRoundService {
   private readonly logger = new Logger(ArenaRoundService.name);
   constructor(
-    @InjectModel(ArenaMatch.name) private readonly matches: Model<ArenaMatch>,
-    @InjectModel(ArenaMatchQuestion.name)
+    @InjectPgModel(ArenaMatch.name) private readonly matches: Model<ArenaMatch>,
+    @InjectPgModel(ArenaMatchQuestion.name)
     private readonly questions: Model<ArenaMatchQuestion>,
-    @InjectModel(ArenaMatchPlayer.name)
+    @InjectPgModel(ArenaMatchPlayer.name)
     private readonly players: Model<ArenaMatchPlayer>,
-    @InjectModel(ArenaPlayerAnswer.name)
+    @InjectPgModel(ArenaPlayerAnswer.name)
     private readonly answers: Model<ArenaPlayerAnswer>,
     private readonly arenaScoreService: ArenaScoringService,
     private readonly matchService: ArenaMatchService,
   ) {}
 
-  /** Kiểm tra chuỗi ID hợp lệ trước khi chuyển sang ObjectId của MongoDB. */
+  /** Kiểm tra chuỗi ID hợp lệ trước khi chuyển sang PgId của PostgreSQL. */
   private id(value: string) {
-    // Từ chối ID sai định dạng để tránh truy vấn không hợp lệ hoặc gây lỗi Mongoose.
-    if (typeof value !== 'string' || !/^[a-f\d]{24}$/i.test(value))
+    // Từ chối ID sai định dạng để tránh truy vấn không hợp lệ hoặc gây lỗi PostgreSQL repository.
+    if (typeof value !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value))
       throw new WsException('Invalid ID');
-    return new Types.ObjectId(value);
+    return new PgId(value);
   }
 
   /** Đảm bảo người dùng là thành viên của trận đấu trước khi thực hiện thao tác. */
   async assertMember(matchId: string, userId: string) {
     const member = await this.players.exists({
       matchId: this.id(matchId),
-      userId: this.id(userId),
-    });
+      userId: this.id(userId) });
 
     // Chỉ người chơi thuộc trận mới được nhận dữ liệu hoặc gửi hành động vào trận.
     if (!member) throw new WsException('You are not a player in this match');
@@ -74,15 +71,14 @@ export class ArenaRoundService {
     if (typeof answer !== 'string' || answer.length > 200)
       throw new WsException('Invalid answer');
 
-    const matchObjectId = this.id(matchId);
-    const userObjectId = this.id(userId);
+    const matchPgId = this.id(matchId);
+    const userPgId = this.id(userId);
     const [match, player, question] = await Promise.all([
-      this.matches.findById(matchObjectId),
-      this.players.findOne({ matchId: matchObjectId, userId: userObjectId }),
+      this.matches.findById(matchPgId),
+      this.players.findOne({ matchId: matchPgId, userId: userPgId }),
       this.questions.findOne({
         _id: this.id(questionId),
-        matchId: matchObjectId,
-      }),
+        matchId: matchPgId }),
     ]);
 
     // Người chơi phải còn ở trạng thái PLAYING mới được trả lời.
@@ -121,8 +117,7 @@ export class ArenaRoundService {
         (await this.questions.findOneAndUpdate(
           { _id: question._id, resolvedAt: null },
           {
-            $set: { resolvedAt: now, winnerId: correct ? userObjectId : null },
-          },
+            $set: { resolvedAt: now, winnerId: correct ? userPgId : null } },
           { returnDocument: 'after' },
         )) ??
         (await this.questions.findById(question._id)) ??
@@ -133,14 +128,12 @@ export class ArenaRoundService {
     if (resolved.resolvedAt) {
       const events = await this.resolutionEvents(match, resolved);
       const updated = await this.players.findOne({
-        matchId: matchObjectId,
-        userId: userObjectId,
-      });
+        matchId: matchPgId,
+        userId: userPgId });
       const answerRecord = await this.answers.findOne({
-        matchId: matchObjectId,
+        matchId: matchPgId,
         matchQuestionId: resolved._id,
-        userId: userObjectId,
-      });
+        userId: userPgId });
       return {
         events,
         answerResult: {
@@ -157,17 +150,14 @@ export class ArenaRoundService {
           correct: String(resolved.winnerId) === userId,
           points: answerRecord?.earnedScore ?? 0,
           totalScore: updated?.score ?? player.score,
-          streak: updated?.currentStreak ?? player.currentStreak,
-        },
-      };
+          streak: updated?.currentStreak ?? player.currentStreak } };
     }
 
     // Đáp án sai chỉ ghi nhận lượt thử; người chơi vẫn có thể trả lời lại câu này.
     const key = {
-      matchId: matchObjectId,
+      matchId: matchPgId,
       matchQuestionId: question._id,
-      userId: userObjectId,
-    };
+      userId: userPgId };
     try {
       await this.answers.findOneAndUpdate(
         { ...key, isCorrect: { $ne: true } },
@@ -179,11 +169,9 @@ export class ArenaRoundService {
             responseTimeMs: Math.max(
               0,
               now.getTime() - question.startedAt.getTime(),
-            ),
-          },
+            ) },
           $inc: { attempts: 1 },
-          $setOnInsert: key,
-        },
+          $setOnInsert: key },
         { upsert: true },
       );
     } catch (error) {
@@ -206,9 +194,7 @@ export class ArenaRoundService {
         resolved: false,
         points: 0,
         totalScore: player.score,
-        streak: player.currentStreak,
-      },
-    };
+        streak: player.currentStreak } };
   }
 
   /**
@@ -236,8 +222,7 @@ export class ArenaRoundService {
       const answerRecord = await this.answers.findOne({
         matchId: question.matchId,
         matchQuestionId: question._id,
-        userId: member.userId,
-      });
+        userId: member.userId });
       const wrongAttempts = Math.max(
         0,
         (answerRecord?.attempts ?? 0) - (won ? 1 : 0),
@@ -246,8 +231,7 @@ export class ArenaRoundService {
         ? this.arenaScoreService.calculateQuestionScore({
             timeLimitMs: match.secondsPerQuestion * 1000,
             elapsedMs: responseTimeMs,
-            wrongAttempts,
-          })
+            wrongAttempts })
         : 0;
       const hasAnswered = (answerRecord?.attempts ?? 0) > 0;
 
@@ -262,38 +246,30 @@ export class ArenaRoundService {
             $set: {
               score: { $add: [{ $ifNull: ['$score', 0] }, questionScore] },
               correctAnswers: {
-                $add: [{ $ifNull: ['$correctAnswers', 0] }, won ? 1 : 0],
-              },
+                $add: [{ $ifNull: ['$correctAnswers', 0] }, won ? 1 : 0] },
               wrongAnswers: {
                 $add: [
                   { $ifNull: ['$wrongAnswers', 0] },
                   !won && hasAnswered ? 1 : 0,
-                ],
-              },
+                ] },
               unanswered: {
                 $add: [
                   { $ifNull: ['$unanswered', 0] },
                   !won && !hasAnswered ? 1 : 0,
-                ],
-              },
+                ] },
               currentStreak: streak,
               longestStreak: {
-                $max: [{ $ifNull: ['$longestStreak', 0] }, streak],
-              },
+                $max: [{ $ifNull: ['$longestStreak', 0] }, streak] },
               totalResponseTimeMs: {
                 $add: [
                   { $ifNull: ['$totalResponseTimeMs', 0] },
                   hasAnswered ? responseTimeMs : 0,
-                ],
-              },
+                ] },
               scoredQuestionIds: {
                 $concatArrays: [
                   { $ifNull: ['$scoredQuestionIds', []] },
                   [question._id],
-                ],
-              },
-            },
-          },
+                ] } } },
         ],
         { updatePipeline: true },
       );
@@ -301,8 +277,7 @@ export class ArenaRoundService {
       const key = {
         matchId: question.matchId,
         matchQuestionId: question._id,
-        userId: member.userId,
-      };
+        userId: member.userId };
       try {
         await this.answers.updateOne(
           key,
@@ -313,10 +288,8 @@ export class ArenaRoundService {
               earnedScore: questionScore,
               ...(won ? { selectedAnswer: question.correctAnswer } : {}),
               responseTimeMs,
-              answeredAt: question.resolvedAt,
-            },
-            $setOnInsert: key,
-          },
+              answeredAt: question.resolvedAt },
+            $setOnInsert: key },
           { upsert: true },
         );
       } catch (error) {
@@ -348,17 +321,14 @@ export class ArenaRoundService {
           players: updated.map((member) => ({
             userId: String(member.userId),
             score: member.score,
-            streak: member.currentStreak,
-          })),
+            streak: member.currentStreak })),
           explanation: question.explanation,
           example: question.example,
           translation: question.translation,
           type: question.wordType,
           nextQuestionAt: new Date(
             question.resolvedAt!.getTime() + 3000,
-          ).toISOString(),
-        },
-      },
+          ).toISOString() } },
       {
         event: 'match:score-update',
         data: {
@@ -366,10 +336,7 @@ export class ArenaRoundService {
           players: updated.map((member) => ({
             userId: String(member.userId),
             score: member.score,
-            streak: member.currentStreak,
-          })),
-        },
-      },
+            streak: member.currentStreak })) } },
     ];
   }
 
@@ -381,16 +348,13 @@ export class ArenaRoundService {
     const matches = await this.matches.find({
       status: ArenaMatchStatus.PLAYING,
       friendMode: {
-        $nin: [ArenaFriendMode.WORD_CHAIN, ArenaFriendMode.WORD_GUESS],
-      },
-    });
+        $nin: [ArenaFriendMode.WORD_CHAIN, ArenaFriendMode.WORD_GUESS] } });
     const batches: { matchId: string; events: ArenaRoundEvent[] }[] = [];
     for (const match of matches) {
       try {
         batches.push({
           matchId: String(match._id),
-          events: await this.advance(String(match._id)),
-        });
+          events: await this.advance(String(match._id)) });
       } catch (error) {
         // Một trận lỗi không được làm dừng việc xử lý các trận còn lại.
         this.logger.error(
@@ -416,8 +380,7 @@ export class ArenaRoundService {
     const events = await this.advance(matchId);
     const question = await this.questions.findOne({
       matchId: match._id,
-      order: match.currentQuestionIndex ?? 1,
-    });
+      order: match.currentQuestionIndex ?? 1 });
     if (
       question?.resolvedAt &&
       !events.some((e) => e.event === 'match:question-resolved')
@@ -438,10 +401,7 @@ export class ArenaRoundService {
           players: players.map((p) => ({
             userId: String(p.userId),
             score: p.score,
-            streak: p.currentStreak,
-          })),
-        },
-      });
+            streak: p.currentStreak })) } });
     }
     return events;
   }
@@ -458,8 +418,7 @@ export class ArenaRoundService {
 
     let question = await this.questions.findOne({
       matchId: match._id,
-      order: match.currentQuestionIndex ?? 1,
-    });
+      order: match.currentQuestionIndex ?? 1 });
 
     // Câu hỏi có thể chưa được tạo xong ngay sau khi trận bắt đầu.
     if (!question) return [];
@@ -515,9 +474,7 @@ export class ArenaRoundService {
           answerLength: Array.from(question.correctAnswer).length,
           image: question.imageUrl,
           startedAt: question.startedAt!.toISOString(),
-          timeLimit: match.secondsPerQuestion,
-        },
-      },
+          timeLimit: match.secondsPerQuestion } },
     ];
 
     // Câu chưa resolve tiếp tục phát hint và chưa được cộng điểm.
@@ -531,9 +488,7 @@ export class ArenaRoundService {
             question.correctAnswer,
             now - question.startedAt!.getTime(),
             match.secondsPerQuestion * 1000,
-          ),
-        },
-      });
+          ) } });
       return events;
     }
 
@@ -549,8 +504,7 @@ export class ArenaRoundService {
         {
           _id: match._id,
           status: ArenaMatchStatus.PLAYING,
-          currentQuestionIndex: question.order,
-        },
+          currentQuestionIndex: question.order },
         { $inc: { currentQuestionIndex: 1 } },
       );
 
@@ -577,8 +531,7 @@ export class ArenaRoundService {
     if (match?.status === ArenaMatchStatus.CANCELLED)
       return {
         event: 'friend:cancelled',
-        data: { matchId, message: match.cancelReason },
-      };
+        data: { matchId, message: match.cancelReason } };
     return {
       event:
         match?.type === ArenaMatchType.FRIEND ||
@@ -606,11 +559,7 @@ export class ArenaRoundService {
             ? {
                 ratingBefore: player.ratingBefore,
                 ratingAfter: player.ratingAfter,
-                ratingChange: player.ratingChange,
-              }
-            : {}),
-        })),
-      },
-    };
+                ratingChange: player.ratingChange }
+            : {}) })) } };
   }
 }

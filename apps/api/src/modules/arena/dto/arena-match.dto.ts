@@ -3,19 +3,18 @@ import {
   IsInt,
   Min,
   Max,
-  IsMongoId,
+  IsUUID,
   IsOptional,
   IsString,
   MaxLength,
-  MinLength,
-} from 'class-validator';
+  MinLength } from 'class-validator';
 import { ArenaFriendMode } from '../schemas/arena-match.schema.js';
 
 export class CreateFriendMatchDto {
   @IsOptional()
   @IsEnum(ArenaFriendMode)
   mode?: ArenaFriendMode;
-  @IsMongoId()
+  @IsUUID('4')
   opponentId: string;
 }
 

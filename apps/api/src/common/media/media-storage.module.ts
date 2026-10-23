@@ -4,6 +4,5 @@ import { MediaStorageService } from './media-storage.service.js';
 @Global()
 @Module({
   providers: [MediaStorageService],
-  exports: [MediaStorageService],
-})
+  exports: [MediaStorageService] })
 export class MediaStorageModule {}

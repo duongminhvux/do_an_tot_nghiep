@@ -1,80 +1,81 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { type HydratedDocument, Types } from 'mongoose';
+import { PgId } from '../../../postgres/compat.js';
+import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
+import { type PgDocument } from '../../../postgres/compat.js';
 import { DictationLesson } from './dictation-lesson.schema.js';
 import { User } from '../../users/schema/user.schema.js';
 
-export type DictationProgressDocument = HydratedDocument<DictationProgress>;
+export type DictationProgressDocument = PgDocument<DictationProgress>;
 
-@Schema({ _id: false })
+@PgEntity({ _id: false })
 export class DictationSegmentProgress {
-  @Prop({ required: true, min: 0 })
+  @PgField({ required: true, min: 0 })
   segmentIndex!: number;
 
-  @Prop({ default: 0, min: 0 })
+  @PgField({ default: 0, min: 0 })
   attempts!: number;
 
-  @Prop({ default: 0, min: 0 })
+  @PgField({ default: 0, min: 0 })
   wrongAttempts!: number;
 
-  @Prop({ default: 0, min: 0 })
+  @PgField({ default: 0, min: 0 })
   replayCount!: number;
 
-  @Prop({ default: false })
+  @PgField({ default: false })
   correct!: boolean;
 
-  @Prop({ default: false })
+  @PgField({ default: false })
   firstTryCorrect!: boolean;
 
-  @Prop({ default: false })
+  @PgField({ default: false })
   revealed!: boolean;
 
-  @Prop()
+  @PgField()
   completedAt?: Date;
 }
 
-const DictationSegmentProgressSchema = SchemaFactory.createForClass(DictationSegmentProgress);
+const DictationSegmentProgressSchema = PgSchemaFactory.createForClass(DictationSegmentProgress);
 
-@Schema({ timestamps: true })
+@PgEntity({ timestamps: true })
 export class DictationProgress {
-  @Prop({ type: Types.ObjectId, ref: User.name, required: true, index: true })
-  userId!: Types.ObjectId;
+  @PgField({ type: PgId, ref: User.name, required: true, index: true })
+  userId!: PgId;
 
-  @Prop({ type: Types.ObjectId, ref: DictationLesson.name, required: true, index: true })
-  lessonId!: Types.ObjectId;
+  @PgField({ type: PgId, ref: DictationLesson.name, required: true, index: true })
+  lessonId!: PgId;
 
-  @Prop({ default: 0, min: 0 })
+  @PgField({ default: 0, min: 0 })
   currentSegment!: number;
 
-  @Prop({ type: [Number], default: [] })
+  @PgField({ type: [Number], default: [] })
   completedSegments!: number[];
 
-  @Prop({ type: [Number], default: [] })
+  @PgField({ type: [Number], default: [] })
   revealedSegments!: number[];
 
-  @Prop({ type: [DictationSegmentProgressSchema], default: [] })
+  @PgField({ type: [DictationSegmentProgressSchema], default: [] })
   segmentProgress!: DictationSegmentProgress[];
 
-  @Prop({ default: 0, min: 0 })
+  @PgField({ default: 0, min: 0 })
   correctCount!: number;
 
-  @Prop({ default: 0, min: 0 })
+  @PgField({ default: 0, min: 0 })
   wrongCount!: number;
 
-  @Prop({ default: 0, min: 0 })
+  @PgField({ default: 0, min: 0 })
   attempts!: number;
 
-  @Prop({ default: false })
+  @PgField({ default: false })
   transcriptRevealed!: boolean;
 
-  @Prop()
+  @PgField()
   transcriptRevealedAt?: Date;
 
-  @Prop({ default: false })
+  @PgField({ default: false })
   completed!: boolean;
 
-  @Prop({ default: Date.now })
+  @PgField({ default: Date.now })
   lastPracticedAt!: Date;
 }
 
-export const DictationProgressSchema = SchemaFactory.createForClass(DictationProgress);
+export const DictationProgressSchema = PgSchemaFactory.createForClass(DictationProgress);
 DictationProgressSchema.index({ userId: 1, lessonId: 1 }, { unique: true });

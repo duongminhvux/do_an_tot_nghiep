@@ -21,7 +21,7 @@ def publish(body: PublishBody, request: Request):
     authorize(request)
     job=load_job(body.jobId)
     if not job or job.get('state') != 'waiting':
-        raise HTTPException(409,'Job not waiting in MongoDB')
+        raise HTTPException(409,'Job not waiting in PostgreSQL')
     c,ch=connect()
     try:
         try:

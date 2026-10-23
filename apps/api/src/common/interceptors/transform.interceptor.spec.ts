@@ -12,8 +12,7 @@ describe('TransformInterceptor', () => {
       });
       const context = {
         getType: () => type,
-        switchToHttp,
-      } as unknown as ExecutionContext;
+        switchToHttp } as unknown as ExecutionContext;
       const handler: CallHandler = { handle: () => of(payload) };
       expect(
         await firstValueFrom(
@@ -26,8 +25,7 @@ describe('TransformInterceptor', () => {
   it('still wraps HTTP responses with statusCode and data', async () => {
     const context = {
       getType: () => 'http',
-      switchToHttp: () => ({ getResponse: () => ({ statusCode: 201 }) }),
-    } as unknown as ExecutionContext;
+      switchToHttp: () => ({ getResponse: () => ({ statusCode: 201 }) }) } as unknown as ExecutionContext;
     const handler: CallHandler = { handle: () => of({ matchId: 'test' }) };
     expect(
       await firstValueFrom(
@@ -36,8 +34,7 @@ describe('TransformInterceptor', () => {
     ).toEqual({
       statusCode: 201,
       message: 'SUCCESS',
-      data: { matchId: 'test' },
-    });
+      data: { matchId: 'test' } });
   });
   it('preserves error acknowledgements for Friendly requests', async () => {
     const payload = { success: false, message: 'Player is offline' };
@@ -45,8 +42,7 @@ describe('TransformInterceptor', () => {
     expect(
       await firstValueFrom(
         new TransformInterceptor().intercept(context, {
-          handle: () => of(payload),
-        }),
+          handle: () => of(payload) }),
       ),
     ).toBe(payload);
   });

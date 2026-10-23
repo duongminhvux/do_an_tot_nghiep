@@ -1,6 +1,6 @@
 import type { SnapshotQuestion } from './attempt.types.js';
 
-// Expressions are evaluated by MongoDB against the answers at the exact moment
+// Expressions are evaluated by PostgreSQL against the answers at the exact moment
 // submission wins the IN_PROGRESS update, including a concurrent last answer.
 export function buildAttemptResultPipeline(
   questions: SnapshotQuestion[],
@@ -19,12 +19,10 @@ export function buildAttemptResultPipeline(
             $in: [
               { $ifNull: [`$answers.${q._id}`, null] },
               q.options.map((o) => o.key),
-            ],
-          },
+            ] },
           1,
           0,
-        ],
-      })),
+        ] })),
     );
     const correct = sum(
       items.map((q) => ({
@@ -35,15 +33,12 @@ export function buildAttemptResultPipeline(
                 $in: [
                   { $ifNull: [`$answers.${q._id}`, null] },
                   q.options.map((o) => o.key),
-                ],
-              },
+                ] },
               { $eq: [`$answers.${q._id}`, q.correctAnswer] },
-            ],
-          },
+            ] },
           1,
           0,
-        ],
-      })),
+        ] })),
     );
     return {
       total: items.length,
@@ -51,8 +46,7 @@ export function buildAttemptResultPipeline(
       correct,
       incorrect: { $subtract: [answered, correct] },
       unanswered: { $subtract: [items.length, answered] },
-      accuracy: percent(correct, items.length),
-    };
+      accuracy: percent(correct, items.length) };
   };
   return [
     {
@@ -64,8 +58,7 @@ export function buildAttemptResultPipeline(
         totalQuestions: questions.length,
         partResults: selectedParts.map((part) => ({
           part,
-          ...resultFor(questions.filter((q) => q.part === part)),
-        })),
+          ...resultFor(questions.filter((q) => q.part === part)) })),
         listeningResult: resultFor(questions.filter((q) => q.part <= 4)),
         readingResult: resultFor(questions.filter((q) => q.part >= 5)),
         durationSpent: {
@@ -75,19 +68,13 @@ export function buildAttemptResultPipeline(
               $floor: {
                 $divide: [
                   {
-                    $subtract: ['$$NOW', { $ifNull: ['$startedAt', '$$NOW'] }],
-                  },
+                    $subtract: ['$$NOW', { $ifNull: ['$startedAt', '$$NOW'] }] },
                   1000,
-                ],
-              },
-            },
-          ],
-        },
+                ] } },
+          ] },
         score: '$$REMOVE',
         listeningScore: '$$REMOVE',
-        readingScore: '$$REMOVE',
-      },
-    },
+        readingScore: '$$REMOVE' } },
     {
       $set: {
         answeredQuestions: { $sum: '$partResults.answered' },
@@ -95,15 +82,11 @@ export function buildAttemptResultPipeline(
         incorrectAnswers: { $sum: '$partResults.incorrect' },
         unansweredQuestions: { $sum: '$partResults.unanswered' },
         listeningCorrect: '$listeningResult.correct',
-        readingCorrect: '$readingResult.correct',
-      },
-    },
+        readingCorrect: '$readingResult.correct' } },
     {
       $set: {
         totalCorrect: '$correctAnswers',
-        accuracy: percent('$correctAnswers', questions.length),
-      },
-    },
+        accuracy: percent('$correctAnswers', questions.length) } },
   ];
 }
 

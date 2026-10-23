@@ -1,6 +1,7 @@
+import { PgId } from '../../../postgres/compat.js';
 import { Injectable, NotFoundException, BadRequestException, Logger, Optional } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { type Model, Types } from 'mongoose';
+import { InjectPgModel } from '../../../postgres/compat.js';
+import { type Model } from '../../../postgres/compat.js';
 import { parseOffice } from 'officeparser';
 import { createHash } from 'node:crypto';
 import { parseImportText, validateImportDraft } from '@repo/shared-types/assessment-import';
@@ -24,11 +25,11 @@ export class QuestionsService {
   private async captureGroupEdit(id: string, before: any) {
     if (!this.learning) return undefined;
     try {
-      const linked = await this.questionModel.find({ passageGroupId: new Types.ObjectId(id) }).sort({ order: 1 }).lean().exec();
+      const linked = await this.questionModel.find({ passageGroupId: new PgId(id) }).sort({ order: 1 }).lean().exec();
       const source = linked.find(q => this.learning!.sourceJob(q.importBatchId));
       if (!source) return undefined;
       const group = await this.passageGroupModel.findById(id).lean().exec();
-      const passages = await this.passageModel.find({ passageGroupId: new Types.ObjectId(id) }).sort({ order: 1 }).lean().exec();
+      const passages = await this.passageModel.find({ passageGroupId: new PgId(id) }).sort({ order: 1 }).lean().exec();
       return this.learning.enqueue({ kind: 'group', jobId: this.learning.sourceJob(source.importBatchId), examId: String(source.examId),
         number: source.sourceOrder ?? source.order, part: source.part, before, after: { ...group, passages }, reason: 'saved-passage-edit' });
     } catch (error) {
@@ -38,15 +39,15 @@ export class QuestionsService {
   }
 
   constructor(
-    @InjectModel(Question.name)
+    @InjectPgModel(Question.name)
     private readonly questionModel: Model<QuestionDocument>,
-    @InjectModel(PassageGroup.name)
+    @InjectPgModel(PassageGroup.name)
     private readonly passageGroupModel: Model<PassageGroupDocument>,
-    @InjectModel(Passage.name)
+    @InjectPgModel(Passage.name)
     private readonly passageModel: Model<PassageDocument>,
     private readonly mediaUploadService: ManagedMediaService,
     private readonly mediaStorage: MediaStorageService,
-    @InjectModel(Exam.name)
+    @InjectPgModel(Exam.name)
     private readonly examModel?: Model<ExamDocument>,
     @Optional() private readonly learning?: PdfAiLearningService,
   ) {}
@@ -79,7 +80,7 @@ export class QuestionsService {
     let targetOrder = order;
     if (targetOrder === undefined || targetOrder === null) {
       const highest = await this.questionModel
-        .findOne({ examId: new Types.ObjectId(examId) })
+        .findOne({ examId: new PgId(examId) })
         .sort({ order: -1 })
         .select('order')
         .lean()
@@ -96,11 +97,10 @@ export class QuestionsService {
     try {
       const created = new this.questionModel({
         ...rest,
-        examId: new Types.ObjectId(examId),
-        passageGroupId: effectivePassageGroupId ? new Types.ObjectId(effectivePassageGroupId) : undefined,
+        examId: new PgId(examId),
+        passageGroupId: effectivePassageGroupId ? new PgId(effectivePassageGroupId) : undefined,
         order: targetOrder,
-        isActive: createQuestionDto.isActive ?? true,
-      });
+        isActive: createQuestionDto.isActive ?? true });
 
       return await created.save();
     } finally {
@@ -112,8 +112,7 @@ export class QuestionsService {
 
   async findByExam(examId: string, part?: number): Promise<Question[]> {
     const filter: Record<string, any> = {
-      examId: Types.ObjectId.isValid(examId) ? new Types.ObjectId(examId) : examId,
-    };
+      examId: PgId.isValid(examId) ? new PgId(examId) : examId };
     if (part) {
       filter.part = Number(part);
     }
@@ -128,12 +127,11 @@ export class QuestionsService {
     return questions.map((q: any) => ({
       ...q,
       isActive: q.isActive ?? (q.status ? q.status === 'ACTIVE' : true),
-      passageId: q.passageGroupId,
-    })) as Question[];
+      passageId: q.passageGroupId })) as Question[];
   }
 
   async findPassagesByExam(examId: string): Promise<any[]> {
-    const validExamId = Types.ObjectId.isValid(examId) ? new Types.ObjectId(examId) : examId;
+    const validExamId = PgId.isValid(examId) ? new PgId(examId) : examId;
     const groups = await this.passageGroupModel
       .find({ examId: validExamId })
       .sort({ order: 1, createdAt: 1 })
@@ -156,8 +154,7 @@ export class QuestionsService {
         passages: childPassages,
         content: childPassages.map((cp) => cp.content).filter(Boolean).join('\n\n'),
         audioUrl: childPassages.find((cp) => cp.audioUrl)?.audioUrl,
-        imageUrl: childPassages.find((cp) => cp.imageUrl)?.imageUrl,
-      };
+        imageUrl: childPassages.find((cp) => cp.imageUrl)?.imageUrl };
     });
   }
 
@@ -176,8 +173,7 @@ export class QuestionsService {
     }
     const created = new this.passageGroupModel({
       ...data,
-      examId: new Types.ObjectId(data.examId),
-    });
+      examId: new PgId(data.examId) });
     const savedGroup = await created.save();
 
     if (Array.isArray(data.passages) && data.passages.length > 0) {
@@ -189,8 +185,7 @@ export class QuestionsService {
           content: p.content,
           audioUrl: p.audioUrl,
           imageUrl: p.imageUrl,
-          order: p.order !== undefined ? p.order : i + 1,
-        });
+          order: p.order !== undefined ? p.order : i + 1 });
       }
     } else if (data.content || data.audioUrl || data.imageUrl) {
       await this.passageModel.create({
@@ -199,21 +194,20 @@ export class QuestionsService {
         content: data.content,
         audioUrl: data.audioUrl,
         imageUrl: data.imageUrl,
-        order: 1,
-      });
+        order: 1 });
     }
 
     return savedGroup;
   }
 
   async updatePassageGroup(id: string, data: any): Promise<PassageGroup> {
-    if (!Types.ObjectId.isValid(id)) {
+    if (!PgId.isValid(id)) {
       throw new NotFoundException('PassageGroup not found');
     }
     const { content, audioUrl, imageUrl, passages, ...groupFields } = data;
     const existingGroup = await this.passageGroupModel.findById(id).exec();
     if (!existingGroup) throw new NotFoundException('PassageGroup not found');
-    const previousPassages = await this.passageModel.find({ passageGroupId: new Types.ObjectId(id) }).lean().exec();
+    const previousPassages = await this.passageModel.find({ passageGroupId: new PgId(id) }).lean().exec();
     const nextPart = data.part ?? existingGroup.part;
     if (Array.isArray(passages) && passages.length > 0) {
       for (const patch of passages) {
@@ -228,9 +222,7 @@ export class QuestionsService {
       const patch = hasPassagePatches ? passages.find((item: any) => String(item._id) === String(p._id)) : undefined;
       this.validateReadingPassage(nextPart, { ...p, ...patch,
         ...(!hasPassagePatches && p === previousPassages[0] ? {
-          content: content ?? p.content, imageUrl: imageUrl ?? p.imageUrl,
-        } : {}),
-      });
+          content: content ?? p.content, imageUrl: imageUrl ?? p.imageUrl } : {}) });
     }
     const updated = await this.passageGroupModel
       .findByIdAndUpdate(id, { $set: groupFields }, { returnDocument: 'after' })
@@ -240,11 +232,11 @@ export class QuestionsService {
       throw new NotFoundException('PassageGroup not found');
     }
 
-    const groupId = new Types.ObjectId(id);
+    const groupId = new PgId(id);
 
     if (Array.isArray(passages) && passages.length > 0) {
       for (const p of passages) {
-        if (p._id && Types.ObjectId.isValid(p._id)) {
+        if (p._id && PgId.isValid(p._id)) {
           await this.passageModel.findByIdAndUpdate(p._id, { $set: p }, { returnDocument: 'after' }).exec();
         }
       }
@@ -262,8 +254,7 @@ export class QuestionsService {
           content: content || '',
           audioUrl,
           imageUrl,
-          order: 1,
-        });
+          order: 1 });
       }
     }
 
@@ -273,16 +264,15 @@ export class QuestionsService {
   }
 
   async removePassageGroup(id: string): Promise<{ deleted: boolean; deletedQuestionsCount: number }> {
-    if (!Types.ObjectId.isValid(id)) {
+    if (!PgId.isValid(id)) {
       throw new NotFoundException('PassageGroup not found');
     }
-    const groupId = new Types.ObjectId(id);
+    const groupId = new PgId(id);
     const passagesToDelete = await this.passageModel.find({ passageGroupId: groupId }).lean().exec();
 
     await this.passageModel.deleteMany({ passageGroupId: groupId }).exec();
     const deletedQuestions = await this.questionModel.deleteMany({
-      passageGroupId: groupId,
-    }).exec();
+      passageGroupId: groupId }).exec();
 
     await this.passageGroupModel.findByIdAndDelete(id).exec();
     await Promise.all(passagesToDelete.map((passage: any) => this.deleteLocalAudio(passage.audioUrl, passage.audioMeta?.storageKey)));
@@ -296,15 +286,14 @@ export class QuestionsService {
       this.validateReadingPassage(group.part, data);
       const created = new this.passageModel({
         ...data,
-        passageGroupId: new Types.ObjectId(data.passageGroupId),
-      });
+        passageGroupId: new PgId(data.passageGroupId) });
       return created.save();
     }
     return this.createPassageGroup(data);
   }
 
   async updatePassage(id: string, data: any): Promise<any> {
-    if (!Types.ObjectId.isValid(id)) {
+    if (!PgId.isValid(id)) {
       throw new NotFoundException('Passage not found');
     }
     const isPassage = await this.passageModel.findById(id).exec();
@@ -342,7 +331,7 @@ export class QuestionsService {
   }
 
   async removePassage(id: string): Promise<{ deleted: boolean; deletedQuestionsCount: number }> {
-    if (!Types.ObjectId.isValid(id)) {
+    if (!PgId.isValid(id)) {
       throw new NotFoundException('Passage not found');
     }
     const isPassage = await this.passageModel.findById(id).exec();
@@ -355,7 +344,7 @@ export class QuestionsService {
   }
 
   async findOne(id: string): Promise<Question> {
-    if (!Types.ObjectId.isValid(id)) {
+    if (!PgId.isValid(id)) {
       throw new NotFoundException('Question not found');
     }
     const question = await this.questionModel
@@ -369,12 +358,11 @@ export class QuestionsService {
     return {
       ...question,
       isActive: question.isActive ?? ((question as any).status ? (question as any).status === 'ACTIVE' : true),
-      passageId: question.passageGroupId,
-    } as any;
+      passageId: question.passageGroupId } as any;
   }
 
   async update(id: string, updateQuestionDto: UpdateQuestionDto): Promise<Question> {
-    if (!Types.ObjectId.isValid(id)) {
+    if (!PgId.isValid(id)) {
       throw new NotFoundException('Question not found');
     }
 
@@ -424,7 +412,7 @@ export class QuestionsService {
   }
 
   async remove(id: string): Promise<{ deleted: boolean }> {
-    if (!Types.ObjectId.isValid(id)) {
+    if (!PgId.isValid(id)) {
       throw new NotFoundException('Question not found');
     }
     const question = await this.questionModel.findByIdAndDelete(id).lean().exec();
@@ -437,7 +425,7 @@ export class QuestionsService {
   }
 
   private async validateImportContext(examId: string, part: number, section?: string) {
-    if (!Types.ObjectId.isValid(examId)) throw new NotFoundException('Exam not found');
+    if (!PgId.isValid(examId)) throw new NotFoundException('Exam not found');
     if (!Number.isInteger(part) || part < 1 || part > 7) throw new BadRequestException('Part phải từ 1 đến 7.');
     const expectedSection = part >= 5 ? 'READING' : 'LISTENING';
     if (section && section !== expectedSection) throw new BadRequestException('Part không khớp với kỹ năng đã chọn.');
@@ -539,7 +527,7 @@ export class QuestionsService {
     try {
       const findSavedBatch = async () => {
         if (!batchId) return null;
-        const saved = await this.questionModel.find({ examId: new Types.ObjectId(examId), importBatchId: batchId }).sort({ importIndex: 1 }).lean().exec();
+        const saved = await this.questionModel.find({ examId: new PgId(examId), importBatchId: batchId }).sort({ importIndex: 1 }).lean().exec();
         if (!saved.length) return null;
         if (saved.length !== questions.length || saved.some((q) => q.importFingerprint !== fingerprint)) throw new BadRequestException('Lượt import đã tồn tại với dữ liệu khác hoặc chưa hoàn tất. Hãy tải lại đề để kiểm tra.');
         return { importedCount: saved.length, passageGroupsCount: new Set(saved.map((q) => q.passageGroupId?.toString()).filter(Boolean)).size, data: saved };
@@ -550,24 +538,24 @@ export class QuestionsService {
         const learning = jobId ? await this.learning!.enqueue({ kind: 'part', jobId, examId, after: { part, groups, questions }, reason: 'saved-ai-import' }) : undefined;
         return { ...savedBatch, learning };
       }
-      if (preserveSourceOrder && await this.questionModel.findOne({ examId: new Types.ObjectId(examId), order: { $in: questions.map((q: any) => q.order) } }).lean().exec()) {
+      if (preserveSourceOrder && await this.questionModel.findOne({ examId: new PgId(examId), order: { $in: questions.map((q: any) => q.order) } }).lean().exec()) {
         throw new BadRequestException('Đề đã có số câu trong Part này. Không thể ghi đè; hãy kiểm tra nội dung đã lưu.');
       }
-      // Validate every document before writing groups, including Mongoose field constraints.
+      // Validate every document before writing groups, including PostgreSQL repository field constraints.
       for (const q of questions) {
-        await new this.questionModel({ ...q, examId: new Types.ObjectId(examId), section, part }).validate();
+        await new this.questionModel({ ...q, examId: new PgId(examId), section, part }).validate();
       }
-      const highest = await this.questionModel.findOne({ examId: new Types.ObjectId(examId) }).sort({ order: -1 }).select('order').lean().exec();
-      const highestGroup = groups.length ? await this.passageGroupModel.findOne({ examId: new Types.ObjectId(examId) }).sort({ order: -1 }).select('order').lean().exec() : null;
-      const groupMap = new Map<string, Types.ObjectId>();
-      const passageMap = new Map<string, Types.ObjectId>();
-      const createdGroupIds: Types.ObjectId[] = [];
-      const questionIds = questions.map(() => new Types.ObjectId());
+      const highest = await this.questionModel.findOne({ examId: new PgId(examId) }).sort({ order: -1 }).select('order').lean().exec();
+      const highestGroup = groups.length ? await this.passageGroupModel.findOne({ examId: new PgId(examId) }).sort({ order: -1 }).select('order').lean().exec() : null;
+      const groupMap = new Map<string, PgId>();
+      const passageMap = new Map<string, PgId>();
+      const createdGroupIds: PgId[] = [];
+      const questionIds = questions.map(() => new PgId());
       try {
         for (const [gi, g] of groups.entries()) {
-          const groupId = new Types.ObjectId();
+          const groupId = new PgId();
           createdGroupIds.push(groupId);
-          await this.passageGroupModel.create({ _id: groupId, examId: new Types.ObjectId(examId), part, section, title: g.title || `Part ${part} - Bài tập ${gi + 1}`, order: (highestGroup?.order || 0) + gi + 1 });
+          await this.passageGroupModel.create({ _id: groupId, examId: new PgId(examId), part, section, title: g.title || `Part ${part} - Bài tập ${gi + 1}`, order: (highestGroup?.order || 0) + gi + 1 });
           groupMap.set(g.id, groupId);
           for (const [pi, p] of g.passages.entries()) {
             await this.passageModel.create({ passageGroupId: groupId, type: p.type, content: p.content.trim(), audioUrl: p.audioUrl?.trim(), imageUrl: p.imageUrl?.trim(), order: pi + 1 });
@@ -575,14 +563,13 @@ export class QuestionsService {
           }
         }
         const docs = questions.map((q: any, i: number) => ({
-          _id: questionIds[i], examId: new Types.ObjectId(examId), section, part,
+          _id: questionIds[i], examId: new PgId(examId), section, part,
           passageGroupId: groupMap.get(q.passageGroupTempId) || passageMap.get(q.passageTempId),
           content: q.content.trim(), options: q.options.map((o: any) => ({ key: o.key, text: o.text.trim() })), correctAnswer: q.correctAnswer,
           explanation: q.explanation?.trim() || '', imageUrl: q.imageUrl?.trim(), audioUrl: q.audioUrl?.trim(),
           order: preserveSourceOrder ? q.order : (highest?.order || 0) + i + 1, isActive: q.isActive ?? true,
           ...(batchId ? { importBatchId: batchId, importIndex: i, importFingerprint: fingerprint } : {}),
-          ...(preserveSourceOrder ? { sourceOrder: q.order } : {}),
-        }));
+          ...(preserveSourceOrder ? { sourceOrder: q.order } : {}) }));
         const inserted = await this.questionModel.insertMany(docs, { ordered: true });
         const jobId = this.learning?.sourceJob(batchId);
         const learning = jobId ? await this.learning!.enqueue({ kind: 'part', jobId, examId, after: { part, groups, questions }, reason: 'saved-ai-import' }) : undefined;

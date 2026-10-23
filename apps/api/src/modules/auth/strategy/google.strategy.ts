@@ -10,8 +10,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       clientID: configService.get<string>('GOOGLE_CLIENT_ID') || '',
       clientSecret: configService.get<string>('GOOGLE_CLIENT_SECRET') || '',
       callbackURL: configService.get<string>('GOOGLE_CALLBACK_URL') || 'http://localhost:5000/api/auth/google/callback',
-      scope: ['profile', 'email'],
-    });
+      scope: ['profile', 'email'] });
   }
 
   async validate(
@@ -26,8 +25,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       ggId: id,
       email: emails && emails[0] ? emails[0].value : '',
       username: displayName || (emails && emails[0] ? emails[0].value.split('@')[0] : ''),
-      avatarUrl: photos && photos[0] ? photos[0].value : undefined,
-    };
+      avatarUrl: photos && photos[0] ? photos[0].value : undefined };
 
     done(null, user);
   }

@@ -1,25 +1,26 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { type HydratedDocument, Types } from 'mongoose';
+import { PgId } from '../../../postgres/compat.js';
+import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
+import { type PgDocument } from '../../../postgres/compat.js';
 import { Lesson } from './lesson.schema.js';
 
-export type SectionDocument = HydratedDocument<Section>;
+export type SectionDocument = PgDocument<Section>;
 
-@Schema({ timestamps: true })
+@PgEntity({ timestamps: true })
 export class Section {
-  @Prop({ type: Types.ObjectId, ref: Lesson.name, required: true, index: true })
-  lessonId!: Types.ObjectId;
+  @PgField({ type: PgId, ref: Lesson.name, required: true, index: true })
+  lessonId!: PgId;
 
-  @Prop({ required: true, trim: true })
+  @PgField({ required: true, trim: true })
   name!: string;
 
-  @Prop({ required: true, trim: true, index: true })
+  @PgField({ required: true, trim: true, index: true })
   slug!: string;
 
-  @Prop({ default: 1 })
+  @PgField({ default: 1 })
   order?: number;
 }
 
-export const SectionSchema = SchemaFactory.createForClass(Section);
+export const SectionSchema = PgSchemaFactory.createForClass(Section);
 SectionSchema.index({ lessonId: 1, slug: 1 }, { unique: true });
 SectionSchema.index({ lessonId: 1, order: 1 });
 

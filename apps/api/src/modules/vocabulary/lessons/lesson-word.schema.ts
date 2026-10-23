@@ -1,30 +1,31 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { type HydratedDocument, Types } from 'mongoose';
+import { PgId } from '../../../postgres/compat.js';
+import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
+import { type PgDocument } from '../../../postgres/compat.js';
 import { Lesson } from './lesson.schema.js';
 import { Word } from '../words/word.schema.js';
 import { Section } from './section.schema.js';
 
-export type LessonWordDocument = HydratedDocument<LessonWord>;
+export type LessonWordDocument = PgDocument<LessonWord>;
 
-@Schema({ timestamps: true })
+@PgEntity({ timestamps: true })
 export class LessonWord {
-  @Prop({ type: Types.ObjectId, ref: Lesson.name, required: true, index: true })
-  lessonId!: Types.ObjectId;
+  @PgField({ type: PgId, ref: Lesson.name, required: true, index: true })
+  lessonId!: PgId;
 
-  @Prop({ type: Types.ObjectId, ref: Word.name, required: true, index: true })
-  wordId!: Types.ObjectId;
+  @PgField({ type: PgId, ref: Word.name, required: true, index: true })
+  wordId!: PgId;
 
-  @Prop({ type: Types.ObjectId, ref: Section.name, required: false, index: true })
-  sectionId?: Types.ObjectId;
+  @PgField({ type: PgId, ref: Section.name, required: false, index: true })
+  sectionId?: PgId;
 
-  @Prop({ default: 0 })
+  @PgField({ default: 0 })
   order?: number;
 
-  @Prop({ trim: true })
+  @PgField({ trim: true })
   customNote?: string;
 }
 
-export const LessonWordSchema = SchemaFactory.createForClass(LessonWord);
+export const LessonWordSchema = PgSchemaFactory.createForClass(LessonWord);
 LessonWordSchema.index({ lessonId: 1, wordId: 1 }, { unique: true });
 LessonWordSchema.index({ lessonId: 1, sectionId: 1, order: 1 });
 

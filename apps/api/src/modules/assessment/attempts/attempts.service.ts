@@ -1,3 +1,4 @@
+import { PgId } from '../../../postgres/compat.js';
 import {
   BadRequestException,
   ConflictException,
@@ -5,19 +6,17 @@ import {
   Inject,
   Injectable,
   NotFoundException,
-  Optional,
-} from '@nestjs/common';
+  Optional } from '@nestjs/common';
 import { toeicAttemptXp } from '@repo/shared-types/learning-xp';
 import { LearningActivityClient } from '../../../common/clients/learning-activity-client.js';
 import type { LearningActivityWriter } from '../../learning-activity/learning-activity.service.js';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { InjectPgModel } from '../../../postgres/compat.js';
+import { Model } from '../../../postgres/compat.js';
 import { CreateAttemptDto } from './dto/create-attempt.dto.js';
 import {
   AudioPlayDto,
   SaveAnswerDto,
-  UpdateAttemptDto,
-} from './dto/update-attempt.dto.js';
+  UpdateAttemptDto } from './dto/update-attempt.dto.js';
 import { Attempt } from './schemas/attempt.schema.js';
 import { Exam } from '../exams/schemas/exam.schema.js';
 import { Question } from '../questions/schemas/question.schema.js';
@@ -26,18 +25,15 @@ import { ExamMode, ToeicAttemptStatus } from './attempt.types.js';
 import type { SnapshotQuestion } from './attempt.types.js';
 import {
   buildAttemptResultPipeline,
-  COMPLETED_STATUSES,
-} from './attempt-results.js';
+  COMPLETED_STATUSES } from './attempt-results.js';
 import {
   estimateToeicScore,
   TOEIC_SCORE_BANDS,
   toeicScoreBand,
-  TOEIC_TOTAL_MAX,
-} from '@repo/shared-types/toeic-score';
+  TOEIC_TOTAL_MAX } from '@repo/shared-types/toeic-score';
 import type {
   QueryAttemptDto,
-  AdminQueryAttemptDto,
-} from './dto/query-attempt.dto.js';
+  AdminQueryAttemptDto } from './dto/query-attempt.dto.js';
 
 export function publicQuestion(question: SnapshotQuestion, review = false) {
   const {
@@ -48,8 +44,7 @@ export function publicQuestion(question: SnapshotQuestion, review = false) {
     imageUrl,
     audioUrl,
     passageGroupId,
-    passages = [],
-  } = question;
+    passages = [] } = question;
   return {
     _id,
     part,
@@ -58,8 +53,7 @@ export function publicQuestion(question: SnapshotQuestion, review = false) {
     content: part <= 2 && !review ? '' : content,
     options: options.map(({ key, text }) => ({
       key,
-      text: part <= 2 && !review ? '' : text,
-    })),
+      text: part <= 2 && !review ? '' : text })),
     imageUrl,
     audioUrl,
     passageGroupId,
@@ -67,16 +61,13 @@ export function publicQuestion(question: SnapshotQuestion, review = false) {
       _id,
       content: part <= 4 && !review ? undefined : content,
       imageUrl,
-      audioUrl,
-    })),
+      audioUrl })),
     ...(review
       ? {
           correctAnswer: question.correctAnswer,
           explanation: question.explanation,
-          transcript: question.transcript || (part <= 2 ? content : undefined),
-        }
-      : {}),
-  };
+          transcript: question.transcript || (part <= 2 ? content : undefined) }
+      : {}) };
 }
 
 // TOEIC pacing: 45 minutes per 100 Listening and 75 per 100 Reading questions.
@@ -112,17 +103,16 @@ export function answerFeedback(question: SnapshotQuestion, answer: string) {
     explanation: question.explanation,
     transcript:
       question.transcript ||
-      (question.part <= 2 ? question.content : undefined),
-  };
+      (question.part <= 2 ? question.content : undefined) };
 }
 
 @Injectable()
 export class AttemptsService {
   constructor(
-    @InjectModel(Attempt.name) private readonly attempts: Model<Attempt>,
-    @InjectModel(Exam.name) private readonly exams: Model<Exam>,
-    @InjectModel(Question.name) private readonly questions: Model<Question>,
-    @InjectModel(Passage.name) private readonly passages: Model<Passage>,
+    @InjectPgModel(Attempt.name) private readonly attempts: Model<Attempt>,
+    @InjectPgModel(Exam.name) private readonly exams: Model<Exam>,
+    @InjectPgModel(Question.name) private readonly questions: Model<Question>,
+    @InjectPgModel(Passage.name) private readonly passages: Model<Passage>,
     @Optional()
     @Inject(LearningActivityClient) private readonly learningActivity?: LearningActivityWriter,
   ) {}
@@ -130,13 +120,12 @@ export class AttemptsService {
   async availableParts(idOrSlug: string) {
     const exam = await this.exams
       .findOne({
-        ...(Types.ObjectId.isValid(idOrSlug)
+        ...(PgId.isValid(idOrSlug)
           ? { _id: idOrSlug }
           : { slug: idOrSlug }),
         type: 'TOEIC',
         isDeleted: { $ne: true },
-        isActive: { $ne: false },
-      })
+        isActive: { $ne: false } })
       .lean()
       .exec();
     if (!exam) throw new NotFoundException('Exam not found');
@@ -162,19 +151,18 @@ export class AttemptsService {
       part: row._id,
       section: row._id <= 4 ? 'LISTENING' : 'READING',
       type: names[row._id],
-      totalQuestions: row.totalQuestions,
-    }));
+      totalQuestions: row.totalQuestions }));
   }
 
-  private objectId(id: string) {
-    if (!Types.ObjectId.isValid(id))
+  private uuid(id: string) {
+    if (!PgId.isValid(id))
       throw new BadRequestException('Invalid id');
-    return new Types.ObjectId(id);
+    return new PgId(id);
   }
 
   private async owned(userId: string, id: string) {
     const attempt = await this.attempts
-      .findOne({ _id: this.objectId(id), userId: this.objectId(userId) })
+      .findOne({ _id: this.uuid(id), userId: this.uuid(userId) })
       .select('+questionSnapshot')
       .lean()
       .exec();
@@ -235,8 +223,7 @@ export class AttemptsService {
       score: scaled?.total,
       scoreMax: scaled?.max,
       listeningScore: scaled?.listening ?? undefined,
-      readingScore: scaled?.reading ?? undefined,
-    };
+      readingScore: scaled?.reading ?? undefined };
   }
 
   async create(userId: string, dto: CreateAttemptDto) {
@@ -253,11 +240,10 @@ export class AttemptsService {
     }
     const exam = await this.exams
       .findOne({
-        _id: this.objectId(dto.examId),
+        _id: this.uuid(dto.examId),
         type: 'TOEIC',
         isDeleted: { $ne: true },
-        isActive: { $ne: false },
-      })
+        isActive: { $ne: false } })
       .lean()
       .exec();
     if (!exam) throw new NotFoundException('Exam not found');
@@ -265,8 +251,7 @@ export class AttemptsService {
       .find({
         examId: exam._id,
         isActive: { $ne: false },
-        part: { $in: dto.selectedParts },
-      })
+        part: { $in: dto.selectedParts } })
       .sort({ part: 1, order: 1, sourceOrder: 1, _id: 1 })
       .lean()
       .exec();
@@ -302,8 +287,7 @@ export class AttemptsService {
           _id: String(p._id),
           content: q.part >= 5 ? p.content : undefined,
           imageUrl: p.imageUrl,
-          audioUrl: p.audioUrl,
-        })),
+          audioUrl: p.audioUrl })),
         correctAnswer: q.correctAnswer,
         explanation: q.explanation,
         transcript: [
@@ -313,8 +297,7 @@ export class AttemptsService {
           ),
         ]
           .filter(Boolean)
-          .join('\n'),
-      };
+          .join('\n') };
     });
     const timeLimitSeconds =
       dto.mode === ExamMode.TEST
@@ -326,7 +309,7 @@ export class AttemptsService {
         : undefined;
     const startedAt = new Date();
     const attempt = await this.attempts.create({
-      userId: this.objectId(userId),
+      userId: this.uuid(userId),
       examId: exam._id,
       examSnapshot: { _id: String(exam._id), name: exam.name, slug: exam.slug },
       mode: dto.mode,
@@ -338,8 +321,7 @@ export class AttemptsService {
       expiresAt: timeLimitSeconds
         ? new Date(startedAt.getTime() + timeLimitSeconds * 1000)
         : undefined,
-      totalQuestions: questions.length,
-    });
+      totalQuestions: questions.length });
     return { _id: String(attempt._id) };
   }
 
@@ -349,7 +331,7 @@ export class AttemptsService {
   ) {
     const filter: Record<string, unknown> = {};
     if (userId || query.userId)
-      filter.userId = this.objectId(userId || query.userId!);
+      filter.userId = this.uuid(userId || query.userId!);
     if (query.mode) filter.mode = query.mode;
     if (query.status)
       filter.status =
@@ -360,7 +342,7 @@ export class AttemptsService {
       const examId = query.examId;
       const exam = await this.exams
         .findOne(
-          Types.ObjectId.isValid(examId) ? { _id: examId } : { slug: examId },
+          PgId.isValid(examId) ? { _id: examId } : { slug: examId },
         )
         .select('_id')
         .lean()
@@ -411,7 +393,7 @@ export class AttemptsService {
 
   async adminFindOne(id: string) {
     const attempt = await this.attempts
-      .findById(this.objectId(id))
+      .findById(this.uuid(id))
       .select('+questionSnapshot')
       .populate('examId', 'name slug')
       .populate('userId', 'username email')
@@ -422,8 +404,7 @@ export class AttemptsService {
       ...this.summary(attempt),
       hasSnapshot: Boolean(attempt.questionSnapshot?.length),
       questions:
-        attempt.questionSnapshot?.map((q) => publicQuestion(q, true)) ?? [],
-    };
+        attempt.questionSnapshot?.map((q) => publicQuestion(q, true)) ?? [] };
   }
 
   async stats(userId?: string, query: AdminQueryAttemptDto = {}) {
@@ -438,48 +419,38 @@ export class AttemptsService {
     const timezone = query.timezone || 'UTC';
     const completed = { $in: ['$status', COMPLETED_STATUSES] };
     const completedValue = (value: unknown) => ({
-      $cond: [completed, value, 0],
-    });
+      $cond: [completed, value, 0] });
     const correctValue = {
-      $ifNull: ['$correctAnswers', { $ifNull: ['$totalCorrect', 0] }],
-    };
+      $ifNull: ['$correctAnswers', { $ifNull: ['$totalCorrect', 0] }] };
     const accuracyValue = {
       $cond: [
         { $gt: ['$totalQuestions', 0] },
         { $multiply: [{ $divide: [correctValue, '$totalQuestions'] }, 100] },
         0,
-      ],
-    };
+      ] };
     const sectionAccuracy = (field: string) => ({
       $avg: {
         $cond: [
           { $and: [completed, { $gt: [`$${field}.total`, 0] }] },
           `$${field}.accuracy`,
           null,
-        ],
-      },
-    });
+        ] } });
     const overviewStage = {
       $group: {
         _id: null,
         totalAttempts: { $sum: 1 },
         totalCompleted: { $sum: completedValue(1) },
         inProgress: {
-          $sum: { $cond: [{ $eq: ['$status', 'IN_PROGRESS'] }, 1, 0] },
-        },
+          $sum: { $cond: [{ $eq: ['$status', 'IN_PROGRESS'] }, 1, 0] } },
         testAttempts: {
-          $sum: { $cond: [{ $eq: ['$mode', ExamMode.TEST] }, 1, 0] },
-        },
+          $sum: { $cond: [{ $eq: ['$mode', ExamMode.TEST] }, 1, 0] } },
         practiceAttempts: {
-          $sum: { $cond: [{ $eq: ['$mode', ExamMode.PRACTICE] }, 1, 0] },
-        },
+          $sum: { $cond: [{ $eq: ['$mode', ExamMode.PRACTICE] }, 1, 0] } },
         totalQuestions: { $sum: completedValue('$totalQuestions') },
         totalAnswered: { $sum: completedValue('$answeredQuestions') },
         totalCorrect: { $sum: completedValue(correctValue) },
         totalDuration: { $sum: completedValue('$durationSpent') },
-        avgAccuracy: { $avg: { $cond: [completed, accuracyValue, null] } },
-      },
-    };
+        avgAccuracy: { $avg: { $cond: [completed, accuracyValue, null] } } } };
     const round2 = (value: number) => Math.round(value * 100) / 100;
     const shapeOverview = (overview: any = {}) => ({
       totalAttempts: overview.totalAttempts ?? 0,
@@ -502,8 +473,7 @@ export class AttemptsService {
       totalDuration: overview.totalDuration ?? 0,
       avgDuration: overview.totalCompleted
         ? Math.round((overview.totalDuration ?? 0) / overview.totalCompleted)
-        : 0,
-    });
+        : 0 });
     const scoredFilter = (
       createdAt: unknown,
     ): Record<string, unknown> | null =>
@@ -513,8 +483,7 @@ export class AttemptsService {
             ...baseFilter,
             ...(createdAt ? { createdAt } : {}),
             mode: ExamMode.TEST,
-            status: { $in: COMPLETED_STATUSES },
-          };
+            status: { $in: COMPLETED_STATUSES } };
     const findScored = (createdAt: unknown) => {
       const scoredQuery = scoredFilter(createdAt);
       return scoredQuery
@@ -542,9 +511,7 @@ export class AttemptsService {
                       attempts: { $sum: 1 },
                       total: { $sum: '$partResults.total' },
                       answered: { $sum: '$partResults.answered' },
-                      correct: { $sum: '$partResults.correct' },
-                    },
-                  },
+                      correct: { $sum: '$partResults.correct' } } },
                   { $sort: { _id: 1 } },
                 ],
                 timeline: [
@@ -554,23 +521,16 @@ export class AttemptsService {
                         $dateToString: {
                           format: '%Y-%m-%d',
                           date: '$createdAt',
-                          timezone,
-                        },
-                      },
+                          timezone } },
                       attempts: { $sum: 1 },
                       completed: { $sum: completedValue(1) },
                       duration: {
                         $sum: completedValue({
-                          $ifNull: ['$durationSpent', 0],
-                        }),
-                      },
+                          $ifNull: ['$durationSpent', 0] }) },
                       accuracy: {
-                        $avg: { $cond: [completed, accuracyValue, null] },
-                      },
+                        $avg: { $cond: [completed, accuracyValue, null] } },
                       listeningAccuracy: sectionAccuracy('listeningResult'),
-                      readingAccuracy: sectionAccuracy('readingResult'),
-                    },
-                  },
+                      readingAccuracy: sectionAccuracy('readingResult') } },
                   { $sort: { _id: 1 } },
                 ],
                 // Raw-accuracy bands; there is no calibrated TOEIC scale yet.
@@ -583,30 +543,20 @@ export class AttemptsService {
                           branches: [
                             {
                               case: { $gte: [accuracyValue, 90] },
-                              then: 'excellent',
-                            },
+                              then: 'excellent' },
                             {
                               case: { $gte: [accuracyValue, 75] },
-                              then: 'good',
-                            },
+                              then: 'good' },
                             {
                               case: { $gte: [accuracyValue, 60] },
-                              then: 'fair',
-                            },
+                              then: 'fair' },
                             {
                               case: { $gte: [accuracyValue, 45] },
-                              then: 'average',
-                            },
+                              then: 'average' },
                           ],
-                          default: 'low',
-                        },
-                      },
-                      count: { $sum: 1 },
-                    },
-                  },
-                ],
-              },
-            },
+                          default: 'low' } },
+                      count: { $sum: 1 } } },
+                ] } },
           ])
           .exec(),
         this.attempts
@@ -624,10 +574,7 @@ export class AttemptsService {
                     ...baseFilter,
                     createdAt: {
                       $gte: new Date(since.getTime() - query.days! * dayMs),
-                      $lt: since,
-                    },
-                  },
-                },
+                      $lt: since } } },
                 overviewStage,
               ])
               .exec()
@@ -636,8 +583,7 @@ export class AttemptsService {
         since
           ? findScored({
               $gte: new Date(since.getTime() - query.days! * dayMs),
-              $lt: since,
-            })
+              $lt: since })
           : Promise.resolve([]),
       ]);
     const overview = result[0]?.overview[0] ?? {};
@@ -651,8 +597,7 @@ export class AttemptsService {
       unanswered: Math.max(0, part.total - part.answered),
       accuracy: part.total
         ? Math.round((part.correct / part.total) * 10000) / 100
-        : 0,
-    }));
+        : 0 }));
     const section = (listening: boolean) => {
       const rows = parts.filter((p: any) => p.part <= 4 === listening);
       const total = rows.reduce((sum: number, p: any) => sum + p.total, 0);
@@ -667,8 +612,7 @@ export class AttemptsService {
         correct,
         incorrect: Math.max(0, answered - correct),
         unanswered: Math.max(0, total - answered),
-        accuracy: total ? Math.round((correct / total) * 10000) / 100 : 0,
-      };
+        accuracy: total ? Math.round((correct / total) * 10000) / 100 : 0 };
     };
     const distributionRows: { _id: string; count: number }[] =
       result[0]?.distribution ?? [];
@@ -679,8 +623,7 @@ export class AttemptsService {
       rows.map((row) => ({
         date: dayOf.format(new Date(row.createdAt)),
         score: estimateToeicScore(row.listeningResult, row.readingResult),
-        fullTest: row.selectedParts?.length === 7,
-      }));
+        fullTest: row.selectedParts?.length === 7 }));
     const average = (values: number[]) =>
       values.length
         ? Math.round(values.reduce((a, b) => a + b, 0) / values.length)
@@ -703,8 +646,7 @@ export class AttemptsService {
           rows.flatMap((r) =>
             r.score?.reading != null ? [r.score.reading] : [],
           ),
-        ),
-      };
+        ) };
     };
     const scored = scoredOf(scoredRows);
     const scoresOn = (date: string) =>
@@ -718,8 +660,7 @@ export class AttemptsService {
       previous: previous
         ? {
             ...shapeOverview(previous[0]),
-            ...scoreSummary(scoredOf(previousScoredRows)),
-          }
+            ...scoreSummary(scoredOf(previousScoredRows)) }
         : null,
       partResults: parts,
       listeningResult: section(true),
@@ -734,8 +675,7 @@ export class AttemptsService {
         readingAccuracy: optional(day.readingAccuracy),
         avgScore: scoresOn(day._id).avgScore,
         avgListeningScore: scoresOn(day._id).avgListeningScore,
-        avgReadingScore: scoresOn(day._id).avgReadingScore,
-      })),
+        avgReadingScore: scoresOn(day._id).avgReadingScore })),
       scoreDistribution: TOEIC_SCORE_BANDS.map(({ band }) => ({
         band,
         count: scored.filter(
@@ -743,17 +683,14 @@ export class AttemptsService {
             r.fullTest &&
             r.score?.max === TOEIC_TOTAL_MAX &&
             toeicScoreBand(r.score.total) === band,
-        ).length,
-      })),
+        ).length })),
       distribution: ['excellent', 'good', 'fair', 'average', 'low'].map(
         (band) => ({
           band,
-          count: distributionRows.find((row) => row._id === band)?.count ?? 0,
-        }),
+          count: distributionRows.find((row) => row._id === band)?.count ?? 0 }),
       ),
       resultType: 'RAW',
-      recentAttempts: recent.map((row) => this.summary(row)),
-    };
+      recentAttempts: recent.map((row) => this.summary(row)) };
   }
 
   private expired(attempt: Attempt) {
@@ -764,7 +701,7 @@ export class AttemptsService {
     );
   }
 
-  private async grade(attempt: Attempt & { _id: Types.ObjectId }) {
+  private async grade(attempt: Attempt & { _id: PgId }) {
     // Grade inside one database update: concurrent saves either precede this update
     // and are counted, or fail their IN_PROGRESS condition after it.
     const result = await this.attempts
@@ -781,7 +718,7 @@ export class AttemptsService {
     if (result.modifiedCount) await this.recordCompletion(attempt._id);
   }
 
-  private async recordCompletion(id: Types.ObjectId) {
+  private async recordCompletion(id: PgId) {
     if (!this.learningActivity) return;
     const graded = await this.attempts
       .findById(id)
@@ -807,8 +744,7 @@ export class AttemptsService {
       total: graded.totalQuestions,
       score,
       durationSec: graded.durationSpent,
-      metadata: { mode: graded.mode, selectedParts: graded.selectedParts },
-    });
+      metadata: { mode: graded.mode, selectedParts: graded.selectedParts } });
   }
 
   async findOne(userId: string, id: string) {
@@ -824,9 +760,8 @@ export class AttemptsService {
     const questions = listening.length
       ? await this.questions
           .find({
-            _id: { $in: listening.map((q) => this.objectId(q._id)) },
-            examId: attempt.examId,
-          })
+            _id: { $in: listening.map((q) => this.uuid(q._id)) },
+            examId: attempt.examId })
           .select('_id audioUrl passageGroupId')
           .lean()
           .exec()
@@ -845,9 +780,7 @@ export class AttemptsService {
       ? await this.passages
           .find({
             passageGroupId: {
-              $in: groupIds.map((id) => this.objectId(id)),
-            },
-          })
+              $in: groupIds.map((id) => this.uuid(id)) } })
           .select('_id passageGroupId audioUrl order')
           .sort({ order: 1, _id: 1 })
           .lean()
@@ -892,8 +825,7 @@ export class AttemptsService {
           return {
             ...result.passages[index],
             _id: passage._id || (source ? String(source._id) : undefined),
-            audioUrl: source?.audioUrl || passage.audioUrl,
-          };
+            audioUrl: source?.audioUrl || passage.audioUrl };
         });
         // A legacy snapshot can contain no passages (or only empty objects).
         // Audio belongs to the live Passage, reached through passageGroupId;
@@ -904,13 +836,11 @@ export class AttemptsService {
               _id: String(passage._id),
               audioUrl: passage.audioUrl,
               content: undefined,
-              imageUrl: undefined,
-            });
+              imageUrl: undefined });
           }
         }
         return result;
-      }),
-    };
+      }) };
   }
 
   async playAudio(userId: string, id: string, dto: AudioPlayDto) {
@@ -950,12 +880,11 @@ export class AttemptsService {
     const updated = await this.attempts
       .findOneAndUpdate(
         {
-          _id: this.objectId(id),
-          userId: this.objectId(userId),
+          _id: this.uuid(id),
+          userId: this.uuid(userId),
           status: ToeicAttemptStatus.IN_PROGRESS,
           mode: ExamMode.TEST,
-          $expr: { $lt: [{ $ifNull: [`$${path}`, 0] }, 2] },
-        },
+          $expr: { $lt: [{ $ifNull: [`$${path}`, 0] }, 2] } },
         [
           {
             $set: {
@@ -963,10 +892,7 @@ export class AttemptsService {
                 $mergeObjects: [
                   { $ifNull: ['$audioPlayCounts', {}] },
                   { [key]: { $add: [{ $ifNull: [`$${path}`, 0] }, 1] } },
-                ],
-              },
-            },
-          },
+                ] } } },
         ],
         { updatePipeline: true, returnDocument: 'after' },
       )
@@ -1002,11 +928,8 @@ export class AttemptsService {
             { expiresAt: null },
             {
               expiresAt: {
-                $gt: new Date(Date.now() - TIME_LIMIT_GRACE_MS),
-              },
-            },
-          ],
-        },
+                $gt: new Date(Date.now() - TIME_LIMIT_GRACE_MS) } },
+          ] },
         [
           {
             $set: {
@@ -1014,22 +937,21 @@ export class AttemptsService {
                 $mergeObjects: [
                   { $ifNull: ['$answers', {}] },
                   { [dto.questionId]: dto.answer },
-                ],
-              },
-            },
-          },
+                ] } } },
         ],
         { updatePipeline: true },
       )
       .exec();
-    if (!result.matchedCount)
+    if (!result.matchedCount) {
+      const latest = await this.owned(userId, id);
       throw new ConflictException(
-        attempt.answers?.[dto.questionId]
+        latest.answers?.[dto.questionId]
           ? 'This question has already been answered'
-          : this.expired(attempt)
+          : this.expired(latest)
             ? 'Time is up for this attempt'
             : 'Attempt is no longer in progress',
       );
+    }
     return attempt.mode === ExamMode.PRACTICE
       ? { saved: true, feedback: answerFeedback(question, dto.answer) }
       : { saved: true };
@@ -1100,9 +1022,7 @@ export class AttemptsService {
         {
           $set: {
             status: ToeicAttemptStatus.ABANDONED,
-            completedAt: new Date(),
-          },
-        },
+            completedAt: new Date() } },
       )
       .exec();
     if (!result.matchedCount)

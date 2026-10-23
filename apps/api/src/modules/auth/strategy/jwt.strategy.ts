@@ -15,8 +15,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>('JWT_ACCESS_SECRET')!,
-    });
+      secretOrKey: configService.get<string>('JWT_ACCESS_SECRET')! });
   }
 
   async validate(payload: any) {
@@ -34,8 +33,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         email: admin.email,
         username: admin.username,
         avatarUrl: admin.avatarUrl,
-        role: 'ADMIN',
-      };
+        role: 'ADMIN' };
     }
 
     const user = await this.usersService.findByEmail(payload.email);
@@ -48,7 +46,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       email: user.email,
       username: user.username,
       avatarUrl: user.avatarUrl,
-      role: 'USER',
-    };
+      role: 'USER' };
   }
 }

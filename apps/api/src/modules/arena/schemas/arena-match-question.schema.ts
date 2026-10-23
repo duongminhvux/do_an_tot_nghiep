@@ -1,84 +1,83 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { type HydratedDocument, Types } from 'mongoose';
+import { PgId } from '../../../postgres/compat.js';
+import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
+import { type PgDocument } from '../../../postgres/compat.js';
 
-export type ArenaMatchQuestionDocument = HydratedDocument<ArenaMatchQuestion>;
+export type ArenaMatchQuestionDocument = PgDocument<ArenaMatchQuestion>;
 
-@Schema({ _id: false })
+@PgEntity({ _id: false })
 export class ArenaQuestionOption {
-  @Prop({ required: true })
+  @PgField({ required: true })
   key: string;
 
-  @Prop({ required: true })
+  @PgField({ required: true })
   text: string;
 }
 
 export const ArenaQuestionOptionSchema =
-  SchemaFactory.createForClass(ArenaQuestionOption);
+  PgSchemaFactory.createForClass(ArenaQuestionOption);
 
-@Schema({ timestamps: true })
+@PgEntity({ timestamps: true })
 /** Snapshot câu hỏi được cố định cho một trận để mọi client dùng cùng dữ liệu. */
 export class ArenaMatchQuestion {
-  @Prop({
-    type: Types.ObjectId,
+  @PgField({
+    type: PgId,
     ref: 'ArenaMatch',
     required: true,
-    index: true,
-  })
-  matchId: Types.ObjectId;
+    index: true })
+  matchId: PgId;
 
-  @Prop({ type: Types.ObjectId, ref: 'Word' })
-  vocabularyId?: Types.ObjectId;
+  @PgField({ type: PgId, ref: 'Word' })
+  vocabularyId?: PgId;
 
-  @Prop({ required: true, min: 0 })
+  @PgField({ required: true, min: 0 })
   order: number;
 
-  @Prop({
+  @PgField({
     type: String,
     enum: ['WORD_TO_MEANING', 'MEANING_TO_WORD', 'LISTENING', 'CONTEXT'],
-    required: true,
-  })
+    required: true })
   type: 'WORD_TO_MEANING' | 'MEANING_TO_WORD' | 'LISTENING' | 'CONTEXT';
 
-  @Prop({ required: true })
+  @PgField({ required: true })
   question: string;
 
-  @Prop({ type: String })
+  @PgField({ type: String })
   audioUrl?: string;
 
-  @Prop({ type: String })
+  @PgField({ type: String })
   imageUrl?: string;
 
-  @Prop({ type: [ArenaQuestionOptionSchema], default: [] })
+  @PgField({ type: [ArenaQuestionOptionSchema], default: [] })
   options: ArenaQuestionOption[];
 
-  @Prop({ required: true })
+  @PgField({ required: true })
   correctAnswer: string;
 
-  @Prop({ type: String })
+  @PgField({ type: String })
   explanation?: string;
 
-  @Prop({ type: String })
+  @PgField({ type: String })
   example?: string;
 
-  @Prop({ type: String })
+  @PgField({ type: String })
   translation?: string;
 
-  @Prop({ type: String })
+  @PgField({ type: String })
   wordType?: string;
 
-  @Prop({ type: Date })
+  @PgField({ type: Date })
   startedAt?: Date;
 
-  @Prop({ type: Date, default: null })
+  @PgField({ type: Date, default: null })
   resolvedAt?: Date | null;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', default: null })
-  winnerId?: Types.ObjectId | null;
+  @PgField({ type: PgId, ref: 'User', default: null })
+  winnerId?: PgId | null;
 
   createdAt: Date;
   updatedAt: Date;
 }
 
 export const ArenaMatchQuestionSchema =
-  SchemaFactory.createForClass(ArenaMatchQuestion);
+  PgSchemaFactory.createForClass(ArenaMatchQuestion);
 ArenaMatchQuestionSchema.index({ matchId: 1, order: 1 }, { unique: true });

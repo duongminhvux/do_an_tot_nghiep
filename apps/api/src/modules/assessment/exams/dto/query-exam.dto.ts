@@ -5,8 +5,7 @@ import {
   IsOptional,
   IsString,
   Min,
-  IsIn,
-} from 'class-validator';
+  IsIn } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { ExamType } from './create-exam.dto.js';
 

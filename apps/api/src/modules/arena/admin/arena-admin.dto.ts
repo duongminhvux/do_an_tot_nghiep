@@ -5,7 +5,7 @@ import {
   IsEnum,
   IsIn,
   IsInt,
-  IsMongoId,
+  IsUUID,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -13,15 +13,13 @@ import {
   MaxLength,
   Min,
   ValidateNested,
-  IsDefined,
-} from 'class-validator';
+  IsDefined } from 'class-validator';
 import {
   ArenaFriendMode,
   ArenaMatchFinishReason,
   ArenaMatchStatus,
   ArenaMatchType,
-  ArenaQuestionMode,
-} from '../schemas/arena-match.schema.js';
+  ArenaQuestionMode } from '../schemas/arena-match.schema.js';
 export class ArenaAdminQuery {
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) page = 1;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) limit = 20;
@@ -34,9 +32,9 @@ export class ArenaAdminQuery {
     ...Object.values(ArenaQuestionMode),
   ])
   mode?: string;
-  @IsOptional() @IsMongoId() matchId?: string;
-  @IsOptional() @IsMongoId() userId?: string;
-  @IsOptional() @IsMongoId() winnerId?: string;
+  @IsOptional() @IsUUID('4') matchId?: string;
+  @IsOptional() @IsUUID('4') userId?: string;
+  @IsOptional() @IsUUID('4') winnerId?: string;
   @IsOptional()
   @IsEnum(ArenaMatchFinishReason)
   finishReason?: ArenaMatchFinishReason;
@@ -62,7 +60,7 @@ export class ArenaRoomQuery {
   @IsOptional() @IsIn(['FRIEND', 'ROOM']) type?: 'FRIEND' | 'ROOM';
   @IsOptional() @IsIn(['WAITING', 'IN_MATCH', 'CLOSED']) status?: string;
   @IsOptional() @IsEnum(ArenaFriendMode) mode?: ArenaFriendMode;
-  @IsOptional() @IsMongoId() hostId?: string;
+  @IsOptional() @IsUUID('4') hostId?: string;
   @IsOptional() @IsDateString() from?: string;
   @IsOptional() @IsDateString() to?: string;
   @IsOptional() @IsIn(['true', 'false']) stale?: string;

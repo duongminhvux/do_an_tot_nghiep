@@ -1,7 +1,7 @@
 /**
  * Read-only network smoke from inside any vocalearn-clean-api:local container.
  * Usage: docker compose exec -T identity-service node scripts/smoke-network.mjs
- * It never writes MongoDB, creates users, or reads secrets into logs.
+ * It never writes PostgreSQL, creates users, or reads secrets into logs.
  */
 const timeout = 7000;
 const results = [];

@@ -1,97 +1,60 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isEnabled, parseSeedOptions, seedAdminRecord } from './seed-admin-core.mjs';
-
-function fakeCollection(initial = []) {
-  const docs = initial.map((d) => ({ ...d }));
-  let nextId = docs.length + 1;
-  return {
-    docs,
-    async findOne(query) {
-      const [key, val] = Object.entries(query)[0];
-      return docs.find((doc) => doc[key] === val) || null;
-    },
-    async insertOne(doc) {
-      if (docs.some((d) => d.email === doc.email)) throw new Error('duplicate email');
-      docs.push({ _id: nextId++, ...doc });
-    },
-    async updateOne(query, change) {
-      const d = docs.find((doc) => doc._id === query._id);
-      assert.ok(d);
-      Object.assign(d, change.$set);
-      for (const key of Object.keys(change.$unset || {})) delete d[key];
-    },
-  };
+import {isEnabled,parseSeedOptions,seedAdminSql} from './seed-admin-core.mjs';
+const hash=async(password)=>`bcrypt-hash:${password}`;
+const env={DEFAULT_ADMIN_EMAIL:'ADMIN@gmail.com',DEFAULT_ADMIN_USERNAME:'admin',DEFAULT_ADMIN_PASSWORD:'admin',ADMIN_SEED_ALLOW_WEAK_PASSWORD:'true'};
+function fakePg(initial=[]){
+ const data=initial.map(x=>({...x}));
+ return {data,async query(sql,params=[]){
+   if(sql.startsWith('SELECT * FROM public.admins'))return {rows:data.filter(x=>x.email===params[0]||x.username===params[1])};
+   if(sql.startsWith('INSERT INTO public.admins')){
+     data.push({id:`id-${data.length+1}`,email:params[0],username:params[1],password_hash:params[2],is_deleted:false,payload:JSON.parse(params[3])});return {rowCount:1};
+   }
+   if(sql.startsWith('UPDATE public.admins')){
+     const target=data.find(x=>x.id===params[0]);assert(target);target.password_hash=params[1];target.is_deleted=params[2];target.deleted_at=params[3];return {rowCount:1};
+   }
+   throw Error('Unexpected SQL: '+sql);
+ }};
 }
-
-const hash = async (password) => `hashed:${password}`;
-const localDev = { DEFAULT_ADMIN_EMAIL: 'ADMIN@gmail.com', DEFAULT_ADMIN_USERNAME: 'admin', DEFAULT_ADMIN_PASSWORD: 'admin', ADMIN_SEED_ALLOW_WEAK_PASSWORD: 'true' };
-
-test('boolean settings and default identity', () => {
-  assert.equal(isEnabled('true'), true);
-  assert.equal(isEnabled('FALSE'), false);
-  const opts = parseSeedOptions([], localDev);
-  assert.equal(opts.email, 'admin@gmail.com');
-  assert.equal(opts.username, 'admin');
+test('admin seed boolean settings and lower-case email',()=>{
+ assert.equal(isEnabled('true'),true);assert.equal(isEnabled('FALSE'),false);
+ const o=parseSeedOptions([],env);assert.equal(o.email,'admin@gmail.com');assert.equal(o.username,'admin');
 });
-
-test('empty DB creates admin with hashed password and timestamps', async () => {
-  const c = fakeCollection();
-  const result = await seedAdminRecord(c, parseSeedOptions([], localDev), hash);
-  assert.equal(result.status, 'created');
-  assert.equal(c.docs.length, 1);
-  assert.equal(c.docs[0].password, 'hashed:admin');
-  assert.equal(c.docs[0].isDeleted, false);
-  assert.ok(c.docs[0].createdAt instanceof Date);
+test('first install creates bcrypt-compatible hashed admin',async()=>{
+ const pg=fakePg();const result=await seedAdminSql(pg,parseSeedOptions([],env),hash);
+ assert.equal(result.status,'created');assert.equal(pg.data[0].password_hash,'bcrypt-hash:admin');
+ assert.equal(pg.data[0].is_deleted,false);
 });
-
-test('re-run is idempotent, does not reset existing password', async () => {
-  const c = fakeCollection([{ _id: 1, email: 'admin@gmail.com', username: 'admin', password: 'user-changed' }]);
-  const result = await seedAdminRecord(c, parseSeedOptions([], localDev), hash);
-  assert.equal(result.status, 'existing');
-  assert.equal(c.docs.length, 1);
-  assert.equal(c.docs[0].password, 'user-changed');
+test('redeploy does not reset changed password',async()=>{
+ const pg=fakePg([{id:'a',email:'admin@gmail.com',username:'admin',password_hash:'changed',is_deleted:false}]);
+ const result=await seedAdminSql(pg,parseSeedOptions([],env),hash);
+ assert.equal(result.status,'existing');assert.equal(pg.data[0].password_hash,'changed');
 });
-
-test('password reset only when explicitly requested', async () => {
-  const c = fakeCollection([{ _id: 1, email: 'admin@gmail.com', username: 'admin', password: 'old' }]);
-  const result = await seedAdminRecord(c, parseSeedOptions(['--reset-password'], localDev), hash);
-  assert.equal(result.status, 'updated');
-  assert.equal(c.docs[0].password, 'hashed:admin');
+test('explicit password reset updates existing admin',async()=>{
+ const pg=fakePg([{id:'a',email:'admin@gmail.com',username:'admin',password_hash:'changed',is_deleted:false}]);
+ const result=await seedAdminSql(pg,parseSeedOptions(['--reset-password'],env),hash);
+ assert.equal(result.status,'updated');assert.equal(pg.data[0].password_hash,'bcrypt-hash:admin');
 });
-
-test('weak password rejected without dev-only opt-in', async () => {
-  const c = fakeCollection();
-  const opts = parseSeedOptions([], { ...localDev, ADMIN_SEED_ALLOW_WEAK_PASSWORD: 'false' });
-  await assert.rejects(seedAdminRecord(c, opts, hash), /at least 12/);
-  assert.equal(c.docs.length, 0);
+test('weak passwords require a development-only flag',async()=>{
+ const pg=fakePg();
+ await assert.rejects(seedAdminSql(pg,parseSeedOptions([],{...env,ADMIN_SEED_ALLOW_WEAK_PASSWORD:'false'}),hash),/at least 12/);
+ assert.equal(pg.data.length,0);
 });
-
-test('existing accounts with conflicting email and username are untouched', async () => {
-  const c = fakeCollection([
-    { _id: 1, email: 'admin@gmail.com', username: 'oldAdmin', password: 'secret1' },
-    { _id: 2, email: 'other@gmail.com', username: 'admin', password: 'secret2' },
-  ]);
-  await assert.rejects(seedAdminRecord(c, parseSeedOptions([], localDev), hash), /different admin accounts/);
-  assert.equal(c.docs[0].password, 'secret1');
-  assert.equal(c.docs[1].password, 'secret2');
+test('duplicate email / username conflict is refused',async()=>{
+ const pg=fakePg([{id:'1',email:'admin@gmail.com',username:'other'},{id:'2',email:'other@gmail.com',username:'admin'}]);
+ await assert.rejects(seedAdminSql(pg,parseSeedOptions([],env),hash),/different admin accounts/);
 });
-
-test('disabled admin stays disabled until explicit --reactivate', async () => {
-  const c = fakeCollection([{ _id: 1, email: 'admin@gmail.com', username: 'admin', password: 'old', isDeleted: true, deletedAt: new Date() }]);
-  const unchanged = await seedAdminRecord(c, parseSeedOptions([], localDev), hash);
-  assert.equal(unchanged.status, 'existing-disabled');
-  assert.equal(c.docs[0].isDeleted, true);
-  await seedAdminRecord(c, parseSeedOptions(['--reactivate'], localDev), hash);
-  assert.equal(c.docs[0].isDeleted, false);
-  assert.equal(c.docs[0].deletedAt, undefined);
-  assert.equal(c.docs[0].password, 'old');
+test('deleted admin only reactivates explicitly without password change',async()=>{
+ const pg=fakePg([{id:'a',email:'admin@gmail.com',username:'admin',password_hash:'changed',is_deleted:true,deleted_at:new Date()}]);
+ const unchanged=await seedAdminSql(pg,parseSeedOptions([],env),hash);
+ assert.equal(unchanged.status,'existing-disabled');assert.equal(pg.data[0].is_deleted,true);
+ const changed=await seedAdminSql(pg,parseSeedOptions(['--reactivate'],env),hash);
+ assert.equal(changed.status,'updated');assert.equal(pg.data[0].is_deleted,false);
+ assert.equal(pg.data[0].password_hash,'changed');
 });
-
-test('missing password fails on creation but allows an existing admin to remain untouched', async () => {
-  const opts = parseSeedOptions([], { DEFAULT_ADMIN_EMAIL: 'admin@gmail.com', DEFAULT_ADMIN_USERNAME: 'admin' });
-  await assert.rejects(seedAdminRecord(fakeCollection(), opts, hash), /DEFAULT_ADMIN_PASSWORD/);
-  const existing = fakeCollection([{ _id: 1, email: opts.email, username: opts.username, password: 'safe' }]);
-  const outcome = await seedAdminRecord(existing, opts, hash);
-  assert.equal(outcome.status, 'existing');
+test('empty password only allowed for an already existing admin with no reset',async()=>{
+ const options=parseSeedOptions([],{DEFAULT_ADMIN_EMAIL:'admin@gmail.com',DEFAULT_ADMIN_USERNAME:'admin'});
+ await assert.rejects(seedAdminSql(fakePg(),options,hash),/Admin password/);
+ const pg=fakePg([{id:'a',email:'admin@gmail.com',username:'admin',password_hash:'safe',is_deleted:false}]);
+ const result=await seedAdminSql(pg,options,hash);assert.equal(result.status,'existing');
 });

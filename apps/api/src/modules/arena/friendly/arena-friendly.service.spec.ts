@@ -1,56 +1,48 @@
-import { Types } from 'mongoose';
+import { PgId } from '../../../postgres/compat.js';
 import { ArenaFriendlyService } from './arena-friendly.service.js';
 
 vi.mock('./arena-friend-room.service.js', () => ({
-  ArenaFriendRoomService: class {},
-}));
+  ArenaFriendRoomService: class {} }));
 vi.mock('../schemas/arena-match.schema.js', () => ({
   ArenaMatch: class {},
   ArenaFriendMode: {
     CLASSIC: 'CLASSIC',
     WORD_CHAIN: 'WORD_CHAIN',
-    WORD_GUESS: 'WORD_GUESS',
-  },
+    WORD_GUESS: 'WORD_GUESS' },
   ArenaMatchType: { FRIEND: 'FRIEND', ROOM: 'ROOM', RANK: 'RANK' },
   ArenaMatchStatus: {
     WAITING: 'WAITING',
     COUNTDOWN: 'COUNTDOWN',
     PLAYING: 'PLAYING',
     FINISHED: 'FINISHED',
-    CANCELLED: 'CANCELLED',
-  },
+    CANCELLED: 'CANCELLED' },
   ArenaMatchFinishReason: {
     TURN_TIMEOUT: 'TURN_TIMEOUT',
-    PLAYER_LEFT: 'PLAYER_LEFT',
-  },
-}));
+    PLAYER_LEFT: 'PLAYER_LEFT' } }));
 vi.mock('../schemas/arena-invitation.schema.js', () => ({
-  ArenaInvitation: class {},
-}));
+  ArenaInvitation: class {} }));
 vi.mock('../schemas/arena-match-player.schema.js', () => ({
-  ArenaMatchPlayer: class {},
-}));
+  ArenaMatchPlayer: class {} }));
 vi.mock('../../users/schema/user.schema.js', () => ({ User: class {} }));
 vi.mock('../../vocabulary/words/word.schema.js', () => ({ Word: class {} }));
 
 function fixture() {
-  const user = String(new Types.ObjectId());
-  const opponent = String(new Types.ObjectId());
+  const user = String(new PgId());
+  const opponent = String(new PgId());
   const match = {
-    _id: new Types.ObjectId(),
+    _id: new PgId(),
     type: 'FRIEND',
     status: 'PLAYING',
-    hostId: new Types.ObjectId(user),
+    hostId: new PgId(user),
     friendMode: 'WORD_CHAIN',
-    currentTurnUserId: new Types.ObjectId(user),
+    currentTurnUserId: new PgId(user),
     currentWord: 'apple',
     requiredLetter: 'le',
     usedWords: ['apple'],
     turnCount: 1,
     turnStartedAt: new Date(),
     turnDeadline: new Date(Date.now() + 20000),
-    chainPausedAt: null,
-  };
+    chainPausedAt: null };
   const matches = {
     findById: vi.fn(async () => ({ ...match })),
     find: vi.fn(async () => []),
@@ -70,38 +62,32 @@ function fixture() {
       if (update.$push) match.usedWords.push(update.$push.usedWords);
       if (update.$inc) match.turnCount += update.$inc.turnCount;
       return { ...match };
-    }),
-  };
+    }) };
   const invites = {
     find: vi.fn(async () => []),
     findOneAndUpdate: vi.fn(),
-    updateOne: vi.fn(async () => ({ modifiedCount: 1 })),
-  };
+    updateOne: vi.fn(async () => ({ modifiedCount: 1 })) };
   const players = {
     find: vi.fn(async () => [
-      { userId: new Types.ObjectId(user), isReady: false, status: 'PLAYING' },
+      { userId: new PgId(user), isReady: false, status: 'PLAYING' },
       {
-        userId: new Types.ObjectId(opponent),
+        userId: new PgId(opponent),
         isReady: true,
         readyMode: match.friendMode,
-        status: 'PLAYING',
-      },
+        status: 'PLAYING' },
     ]),
     updateOne: vi.fn(),
-    updateMany: vi.fn(),
-  };
+    updateMany: vi.fn() };
   const words = { exists: vi.fn(async () => true) };
   const matchService = {
     getOpponentUserId: vi.fn(async () => opponent),
     finishMatch: vi.fn(async () => true),
     findActiveMatchForUser: vi.fn(async () => null),
-    createFriendMatch: vi.fn(async () => ({ match: { _id: match._id } })),
-  };
+    createFriendMatch: vi.fn(async () => ({ match: { _id: match._id } })) };
   const rounds = {
     assertMember: vi.fn(),
     finishedEvent: vi.fn(async () => ({ event: 'match:finished', data: {} })),
-    snapshot: vi.fn(async () => [{ event: 'match:question', data: {} }]),
-  };
+    snapshot: vi.fn(async () => [{ event: 'match:question', data: {} }]) };
   const questions = { createRankedQuestions: vi.fn() };
   const presence = { isOnline: vi.fn(async () => true) };
   const users = {
@@ -109,24 +95,19 @@ function fixture() {
     find: vi.fn(() => ({
       select: async () => [
         {
-          _id: new Types.ObjectId(user),
+          _id: new PgId(user),
           username: 'Host',
-          avatarUrl: undefined,
-        },
+          avatarUrl: undefined },
         {
-          _id: new Types.ObjectId(opponent),
+          _id: new PgId(opponent),
           username: 'Guest',
-          avatarUrl: undefined,
-        },
-      ],
-    })),
-  };
+          avatarUrl: undefined },
+      ] })) };
   const arena = { getOrCreateProfile: vi.fn() };
   const friendRooms = {
     member: vi.fn(async () => ({ code: 'ABC234' })),
     join: vi.fn(async () => ({ code: 'ABC234', roomId: 'room-id' })),
-    snapshot: vi.fn(async () => ({ code: 'ABC234', roomId: 'room-id' })),
-  };
+    snapshot: vi.fn(async () => ({ code: 'ABC234', roomId: 'room-id' })) };
   const deps = [
     matches,
     invites,
@@ -153,8 +134,7 @@ function fixture() {
     matchService,
     rounds,
     questions,
-    presence,
-  };
+    presence };
 }
 
 describe('Friendly Word Chain', () => {
@@ -272,14 +252,13 @@ describe('Friendly Word Chain', () => {
 describe('Friendly lifecycle', () => {
   it('accepting an invitation joins its room without creating a match', async () => {
     const f = fixture();
-    const inviteId = new Types.ObjectId();
-    const roomId = new Types.ObjectId();
+    const inviteId = new PgId();
+    const roomId = new PgId();
     f.invites.findOneAndUpdate.mockResolvedValue({
       _id: inviteId,
       roomId,
-      senderId: new Types.ObjectId(f.user),
-      receiverId: new Types.ObjectId(f.opponent),
-    });
+      senderId: new PgId(f.user),
+      receiverId: new PgId(f.opponent) });
     const result = await f.service.respond(f.opponent, String(inviteId), true);
     expect(result.event).toBe('friend:invite-accepted');
     expect(f.friendRooms.join).toHaveBeenCalledWith(f.opponent, 'ABC234');
@@ -287,12 +266,11 @@ describe('Friendly lifecycle', () => {
   });
   it('declining notifies both users and creates no match', async () => {
     const f = fixture();
-    const inviteId = new Types.ObjectId();
+    const inviteId = new PgId();
     f.invites.findOneAndUpdate.mockResolvedValue({
       _id: inviteId,
-      senderId: new Types.ObjectId(f.user),
-      receiverId: new Types.ObjectId(f.opponent),
-    });
+      senderId: new PgId(f.user),
+      receiverId: new PgId(f.opponent) });
     expect(
       (await f.service.respond(f.opponent, String(inviteId), false)).event,
     ).toBe('friend:invite-declined');
@@ -300,12 +278,11 @@ describe('Friendly lifecycle', () => {
   });
   it('cancels and notifies both users if one becomes unavailable before acceptance', async () => {
     const f = fixture();
-    const inviteId = new Types.ObjectId();
+    const inviteId = new PgId();
     f.invites.findOneAndUpdate.mockResolvedValue({
       _id: inviteId,
-      senderId: new Types.ObjectId(f.user),
-      receiverId: new Types.ObjectId(f.opponent),
-    });
+      senderId: new PgId(f.user),
+      receiverId: new PgId(f.opponent) });
     f.presence.isOnline.mockResolvedValue(false);
     const result = await f.service.respond(f.opponent, String(inviteId), true);
     expect(result.event).toBe('friend:invite-cancelled');
@@ -314,20 +291,18 @@ describe('Friendly lifecycle', () => {
   });
   it('expires pending invitations on the server and notifies both users', async () => {
     const f = fixture();
-    const inviteId = new Types.ObjectId();
+    const inviteId = new PgId();
     f.invites.find.mockResolvedValueOnce([
       {
         _id: inviteId,
-        senderId: new Types.ObjectId(f.user),
-        receiverId: new Types.ObjectId(f.opponent),
-      },
+        senderId: new PgId(f.user),
+        receiverId: new PgId(f.opponent) },
     ] as never);
     const events = await f.service.tick();
     expect(events[0]).toMatchObject({
       event: 'friend:invite-expired',
       users: [f.user, f.opponent],
-      data: { inviteId: String(inviteId) },
-    });
+      data: { inviteId: String(inviteId) } });
     expect(f.invites.updateOne).toHaveBeenCalledWith(
       { _id: inviteId, status: 'PENDING' },
       { $set: { status: 'EXPIRED' } },
@@ -337,14 +312,13 @@ describe('Friendly lifecycle', () => {
     const f = fixture();
     f.invites.findOneAndUpdate.mockResolvedValue(null);
     await expect(
-      f.service.respond(f.user, String(new Types.ObjectId()), true),
+      f.service.respond(f.user, String(new PgId()), true),
     ).rejects.toThrow('expired');
     expect(f.matchService.createFriendMatch).not.toHaveBeenCalled();
     expect(f.invites.findOneAndUpdate.mock.calls[0]?.[0]).toMatchObject({
-      receiverId: new Types.ObjectId(f.user),
+      receiverId: new PgId(f.user),
       status: 'PENDING',
-      expiresAt: { $gt: expect.any(Date) },
-    });
+      expiresAt: { $gt: expect.any(Date) } });
   });
   it('requires room lifecycle events rather than starting a match lobby', async () => {
     const f = fixture();
@@ -359,11 +333,10 @@ describe('Returning to the Friendly room', () => {
     const f = fixture();
     Object.assign(f.match, {
       status: 'FINISHED',
-      roomId: new Types.ObjectId(),
-    });
+      roomId: new PgId() });
     await f.service.returnToLobby(String(f.match._id), f.user);
     expect(f.friendRooms.snapshot).toHaveBeenCalledWith(
-      String((f.match as { roomId?: Types.ObjectId }).roomId),
+      String((f.match as { roomId?: PgId }).roomId),
       f.user,
     );
     expect(f.matchService.createFriendMatch).not.toHaveBeenCalled();
@@ -372,8 +345,7 @@ describe('Returning to the Friendly room', () => {
     const f = fixture();
     Object.assign(f.match, {
       status: 'FINISHED',
-      roomId: new Types.ObjectId(),
-    });
+      roomId: new PgId() });
     f.friendRooms.snapshot.mockRejectedValue(new Error('ROOM_NOT_FOUND'));
     await expect(
       f.service.returnToLobby(String(f.match._id), f.user),
@@ -391,8 +363,7 @@ function guessFixture() {
     wordGuessRevision: 0,
     wordGuessSolvedBy: null,
     roomRevision: 0,
-    eliminatedUserIds: [],
-  });
+    eliminatedUserIds: [] });
   (f.matches as any).findById = vi.fn(() => {
     const copy = { ...match, wordGuessAttempts: [...match.wordGuessAttempts] };
     return Object.assign(Promise.resolve(copy), { select: async () => copy });
@@ -433,8 +404,7 @@ describe('Word Guess match', () => {
     );
     expect(state.attempts[0]).toEqual({
       word: 'pearl',
-      feedback: ['present', 'present', 'present', 'absent', 'present'],
-    });
+      feedback: ['present', 'present', 'present', 'absent', 'present'] });
     expect(state).not.toHaveProperty('answer');
     const opponent = await f.service.wordGuessSnapshot(
       String(f.match._id),
@@ -476,11 +446,9 @@ describe('Word Guess match', () => {
     expect(state).toMatchObject({
       status: 'FINISHED',
       answer: 'apple',
-      winnerId: f.user,
-    });
+      winnerId: f.user });
     expect(f.players.updateOne).toHaveBeenCalledWith(expect.anything(), {
-      $set: { score: 500 },
-    });
+      $set: { score: 500 } });
     await expect(
       f.service.submitWordGuess(String(f.match._id), f.opponent, 'apple'),
     ).rejects.toThrow('GAME_NOT_PLAYING');

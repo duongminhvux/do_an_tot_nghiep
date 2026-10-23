@@ -1,30 +1,30 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import type { HydratedDocument } from 'mongoose';
+import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
+import type { PgDocument } from '../../../postgres/compat.js';
 
-export type VocabularyGroupDocument = HydratedDocument<VocabularyGroup>;
+export type VocabularyGroupDocument = PgDocument<VocabularyGroup>;
 
-@Schema({ timestamps: true })
+@PgEntity({ timestamps: true })
 export class VocabularyGroup {
-  @Prop({ required: true, trim: true })
+  @PgField({ required: true, trim: true })
   name!: string;
 
-  @Prop({ required: true, trim: true })
+  @PgField({ required: true, trim: true })
   slug!: string;
 
-  @Prop({ trim: true })
+  @PgField({ trim: true })
   description?: string;
 
-  @Prop({ default: 1 })
+  @PgField({ default: 1 })
   order?: number;
 
-  @Prop({ default: true })
+  @PgField({ default: true })
   isActive?: boolean;
 
-  @Prop({ default: false })
+  @PgField({ default: false })
   isDeleted?: boolean;
 }
 
-export const VocabularyGroupSchema = SchemaFactory.createForClass(VocabularyGroup);
+export const VocabularyGroupSchema = PgSchemaFactory.createForClass(VocabularyGroup);
 
 // Partial unique index: only active records must have unique name and slug
 VocabularyGroupSchema.index(

@@ -6,8 +6,7 @@ import {
   IsOptional,
   IsTimeZone,
   Max,
-  Min,
-} from 'class-validator';
+  Min } from 'class-validator';
 import { LearningActivityService } from './learning-activity.service.js';
 
 type UserRequest = { user: { _id: string } };

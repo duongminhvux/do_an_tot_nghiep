@@ -1,14 +1,14 @@
 import { ConflictException, Injectable, OnModuleInit } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
+import { InjectPgModel } from '../../../postgres/compat.js';
 import { WsException } from '@nestjs/websockets';
-import type { Model } from 'mongoose';
+import type { Model } from '../../../postgres/compat.js';
 import { ArenaSettings } from './arena-settings.schema.js';
 import { ARENA_DEFAULTS } from './arena-settings.defaults.js';
 import { UpdateArenaSettingsDto } from './arena-admin.dto.js';
 @Injectable()
 export class ArenaSettingsService implements OnModuleInit {
   constructor(
-    @InjectModel(ArenaSettings.name)
+    @InjectPgModel(ArenaSettings.name)
     private readonly model: Model<ArenaSettings>,
   ) {}
   async onModuleInit() {
@@ -18,9 +18,7 @@ export class ArenaSettingsService implements OnModuleInit {
         $setOnInsert: {
           key: 'global',
           revision: 0,
-          config: structuredClone(ARENA_DEFAULTS),
-        },
-      },
+          config: structuredClone(ARENA_DEFAULTS) } },
       { upsert: true },
     );
   }
@@ -28,8 +26,7 @@ export class ArenaSettingsService implements OnModuleInit {
     const row = await this.model.findOne({ key: 'global' }).lean();
     return {
       revision: row?.revision ?? 0,
-      config: row?.config ?? structuredClone(ARENA_DEFAULTS),
-    };
+      config: row?.config ?? structuredClone(ARENA_DEFAULTS) };
   }
   async current() {
     return (await this.read()).config;

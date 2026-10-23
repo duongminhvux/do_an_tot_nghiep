@@ -4,8 +4,7 @@ import {
   ArgumentsHost,
   HttpException,
   HttpStatus,
-  Logger,
-} from '@nestjs/common';
+  Logger } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { I18nContext, I18nService } from 'nestjs-i18n';
 
@@ -73,7 +72,6 @@ export class HttpExceptionFilter implements ExceptionFilter {
       error,
       message,
       timestamp: new Date().toISOString(),
-      path: request.url,
-    });
+      path: request.url });
   }
 }

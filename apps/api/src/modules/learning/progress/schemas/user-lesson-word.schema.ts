@@ -1,35 +1,34 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { type HydratedDocument, Types } from 'mongoose';
+import { PgId } from '../../../../postgres/compat.js';
+import { PgField, PgEntity, PgSchemaFactory } from '../../../../postgres/compat.js';
+import { type PgDocument } from '../../../../postgres/compat.js';
 
-export type UserLessonWordDocument = HydratedDocument<UserLessonWord>;
+export type UserLessonWordDocument = PgDocument<UserLessonWord>;
 
-@Schema({ timestamps: true })
+@PgEntity({ timestamps: true })
 export class UserLessonWord {
-  @Prop({
-    type: Types.ObjectId,
+  @PgField({
+    type: PgId,
     ref: 'User',
     required: true,
-    index: true,
-  })
-  userId: Types.ObjectId;
+    index: true })
+  userId: PgId;
 
-  @Prop({
-    type: Types.ObjectId,
+  @PgField({
+    type: PgId,
     ref: 'LessonWord',
     required: true,
-    index: true,
-  })
-  lessonWordId: Types.ObjectId;
+    index: true })
+  lessonWordId: PgId;
 
-  @Prop()
+  @PgField()
   learnedAt?: Date;
 
-  @Prop()
+  @PgField()
   completedAt?: Date;
 }
 
 export const UserLessonWordSchema =
-  SchemaFactory.createForClass(UserLessonWord);
+  PgSchemaFactory.createForClass(UserLessonWord);
 
 UserLessonWordSchema.index(
   { userId: 1, lessonWordId: 1 },

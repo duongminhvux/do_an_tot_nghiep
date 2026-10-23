@@ -1,63 +1,55 @@
+import { PgId } from '../../../postgres/compat.js';
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { type Model, Types } from 'mongoose';
+import { InjectPgModel } from '../../../postgres/compat.js';
+import { type Model } from '../../../postgres/compat.js';
 import {
   UserLessonProgress,
-  UserLessonProgressDocument,
-} from './schemas/user-lesson-progress.schema.js';
+  UserLessonProgressDocument } from './schemas/user-lesson-progress.schema.js';
 import {
   UserLessonWord,
-  UserLessonWordDocument,
-} from './schemas/user-lesson-word.schema.js';
+  UserLessonWordDocument } from './schemas/user-lesson-word.schema.js';
 import {
   UserWordReview,
-  UserWordReviewDocument,
-} from '../reviews/schemas/user-word-review.schema.js';
+  UserWordReviewDocument } from '../reviews/schemas/user-word-review.schema.js';
 import {
   Lesson,
-  LessonDocument,
-} from '../../vocabulary/lessons/lesson.schema.js';
+  LessonDocument } from '../../vocabulary/lessons/lesson.schema.js';
 import {
   Section,
-  SectionDocument,
-} from '../../vocabulary/lessons/section.schema.js';
+  SectionDocument } from '../../vocabulary/lessons/section.schema.js';
 import {
   LessonWord,
-  LessonWordDocument,
-} from '../../vocabulary/lessons/lesson-word.schema.js';
+  LessonWordDocument } from '../../vocabulary/lessons/lesson-word.schema.js';
 import {
   LearningSession,
-  LearningSessionDocument,
-} from '../sessions/schemas/learning-session.schema.js';
+  LearningSessionDocument } from '../sessions/schemas/learning-session.schema.js';
 import {
   Collection,
-  CollectionDocument,
-} from '../../vocabulary/collections/collection.schema.js';
+  CollectionDocument } from '../../vocabulary/collections/collection.schema.js';
 import {
   UserDailyActivity,
-  UserDailyActivityDocument,
-} from './schemas/user-daily-activity.schema.js';
+  UserDailyActivityDocument } from './schemas/user-daily-activity.schema.js';
 
 @Injectable()
 export class ProgressService {
   constructor(
-    @InjectModel(UserLessonProgress.name)
+    @InjectPgModel(UserLessonProgress.name)
     private progressModel: Model<UserLessonProgressDocument>,
-    @InjectModel(UserLessonWord.name)
+    @InjectPgModel(UserLessonWord.name)
     private userLessonWordModel: Model<UserLessonWordDocument>,
-    @InjectModel(UserWordReview.name)
+    @InjectPgModel(UserWordReview.name)
     private reviewModel: Model<UserWordReviewDocument>,
-    @InjectModel(Lesson.name)
+    @InjectPgModel(Lesson.name)
     private lessonModel: Model<LessonDocument>,
-    @InjectModel(Section.name)
+    @InjectPgModel(Section.name)
     private sectionModel: Model<SectionDocument>,
-    @InjectModel(LessonWord.name)
+    @InjectPgModel(LessonWord.name)
     private lessonWordModel: Model<LessonWordDocument>,
-    @InjectModel(LearningSession.name)
+    @InjectPgModel(LearningSession.name)
     private sessionModel: Model<LearningSessionDocument>,
-    @InjectModel(Collection.name)
+    @InjectPgModel(Collection.name)
     private collectionModel: Model<CollectionDocument>,
-    @InjectModel(UserDailyActivity.name)
+    @InjectPgModel(UserDailyActivity.name)
     private dailyActivityModel: Model<UserDailyActivityDocument>,
   ) {}
 
@@ -65,13 +57,12 @@ export class ProgressService {
    * Lấy tiến độ học chi tiết của 1 Lesson bao gồm thống kê từ đã thuộc, cần ôn, chưa học và theo từng Section
    */
   async getLessonProgress(userId: string, lessonId: string) {
-    const userObjId = new Types.ObjectId(userId);
-    const lessonObjId = new Types.ObjectId(lessonId);
+    const userObjId = new PgId(userId);
+    const lessonObjId = new PgId(lessonId);
 
     const progress = await this.progressModel.findOne({
       userId: userObjId,
-      lessonId: lessonObjId,
-    });
+      lessonId: lessonObjId });
 
     const lessonWords = await this.lessonWordModel
       .find({ lessonId: lessonObjId })
@@ -80,23 +71,21 @@ export class ProgressService {
     const lwMap = new Map(
       lessonWords.map((lw) => [String(lw._id), String(lw.wordId)]),
     );
-    const lwIds = Array.from(lwMap.keys()).map((id) => new Types.ObjectId(id));
+    const lwIds = Array.from(lwMap.keys()).map((id) => new PgId(id));
     const allWordIds = Array.from(
       new Set(lessonWords.map((lw) => String(lw.wordId))),
     );
-    const allWordObjIds = allWordIds.map((id) => new Types.ObjectId(id));
+    const allWordObjIds = allWordIds.map((id) => new PgId(id));
 
     // 1. Lấy dữ liệu user học từ trong lesson
     const userWords = await this.userLessonWordModel.find({
       userId: userObjId,
-      lessonWordId: { $in: lwIds },
-    });
+      lessonWordId: { $in: lwIds } });
 
     // 2. Lấy dữ liệu SRS Spaced Repetition reviews
     const reviews = await this.reviewModel.find({
       userId: userObjId,
-      wordId: { $in: allWordObjIds },
-    });
+      wordId: { $in: allWordObjIds } });
 
     const reviewMap = new Map(reviews.map((r) => [String(r.wordId), r]));
 
@@ -177,8 +166,7 @@ export class ProgressService {
         isCompleted: false,
         masteredWordIds: [],
         needReviewWordIds: [],
-        unlearnedWordIds: [],
-      };
+        unlearnedWordIds: [] };
     });
 
     lessonWords.forEach((lw) => {
@@ -199,8 +187,7 @@ export class ProgressService {
           isCompleted: false,
           masteredWordIds: [],
           needReviewWordIds: [],
-          unlearnedWordIds: [],
-        };
+          unlearnedWordIds: [] };
       }
       const stat = sectionStatsMap[secId]!;
       stat.totalWords += 1;
@@ -243,8 +230,7 @@ export class ProgressService {
           isCompleted: false,
           masteredWordIds: [],
           needReviewWordIds: [],
-          unlearnedWordIds: [],
-        }
+          unlearnedWordIds: [] }
       );
     });
 
@@ -269,8 +255,7 @@ export class ProgressService {
       needReviewWordIds: Array.from(needReviewWordIdSet),
       unlearnedWordIds,
       sections: sectionsList,
-      sectionStats: sectionStatsMap,
-    };
+      sectionStats: sectionStatsMap };
   }
 
   /**
@@ -296,9 +281,9 @@ export class ProgressService {
     const learnedSet = new Set(lessonProgress.learnedWordIds);
     const masteredSet = new Set(lessonProgress.masteredWordIds);
 
-    const filter: any = { lessonId: new Types.ObjectId(lessonId) };
+    const filter: any = { lessonId: new PgId(lessonId) };
     if (sectionId && sectionId !== 'all') {
-      filter.sectionId = new Types.ObjectId(sectionId);
+      filter.sectionId = new PgId(sectionId);
     }
 
     const lessonWords = await this.lessonWordModel
@@ -329,16 +314,15 @@ export class ProgressService {
       masteredCount: lessonProgress.masteredCount,
       needReviewCount: lessonProgress.needReviewCount,
       unlearnedCount: lessonProgress.unlearnedCount,
-      words: filteredWords,
-    };
+      words: filteredWords };
   }
 
   /**
    * Lấy tiến độ toàn bộ các bài học trong một Collection
    */
   async getCollectionProgress(userId: string, collectionId: string) {
-    const userObjId = new Types.ObjectId(userId);
-    const collectionObjId = new Types.ObjectId(collectionId);
+    const userObjId = new PgId(userId);
+    const collectionObjId = new PgId(collectionId);
 
     const lessons = await this.lessonModel
       .find({ collectionId: collectionObjId, isActive: true, isDeleted: false })
@@ -355,8 +339,7 @@ export class ProgressService {
         learningWords: 0,
         unlearnedWords: 0,
         studyMinutes: 0,
-        lessons: [],
-      };
+        lessons: [] };
     }
 
     const lessonIds = lessons.map((l) => l._id);
@@ -365,20 +348,17 @@ export class ProgressService {
       this.progressModel
         .find({
           userId: userObjId,
-          lessonId: { $in: lessonIds },
-        })
+          lessonId: { $in: lessonIds } })
         .lean(),
       this.lessonWordModel
         .find({
-          lessonId: { $in: lessonIds },
-        })
+          lessonId: { $in: lessonIds } })
         .select('_id wordId')
         .lean(),
       this.sessionModel
         .find({
           userId: userObjId,
-          lessonId: { $in: lessonIds },
-        })
+          lessonId: { $in: lessonIds } })
         .lean(),
     ]);
 
@@ -403,8 +383,7 @@ export class ProgressService {
         order: (lesson as any).order || 0,
         progress: prog,
         status: p?.status ?? 'NOT_STARTED',
-        lastStudiedAt: p?.lastStudiedAt,
-      };
+        lastStudiedAt: p?.lastStudiedAt };
     });
 
     const allLwIds = allLessonWords.map((lw) => lw._id);
@@ -417,14 +396,12 @@ export class ProgressService {
       this.userLessonWordModel
         .find({
           userId: userObjId,
-          lessonWordId: { $in: allLwIds },
-        })
+          lessonWordId: { $in: allLwIds } })
         .lean(),
       this.reviewModel
         .find({
           userId: userObjId,
-          wordId: { $in: allWordIds },
-        })
+          wordId: { $in: allWordIds } })
         .lean(),
     ]);
 
@@ -472,8 +449,7 @@ export class ProgressService {
       learningWords,
       unlearnedWords,
       studyMinutes,
-      lessons: lessonsResult,
-    };
+      lessons: lessonsResult };
   }
 
   /**
@@ -481,7 +457,7 @@ export class ProgressService {
    */
   async getAllUserProgress(userId: string) {
     return this.progressModel
-      .find({ userId: new Types.ObjectId(userId) })
+      .find({ userId: new PgId(userId) })
       .sort({ lastStudiedAt: -1 });
   }
 
@@ -489,7 +465,7 @@ export class ProgressService {
    * Thống kê tổng quan cho Widget "Học hôm nay" và "Thành tích của bạn"
    */
   async getDashboardStats(userId: string, timezoneOffset?: string) {
-    const userObjId = new Types.ObjectId(userId);
+    const userObjId = new PgId(userId);
 
     // Tính toán thời gian theo múi giờ client (offset phút, mặc định -420 cho UTC+7)
     const offsetMinutes =
@@ -516,13 +492,11 @@ export class ProgressService {
     // 1. Số từ học hôm nay
     const todayReviewedWords = await this.reviewModel.countDocuments({
       userId: userObjId,
-      lastReviewedAt: { $gte: startOfToday, $lte: endOfToday },
-    });
+      lastReviewedAt: { $gte: startOfToday, $lte: endOfToday } });
 
     const todayLearnedLessonWords = await this.userLessonWordModel.countDocuments({
       userId: userObjId,
-      learnedAt: { $gte: startOfToday, $lte: endOfToday },
-    });
+      learnedAt: { $gte: startOfToday, $lte: endOfToday } });
 
     const todayLearnedCount = Math.max(todayReviewedWords, todayLearnedLessonWords);
     const dailyGoal = 20;
@@ -533,13 +507,11 @@ export class ProgressService {
         this.reviewModel.countDocuments({ userId: userObjId }),
         this.reviewModel.countDocuments({
           userId: userObjId,
-          status: 'MASTERED',
-        }),
+          status: 'MASTERED' }),
         this.userLessonWordModel.countDocuments({ userId: userObjId }),
         this.userLessonWordModel.countDocuments({
           userId: userObjId,
-          completedAt: { $exists: true, $ne: null },
-        }),
+          completedAt: { $exists: true, $ne: null } }),
       ]);
 
     const totalLearnedWords = Math.max(totalReviewedWords, totalLessonWords);
@@ -630,8 +602,7 @@ export class ProgressService {
           lessonTitle: lessonObj.title,
           lessonSlug: lessonObj.slug,
           collectionSlug: colSlug,
-          progress: lastProgress.progress || 0,
-        };
+          progress: lastProgress.progress || 0 };
       }
     }
 
@@ -642,8 +613,7 @@ export class ProgressService {
       totalLearnedWords,
       totalMasteredWords: totalMastered,
       hasStudiedToday: studyDates.has(todayStr),
-      continueLesson,
-    };
+      continueLesson };
   }
 
   /**
@@ -651,7 +621,7 @@ export class ProgressService {
    * Trả về: currentStreak, longestStreak, totalWordsLearned, totalWordsReviewed, totalStudyMinutes
    */
   async getOverview(userId: string) {
-    const userObjId = new Types.ObjectId(userId);
+    const userObjId = new PgId(userId);
 
     // 1. Tổng từ đã học
     const [totalUserLessonWords, totalReviewedWords] = await Promise.all([
@@ -679,22 +649,15 @@ export class ProgressService {
         $match: {
           userId: userObjId,
           startedAt: { $exists: true },
-          endedAt: { $exists: true },
-        },
-      },
+          endedAt: { $exists: true } } },
       {
         $project: {
           durationMinutes: {
-            $divide: [{ $subtract: ['$endedAt', '$startedAt'] }, 60000],
-          },
-        },
-      },
+            $divide: [{ $subtract: ['$endedAt', '$startedAt'] }, 60000] } } },
       {
         $group: {
           _id: null,
-          total: { $sum: '$durationMinutes' },
-        },
-      },
+          total: { $sum: '$durationMinutes' } } },
     ]);
     const sessionMinutes = Math.round(sessionAgg[0]?.total || 0);
     const totalStudyMinutes = Math.max(dailyMinutes, sessionMinutes);
@@ -793,14 +756,12 @@ export class ProgressService {
       this.dailyActivityModel
         .find({
           userId: userObjId,
-          date: { $gte: sevenDaysAgo },
-        })
+          date: { $gte: sevenDaysAgo } })
         .lean(),
       this.dailyActivityModel
         .find({
           userId: userObjId,
-          date: { $gte: fourteenDaysAgo, $lt: sevenDaysAgo },
-        })
+          date: { $gte: fourteenDaysAgo, $lt: sevenDaysAgo } })
         .lean(),
     ]);
 
@@ -844,8 +805,7 @@ export class ProgressService {
       streakGrowth: streakGrowth > 0 ? streakGrowth : (currentStreak > 0 ? 1 : 0),
       wordsLearnedGrowth: Math.max(0, wordsLearnedGrowth || Math.min(totalWordsLearned, 12)),
       wordsReviewedGrowth: Math.max(0, wordsReviewedGrowth || Math.min(totalWordsReviewed, 8)),
-      studyMinutesGrowth: Math.max(0, studyMinutesGrowth || Math.min(totalStudyMinutes, 80)),
-    };
+      studyMinutesGrowth: Math.max(0, studyMinutesGrowth || Math.min(totalStudyMinutes, 80)) };
   }
 
   /**
@@ -857,7 +817,7 @@ export class ProgressService {
     days: number = 90,
     timezoneOffset?: string,
   ) {
-    const userObjId = new Types.ObjectId(userId);
+    const userObjId = new PgId(userId);
     const limitDays = Math.max(1, Math.min(365, Number(days) || 90));
 
     const startDate = new Date();
@@ -868,26 +828,22 @@ export class ProgressService {
       this.dailyActivityModel
         .find({
           userId: userObjId,
-          date: { $gte: startDate },
-        })
+          date: { $gte: startDate } })
         .sort({ date: 1 })
         .lean(),
       this.sessionModel
         .find({
           userId: userObjId,
-          startedAt: { $gte: startDate },
-        })
+          startedAt: { $gte: startDate } })
         .populate({
           path: 'lessonId',
-          populate: { path: 'collectionId', select: 'name slug' },
-        })
+          populate: { path: 'collectionId', select: 'name slug' } })
         .sort({ startedAt: 1 })
         .lean(),
       this.userLessonWordModel
         .find({
           userId: userObjId,
-          createdAt: { $gte: startDate },
-        })
+          createdAt: { $gte: startDate } })
         .lean(),
     ]);
 
@@ -926,8 +882,7 @@ export class ProgressService {
           wordsLearned: 0,
           wordsReviewed: 0,
           sessionCount: 0,
-          lessonsMap: new Map(),
-        });
+          lessonsMap: new Map() });
       }
       const day = dayMap.get(dKey)!;
       day.sessionCount += 1;
@@ -952,8 +907,7 @@ export class ProgressService {
             collectionName: lessonObj.collectionId?.name || '',
             collectionSlug: lessonObj.collectionId?.slug || '',
             type: s.type || 'LESSON',
-            wordsCount: 0,
-          });
+            wordsCount: 0 });
         }
         day.lessonsMap.get(lIdStr).wordsCount += s.completedWords || 0;
       }
@@ -971,8 +925,7 @@ export class ProgressService {
           wordsLearned: act.wordsLearned || 0,
           wordsReviewed: act.wordsReviewed || 0,
           sessionCount: act.sessionCount || 0,
-          lessonsMap: new Map(),
-        });
+          lessonsMap: new Map() });
       } else {
         const day = dayMap.get(dKey)!;
         day.studyMinutes = Math.max(day.studyMinutes, act.studyMinutes || 0);
@@ -990,8 +943,7 @@ export class ProgressService {
         wordsLearned: d.wordsLearned,
         wordsReviewed: d.wordsReviewed,
         sessionCount: d.sessionCount,
-        lessons: Array.from(d.lessonsMap.values()),
-      }))
+        lessons: Array.from(d.lessonsMap.values()) }))
       .sort((a, b) => a.dateKey.localeCompare(b.dateKey));
   }
 
@@ -1001,7 +953,7 @@ export class ProgressService {
    * (CHỈ trả về các collection mà user ĐÃ học, bỏ qua collection chưa bắt đầu)
    */
   async getVocabularyProgress(userId: string) {
-    const userObjId = new Types.ObjectId(userId);
+    const userObjId = new PgId(userId);
 
     const collections = await this.collectionModel
       .find({ isActive: true, isDeleted: false })
@@ -1015,8 +967,7 @@ export class ProgressService {
         .find({
           collectionId: col._id,
           isActive: true,
-          isDeleted: false,
-        })
+          isDeleted: false })
         .select('_id')
         .lean();
 
@@ -1035,8 +986,7 @@ export class ProgressService {
         this.progressModel
           .find({
             userId: userObjId,
-            lessonId: { $in: lessonIds },
-          })
+            lessonId: { $in: lessonIds } })
           .lean(),
       ]);
 
@@ -1045,8 +995,7 @@ export class ProgressService {
 
       const learnedWords = await this.userLessonWordModel.countDocuments({
         userId: userObjId,
-        lessonWordId: { $in: lwIds },
-      });
+        lessonWordId: { $in: lwIds } });
 
       // 1. Tiến độ theo bài học (tương tự như logic admin)
       const totalLessons = lessons.length;
@@ -1101,8 +1050,7 @@ export class ProgressService {
         learnedWords,
         completedLessonsCount,
         totalLessons,
-        progress,
-      });
+        progress });
     }
 
     return results;
@@ -1113,14 +1061,13 @@ export class ProgressService {
    * Trả về việc cần học hôm nay
    */
   async getTodayTasks(userId: string) {
-    const userObjId = new Types.ObjectId(userId);
+    const userObjId = new PgId(userId);
     const now = new Date();
 
     // 1. Số từ cần ôn hôm nay (SRS due)
     const wordsToReview = await this.reviewModel.countDocuments({
       userId: userObjId,
-      nextReviewAt: { $lte: now },
-    });
+      nextReviewAt: { $lte: now } });
 
     // 2. Bài học đang học dở hoặc gần nhất
     const lastProgress = await this.progressModel
@@ -1157,8 +1104,7 @@ export class ProgressService {
           slug: lessonObj.slug,
           collectionName: colName,
           collectionSlug: colSlug,
-          progress: lastProgress.progress || 0,
-        };
+          progress: lastProgress.progress || 0 };
       }
     }
 
@@ -1177,8 +1123,7 @@ export class ProgressService {
           slug: firstLesson.slug,
           collectionName: colObj?.name || '',
           collectionSlug: colObj?.slug || '',
-          progress: 0,
-        };
+          progress: 0 };
       }
     }
 
@@ -1189,8 +1134,7 @@ export class ProgressService {
 
     const todayActivity = await this.dailyActivityModel.findOne({
       userId: userObjId,
-      date: { $gte: startOfToday },
-    });
+      date: { $gte: startOfToday } });
 
     const todayLearnedCount = todayActivity?.wordsLearned || 0;
     const newWordsCount = Math.max(0, dailyGoal - todayLearnedCount);
@@ -1202,8 +1146,7 @@ export class ProgressService {
       newWordsCount: newWordsCount > 0 ? newWordsCount : 10,
       currentLesson,
       dailyGoal,
-      todayLearnedCount,
-    };
+      todayLearnedCount };
   }
 
   /**
@@ -1211,7 +1154,7 @@ export class ProgressService {
    * Trả về các hoạt động học gần đây
    */
   async getRecentActivities(userId: string) {
-    const userObjId = new Types.ObjectId(userId);
+    const userObjId = new PgId(userId);
 
     const [recentProgresses, recentSessions] = await Promise.all([
       this.progressModel
@@ -1243,8 +1186,7 @@ export class ProgressService {
       activities.push({
         type: 'LESSON',
         title,
-        createdAt: new Date(createdAt),
-      });
+        createdAt: new Date(createdAt) });
     }
 
     for (const s of recentSessions) {
@@ -1260,8 +1202,7 @@ export class ProgressService {
       activities.push({
         type: s.type || 'LESSON',
         title,
-        createdAt: new Date(s.startedAt || (s as any).createdAt || new Date()),
-      });
+        createdAt: new Date(s.startedAt || (s as any).createdAt || new Date()) });
     }
 
     // Sort theo createdAt giảm dần và lấy top 10

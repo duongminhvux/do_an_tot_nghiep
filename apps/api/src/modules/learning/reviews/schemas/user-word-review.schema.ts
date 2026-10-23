@@ -1,67 +1,61 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { type HydratedDocument, Types } from 'mongoose';
+import { PgId } from '../../../../postgres/compat.js';
+import { PgField, PgEntity, PgSchemaFactory } from '../../../../postgres/compat.js';
+import { type PgDocument } from '../../../../postgres/compat.js';
 
-export type UserWordReviewDocument = HydratedDocument<UserWordReview>;
+export type UserWordReviewDocument = PgDocument<UserWordReview>;
 
 export class Review {}
-@Schema({ timestamps: true })
+@PgEntity({ timestamps: true })
 export class UserWordReview {
-  @Prop({
-    type: Types.ObjectId,
+  @PgField({
+    type: PgId,
     ref: 'User',
     required: true,
-    index: true,
-  })
-  userId: Types.ObjectId;
+    index: true })
+  userId: PgId;
 
-  @Prop({
-    type: Types.ObjectId,
+  @PgField({
+    type: PgId,
     ref: 'Word',
     required: true,
-    index: true,
-  })
-  wordId: Types.ObjectId;
+    index: true })
+  wordId: PgId;
 
-  @Prop({
+  @PgField({
     type: String,
     enum: ['LEARNING', 'MASTERED'],
-    default: 'LEARNING',
-  })
+    default: 'LEARNING' })
   status: 'LEARNING' | 'MASTERED';
 
-  @Prop({
+  @PgField({
     type: Number,
-    default: 0,
-  })
+    default: 0 })
   reviewCount: number;
 
-  @Prop({
+  @PgField({
     type: Number,
-    default: 0,
-  })
+    default: 0 })
   correctCount: number;
 
-  @Prop({
+  @PgField({
     type: Number,
-    default: 0,
-  })
+    default: 0 })
   incorrectCount: number;
 
-  @Prop({
+  @PgField({
     type: Number,
-    default: 0,
-  })
+    default: 0 })
   intervalDays: number;
 
-  @Prop()
+  @PgField()
   lastReviewedAt?: Date;
 
-  @Prop()
+  @PgField()
   nextReviewAt?: Date;
 }
 
 export const UserWordReviewSchema =
-  SchemaFactory.createForClass(UserWordReview);
+  PgSchemaFactory.createForClass(UserWordReview);
 
 UserWordReviewSchema.index(
   { userId: 1, wordId: 1 },
@@ -70,5 +64,4 @@ UserWordReviewSchema.index(
 
 UserWordReviewSchema.index({
   userId: 1,
-  nextReviewAt: 1,
-});
+  nextReviewAt: 1 });

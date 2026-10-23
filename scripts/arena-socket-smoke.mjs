@@ -11,7 +11,8 @@ const webRequire = createRequire(
   new URL("./apps/web/package.json", workspaceUrl),
 );
 const { Test } = apiRequire("@nestjs/testing");
-const { Types } = apiRequire("mongoose");
+const { randomUUID } = await import("node:crypto");
+class PgId extends String { constructor(v) { super(v || randomUUID()); } equals(v){return String(this) === String(v);} }
 const { io } = webRequire("socket.io-client");
 const { ArenaGateway } = await load(
   "./apps/api/dist/modules/arena/gateways/arena.gateway.js",
@@ -40,8 +41,8 @@ const { ArenaRoundService } = await load(
 const { AuthService } = await load(
   "./apps/api/dist/modules/auth/auth.service.js",
 );
-const a = "111111111111111111111111",
-  b = "222222222222222222222222";
+const a = "11111111-1111-4111-8111-111111111111",
+  b = "22222222-2222-4222-8222-222222222222";
 const queue = new Map(),
   locks = new Map(),
   active = new Set(),
@@ -127,7 +128,7 @@ const invites = {
     return invitations.some((invite) => inviteMatches(invite, filter));
   },
   async create(data) {
-    const invite = { _id: new Types.ObjectId(), status: "PENDING", ...data };
+    const invite = { _id: new PgId(), status: "PENDING", ...data };
     invitations.push(invite);
     return invite;
   },
@@ -160,7 +161,7 @@ const matchService = {
     active.add(first);
     active.add(second);
     const match = {
-      _id: new Types.ObjectId(),
+      _id: new PgId(),
       type: "RANK",
       status: "PLAYING",
       players: [first, second],
@@ -174,9 +175,9 @@ const matchService = {
     const ids = [first, second, ...(options.additionalPlayerIds ?? [])];
     ids.forEach((id) => active.add(id));
     const match = {
-      _id: new Types.ObjectId(),
+      _id: new PgId(),
       status: "COUNTDOWN",
-      hostId: new Types.ObjectId(first),
+      hostId: new PgId(first),
       players: ids,
       usedWords: [],
       currentWord: "",
@@ -257,7 +258,7 @@ const fits = (row, filter) =>
     if (
       value &&
       typeof value === "object" &&
-      !(value instanceof Types.ObjectId) &&
+      !(value instanceof PgId) &&
       !(value instanceof Date)
     ) {
       if ("$in" in value) return value.$in.some((v) => same(row[key], v));
@@ -284,7 +285,7 @@ const model = (records) => ({
   },
   async create(values) {
     const row = {
-      _id: new Types.ObjectId(),
+      _id: new PgId(),
       guestId: null,
       status: "WAITING",
       guestReady: false,
@@ -370,7 +371,7 @@ const friendly = new ArenaFriendlyService(
     async find({ matchId }) {
       if (!matchId) return [];
       return matchRecords.get(String(matchId)).players.map((id) => ({
-        userId: new Types.ObjectId(id),
+        userId: new PgId(id),
         isReady: false,
         score: 0,
       }));

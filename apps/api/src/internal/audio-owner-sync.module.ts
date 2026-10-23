@@ -1,6 +1,7 @@
+import { PgId } from '../postgres/compat.js';
 import { Controller, Module, Post, Body, Param, Headers, ForbiddenException, BadRequestException, NotFoundException } from '@nestjs/common';
-import { InjectModel, MongooseModule } from '@nestjs/mongoose';
-import { type Model, Types } from 'mongoose';
+import { InjectPgModel, PgModelsModule } from '../postgres/compat.js';
+import { type Model } from '../postgres/compat.js';
 import { timingSafeEqual } from 'node:crypto';
 import { Public } from '../modules/auth/decorators/public.decorator.js';
 import { Word, WordSchema } from '../modules/vocabulary/words/word.schema.js';
@@ -29,13 +30,13 @@ function audioUpdate(body: unknown, allowed: string[]) {
   return {$set:update.$set};
 }
 function validId(id:string) {
-  if (!Types.ObjectId.isValid(id) || !/^[0-9a-f]{24}$/i.test(id)) throw new BadRequestException('Invalid ObjectId');
-  return new Types.ObjectId(id);
+  if (!PgId.isValid(id) || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) throw new BadRequestException('Invalid UUID');
+  return new PgId(id);
 }
 
 @Controller('_internal/content/audio')
 export class ContentAudioOwnerController {
-  constructor(@InjectModel(Word.name) private readonly words: Model<Word>) {}
+  constructor(@InjectPgModel(Word.name) private readonly words: Model<Word>) {}
   @Public()
   @Post('words/:id')
   async sync(@Headers('x-internal-token') token: string, @Param('id') id: string, @Body() input:unknown) {
@@ -49,8 +50,8 @@ export class ContentAudioOwnerController {
 
 @Controller('_internal/assessment/audio')
 export class AssessmentAudioOwnerController {
-  constructor(@InjectModel(Question.name) private readonly questions: Model<Question>,
-              @InjectModel(Passage.name) private readonly passages: Model<Passage>) {}
+  constructor(@InjectPgModel(Question.name) private readonly questions: Model<Question>,
+              @InjectPgModel(Passage.name) private readonly passages: Model<Passage>) {}
   @Public()
   @Post('questions/:id')
   async question(@Headers('x-internal-token') token:string, @Param('id') id:string, @Body() input:unknown) {
@@ -69,7 +70,7 @@ export class AssessmentAudioOwnerController {
   }
 }
 
-@Module({imports:[MongooseModule.forFeature([{name:Word.name,schema:WordSchema}])], controllers:[ContentAudioOwnerController]})
+@Module({imports:[PgModelsModule.forFeature([{name:Word.name,schema:WordSchema}])], controllers:[ContentAudioOwnerController]})
 export class ContentAudioOwnerModule {}
-@Module({imports:[MongooseModule.forFeature([{name:Question.name,schema:QuestionSchema},{name:Passage.name,schema:PassageSchema}])], controllers:[AssessmentAudioOwnerController]})
+@Module({imports:[PgModelsModule.forFeature([{name:Question.name,schema:QuestionSchema},{name:Passage.name,schema:PassageSchema}])], controllers:[AssessmentAudioOwnerController]})
 export class AssessmentAudioOwnerModule {}

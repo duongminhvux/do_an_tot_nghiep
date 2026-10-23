@@ -1,0 +1,203 @@
+# Local developer mode: PostgreSQL/Node/Next run on host; only infra + AI in Docker.
+name: vocalearn-local-infra
+services:
+  redis:
+    image: redis:7-alpine
+    command:
+    - redis-server
+    - --appendonly
+    - 'yes'
+    - --appendfsync
+    - everysec
+    restart: unless-stopped
+    volumes:
+    - redis_data:/data
+    healthcheck:
+      test:
+      - CMD
+      - redis-cli
+      - ping
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    environment: {}
+    ports:
+    - 127.0.0.1:6379:6379
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?Set RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}
+    volumes:
+    - rabbitmq_data:/var/lib/rabbitmq
+    - ./infra/rabbitmq/rabbitmq.conf:/etc/rabbitmq/conf.d/99-consumer.conf:ro
+    ports:
+    - 127.0.0.1:15672:15672
+    - 127.0.0.1:5672:5672
+    healthcheck:
+      test:
+      - CMD
+      - rabbitmq-diagnostics
+      - -q
+      - ping
+      interval: 10s
+      timeout: 5s
+      retries: 15
+  objectstore:
+    image: chrislusf/seaweedfs:4.30
+    command:
+    - mini
+    - -dir=/data
+    - -s3.port=9000
+    restart: unless-stopped
+    environment:
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:?Set S3_ACCESS_KEY}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:?Set S3_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET:-vocalearn-media}
+    volumes:
+    - objectstore_data:/data
+    ports:
+    - 127.0.0.1:9000:9000
+    healthcheck:
+      test:
+      - CMD
+      - wget
+      - -q
+      - --spider
+      - http://127.0.0.1:9000/readyz
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+  tts-service:
+    build:
+      context: .
+      dockerfile: services/tts-service/Dockerfile
+      provenance: false
+      sbom: false
+      args:
+        TORCH_VERSION: ${TORCH_VERSION:-2.7.1}
+        TORCH_INDEX_URL: ${TORCH_INDEX_URL:-https://download.pytorch.org/whl/cpu}
+    restart: unless-stopped
+    environment:
+      KOKORO_DEVICE: ${KOKORO_DEVICE:-cpu}
+      KOKORO_MODEL_ID: ${KOKORO_MODEL_ID:-hexgrad/Kokoro-82M}
+      HF_HOME: /models/huggingface
+    volumes:
+    - kokoro_models:/models/huggingface
+    ports:
+    - 127.0.0.1:8001:8001
+  asr-service:
+    build:
+      context: .
+      dockerfile: services/asr-service/Dockerfile
+      provenance: false
+      sbom: false
+    restart: unless-stopped
+    environment:
+      ASR_DEVICE: ${ASR_DEVICE:-cpu}
+      ASR_COMPUTE_TYPE: ${ASR_COMPUTE_TYPE:-int8}
+      ASR_MODEL: ${ASR_MODEL:-small.en}
+      ASR_MODEL_DIR: /models/faster-whisper
+    volumes:
+    - whisper_models:/models/faster-whisper
+    ports:
+    - 127.0.0.1:8002:8002
+  media-bridge:
+    build:
+      context: .
+      dockerfile: services/media-bridge/Dockerfile
+      provenance: false
+      sbom: false
+    restart: unless-stopped
+    environment:
+      S3_ENDPOINT: http://objectstore:9000
+      S3_BUCKET: ${S3_BUCKET:-vocalearn-media}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?Set S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:?Set S3_SECRET_KEY}
+      MEDIA_INTERNAL_TOKEN: ${MEDIA_INTERNAL_TOKEN:?Set MEDIA_INTERNAL_TOKEN}
+    ports:
+    - 127.0.0.1:8010:8010
+  job-broker:
+    build:
+      context: .
+      dockerfile: services/job-broker/Dockerfile
+      provenance: false
+      sbom: false
+    restart: unless-stopped
+    environment:
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672/%2F
+      JOB_INTERNAL_TOKEN: ${JOB_INTERNAL_TOKEN:?Set JOB_INTERNAL_TOKEN}
+      PGHOST: host.docker.internal
+      PGPORT: '5432'
+      PGDATABASE: media_db
+      PGUSER: vl_media
+      PGPASSWORD: ${PG_MEDIA_PASSWORD:?Set media password}
+    ports:
+    - 127.0.0.1:8020:8020
+  asr-job-api:
+    image: vocalearn-clean-asr-jobs:local
+    pull_policy: never
+    build:
+      context: .
+      dockerfile: services/asr-jobs/Dockerfile
+      provenance: false
+      sbom: false
+    restart: unless-stopped
+    environment:
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672/%2F
+      JOB_INTERNAL_TOKEN: ${JOB_INTERNAL_TOKEN:?Set JOB_INTERNAL_TOKEN}
+      S3_ENDPOINT: http://objectstore:9000
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?Set S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:?Set S3_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET:-vocalearn-media}
+      PGHOST: host.docker.internal
+      PGPORT: '5432'
+      PGDATABASE: media_db
+      PGUSER: vl_media
+      PGPASSWORD: ${PG_MEDIA_PASSWORD:?Set media password}
+    ports:
+    - 127.0.0.1:8021:8021
+  asr-job-runner:
+    image: vocalearn-clean-asr-jobs:local
+    pull_policy: never
+    command:
+    - python
+    - worker.py
+    restart: unless-stopped
+    environment:
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672/%2F
+      JOB_INTERNAL_TOKEN: ${JOB_INTERNAL_TOKEN:?Set JOB_INTERNAL_TOKEN}
+      S3_ENDPOINT: http://objectstore:9000
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?Set S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:?Set S3_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET:-vocalearn-media}
+      ASR_SERVICE_URL: http://asr-service:8002
+      REDIS_URL: redis://redis:6379
+      PGHOST: host.docker.internal
+      PGPORT: '5432'
+      PGDATABASE: media_db
+      PGUSER: vl_media
+      PGPASSWORD: ${PG_MEDIA_PASSWORD:?Set media password}
+  job-runner:
+    build:
+      context: .
+      dockerfile: services/job-broker/Dockerfile.runner
+      provenance: false
+      sbom: false
+    restart: unless-stopped
+    environment:
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672/%2F
+      JOB_INTERNAL_TOKEN: ${JOB_INTERNAL_TOKEN:?Set JOB_INTERNAL_TOKEN}
+      AUDIO_WORKER_URL: http://host.docker.internal:5009
+      AUDIO_JOB_RETRIES: ${AUDIO_JOB_RETRIES:-3}
+      PGHOST: host.docker.internal
+      PGPORT: '5432'
+      PGDATABASE: media_db
+      PGUSER: vl_media
+      PGPASSWORD: ${PG_MEDIA_PASSWORD:?Set media password}
+volumes:
+  redis_data: {}
+  rabbitmq_data: {}
+  objectstore_data: {}

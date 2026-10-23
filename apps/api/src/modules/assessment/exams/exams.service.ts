@@ -1,12 +1,12 @@
+import { PgId } from '../../../postgres/compat.js';
 import {
   ConflictException,
   BadRequestException,
   Injectable,
   NotFoundException,
-  Optional,
-} from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { type Model, Types } from 'mongoose';
+  Optional } from '@nestjs/common';
+import { InjectPgModel } from '../../../postgres/compat.js';
+import { type Model } from '../../../postgres/compat.js';
 import { I18nContext, I18nService } from 'nestjs-i18n';
 import { Exam, ExamDocument } from './schemas/exam.schema.js';
 import { CreateExamDto } from './dto/create-exam.dto.js';
@@ -51,24 +51,21 @@ export class ExamsService {
             {
               updateOne: {
                 filter: { _id: row._id, isDeleted: { $ne: true } },
-                update: { $set: { order: index + 1 } },
-              },
-            },
+                update: { $set: { order: index + 1 } } } },
           ],
     );
     if (operations.length) await this.examModel.bulkWrite(operations);
     return rows.map((row, index) => ({
       id: String(row._id),
-      order: index + 1,
-    }));
+      order: index + 1 }));
   }
   constructor(
-    @InjectModel(Exam.name)
+    @InjectPgModel(Exam.name)
     private readonly examModel: Model<ExamDocument>,
     private readonly i18n: I18nService,
     @Optional() private readonly domainOutbox?: DomainOutboxService,
     @Optional()
-    @InjectModel(Attempt.name)
+    @InjectPgModel(Attempt.name)
     private readonly attempts?: Model<Attempt>,
   ) {}
 
@@ -100,8 +97,7 @@ export class ExamsService {
     const escapedName = trimmedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const existing = await this.examModel.findOne({
       name: { $regex: new RegExp(`^${escapedName}$`, 'i') },
-      isDeleted: { $ne: true },
-    });
+      isDeleted: { $ne: true } });
 
     if (existing) {
       throw new ConflictException(
@@ -141,8 +137,8 @@ export class ExamsService {
 
     const isActive = createExamDto.isActive ?? true;
     const groupId =
-      createExamDto.groupId && Types.ObjectId.isValid(createExamDto.groupId)
-        ? new Types.ObjectId(createExamDto.groupId)
+      createExamDto.groupId && PgId.isValid(createExamDto.groupId)
+        ? new PgId(createExamDto.groupId)
         : null;
 
     const createdExam = new this.examModel({
@@ -154,8 +150,7 @@ export class ExamsService {
       isActive,
       order,
       groupId,
-      groupOrder: groupId ? await nextGroupOrder(this.examModel, groupId) : 0,
-    });
+      groupOrder: groupId ? await nextGroupOrder(this.examModel, groupId) : 0 });
 
     const saved = await createdExam.save();
     try {
@@ -164,8 +159,7 @@ export class ExamsService {
         String(saved._id),
         {
           examId: String(saved._id),
-          type: saved.type,
-        },
+          type: saved.type },
       );
     } catch (error) {
       // No transaction yet; avoid falsely reporting that the saved exam failed.
@@ -206,8 +200,8 @@ export class ExamsService {
         groupId === 'unassigned'
       ) {
         filter.groupId = { $in: [null, undefined] };
-      } else if (Types.ObjectId.isValid(groupId)) {
-        filter.groupId = new Types.ObjectId(groupId);
+      } else if (PgId.isValid(groupId)) {
+        filter.groupId = new PgId(groupId);
       }
     }
 
@@ -219,11 +213,8 @@ export class ExamsService {
             {
               isActive: { $exists: false },
               status: {
-                $in: isActive ? ['ACTIVE', null] : ['INACTIVE', 'ARCHIVED'],
-              },
-            },
-          ],
-        },
+                $in: isActive ? ['ACTIVE', null] : ['INACTIVE', 'ARCHIVED'] } },
+          ] },
       ];
     }
 
@@ -241,7 +232,7 @@ export class ExamsService {
         : undefined;
     const sort: Record<string, 1 | -1> = field
       ? { [field]: query.sortOrder === 'desc' ? -1 : 1, _id: 1 }
-      : filter.groupId instanceof Types.ObjectId
+      : filter.groupId instanceof PgId
         ? { ...GROUP_EXAM_SORT }
         : { order: 1, createdAt: -1, _id: 1 };
 
@@ -261,23 +252,20 @@ export class ExamsService {
     return {
       data: await withAttemptCounts(
         this.attempts,
-        data.map((exam: any) => ({
+        data.map((exam) => ({
           ...exam,
-          isActive:
-            exam.isActive ?? (exam.status ? exam.status === 'ACTIVE' : true),
-        })),
+          isActive: exam.isActive ?? ('status' in exam ? exam.status === 'ACTIVE' : true) })),
       ),
       total,
       page,
-      limit,
-    };
+      limit };
   }
 
   async findOne(idOrSlug: string): Promise<Exam> {
     const lang = this.getLang();
     const query: Record<string, any> = { isDeleted: { $ne: true } };
 
-    if (Types.ObjectId.isValid(idOrSlug)) {
+    if (PgId.isValid(idOrSlug)) {
       query._id = idOrSlug;
     } else {
       query.slug = idOrSlug;
@@ -296,8 +284,7 @@ export class ExamsService {
     return {
       ...result,
       isActive:
-        exam.isActive ?? (legacyStatus ? legacyStatus === 'ACTIVE' : true),
-    } as Exam;
+        exam.isActive ?? (legacyStatus ? legacyStatus === 'ACTIVE' : true) } as Exam;
   }
 
   async update(id: string, updateExamDto: UpdateExamDto): Promise<Exam> {
@@ -309,7 +296,7 @@ export class ExamsService {
     updateExamDto: UpdateExamDto,
   ): Promise<Exam> {
     const lang = this.getLang();
-    if (!Types.ObjectId.isValid(id)) {
+    if (!PgId.isValid(id)) {
       throw new NotFoundException(
         await this.i18n.t('exam.EXAM_NOT_FOUND', { lang }),
       );
@@ -324,8 +311,7 @@ export class ExamsService {
       const existing = await this.examModel.findOne({
         _id: { $ne: id },
         name: { $regex: new RegExp(`^${escapedName}$`, 'i') },
-        isDeleted: { $ne: true },
-      });
+        isDeleted: { $ne: true } });
 
       if (existing) {
         throw new ConflictException(
@@ -345,8 +331,7 @@ export class ExamsService {
           await this.examModel.exists({
             _id: { $ne: id },
             slug,
-            isDeleted: { $ne: true },
-          })
+            isDeleted: { $ne: true } })
         ) {
           slug = `${baseSlug}-${counter++}`;
         }
@@ -356,16 +341,15 @@ export class ExamsService {
 
     if (updateExamDto.groupId !== undefined) {
       updateData.groupId =
-        updateExamDto.groupId && Types.ObjectId.isValid(updateExamDto.groupId)
-          ? (new Types.ObjectId(updateExamDto.groupId) as any)
+        updateExamDto.groupId && PgId.isValid(updateExamDto.groupId)
+          ? (new PgId(updateExamDto.groupId) as any)
           : null;
       // Moving to another group appends the exam at the end of that group.
       if (!updateData.groupId) updateData.groupOrder = 0;
       else if (
         !(await this.examModel.exists({
           _id: id,
-          groupId: updateData.groupId,
-        }))
+          groupId: updateData.groupId }))
       )
         updateData.groupOrder = await nextGroupOrder(
           this.examModel,
@@ -375,8 +359,7 @@ export class ExamsService {
 
     const updatedExam = await this.examModel
       .findOneAndUpdate({ _id: id, isDeleted: { $ne: true } }, updateData, {
-        returnDocument: 'after',
-      })
+        returnDocument: 'after' })
       .exec();
 
     if (!updatedExam) {
@@ -420,7 +403,7 @@ export class ExamsService {
 
   private async removeOrdered(id: string): Promise<Exam> {
     const lang = this.getLang();
-    if (!Types.ObjectId.isValid(id)) {
+    if (!PgId.isValid(id)) {
       throw new NotFoundException(
         await this.i18n.t('exam.EXAM_NOT_FOUND', { lang }),
       );
@@ -428,8 +411,7 @@ export class ExamsService {
 
     const exam = await this.examModel.findOne({
       _id: id,
-      isDeleted: { $ne: true },
-    });
+      isDeleted: { $ne: true } });
     if (!exam) {
       throw new NotFoundException(
         await this.i18n.t('exam.EXAM_NOT_FOUND', { lang }),
@@ -440,8 +422,7 @@ export class ExamsService {
       .findByIdAndUpdate(
         id,
         {
-          isDeleted: true,
-        },
+          isDeleted: true },
         { returnDocument: 'after' },
       )
       .exec();
@@ -456,7 +437,7 @@ export class ExamsService {
 
   private async restoreOrdered(id: string): Promise<Exam> {
     const lang = this.getLang();
-    if (!Types.ObjectId.isValid(id)) {
+    if (!PgId.isValid(id)) {
       throw new NotFoundException(
         await this.i18n.t('exam.EXAM_NOT_FOUND', { lang }),
       );
@@ -515,12 +496,9 @@ export class ExamsService {
         items.map((item) => ({
           updateOne: {
             filter: {
-              _id: new Types.ObjectId(item.id),
-              isDeleted: { $ne: true },
-            },
-            update: { $set: { order: item.order } },
-          },
-        })),
+              _id: new PgId(item.id),
+              isDeleted: { $ne: true } },
+            update: { $set: { order: item.order } } } })),
       );
     });
   }

@@ -4,8 +4,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  Min,
-} from 'class-validator';
+  Min } from 'class-validator';
 
 export class CreateExamGroupDto {
   @IsNotEmpty()

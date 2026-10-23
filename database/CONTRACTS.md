@@ -1,21 +1,17 @@
-# Service-owned database and communication contracts
+# PostgreSQL Service Ownership
 
-Schema source of truth: [`schema/collections.json`](schema/collections.json).
-Historical data mapping (used manually only): [`import/ownership.json`](import/ownership.json).
+Each backend role owns exactly one of the eight PostgreSQL databases defined in `database/postgres/01-init.sql`. Cross-service reads/writes must go through authenticated HTTP or domain events. Each database has `outbox_events` and `inbox_events` for reliable RabbitMQ handling.
 
-- **Sync**: REST through Nginx API Gateway (Web/Admin); internal service calls are token-protected.
-- **Async**: durable RabbitMQ message routing for TTS, ASR and domain events.
-- **Service data**: each NestJS service reads and writes ONLY its named MongoDB database.
-- **Read-model projections**: owner MongoDB change streams → RabbitMQ → target-owned projection collection, with resume checkpoints and monotonic revision logic.
-- **Arena**: Redis socket/presence/matchmaking state, MongoDB ratings and history.
-- **Media**: S3-compatible object storage, served via internal media bridge.
-- **Identity**: only Identity stores passwords and account records; other services validate via internal endpoint.
+Existing document-shaped queries read foreign data through the owner's authenticated, read-only `GET /api/_internal/read-models/:table` endpoint. `apps/api/src/postgres/ownership.ts` declares ownership; callers never receive another service's database credentials. The endpoint accepts only owned business tables, excludes admin credentials and PDF correction payloads, and removes user authentication secrets. The public gateway blocks all internal endpoints. Foreign writes fail explicitly and require an owner command API. This bridge still reads tables into memory; filtered SQL read contracts or event-fed projections are required for large datasets.
 
-`db-init` creates or reconciles collections, warning validators and indexes.
-It preserves immutable `initial_schema_v1` markers/change-stream checkpoints and
-stores the latest checksum in `schema_manifest_current`. It never imports legacy
-user data, deletes collections, or changes existing documents.
+`database/postgres/01-init.sql` bootstraps fresh installations only. On existing volumes, `scripts/repair-postgres-docker.ps1` adds Assessment's missing PDF correction outbox and removes erroneous root NOT NULL requirements inherited from embedded Content/Arena schemas. It retains all columns and rows. Word parts belong in `parts` JSONB, dictation word timings in `words` JSONB, and member/option data in their parent JSONB arrays. Required fields of an embedded object must not become required columns of its parent. `tests/schema-contracts.cjs` checks this contract. Assessment and AI Import retain separate correction records in their respective databases. No legacy database driver is used.
 
-Incompatible schema/data changes (renames, backfills, unique index conflicts)
-still require an explicit service-owned, reviewed migration. Production should add per-service MongoDB
-users and rotate secrets; the local Compose instance isolates Mongo on a network.
+The audio worker declares `SERVICE_ROLE=audio-worker` and owns only `media_db`. AudioProcessingService reads Content/Assessment over the read API and submits narrow updates through `/api/_internal/content/audio/words/:id` or `/api/_internal/assessment/audio/{questions,passages}/:id`. It does not update foreign SQL tables or install global model hooks. The receiving owner permits only audio fields.
+
+Validate a running Docker stack with `docker compose exec -T identity-service node scripts/smoke-postgres-stack.mjs`. It uses an existing active user and administrator, checks the previously failing routes, internal-route isolation, and Socket.IO transport. It never prints credentials or access tokens. Arena's profile GET may initialize the selected user's profile.
+
+Run `tests/postgres-write-flows.mjs` in Content and Assessment to check populated write/query flows with database rollback. `scripts/smoke-write-audio.mjs` runs in Identity and exercises word creation, group IDs/counts, real TTS, RabbitMQ audio jobs and dictation audio through the gateway. Its isolated fixtures are deleted through owner APIs (soft deletion where the API uses it), and generated media is removed. Completed job history remains in Media.
+
+Dictation's `completed_segments` and `revealed_segments`, and Arena's UUID lists, are JSONB arrays. Existing scalar columns are converted by the repair scripts, preserving lists from the legacy JSONB payload when present. Re-running repairs retains existing arrays. The schema contract check also rejects scalar numeric/UUID columns for array entity fields.
+
+The document adapter treats `.select('+questionSnapshot')` as an additive field override, preserving the rest of the attempt. A genuinely absent snapshot still returns a conflict; it is never rebuilt from an edited exam. Attempt updates and update pipelines lock the current PostgreSQL row within a transaction and recheck their conditions after acquiring the lock. `tests/postgres-attempt-concurrency.mjs` verifies parallel answer saves, duplicate-answer rejection and concurrent submission with fixture cleanup.

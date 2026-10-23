@@ -30,14 +30,12 @@ describe('Arena live presence', () => {
   it('keeps a user online when another tab remains connected', async () => {
     const f = fixture();
     expect(await f.service.disconnect('a', 'tab-a')).toMatchObject({
-      online: true,
-    });
+      online: true });
   });
   it('marks the last socket offline even during its disconnect callback', async () => {
     const f = fixture();
     expect(await f.service.disconnect('b', 'tab-b')).toMatchObject({
-      online: false,
-    });
+      online: false });
   });
   it('reads the current socket source on every request', async () => {
     const f = fixture();

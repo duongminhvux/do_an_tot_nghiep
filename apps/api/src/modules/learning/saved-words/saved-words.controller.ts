@@ -8,8 +8,7 @@ import {
   Param,
   Query,
   UseGuards,
-  Req,
-} from '@nestjs/common';
+  Req } from '@nestjs/common';
 import { SavedWordsService } from './saved-words.service.js';
 import { CreateSavedWordDto } from './dto/create-saved-word.dto.js';
 import { QuerySavedWordsDto } from './dto/query-saved-words.dto.js';

@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
+import { PgModelsModule } from '../../postgres/compat.js';
 import { ProgressController } from './progress/progress.controller.js';
 import { ProgressService } from './progress/progress.service.js';
 import { ReviewsController } from './reviews/reviews.controller.js';
@@ -8,28 +8,22 @@ import { SessionsController } from './sessions/sessions.controller.js';
 import { SessionsService } from './sessions/sessions.service.js';
 import {
   UserLessonProgress,
-  UserLessonProgressSchema,
-} from './progress/schemas/user-lesson-progress.schema.js';
+  UserLessonProgressSchema } from './progress/schemas/user-lesson-progress.schema.js';
 import {
   UserLessonWord,
-  UserLessonWordSchema,
-} from './progress/schemas/user-lesson-word.schema.js';
+  UserLessonWordSchema } from './progress/schemas/user-lesson-word.schema.js';
 import {
   UserWordReview,
-  UserWordReviewSchema,
-} from './reviews/schemas/user-word-review.schema.js';
+  UserWordReviewSchema } from './reviews/schemas/user-word-review.schema.js';
 import {
   UserDailyActivity,
-  UserDailyActivitySchema,
-} from './progress/schemas/user-daily-activity.schema.js';
+  UserDailyActivitySchema } from './progress/schemas/user-daily-activity.schema.js';
 import {
   LearningSession,
-  LearningSessionSchema,
-} from './sessions/schemas/learning-session.schema.js';
+  LearningSessionSchema } from './sessions/schemas/learning-session.schema.js';
 import {
   LearningSessionWord,
-  LearningSessionWordSchema,
-} from './sessions/schemas/learning-session-word.schema.js';
+  LearningSessionWordSchema } from './sessions/schemas/learning-session-word.schema.js';
 
 import { VocabularyReadModelsModule } from '../vocabulary/vocabulary-read-models.module.js';
 import { SavedWordsModule } from './saved-words/saved-words.module.js';
@@ -38,31 +32,25 @@ import { LearningActivityModule } from '../learning-activity/learning-activity.m
 @Module({
   imports: [
     VocabularyReadModelsModule,
-    MongooseModule.forFeature([
+    PgModelsModule.forFeature([
       {
         name: UserLessonProgress.name,
-        schema: UserLessonProgressSchema,
-      },
+        schema: UserLessonProgressSchema },
       {
         name: UserLessonWord.name,
-        schema: UserLessonWordSchema,
-      },
+        schema: UserLessonWordSchema },
       {
         name: UserWordReview.name,
-        schema: UserWordReviewSchema,
-      },
+        schema: UserWordReviewSchema },
       {
         name: LearningSession.name,
-        schema: LearningSessionSchema,
-      },
+        schema: LearningSessionSchema },
       {
         name: LearningSessionWord.name,
-        schema: LearningSessionWordSchema,
-      },
+        schema: LearningSessionWordSchema },
       {
         name: UserDailyActivity.name,
-        schema: UserDailyActivitySchema,
-      },
+        schema: UserDailyActivitySchema },
     ]),
     SavedWordsModule,
     LearningActivityModule,
@@ -82,7 +70,6 @@ import { LearningActivityModule } from '../learning-activity/learning-activity.m
     ReviewsService,
     SessionsService,
     SavedWordsModule,
-    MongooseModule,
-  ],
-})
+    PgModelsModule,
+  ] })
 export class LearningModule {}

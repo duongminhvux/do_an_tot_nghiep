@@ -6,8 +6,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  ValidateNested,
-} from 'class-validator';
+  ValidateNested } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
 
 export enum WordLevel {
@@ -16,8 +15,7 @@ export enum WordLevel {
   B1 = 'B1',
   B2 = 'B2',
   C1 = 'C1',
-  C2 = 'C2',
-}
+  C2 = 'C2' }
 
 export class WordIpaDto {
   @IsString()

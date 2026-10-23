@@ -1,11 +1,5 @@
-# VocaLearn — Microservices monorepo
+# VocaLearn — PostgreSQL rebuild worktree
 
-Run `docker compose up -d --build` after configuring `.env`. Existing MongoDB
-volumes are preserved; `db-init` checks and additively merges the schema.
-
-- [Architecture and ownership](CLEAN_MICROSERVICES_README.md)
-- [Fresh deployment](DEPLOY_FRESH.md)
-- [Fresh database schema](database/README.md)
-- [Optional old `.dump` import](IMPORT_LEGACY_DUMP.md)
-
-Check layout with `python scripts/check-fresh-stack.py`.
+Eight isolated NestJS service roles, Next.js user/admin, PostgreSQL 17, Redis, RabbitMQ,
+SeaweedFS, ASR and TTS. Root `.env` only. See `README_POSTGRES_V8.md` for workflows,
+known limitations and a migration-readiness checklist.

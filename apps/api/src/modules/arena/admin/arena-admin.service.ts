@@ -1,17 +1,16 @@
+import { PgId } from '../../../postgres/compat.js';
 import { ArenaReadService } from '../arena-read.service.js';
 import {
   BadRequestException,
   ConflictException,
   Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { type Model, type PipelineStage, Types } from 'mongoose';
+  NotFoundException } from '@nestjs/common';
+import { InjectPgModel } from '../../../postgres/compat.js';
+import { type Model, type PipelineStage } from '../../../postgres/compat.js';
 import {
   ArenaMatch,
   ArenaMatchStatus,
-  ArenaMatchType,
-} from '../schemas/arena-match.schema.js';
+  ArenaMatchType } from '../schemas/arena-match.schema.js';
 import { ArenaMatchPlayer } from '../schemas/arena-match-player.schema.js';
 import { ArenaMatchQuestion } from '../schemas/arena-match-question.schema.js';
 import { ArenaPlayerAnswer } from '../schemas/arena-player-answer.schema.js';
@@ -29,8 +28,7 @@ import {
   ArenaDashboardQuery,
   ArenaPlayerQuery,
   ArenaRoomQuery,
-  UpdateArenaSettingsDto,
-} from './arena-admin.dto.js';
+  UpdateArenaSettingsDto } from './arena-admin.dto.js';
 import { ArenaSettingsService } from './arena-settings.service.js';
 const escapeRegex = (value: string) =>
   Array.from(value, (char) =>
@@ -39,19 +37,19 @@ const escapeRegex = (value: string) =>
 @Injectable()
 export class ArenaAdminService {
   constructor(
-    @InjectModel(ArenaMatch.name) private readonly matches: Model<ArenaMatch>,
-    @InjectModel(ArenaMatchPlayer.name)
+    @InjectPgModel(ArenaMatch.name) private readonly matches: Model<ArenaMatch>,
+    @InjectPgModel(ArenaMatchPlayer.name)
     private readonly participants: Model<ArenaMatchPlayer>,
-    @InjectModel(ArenaMatchQuestion.name)
+    @InjectPgModel(ArenaMatchQuestion.name)
     private readonly questions: Model<ArenaMatchQuestion>,
-    @InjectModel(ArenaPlayerAnswer.name)
+    @InjectPgModel(ArenaPlayerAnswer.name)
     private readonly answers: Model<ArenaPlayerAnswer>,
-    @InjectModel(ArenaProfile.name)
+    @InjectPgModel(ArenaProfile.name)
     private readonly profiles: Model<ArenaProfile>,
-    @InjectModel(ArenaRatingHistory.name)
+    @InjectPgModel(ArenaRatingHistory.name)
     private readonly ratings: Model<ArenaRatingHistory>,
-    @InjectModel(FriendRoom.name) private readonly rooms: Model<FriendRoom>,
-    @InjectModel(User.name) private readonly users: Model<User>,
+    @InjectPgModel(FriendRoom.name) private readonly rooms: Model<FriendRoom>,
+    @InjectPgModel(User.name) private readonly users: Model<User>,
     private readonly presence: ArenaPresenceService,
     private readonly friendRooms: ArenaFriendRoomService,
     private readonly gateway: ArenaGateway,
@@ -60,9 +58,9 @@ export class ArenaAdminService {
     private readonly reads: ArenaReadService,
   ) {}
   private id(value: string) {
-    if (!/^[a-f\d]{24}$/i.test(value))
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value))
       throw new BadRequestException('INVALID_ID');
-    return new Types.ObjectId(value);
+    return new PgId(value);
   }
   private dates(from?: string, to?: string) {
     if (from && to && new Date(from) > new Date(to))
@@ -71,9 +69,7 @@ export class ArenaAdminService {
       ? {
           createdAt: {
             ...(from ? { $gte: new Date(from) } : {}),
-            ...(to ? { $lte: new Date(to) } : {}),
-          },
-        }
+            ...(to ? { $lte: new Date(to) } : {}) } }
       : {};
   }
   private async userMap(ids: unknown[]) {
@@ -113,10 +109,8 @@ export class ArenaAdminService {
             user: users.get(String(p.userId)) ?? null,
             ...(match.type === ArenaMatchType.RANK
               ? { ratingBefore, ratingAfter, ratingChange }
-              : {}),
-          };
-        }),
-    }));
+              : {}) };
+        }) }));
   }
   private rawMatches(filter: Record<string, unknown>, skip = 0, limit = 20) {
     return this.matches
@@ -128,13 +122,12 @@ export class ArenaAdminService {
   }
   async matchList(query: ArenaAdminQuery) {
     const filter: Record<string, unknown> = {
-      ...this.dates(query.from, query.to),
-    };
+      ...this.dates(query.from, query.to) };
     for (const key of ['type', 'status', 'winnerId', 'finishReason'] as const)
       if (query[key]) filter[key] = query[key];
     if (query.matchId) filter._id = this.id(query.matchId);
     if (query.search) {
-      if (!/^[a-f\d]{24}$/i.test(query.search))
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(query.search))
         return { items: [], total: 0, page: query.page, limit: query.limit };
       filter._id = this.id(query.search);
     }
@@ -144,9 +137,7 @@ export class ArenaAdminService {
       filter._id = {
         ...(filter._id ? { $eq: filter._id } : {}),
         $in: await this.participants.distinct('matchId', {
-          userId: this.id(query.userId),
-        }),
-      };
+          userId: this.id(query.userId) }) };
     const [rows, total] = await Promise.all([
       this.rawMatches(filter, (query.page - 1) * query.limit, query.limit),
       this.matches.countDocuments(filter),
@@ -155,8 +146,7 @@ export class ArenaAdminService {
       items: await this.enrichMatches(rows),
       total,
       page: query.page,
-      limit: query.limit,
-    };
+      limit: query.limit };
   }
   async matchDetail(id: string) {
     const match = await this.matches.findById(this.id(id)).lean();
@@ -172,8 +162,7 @@ export class ArenaAdminService {
     return {
       ...(await this.enrichMatches([match]))[0],
       questions: questionHistory,
-      answers: answerHistory,
-    };
+      answers: answerHistory };
   }
   async dashboard(query: ArenaDashboardQuery) {
     const { start, end } = arenaTodayRange();
@@ -195,10 +184,7 @@ export class ArenaAdminService {
             _id: '$type',
             count: { $sum: 1 },
             cancelled: {
-              $sum: { $cond: [{ $eq: ['$status', 'CANCELLED'] }, 1, 0] },
-            },
-          },
-        },
+              $sum: { $cond: [{ $eq: ['$status', 'CANCELLED'] }, 1, 0] } } } },
       ]),
       this.matches.countDocuments({
         status: {
@@ -206,9 +192,7 @@ export class ArenaAdminService {
             ArenaMatchStatus.COUNTDOWN,
             ArenaMatchStatus.PLAYING,
             ArenaMatchStatus.FINISHING,
-          ],
-        },
-      }),
+          ] } }),
       this.rooms.countDocuments({ status: FriendRoomStatus.WAITING }),
       this.presence.overview().catch(() => ({ onlineCount: null })),
       this.matches.aggregate([
@@ -219,12 +203,8 @@ export class ArenaAdminService {
               $dateToString: {
                 format: '%Y-%m-%d',
                 date: '$createdAt',
-                timezone: 'Asia/Ho_Chi_Minh',
-              },
-            },
-            count: { $sum: 1 },
-          },
-        },
+                timezone: 'Asia/Ho_Chi_Minh' } },
+            count: { $sum: 1 } } },
         { $sort: { _id: 1 } },
       ]),
       this.matches.aggregate([
@@ -235,9 +215,7 @@ export class ArenaAdminService {
         {
           $match: {
             createdAt: { $gte: since, $lt: end },
-            status: { $in: ['FINISHED', 'CANCELLED'] },
-          },
-        },
+            status: { $in: ['FINISHED', 'CANCELLED'] } } },
         {
           $group: {
             _id: {
@@ -245,11 +223,8 @@ export class ArenaAdminService {
                 { $eq: ['$status', 'CANCELLED'] },
                 'CANCELLED',
                 { $ifNull: ['$finishReason', 'UNKNOWN'] },
-              ],
-            },
-            count: { $sum: 1 },
-          },
-        },
+              ] },
+            count: { $sum: 1 } } },
       ]),
       this.matchList(Object.assign(new ArenaAdminQuery(), { limit: 8 })),
     ]);
@@ -267,8 +242,7 @@ export class ArenaAdminService {
       distribution,
       reasons,
       recent: recent.items,
-      days: query.days,
-    };
+      days: query.days };
   }
   async playerList(query: ArenaPlayerQuery) {
     if (
@@ -281,8 +255,7 @@ export class ArenaAdminService {
     if (query.minRating !== undefined || query.maxRating !== undefined)
       filter.rating = {
         ...(query.minRating !== undefined ? { $gte: query.minRating } : {}),
-        ...(query.maxRating !== undefined ? { $lte: query.maxRating } : {}),
-      };
+        ...(query.maxRating !== undefined ? { $lte: query.maxRating } : {}) };
     if (query.minMatches !== undefined)
       filter.rankedMatches = { $gte: query.minMatches };
     const pipeline: PipelineStage[] = [
@@ -292,9 +265,7 @@ export class ArenaAdminService {
           from: this.users.collection.name,
           localField: 'userId',
           foreignField: '_id',
-          as: 'user',
-        },
-      },
+          as: 'user' } },
       { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
       {
         $lookup: {
@@ -306,9 +277,7 @@ export class ArenaAdminService {
             { $limit: 1 },
             { $project: { updatedAt: 1, createdAt: 1 } },
           ],
-          as: 'lastMatch',
-        },
-      },
+          as: 'lastMatch' } },
       {
         $addFields: {
           winRate: {
@@ -318,19 +287,14 @@ export class ArenaAdminService {
                 $multiply: [
                   { $divide: ['$rankedWins', '$rankedMatches'] },
                   100,
-                ],
-              },
+                ] },
               0,
-            ],
-          },
+            ] },
           lastActivity: {
             $ifNull: [
               { $arrayElemAt: ['$lastMatch.updatedAt', 0] },
               '$updatedAt',
-            ],
-          },
-        },
-      },
+            ] } } },
     ];
     if (query.search) {
       const regex = escapeRegex(query.search);
@@ -339,17 +303,14 @@ export class ArenaAdminService {
           $or: [
             { 'user.username': { $regex: regex, $options: 'i' } },
             { 'user.email': { $regex: regex, $options: 'i' } },
-            ...(/^[a-f\d]{24}$/i.test(query.search)
+            ...(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(query.search)
               ? [{ userId: this.id(query.search) }]
               : []),
-          ],
-        },
-      });
+          ] } });
     }
     if (query.activeSince)
       pipeline.push({
-        $match: { lastActivity: { $gte: new Date(query.activeSince) } },
-      });
+        $match: { lastActivity: { $gte: new Date(query.activeSince) } } });
     pipeline.push(
       {
         $project: {
@@ -368,9 +329,7 @@ export class ArenaAdminService {
           'user.email': 1,
           'user.avatarUrl': 1,
           'user.isBanned': 1,
-          'user.isDeleted': 1,
-        },
-      },
+          'user.isDeleted': 1 } },
       {
         $facet: {
           items: [
@@ -378,17 +337,14 @@ export class ArenaAdminService {
             { $skip: (query.page - 1) * query.limit },
             { $limit: query.limit },
           ],
-          count: [{ $count: 'total' }],
-        },
-      },
+          count: [{ $count: 'total' }] } },
     );
     const [result] = await this.profiles.aggregate(pipeline);
     return {
       items: result?.items ?? [],
       total: result?.count?.[0]?.total ?? 0,
       page: query.page,
-      limit: query.limit,
-    };
+      limit: query.limit };
   }
   async playerDetail(userId: string) {
     const id = this.id(userId);
@@ -418,12 +374,10 @@ export class ArenaAdminService {
             position: position.me?.position ?? null,
             winRate: profile.rankedMatches
               ? (profile.rankedWins / profile.rankedMatches) * 100
-              : 0,
-          }
+              : 0 }
         : null,
       matches: history,
-      ratingHistory,
-    };
+      ratingHistory };
   }
   async ratingHistory(userId: string, query: ArenaAdminQuery) {
     const filter = { userId: this.id(userId) };
@@ -440,7 +394,7 @@ export class ArenaAdminService {
   }
   private async enrichRooms(
     rows: (FriendRoom & {
-      _id: Types.ObjectId;
+      _id: PgId;
       createdAt?: Date;
       updatedAt?: Date;
     })[],
@@ -460,18 +414,15 @@ export class ArenaAdminService {
             ? true
             : room.maxPlayers > 2
               ? room.members.find((m) => String(m.userId) === id)?.isReady
-              : room.guestReady,
-      })),
+              : room.guestReady })),
       stale:
         room.status === 'WAITING' &&
         !!room.updatedAt &&
-        room.updatedAt.getTime() < Date.now() - 1800000,
-    }));
+        room.updatedAt.getTime() < Date.now() - 1800000 }));
   }
   async roomList(query: ArenaRoomQuery) {
     const filter: Record<string, unknown> = {
-      ...this.dates(query.from, query.to),
-    };
+      ...this.dates(query.from, query.to) };
     if (query.type)
       filter.maxPlayers = query.type === 'FRIEND' ? 2 : { $gt: 2 };
     if (query.status) filter.status = query.status;
@@ -496,8 +447,7 @@ export class ArenaAdminService {
       items: await this.enrichRooms(items),
       total,
       page: query.page,
-      limit: query.limit,
-    };
+      limit: query.limit };
   }
   async roomDetail(id: string) {
     const room = await this.rooms.findById(this.id(id)).lean();
@@ -517,9 +467,7 @@ export class ArenaAdminService {
         targetType: 'FriendRoom',
         targetId: id,
         roomCode: event.data.code,
-        reason,
-      },
-    });
+        reason } });
     await this.gateway.deliverAdminEvent(event);
     return { closed: true };
   }
@@ -537,9 +485,7 @@ export class ArenaAdminService {
         reason: dto.reason,
         before: before.config,
         after: result.config,
-        revision: result.revision,
-      },
-    });
+        revision: result.revision } });
     return result;
   }
 }

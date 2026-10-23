@@ -1,14 +1,13 @@
-import { Types } from 'mongoose';
+import { PgId } from '../../../postgres/compat.js';
 import { ExamsService } from './exams.service.js';
 
 function fixture(orders = [4, 5, 5, 9]) {
   const rows: any[] = orders.map((order, index) => ({
-    _id: new Types.ObjectId(),
+    _id: new PgId(),
     name: `Exam ${index + 1}`,
     slug: `exam-${index + 1}`,
     order,
-    isDeleted: false,
-  }));
+    isDeleted: false }));
   const matches = (row: any, filter: any) =>
     Object.entries(filter).every(([key, value]: any) => {
       if (value?.$ne !== undefined)
@@ -39,12 +38,11 @@ function fixture(orders = [4, 5, 5, 9]) {
             .map((row) => ({ ...row }));
         return result;
       },
-      then: (ok: any, fail: any) => q.exec().then(ok, fail),
-    };
+      then: (ok: any, fail: any) => q.exec().then(ok, fail) };
     return q;
   };
   class Exams {
-    _id = new Types.ObjectId();
+    _id = new PgId();
     constructor(data: any) {
       Object.assign(this, data);
     }

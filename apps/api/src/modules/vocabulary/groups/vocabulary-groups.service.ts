@@ -1,6 +1,7 @@
+import { PgId } from '../../../postgres/compat.js';
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { type Model, Types } from 'mongoose';
+import { InjectPgModel } from '../../../postgres/compat.js';
+import { type Model } from '../../../postgres/compat.js';
 import { I18nContext, I18nService } from 'nestjs-i18n';
 import { VocabularyGroup, VocabularyGroupDocument } from './vocabulary-group.schema.js';
 import { Collection, CollectionDocument } from '../collections/collection.schema.js';
@@ -13,13 +14,13 @@ import { QueryVocabularyGroupDto } from './dto/query-vocabulary-group.dto.js';
 @Injectable()
 export class VocabularyGroupsService {
   constructor(
-    @InjectModel(VocabularyGroup.name)
+    @InjectPgModel(VocabularyGroup.name)
     private readonly vocabularyGroupModel: Model<VocabularyGroupDocument>,
-    @InjectModel(Collection.name)
+    @InjectPgModel(Collection.name)
     private readonly collectionModel: Model<CollectionDocument>,
-    @InjectModel(Lesson.name)
+    @InjectPgModel(Lesson.name)
     private readonly lessonModel: Model<LessonDocument>,
-    @InjectModel(LessonWord.name)
+    @InjectPgModel(LessonWord.name)
     private readonly lessonWordModel: Model<LessonWordDocument>,
     private readonly i18n: I18nService,
   ) {}
@@ -49,8 +50,7 @@ export class VocabularyGroupsService {
     const escapedName = trimmedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const existingActive = await this.vocabularyGroupModel.findOne({
       name: { $regex: new RegExp(`^${escapedName}$`, 'i') },
-      isDeleted: { $ne: true },
-    });
+      isDeleted: { $ne: true } });
     if (existingActive) {
       throw new ConflictException(
         await this.i18n.t('vocabulary-group.GROUP_ALREADY_EXISTS', { lang }),
@@ -68,14 +68,12 @@ export class VocabularyGroupsService {
     // 2. Free any legacy deleted records that had this name or slug to avoid E11000
     const legacyDeleted = await this.vocabularyGroupModel.find({
       $or: [{ name: trimmedName }, { slug }],
-      isDeleted: true,
-    });
+      isDeleted: true });
     for (const legacy of legacyDeleted) {
       const ts = Date.now();
       await this.vocabularyGroupModel.findByIdAndUpdate(legacy._id, {
         name: `${legacy.name}_deleted_${ts}`,
-        slug: `${legacy.slug}_deleted_${ts}`,
-      });
+        slug: `${legacy.slug}_deleted_${ts}` });
     }
 
     let order = createVocabularyGroupDto.order;
@@ -88,8 +86,7 @@ export class VocabularyGroupsService {
       ...createVocabularyGroupDto,
       name: trimmedName,
       slug,
-      order,
-    });
+      order });
     return createdGroup.save();
   }
 
@@ -170,8 +167,7 @@ export class VocabularyGroupsService {
       collectionsByGroup.get(gId)!.push({
         ...c,
         lessonsCount: collectionLessonsCountMap.get(c._id.toString()) || 0,
-        wordsCount: collectionWordsCountMap.get(c._id.toString()) || 0,
-      });
+        wordsCount: collectionWordsCountMap.get(c._id.toString()) || 0 });
     });
 
     const data = rawGroups.map((g) => {
@@ -183,16 +179,14 @@ export class VocabularyGroupsService {
         collectionsCount: cols.length,
         lessonsCount: totalLessons,
         wordsCount: totalWords,
-        collections: cols,
-      };
+        collections: cols };
     });
 
     return {
       data,
       total,
       page,
-      limit,
-    };
+      limit };
   }
 
   async findOne(id: string): Promise<any> {
@@ -209,14 +203,12 @@ export class VocabularyGroupsService {
     }
 
     const collectionsCount = await this.collectionModel.countDocuments({
-      groupId: new Types.ObjectId(id),
-      isDeleted: { $ne: true },
-    }).exec();
+      groupId: new PgId(id),
+      isDeleted: { $ne: true } }).exec();
 
     return {
       ...group,
-      collectionsCount,
-    };
+      collectionsCount };
   }
 
   async update(id: string, updateVocabularyGroupDto: UpdateVocabularyGroupDto): Promise<VocabularyGroup> {
@@ -229,8 +221,7 @@ export class VocabularyGroupsService {
       const existingActive = await this.vocabularyGroupModel.findOne({
         _id: { $ne: id },
         name: { $regex: new RegExp(`^${escapedName}$`, 'i') },
-        isDeleted: { $ne: true },
-      });
+        isDeleted: { $ne: true } });
       if (existingActive) {
         throw new ConflictException(
           await this.i18n.t('vocabulary-group.GROUP_ALREADY_EXISTS', { lang }),
@@ -242,14 +233,12 @@ export class VocabularyGroupsService {
       const legacyDeleted = await this.vocabularyGroupModel.find({
         _id: { $ne: id },
         name: trimmedName,
-        isDeleted: true,
-      });
+        isDeleted: true });
       for (const legacy of legacyDeleted) {
         const ts = Date.now();
         await this.vocabularyGroupModel.findByIdAndUpdate(legacy._id, {
           name: `${legacy.name}_deleted_${ts}`,
-          slug: `${legacy.slug}_deleted_${ts}`,
-        });
+          slug: `${legacy.slug}_deleted_${ts}` });
       }
     }
 
@@ -263,8 +252,7 @@ export class VocabularyGroupsService {
           await this.vocabularyGroupModel.exists({
             _id: { $ne: id },
             slug,
-            isDeleted: { $ne: true },
-          })
+            isDeleted: { $ne: true } })
         ) {
           slug = `${baseSlug}-${counter++}`;
         }
@@ -274,14 +262,12 @@ export class VocabularyGroupsService {
         const legacySlugDeleted = await this.vocabularyGroupModel.find({
           _id: { $ne: id },
           slug,
-          isDeleted: true,
-        });
+          isDeleted: true });
         for (const legacy of legacySlugDeleted) {
           const ts = Date.now();
           await this.vocabularyGroupModel.findByIdAndUpdate(legacy._id, {
             name: `${legacy.name}_deleted_${ts}`,
-            slug: `${legacy.slug}_deleted_${ts}`,
-          });
+            slug: `${legacy.slug}_deleted_${ts}` });
         }
       }
     }
@@ -337,15 +323,14 @@ export class VocabularyGroupsService {
         {
           isDeleted: true,
           name: deletedName,
-          slug: deletedSlug,
-        },
+          slug: deletedSlug },
         { returnDocument: 'after' },
       )
       .exec();
 
     // Detach all collections assigned to this group
     await this.collectionModel
-      .updateMany({ groupId: new Types.ObjectId(id) }, { $unset: { groupId: 1 } })
+      .updateMany({ groupId: new PgId(id) }, { $unset: { groupId: 1 } })
       .exec();
 
     return deletedGroup!;
@@ -368,10 +353,8 @@ export class VocabularyGroupsService {
   async reorderGroups(items: { id: string; order: number }[]): Promise<void> {
     const operations = items.map((item) => ({
       updateOne: {
-        filter: { _id: new Types.ObjectId(item.id) },
-        update: { $set: { order: item.order } },
-      },
-    }));
+        filter: { _id: new PgId(item.id) },
+        update: { $set: { order: item.order } } } }));
     if (operations.length > 0) {
       await this.vocabularyGroupModel.bulkWrite(operations);
     }

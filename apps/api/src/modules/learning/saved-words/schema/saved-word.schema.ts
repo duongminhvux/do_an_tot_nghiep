@@ -1,44 +1,41 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { type HydratedDocument, Types } from 'mongoose';
+import { PgId } from '../../../../postgres/compat.js';
+import { PgField, PgEntity, PgSchemaFactory } from '../../../../postgres/compat.js';
+import { type PgDocument } from '../../../../postgres/compat.js';
 
-export type UserSavedWordDocument = HydratedDocument<UserSavedWord>;
+export type UserSavedWordDocument = PgDocument<UserSavedWord>;
 
-@Schema({ timestamps: true })
+@PgEntity({ timestamps: true })
 export class UserSavedWord {
-  @Prop({
-    type: Types.ObjectId,
+  @PgField({
+    type: PgId,
     ref: 'User',
     required: true,
-    index: true,
-  })
-  userId: Types.ObjectId;
+    index: true })
+  userId: PgId;
 
-  @Prop({
-    type: Types.ObjectId,
+  @PgField({
+    type: PgId,
     ref: 'Word',
     required: true,
-    index: true,
-  })
-  wordId: Types.ObjectId;
+    index: true })
+  wordId: PgId;
 
-  @Prop({
-    type: Types.ObjectId,
+  @PgField({
+    type: PgId,
     ref: 'VocabularyFolder',
-    index: true,
-  })
-  folderId?: Types.ObjectId;
+    index: true })
+  folderId?: PgId;
 
-  @Prop({
+  @PgField({
     type: Date,
-    default: Date.now,
-  })
+    default: Date.now })
   savedAt: Date;
 
-  @Prop({ trim: true })
+  @PgField({ trim: true })
   note?: string;
 }
 
-export const UserSavedWordSchema = SchemaFactory.createForClass(UserSavedWord);
+export const UserSavedWordSchema = PgSchemaFactory.createForClass(UserSavedWord);
 
 UserSavedWordSchema.index(
   { userId: 1, wordId: 1 },

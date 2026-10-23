@@ -1,58 +1,53 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { type HydratedDocument, Types } from 'mongoose';
+import { PgId } from '../../../../postgres/compat.js';
+import { PgField, PgEntity, PgSchemaFactory } from '../../../../postgres/compat.js';
+import { type PgDocument } from '../../../../postgres/compat.js';
 
 export type LearningSessionWordDocument =
-  HydratedDocument<LearningSessionWord>;
+  PgDocument<LearningSessionWord>;
 
-@Schema({ timestamps: true })
+@PgEntity({ timestamps: true })
 export class LearningSessionWord {
-  @Prop({
-    type: Types.ObjectId,
+  @PgField({
+    type: PgId,
     ref: 'LearningSession',
     required: true,
-    index: true,
-  })
-  sessionId: Types.ObjectId;
+    index: true })
+  sessionId: PgId;
 
-  @Prop({
-    type: Types.ObjectId,
+  @PgField({
+    type: PgId,
     ref: 'Word',
     required: true,
-    index: true,
-  })
-  wordId: Types.ObjectId;
+    index: true })
+  wordId: PgId;
 
-  @Prop({
-    type: Types.ObjectId,
-    ref: 'LessonWord',
-  })
-  lessonWordId?: Types.ObjectId;
+  @PgField({
+    type: PgId,
+    ref: 'LessonWord' })
+  lessonWordId?: PgId;
 
-  @Prop({
+  @PgField({
     type: String,
     enum: ['FLASHCARD', 'MULTIPLE_CHOICE', 'TYPING'],
-    required: true,
-  })
+    required: true })
   mode: 'FLASHCARD' | 'MULTIPLE_CHOICE' | 'TYPING';
 
-  @Prop({
+  @PgField({
     type: String,
-    enum: ['AGAIN', 'HARD', 'GOOD', 'EASY'],
-  })
+    enum: ['AGAIN', 'HARD', 'GOOD', 'EASY'] })
   rating?: 'AGAIN' | 'HARD' | 'GOOD' | 'EASY';
 
-  @Prop()
+  @PgField()
   isCorrect?: boolean;
 
-  @Prop({
+  @PgField({
     type: Date,
-    required: true,
-  })
+    required: true })
   answeredAt: Date;
 
-  @Prop()
+  @PgField()
   scheduledAt?: Date;
 }
 
 export const LearningSessionWordSchema =
-  SchemaFactory.createForClass(LearningSessionWord);
+  PgSchemaFactory.createForClass(LearningSessionWord);

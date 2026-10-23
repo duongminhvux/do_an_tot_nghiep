@@ -2,8 +2,7 @@ import {
   Get,
   NotFoundException,
   Param,
-  Query,
-} from '@nestjs/common';
+  Query } from '@nestjs/common';
 import { AdminController } from '../auth/decorators/admin-controller.decorator.js';
 import { ActivityLogsService } from './activity-logs.service.js';
 import { QueryActivityLogsDto } from './dto/query-activity-logs.dto.js';

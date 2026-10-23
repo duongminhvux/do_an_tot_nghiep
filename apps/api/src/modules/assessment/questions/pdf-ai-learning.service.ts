@@ -1,17 +1,17 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { InjectModel, Schema, SchemaFactory, Prop } from '@nestjs/mongoose';
-import { type Model, Schema as MongooseSchema } from 'mongoose';
+import { InjectPgModel, PgEntity, PgSchemaFactory, PgField } from '../../../postgres/compat.js';
+import { type Model, PgSchemaDefinition } from '../../../postgres/compat.js';
 import { createHash } from 'node:crypto';
 import { PdfAiService } from './pdf-ai.service.js';
 
-@Schema({ timestamps: true, collection: 'pdf_ai_correction_events' })
+@PgEntity({ timestamps: true, collection: 'pdf_ai_correction_events' })
 export class PdfAiCorrectionEvent {
-  @Prop({ required: true, unique: true }) eventId: string;
-  @Prop({ type: MongooseSchema.Types.Mixed, required: true }) payload: Record<string, any>;
-  @Prop({ default: 'pending', enum: ['pending', 'delivered'] }) state: string;
-  @Prop({ default: '' }) lastError: string;
+  @PgField({ required: true, unique: true }) eventId: string;
+  @PgField({ type: PgSchemaDefinition.Types.Mixed, required: true }) payload: Record<string, any>;
+  @PgField({ default: 'pending', enum: ['pending', 'delivered'] }) state: string;
+  @PgField({ default: '' }) lastError: string;
 }
-export const PdfAiCorrectionEventSchema = SchemaFactory.createForClass(PdfAiCorrectionEvent);
+export const PdfAiCorrectionEventSchema = PgSchemaFactory.createForClass(PdfAiCorrectionEvent);
 
 /** Durable outbox: an unavailable OCR service must not discard saved corrections. */
 @Injectable()
@@ -20,7 +20,7 @@ export class PdfAiLearningService implements OnModuleInit, OnModuleDestroy {
   private timer?: ReturnType<typeof setInterval>;
   private flushing = false;
   constructor(
-    @InjectModel(PdfAiCorrectionEvent.name) private readonly events: Model<PdfAiCorrectionEvent>,
+    @InjectPgModel(PdfAiCorrectionEvent.name) private readonly events: Model<PdfAiCorrectionEvent>,
     private readonly pdfAi: PdfAiService,
   ) {}
   onModuleInit() {

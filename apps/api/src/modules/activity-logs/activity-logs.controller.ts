@@ -6,8 +6,7 @@ import {
   HttpStatus,
   Ip,
   Post,
-  Req,
-} from '@nestjs/common';
+  Req } from '@nestjs/common';
 import { ActivityLogsService } from './activity-logs.service.js';
 import { CreateActivityLogDto } from './dto/create-activity-log.dto.js';
 import { Public } from '../auth/decorators/public.decorator.js';
@@ -44,8 +43,7 @@ export class ActivityLogsController {
     const log = await this.activityLogsService.log(dto);
     return {
       success: true,
-      logged: Boolean(log),
-    };
+      logged: Boolean(log) };
   }
 
   /**

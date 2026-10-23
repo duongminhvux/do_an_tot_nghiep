@@ -29,7 +29,6 @@ export class AdminInfrastructureController {
         } catch {
           return { name, state: 'unreachable' };
         }
-      })),
-    };
+      })) };
   }
 }

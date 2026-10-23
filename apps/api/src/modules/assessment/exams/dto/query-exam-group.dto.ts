@@ -3,8 +3,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-  Min,
-} from 'class-validator';
+  Min } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 
 export class QueryExamGroupDto {

@@ -1,45 +1,38 @@
+import { PgId } from '../../../postgres/compat.js';
 vi.mock('../matches/arena-match.service.js', () => ({
-  ArenaMatchService: class {},
-}));
-import { Types } from 'mongoose';
+  ArenaMatchService: class {} }));
 import { ArenaRoundService } from './arena-round.service.js';
 import {
   arenaHintLetters,
   arenaHintOrder,
   maskArenaAnswer,
-  normalizeArenaAnswer,
-} from './arena-round.utils.js';
+  normalizeArenaAnswer } from './arena-round.utils.js';
 
 vi.mock('../schemas/arena-match.schema.js', () => ({
   ArenaMatch: class {},
   ArenaMatchStatus: { PLAYING: 'PLAYING', FINISHED: 'FINISHED' },
   ArenaFriendMode: { WORD_CHAIN: 'WORD_CHAIN', WORD_GUESS: 'WORD_GUESS', CLASSIC: 'CLASSIC' },
-  ArenaMatchType: { RANK: 'RANK', FRIEND: 'FRIEND', ROOM: 'ROOM' },
-}));
+  ArenaMatchType: { RANK: 'RANK', FRIEND: 'FRIEND', ROOM: 'ROOM' } }));
 vi.mock('../schemas/arena-match-question.schema.js', () => ({
-  ArenaMatchQuestion: class {},
-}));
+  ArenaMatchQuestion: class {} }));
 vi.mock('../schemas/arena-match-player.schema.js', () => ({
-  ArenaMatchPlayer: class {},
-}));
+  ArenaMatchPlayer: class {} }));
 vi.mock('../schemas/arena-player-answer.schema.js', () => ({
-  ArenaPlayerAnswer: class {},
-}));
+  ArenaPlayerAnswer: class {} }));
 
 function fixture() {
-  const matchId = new Types.ObjectId();
-  const users = [new Types.ObjectId(), new Types.ObjectId()];
+  const matchId = new PgId();
+  const users = [new PgId(), new PgId()];
   const match = {
     _id: matchId,
     status: 'PLAYING',
     questionCount: 10,
     currentQuestionIndex: 1,
     secondsPerQuestion: 30,
-    winnerId: null as Types.ObjectId | null,
-    isDraw: false,
-  };
+    winnerId: null as PgId | null,
+    isDraw: false };
   const questions = Array.from({ length: 10 }, (_, index) => ({
-    _id: new Types.ObjectId(),
+    _id: new PgId(),
     matchId,
     order: index + 1,
     correctAnswer: 'thumb',
@@ -50,10 +43,9 @@ function fixture() {
     wordType: 'noun',
     startedAt: index === 0 ? new Date() : (null as Date | null),
     resolvedAt: null as Date | null,
-    winnerId: null as Types.ObjectId | null,
-  }));
+    winnerId: null as PgId | null }));
   const players = users.map((userId) => ({
-    _id: new Types.ObjectId(),
+    _id: new PgId(),
     matchId,
     userId,
     status: 'PLAYING',
@@ -62,8 +54,7 @@ function fixture() {
     scoredQuestionIds: [] as string[],
     ratingBefore: 1000,
     ratingAfter: 1000,
-    ratingChange: 0,
-  }));
+    ratingChange: 0 }));
   const same = (a: unknown, b: unknown) => String(a) === String(b);
   const matches = {
     findById: vi.fn(async () => ({ ...match })),
@@ -79,8 +70,7 @@ function fixture() {
       if (update.$inc)
         match.currentQuestionIndex += update.$inc.currentQuestionIndex;
       return { modifiedCount: 1 };
-    }),
-  };
+    }) };
   const questionModel = {
     findOne: vi.fn(async (filter) => {
       const q = questions.find(
@@ -102,8 +92,7 @@ function fixture() {
         return null;
       Object.assign(q, update.$set);
       return { ...q };
-    }),
-  };
+    }) };
   const playerModel = {
     exists: vi.fn(async (filter) =>
       players.some((p) => same(p.userId, filter.userId)),
@@ -115,8 +104,7 @@ function fixture() {
     find: vi.fn(() => {
       const values = players.map((p) => ({ ...p }));
       return Object.assign(Promise.resolve(values), {
-        sort: () => Promise.resolve(values.sort((a, b) => b.score - a.score)),
-      });
+        sort: () => Promise.resolve(values.sort((a, b) => b.score - a.score)) });
     }),
     updateOne: vi.fn(async (filter, pipeline) => {
       const p = players.find((p) => same(p._id, filter._id));
@@ -130,16 +118,13 @@ function fixture() {
     }),
     updateMany: vi.fn(async (_filter, update) => {
       for (const p of players) Object.assign(p, update.$set);
-    }),
-  };
+    }) };
   const answers = {
     findOne: vi.fn(async () => null),
     findOneAndUpdate: vi.fn(async () => ({})),
-    updateOne: vi.fn(async () => ({})),
-  };
+    updateOne: vi.fn(async () => ({})) };
   const scoring = {
-    calculateQuestionScore: vi.fn(() => 100),
-  };
+    calculateQuestionScore: vi.fn(() => 100) };
   const matchService = {
     finishRankedMatch: vi.fn(async () => {
       const isDraw = players[0].score === players[1].score;
@@ -147,8 +132,7 @@ function fixture() {
       match.isDraw = isDraw;
       match.winnerId = isDraw ? null : players[0].userId;
       return { status: 'FINISHED' };
-    }),
-  };
+    }) };
   const service = new ArenaRoundService(
     matches as never,
     questionModel as never,
@@ -162,8 +146,7 @@ function fixture() {
       matchId: String(matchId),
       questionId: String(questions[match.currentQuestionIndex - 1]._id),
       userId: String(users[user]),
-      answer,
-    });
+      answer });
   return {
     service,
     match,
@@ -173,8 +156,7 @@ function fixture() {
     matchId,
     guess,
     questionModel,
-    answers,
-  };
+    answers };
 }
 
 describe('Arena ranked rounds', () => {
@@ -188,18 +170,14 @@ describe('Arena ranked rounds', () => {
         explanation: 'The _____ is a digit.',
         example: 'She hurt her _____.',
         translation: 'Cô ấy bị đau ngón tay cái.',
-        type: 'noun',
-      },
-    });
+        type: 'noun' } });
     const response = await f.guess();
     expect(response.events[0]).toMatchObject({
       event: 'match:question-resolved',
       data: {
         correctAnswer: 'thumb',
         explanation: 'The thumb is a digit.',
-        example: 'She hurt her THUMB.',
-      },
-    });
+        example: 'She hurt her THUMB.' } });
   });
   beforeEach(() => {
     vi.useFakeTimers();
@@ -214,8 +192,7 @@ describe('Arena ranked rounds', () => {
       expect(response.answerResult).toMatchObject({
         correct: false,
         resolved: false,
-        points: 0,
-      });
+        points: 0 });
       expect(response.answerResult).not.toHaveProperty('correctAnswer');
       expect(response.events).toEqual([]);
     }
@@ -224,8 +201,7 @@ describe('Arena ranked rounds', () => {
     expect((await f.guess()).answerResult).toMatchObject({
       correct: true,
       resolved: true,
-      totalScore: 100,
-    });
+      totalScore: 100 });
   });
 
   it('awards only the first correct contender, including concurrent answers and retries', async () => {
@@ -246,9 +222,7 @@ describe('Arena ranked rounds', () => {
       data: {
         winnerId: String(f.users[0]),
         correctAnswer: 'thumb',
-        timedOut: false,
-      },
-    });
+        timedOut: false } });
   });
 
   it('server clock reveals the answer even with no client submitting at timeout', async () => {
@@ -261,9 +235,7 @@ describe('Arena ranked rounds', () => {
         data: expect.objectContaining({
           winnerId: null,
           timedOut: true,
-          correctAnswer: 'thumb',
-        }),
-      }),
+          correctAnswer: 'thumb' }) }),
     );
     expect(f.players.map((player) => player.score)).toEqual([0, 0]);
   });
@@ -274,8 +246,7 @@ describe('Arena ranked rounds', () => {
     expect((await f.guess()).answerResult).toMatchObject({
       correct: false,
       timedOut: true,
-      points: 0,
-    });
+      points: 0 });
   });
 
   it('runs exactly ten rounds and finishes with the score winner', async () => {
@@ -290,9 +261,7 @@ describe('Arena ranked rounds', () => {
           event: 'match:finished',
           data: {
             winnerId: String(f.users[0]),
-            isDraw: false,
-          },
-        });
+            isDraw: false } });
     }
     expect(f.match.status).toBe('FINISHED');
     expect(f.players.map((player) => player.score)).toEqual([600, 400]);
@@ -306,27 +275,24 @@ describe('Arena ranked rounds', () => {
     const events = await f.service.snapshot(String(f.matchId));
     expect(events[0]).toMatchObject({
       event: 'match:question',
-      data: { startedAt, totalQuestions: 10 },
-    });
+      data: { startedAt, totalQuestions: 10 } });
     expect(events[1]).toMatchObject({
       event: 'match:hint',
-      data: { letters: ['t', null, null, null, null] },
-    });
+      data: { letters: ['t', null, null, null, null] } });
     expect(JSON.stringify(events)).not.toContain('thumb');
   });
 
   it('blocks spectators and answers for future questions', async () => {
     const f = fixture();
     await expect(
-      f.service.assertMember(String(f.matchId), String(new Types.ObjectId())),
+      f.service.assertMember(String(f.matchId), String(new PgId())),
     ).rejects.toThrow();
     await expect(
       f.service.submitAnswer({
         matchId: String(f.matchId),
         questionId: String(f.questions[1]._id),
         userId: String(f.users[0]),
-        answer: 'thumb',
-      }),
+        answer: 'thumb' }),
     ).rejects.toThrow('Question is not active');
   });
 });

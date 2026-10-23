@@ -9,8 +9,7 @@ import {
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
-  WsException,
-} from '@nestjs/websockets';
+  WsException } from '@nestjs/websockets';
 
 import { Server, Socket } from 'socket.io';
 
@@ -25,21 +24,17 @@ import { ArenaMatchFinishReason } from '../schemas/arena-match.schema.js';
 import {
   ArenaFriendMode,
   ArenaMatchType,
-  ArenaMatchStatus,
-} from '../schemas/arena-match.schema.js';
+  ArenaMatchStatus } from '../schemas/arena-match.schema.js';
 import {
   ArenaFriendlyService,
-  FriendlyDelivery,
-} from '../friendly/arena-friendly.service.js';
+  FriendlyDelivery } from '../friendly/arena-friendly.service.js';
 
 @ConnectionAuthenticated()
 @WebSocketGateway({
   namespace: '/arena',
   cors: {
     origin: 'http://localhost:3000',
-    credentials: true,
-  },
-})
+    credentials: true } })
 export class ArenaGateway
   implements
     OnGatewayConnection,
@@ -157,13 +152,11 @@ export class ArenaGateway
       client.emit('arena:authenticated');
       this.server.to('arena:presence').emit('arena:presence-changed', {
         userId,
-        online: true,
-      });
+        online: true });
 
       console.log('[Arena] Connected:', {
         userId,
-        socketId: client.id,
-      });
+        socketId: client.id });
     } catch {
       client.disconnect();
     }
@@ -190,8 +183,7 @@ export class ArenaGateway
     if (!result.online) {
       this.server.to('arena:presence').emit('arena:presence-changed', {
         userId,
-        online: false,
-      });
+        online: false });
     }
 
     const active = await this.arenaMatchService.findActiveMatchForUser(userId);
@@ -214,8 +206,7 @@ export class ArenaGateway
         this.server.to(`match:${String(match._id)}`).emit('friend:connection', {
           matchId: String(match._id),
           userId,
-          disconnectedAt: new Date().toISOString(),
-        });
+          disconnectedAt: new Date().toISOString() });
       }
     }
 
@@ -233,8 +224,7 @@ export class ArenaGateway
         error:
           error instanceof Error
             ? error.message
-            : 'Unable to join ranked queue',
-      };
+            : 'Unable to join ranked queue' };
     }
   }
 
@@ -243,8 +233,7 @@ export class ArenaGateway
 
     console.log('[Arena] Join ranked queue:', {
       userId,
-      socketId: client.id,
-    });
+      socketId: client.id });
 
     if (await this.friendRooms.active(userId))
       throw new WsException('ALREADY_IN_ROOM');
@@ -304,27 +293,23 @@ export class ArenaGateway
     if (playerASocketIds.length > 0) {
       this.server.to(playerASocketIds).emit('ranked:match-found', {
         matchId: result.matchId,
-        opponent: playerB,
-      });
+        opponent: playerB });
     }
     if (playerBSocketIds.length > 0) {
       this.server.to(playerBSocketIds).emit('ranked:match-found', {
         matchId: result.matchId,
-        opponent: playerA,
-      });
+        opponent: playerA });
     }
 
     console.log('[Arena] Ranked match found:', {
       matchId: result.matchId,
       roomName,
-      players: result.players,
-    });
+      players: result.players });
 
     return {
       matched: true,
       matchId: result.matchId,
-      opponent: playerA.userId === userId ? playerB : playerA,
-    };
+      opponent: playerA.userId === userId ? playerB : playerA };
   }
 
   /** Rời hàng đợi matchmaking hiện tại. */
@@ -334,8 +319,7 @@ export class ArenaGateway
 
     console.log('[Arena] Leave ranked queue:', {
       userId,
-      socketId: client.id,
-    });
+      socketId: client.id });
 
     return this.matchmakingService.leaveQueue(userId);
   }
@@ -392,12 +376,10 @@ export class ArenaGateway
   ) {
     const result = await this.arenaRoundService.submitAnswer({
       ...payload,
-      userId: this.getUserId(client),
-    });
+      userId: this.getUserId(client) });
     const answerResult = {
       ...result.answerResult,
-      attemptId: payload.attemptId,
-    };
+      attemptId: payload.attemptId };
     client.emit('match:answer-result', answerResult);
     for (const item of result.events)
       this.server.to(`match:${payload.matchId}`).emit(item.event, item.data);
@@ -542,8 +524,7 @@ export class ArenaGateway
       return {
         success: false,
         message:
-          error instanceof Error ? error.message : 'Friendly action failed',
-      };
+          error instanceof Error ? error.message : 'Friendly action failed' };
     }
   }
 
@@ -685,8 +666,7 @@ export class ArenaGateway
       await this.deliverFriendly({
         users: started.users,
         event: 'friend-room:started',
-        data: started,
-      });
+        data: started });
       return started;
     });
   }
@@ -697,16 +677,14 @@ export class ArenaGateway
       await this.deliverFriendly({
         matchId: String(room.currentMatchId),
         event: 'friend:snapshot',
-        data: await this.friendly.snapshot(String(room.currentMatchId), userId),
-      });
+        data: await this.friendly.snapshot(String(room.currentMatchId), userId) });
     if (room.currentMatchId)
       for (const update of await this.friendly.gameSnapshot(
         String(room.currentMatchId),
       ))
         await this.deliverFriendly({
           matchId: String(room.currentMatchId),
-          ...update,
-        });
+          ...update });
     await this.deliverFriendly(event);
     const departingSockets = await this.presenceService.getSocketIds(userId);
     if (departingSockets.length)
@@ -765,13 +743,11 @@ export class ArenaGateway
     await this.deliverFriendly({
       users: [data.receiverId],
       event: 'friend:invite-received',
-      data,
-    });
+      data });
     await this.deliverFriendly({
       users: [data.senderId],
       event: 'friend:invite-sent',
-      data,
-    });
+      data });
     return data;
   }
 
@@ -835,8 +811,7 @@ export class ArenaGateway
       this.server.to(`match:${payload.matchId}`).emit('friend:connection', {
         matchId: payload.matchId,
         userId,
-        disconnectedAt: null,
-      });
+        disconnectedAt: null });
       const data = payload.returnToLobby
         ? await this.friendly.returnToLobby(payload.matchId, userId)
         : await this.friendly.snapshot(payload.matchId, userId);
@@ -864,8 +839,7 @@ export class ArenaGateway
       this.server.to(`match:${payload.matchId}`).emit('friend:ready-update', {
         matchId: payload.matchId,
         userId,
-        isReady: true,
-      });
+        isReady: true });
     });
   }
 
@@ -969,13 +943,11 @@ export class ArenaGateway
       await this.deliverFriendly({
         users: [data.receiverId],
         event: 'friend:invite-received',
-        data,
-      });
+        data });
       await this.deliverFriendly({
         users: [data.senderId],
         event: 'friend:invite-sent',
-        data,
-      });
+        data });
       return data;
     });
   }

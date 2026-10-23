@@ -1,14 +1,13 @@
+import { PgId } from '../../../postgres/compat.js';
 import {
   TYPING_RUSH_DEFAULT_SETTINGS,
-  type TypingRushSettings,
-} from '../game-registry.js';
+  type TypingRushSettings } from '../game-registry.js';
 import {
   BadRequestException,
   Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { type Model, Types } from 'mongoose';
+  NotFoundException } from '@nestjs/common';
+import { InjectPgModel } from '../../../postgres/compat.js';
+import { type Model } from '../../../postgres/compat.js';
 import { randomInt } from 'node:crypto';
 import { Collection } from '../../vocabulary/collections/collection.schema.js';
 import { Lesson } from '../../vocabulary/lessons/lesson.schema.js';
@@ -19,8 +18,7 @@ import { UserSavedWord } from '../../learning/saved-words/schema/saved-word.sche
 import {
   MiniGameSourceType,
   type GameWord,
-  type VocabularySource,
-} from '../minigame.types.js';
+  type VocabularySource } from '../minigame.types.js';
 import type { MiniGameSourceDto } from '../dto/start-typing-rush.dto.js';
 const available = { isActive: true, isDeleted: { $ne: true } };
 export function uniqueGameWords(words: GameWord[]): GameWord[] {
@@ -44,20 +42,20 @@ export function uniqueGameWords(words: GameWord[]): GameWord[] {
 @Injectable()
 export class MiniGameWordSourceService {
   constructor(
-    @InjectModel(Collection.name)
+    @InjectPgModel(Collection.name)
     private readonly collections: Model<Collection>,
-    @InjectModel(Lesson.name) private readonly lessons: Model<Lesson>,
-    @InjectModel(LessonWord.name) private readonly links: Model<LessonWord>,
-    @InjectModel(Word.name) private readonly words: Model<Word>,
-    @InjectModel(VocabularyFolder.name)
+    @InjectPgModel(Lesson.name) private readonly lessons: Model<Lesson>,
+    @InjectPgModel(LessonWord.name) private readonly links: Model<LessonWord>,
+    @InjectPgModel(Word.name) private readonly words: Model<Word>,
+    @InjectPgModel(VocabularyFolder.name)
     private readonly folders: Model<VocabularyFolder>,
-    @InjectModel(UserSavedWord.name)
+    @InjectPgModel(UserSavedWord.name)
     private readonly saved: Model<UserSavedWord>,
   ) {}
   private async groups(
     userId: string,
-    systemIds: Types.ObjectId[],
-    userIds: Types.ObjectId[],
+    systemIds: PgId[],
+    userIds: PgId[],
   ) {
     const lessons = systemIds.length
       ? await this.lessons
@@ -75,9 +73,8 @@ export class MiniGameWordSourceService {
       userIds.length
         ? this.saved
             .find({
-              userId: new Types.ObjectId(userId),
-              folderId: { $in: userIds },
-            })
+              userId: new PgId(userId),
+              folderId: { $in: userIds } })
             .select('folderId wordId')
             .lean()
         : [],
@@ -89,8 +86,7 @@ export class MiniGameWordSourceService {
       ? await this.words
           .find({
             ...available,
-            _id: { $in: ids.map((id) => new Types.ObjectId(id)) },
-          })
+            _id: { $in: ids.map((id) => new PgId(id)) } })
           .select('_id word parts')
           .lean()
       : [];
@@ -144,7 +140,7 @@ export class MiniGameWordSourceService {
         .sort({ order: 1, name: 1 })
         .lean(),
       this.folders
-        .find({ userId: new Types.ObjectId(userId) })
+        .find({ userId: new PgId(userId) })
         .select('_id name')
         .sort({ name: 1 })
         .lean(),
@@ -164,8 +160,7 @@ export class MiniGameWordSourceService {
             name: c.name,
             thumbnail: c.coverUrl,
             wordCount: count('SYSTEM', c._id),
-            type: MiniGameSourceType.SYSTEM,
-          }) satisfies VocabularySource,
+            type: MiniGameSourceType.SYSTEM }) satisfies VocabularySource,
       ),
       userCollections: personal.map(
         (c) =>
@@ -173,10 +168,8 @@ export class MiniGameWordSourceService {
             id: String(c._id),
             name: c.name,
             wordCount: count('USER', c._id),
-            type: MiniGameSourceType.USER,
-          }) satisfies VocabularySource,
-      ),
-    };
+            type: MiniGameSourceType.USER }) satisfies VocabularySource,
+      ) };
   }
   async pool(
     userId: string,
@@ -188,7 +181,7 @@ export class MiniGameWordSourceService {
       sources.length > 50 ||
       sources.some(
         (s) =>
-          !Types.ObjectId.isValid(s.id) ||
+          !PgId.isValid(s.id) ||
           !Object.values(MiniGameSourceType).includes(s.type),
       )
     )
@@ -199,19 +192,19 @@ export class MiniGameWordSourceService {
           .filter((s) => s.type === 'SYSTEM')
           .map((s) => s.id.toLowerCase()),
       ),
-    ].map((id) => new Types.ObjectId(id));
+    ].map((id) => new PgId(id));
     const userIds = [
       ...new Set(
         sources.filter((s) => s.type === 'USER').map((s) => s.id.toLowerCase()),
       ),
-    ].map((id) => new Types.ObjectId(id));
+    ].map((id) => new PgId(id));
     const [system, personal] = await Promise.all([
       this.collections
         .find({ ...available, _id: { $in: systemIds } })
         .select('_id')
         .lean(),
       this.folders
-        .find({ _id: { $in: userIds }, userId: new Types.ObjectId(userId) })
+        .find({ _id: { $in: userIds }, userId: new PgId(userId) })
         .select('_id')
         .lean(),
     ]);

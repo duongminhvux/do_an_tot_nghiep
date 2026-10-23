@@ -1,39 +1,38 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { type HydratedDocument, Types } from 'mongoose';
+import { PgId } from '../../../postgres/compat.js';
+import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
+import { type PgDocument } from '../../../postgres/compat.js';
 import { ArenaFriendMode } from './arena-match.schema.js';
 
-export type ArenaInvitationDocument = HydratedDocument<ArenaInvitation>;
+export type ArenaInvitationDocument = PgDocument<ArenaInvitation>;
 
-@Schema({ timestamps: true })
+@PgEntity({ timestamps: true })
 /** Lời mời người chơi tham gia một trận hoặc phòng Arena. */
 export class ArenaInvitation {
-  @Prop({
+  @PgField({
     type: String,
     enum: Object.values(ArenaFriendMode),
-    default: ArenaFriendMode.CLASSIC,
-  })
+    default: ArenaFriendMode.CLASSIC })
   mode: ArenaFriendMode;
 
-  @Prop({ type: Types.ObjectId, ref: 'ArenaMatch', default: null })
-  rematchOf?: Types.ObjectId | null;
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
-  senderId: Types.ObjectId;
+  @PgField({ type: PgId, ref: 'ArenaMatch', default: null })
+  rematchOf?: PgId | null;
+  @PgField({ type: PgId, ref: 'User', required: true, index: true })
+  senderId: PgId;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
-  receiverId: Types.ObjectId;
+  @PgField({ type: PgId, ref: 'User', required: true, index: true })
+  receiverId: PgId;
 
-  @Prop({ type: String, enum: ['DUEL', 'ROOM'], required: true })
+  @PgField({ type: String, enum: ['DUEL', 'ROOM'], required: true })
   type: 'DUEL' | 'ROOM';
 
-  @Prop({
-    type: Types.ObjectId,
+  @PgField({
+    type: PgId,
     ref: function (this: ArenaInvitation) {
       return this.type === 'DUEL' ? 'FriendRoom' : 'ArenaRoom';
-    },
-  })
-  roomId?: Types.ObjectId;
+    } })
+  roomId?: PgId;
 
-  @Prop({
+  @PgField({
     type: String,
     enum: [
       'PENDING',
@@ -44,12 +43,11 @@ export class ArenaInvitation {
       'EXPIRED',
     ],
     default: 'PENDING',
-    index: true,
-  })
+    index: true })
   status:
     'PENDING' | 'ACCEPTED' | 'DECLINED' | 'REJECTED' | 'CANCELLED' | 'EXPIRED';
 
-  @Prop({ type: Date })
+  @PgField({ type: Date })
   expiresAt?: Date;
 
   createdAt: Date;
@@ -57,14 +55,13 @@ export class ArenaInvitation {
 }
 
 export const ArenaInvitationSchema =
-  SchemaFactory.createForClass(ArenaInvitation);
+  PgSchemaFactory.createForClass(ArenaInvitation);
 
 ArenaInvitationSchema.index(
   { senderId: 1, type: 1 },
   {
     unique: true,
-    partialFilterExpression: { status: 'PENDING', type: 'DUEL' },
-  },
+    partialFilterExpression: { status: 'PENDING', type: 'DUEL' } },
 );
 
 // Only remove expired invitations; accepted/rejected invitations remain available.

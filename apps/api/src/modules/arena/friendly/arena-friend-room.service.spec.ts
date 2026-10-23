@@ -1,8 +1,7 @@
-import { Types } from 'mongoose';
+import { PgId } from '../../../postgres/compat.js';
 import {
   ArenaFriendRoomService,
-  validateFriendSettings,
-} from './arena-friend-room.service.js';
+  validateFriendSettings } from './arena-friend-room.service.js';
 import { ArenaFriendMode } from '../schemas/arena-match.schema.js';
 
 vi.mock('../schemas/friend-room.schema.js', () => ({
@@ -10,16 +9,13 @@ vi.mock('../schemas/friend-room.schema.js', () => ({
   FriendRoomStatus: {
     WAITING: 'WAITING',
     IN_MATCH: 'IN_MATCH',
-    CLOSED: 'CLOSED',
-  },
-}));
+    CLOSED: 'CLOSED' } }));
 vi.mock('../schemas/arena-match.schema.js', () => ({
   ArenaMatch: class {},
   ArenaFriendMode: {
     CLASSIC: 'CLASSIC',
     WORD_CHAIN: 'WORD_CHAIN',
-    WORD_GUESS: 'WORD_GUESS',
-  },
+    WORD_GUESS: 'WORD_GUESS' },
   ArenaMatchType: { FRIEND: 'FRIEND', ROOM: 'ROOM' },
   ArenaQuestionMode: { MEANING_TO_WORD: 'MEANING_TO_WORD' },
   ArenaMatchFinishReason: { PLAYER_LEFT: 'PLAYER_LEFT' },
@@ -28,30 +24,24 @@ vi.mock('../schemas/arena-match.schema.js', () => ({
     COUNTDOWN: 'COUNTDOWN',
     PLAYING: 'PLAYING',
     FINISHED: 'FINISHED',
-    CANCELLED: 'CANCELLED',
-  },
-}));
+    CANCELLED: 'CANCELLED' } }));
 vi.mock('../../vocabulary/words/word.schema.js', () => ({ Word: class {} }));
 vi.mock('../../users/schema/user.schema.js', () => ({ User: class {} }));
 vi.mock('../matches/arena-match.service.js', () => ({
-  ArenaMatchService: class {},
-}));
+  ArenaMatchService: class {} }));
 vi.mock('../presence/arena-presence.service.js', () => ({
-  ArenaPresenceService: class {},
-}));
+  ArenaPresenceService: class {} }));
 vi.mock('../question/arena-question.service.js', () => ({
-  ArenaQuestionService: class {},
-}));
+  ArenaQuestionService: class {} }));
 vi.mock('../arena.service.js', () => ({ ArenaService: class {} }));
 vi.mock('../../../common/redis/redis.service.js', () => ({
-  RedisService: class {},
-}));
+  RedisService: class {} }));
 
 type Row = Record<string, any>;
 function fixture() {
-  const host = String(new Types.ObjectId()),
-    guest = String(new Types.ObjectId()),
-    third = String(new Types.ObjectId());
+  const host = String(new PgId()),
+    guest = String(new PgId()),
+    third = String(new PgId());
   const data: Row[] = [];
   const matchesData: Row[] = [];
   const clone = (row?: Row) =>
@@ -59,8 +49,7 @@ function fixture() {
       ? {
           ...row,
           members: (row.members ?? []).map((m: Row) => ({ ...m })),
-          settings: row.settings ? { ...row.settings } : undefined,
-        }
+          settings: row.settings ? { ...row.settings } : undefined }
       : null;
   const equal = (a: unknown, b: unknown) =>
     (a == null && b == null) || String(a) === String(b);
@@ -101,7 +90,7 @@ function fixture() {
     ),
     create: vi.fn(async (values: Row) => {
       const row = {
-        _id: new Types.ObjectId(),
+        _id: new PgId(),
         guestId: null,
         status: 'WAITING',
         guestReady: false,
@@ -110,8 +99,7 @@ function fixture() {
         revision: 0,
         hostDisconnectedAt: null,
         guestDisconnectedAt: null,
-        ...values,
-      };
+        ...values };
       rows.push(row);
       return clone(row);
     }),
@@ -130,30 +118,25 @@ function fixture() {
     findOneAndDelete: vi.fn(async (filter: Row) => {
       const i = rows.findIndex((r) => fits(r, filter));
       return i >= 0 ? rows.splice(i, 1)[0] : null;
-    }),
-  });
+    }) });
   const rooms = model(data),
     matches = model(matchesData);
   const users = {
-    find: vi.fn((filter: { _id: { $in: Types.ObjectId[] } }) => ({
+    find: vi.fn((filter: { _id: { $in: PgId[] } }) => ({
       select: async () =>
-        filter._id.$in.map((id) => ({ _id: id, username: String(id) })),
-    })),
-  };
+        filter._id.$in.map((id) => ({ _id: id, username: String(id) })) })) };
   const matchService = {
     findActiveMatchForUser: vi.fn(async () => null),
     getOpponentUserId: vi.fn(async () => guest),
     finishMatch: vi.fn(),
     createMatch: vi.fn(async (_host: string, _guest: string, options: Row) => {
       const match = {
-        _id: new Types.ObjectId(),
+        _id: new PgId(),
         status: 'COUNTDOWN',
-        ...options,
-      };
+        ...options };
       matchesData.push(match);
       return { match };
-    }),
-  };
+    }) };
   const presence = { isOnline: vi.fn(async () => true) };
   const questions = { createRankedQuestions: vi.fn() };
   const arena = { getOrCreateProfile: vi.fn() };
@@ -166,8 +149,7 @@ function fixture() {
     }),
     eval: vi.fn(async (_script: string, args: { keys: string[] }) => {
       locks.delete(args.keys[0]!);
-    }),
-  };
+    }) };
   const deps = [
     rooms,
     matches,
@@ -200,19 +182,16 @@ function fixture() {
     presence,
     questions,
     create,
-    pair,
-  };
+    pair };
 }
 
 describe('Friendly settings validation', () => {
   it('keeps Classic and Word Chain settings separate', () => {
     expect(validateFriendSettings(ArenaFriendMode.CLASSIC)).toEqual({
       questionCount: 10,
-      timePerQuestion: 15,
-    });
+      timePerQuestion: 15 });
     expect(validateFriendSettings(ArenaFriendMode.WORD_CHAIN)).toEqual({
-      turnTime: 20,
-    });
+      turnTime: 20 });
   });
   it.each([
     { questionCount: 4 },
@@ -246,8 +225,7 @@ describe('Friendly room lifecycle', () => {
       guestId: null,
       guestReady: false,
       status: 'WAITING',
-      matchCount: 0,
-    });
+      matchCount: 0 });
     expect(f.matchService.createMatch).not.toHaveBeenCalled();
     const other = await f.service.create(f.third);
     expect(other.code).not.toBe(room.code);
@@ -300,8 +278,7 @@ describe('Friendly room lifecycle', () => {
     expect(updated.guestReady).toBe(false);
     expect(updated.settings).toEqual({
       questionCount: 25,
-      timePerQuestion: 30,
-    });
+      timePerQuestion: 30 });
   });
   it('does not start without a guest or ready confirmation', async () => {
     const f = fixture();
@@ -322,8 +299,7 @@ describe('Friendly room lifecycle', () => {
     const room = await f.pair();
     await f.service.update(room.roomId, f.host, ArenaFriendMode.CLASSIC, {
       questionCount: 15,
-      timePerQuestion: 30,
-    });
+      timePerQuestion: 30 });
     await f.service.ready(room.roomId, f.guest, true);
     const results = await Promise.allSettled([
       f.service.start(room.roomId, f.host),
@@ -338,8 +314,7 @@ describe('Friendly room lifecycle', () => {
       secondsPerQuestion: 30,
       settingsSnapshot: { questionCount: 15, timePerQuestion: 30 },
       roomCodeSnapshot: room.code,
-      status: 'PLAYING',
-    });
+      status: 'PLAYING' });
     expect(f.questions.createRankedQuestions).toHaveBeenCalledWith(
       String(f.matchesData[0]!._id),
       15,
@@ -350,8 +325,7 @@ describe('Friendly room lifecycle', () => {
     const f = fixture();
     const room = await f.pair();
     await f.service.update(room.roomId, f.host, ArenaFriendMode.WORD_CHAIN, {
-      turnTime: 30,
-    });
+      turnTime: 30 });
     await f.service.ready(room.roomId, f.guest, true);
     await f.service.start(room.roomId, f.host);
     const match = f.matchesData[0]!;
@@ -375,8 +349,7 @@ describe('Friendly room lifecycle', () => {
     expect(f.data[0]).toMatchObject({
       status: 'WAITING',
       currentMatchId: null,
-      guestReady: false,
-    });
+      guestReady: false });
     expect(f.matchesData[0]!.status).toBe('CANCELLED');
   });
   it('deletes the room and kicks the guest when the host leaves before any match', async () => {
@@ -387,8 +360,7 @@ describe('Friendly room lifecycle', () => {
     expect(event).toMatchObject({
       users: [f.host, f.guest],
       event: 'friend-room:closed',
-      data: { roomId: room.roomId, code: room.code, hostId: f.host, reason: 'HOST_LEFT' },
-    });
+      data: { roomId: room.roomId, code: room.code, hostId: f.host, reason: 'HOST_LEFT' } });
     await expect(f.service.snapshot(room.roomId, f.guest)).rejects.toThrow(
       'ROOM_NOT_FOUND',
     );
@@ -399,10 +371,9 @@ describe('Friendly room lifecycle', () => {
     const room = await f.pair();
     await f.service.leave(room.roomId, f.guest);
     expect(f.data[0]).toMatchObject({
-      hostId: new Types.ObjectId(f.host),
+      hostId: new PgId(f.host),
       guestId: null,
-      guestReady: false,
-    });
+      guestReady: false });
     await f.service.join(f.third, room.code);
     expect(String(f.data[0]!.guestId)).toBe(f.third);
     await expect(f.service.snapshot(room.roomId, f.guest)).rejects.toThrow(
@@ -438,23 +409,19 @@ describe('Friendly room lifecycle', () => {
     Object.assign(f.data[0]!, {
       status: 'WAITING',
       currentMatchId: null,
-      guestReady: false,
-    });
+      guestReady: false });
     await f.service.update(room.roomId, f.host, ArenaFriendMode.CLASSIC, {
       questionCount: 20,
-      timePerQuestion: 30,
-    });
+      timePerQuestion: 30 });
     await f.service.ready(room.roomId, f.guest, true);
     await f.service.start(room.roomId, f.host);
     expect(f.matchesData).toHaveLength(2);
     expect(f.matchesData[0]!.settingsSnapshot).toEqual({
       questionCount: 10,
-      timePerQuestion: 15,
-    });
+      timePerQuestion: 15 });
     expect(f.matchesData[1]!.settingsSnapshot).toEqual({
       questionCount: 20,
-      timePerQuestion: 30,
-    });
+      timePerQuestion: 30 });
   });
   it('keeps a temporarily disconnected room and restores the same membership', async () => {
     const f = fixture();
@@ -513,7 +480,7 @@ describe('Friendly room lifecycle', () => {
     f.presence.isOnline.mockResolvedValue(false);
     await f.service.tick();
     expect(f.data[0]!.guestId).toBeNull();
-    expect(f.data[0]!.hostId).toEqual(new Types.ObjectId(f.host));
+    expect(f.data[0]!.hostId).toEqual(new PgId(f.host));
   });
   it('leaves active match disconnect resolution to the match lifecycle', async () => {
     const f = fixture();
@@ -561,7 +528,7 @@ describe('Multiplayer friend rooms', () => {
     const f = fixture();
     const room = await f.service.create(f.host, ArenaFriendMode.CLASSIC, {}, 8);
     const users = Array.from({ length: 10 }, () =>
-      String(new Types.ObjectId()),
+      String(new PgId()),
     );
     const results = await Promise.allSettled(
       users.map((id) => f.service.join(id, room.code)),
@@ -598,8 +565,7 @@ describe('Multiplayer friend rooms', () => {
     expect(starts.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
     expect(f.matchesData[0]).toMatchObject({
       type: 'ROOM',
-      additionalPlayerIds: [f.third],
-    });
+      additionalPlayerIds: [f.third] });
     expect(f.matchService.createMatch).toHaveBeenCalledOnce();
   });
   it('resets all guests on settings changes and frees only the departing seat', async () => {
@@ -641,8 +607,7 @@ describe('Word Guess lobby', () => {
       friendMode: 'WORD_GUESS',
       wordGuessAnswer: 'apple',
       questionMode: null,
-      wordGuessAttempts: [],
-    });
+      wordGuessAttempts: [] });
     expect(f.questions.createRankedQuestions).not.toHaveBeenCalled();
   });
 });
@@ -710,7 +675,7 @@ describe('Room capacity settings', () => {
     );
     expect(smaller.maxPlayers).toBe(3);
     expect(smaller.players.every((p) => !p.isReady)).toBe(true);
-    const fourth = String(new Types.ObjectId());
+    const fourth = String(new PgId());
     await expect(f.service.join(fourth, room.code, 'ROOM')).rejects.toThrow(
       'ROOM_FULL',
     );
@@ -729,7 +694,7 @@ describe('Room capacity settings', () => {
   it('rejects shrinking below the current number of players without changing the room', async () => {
     const f = fixture();
     const room = await f.service.create(f.host, ArenaFriendMode.CLASSIC, {}, 8);
-    for (const user of [f.guest, f.third, String(new Types.ObjectId())])
+    for (const user of [f.guest, f.third, String(new PgId())])
       await f.service.join(user, room.code, 'ROOM');
     await expect(
       f.service.update(room.roomId, f.host, ArenaFriendMode.CLASSIC, {}, 3),

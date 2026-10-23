@@ -4,14 +4,13 @@ import {
   IsArray,
   IsEnum,
   IsInt,
-  IsMongoId,
+  IsUUID,
   Max,
-  Min,
-} from 'class-validator';
+  Min } from 'class-validator';
 import { ExamMode } from '../attempt.types.js';
 
 export class CreateAttemptDto {
-  @IsMongoId()
+  @IsUUID('4')
   examId: string;
 
   @IsEnum(ExamMode)

@@ -3,12 +3,11 @@ import {
   IsDateString,
   IsEnum,
   IsInt,
-  IsMongoId,
+  IsUUID,
   IsOptional,
   IsString,
   Max,
-  Min,
-} from 'class-validator';
+  Min } from 'class-validator';
 import { MiniGameType } from '../minigame.types.js';
 
 const trim = ({ value }: { value: unknown }) =>
@@ -25,7 +24,7 @@ export class MiniGameResultQueryDto {
   search?: string;
 
   @IsOptional()
-  @IsMongoId()
+  @IsUUID('4')
   userId?: string;
 
   @IsOptional()

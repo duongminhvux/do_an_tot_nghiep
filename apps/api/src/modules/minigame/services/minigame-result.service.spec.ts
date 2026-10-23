@@ -1,24 +1,22 @@
+import { PgId } from '../../../postgres/compat.js';
 import { describe, it, expect, vi } from 'vitest';
-import { Types } from 'mongoose';
 import { MiniGameResultService } from './minigame-result.service.js';
 
 describe('minigame results', () => {
   it('records every saved game as a learning activity', async () => {
-    const _id = new Types.ObjectId();
+    const _id = new PgId();
     const createdAt = new Date();
     const results = {
-      create: vi.fn(async (doc: object) => ({ ...doc, _id, createdAt })),
-    };
+      create: vi.fn(async (doc: object) => ({ ...doc, _id, createdAt })) };
     const record = vi.fn(async () => true);
     const service = new MiniGameResultService(
       results as never,
       { record } as never,
     );
-    const userId = String(new Types.ObjectId());
+    const userId = String(new PgId());
     await service.save(userId, {
       gameType: 'WORD_SHOOTER',
-      score: 420,
-    } as never);
+      score: 420 } as never);
     expect(record).toHaveBeenCalledWith(
       expect.objectContaining({
         userId,
@@ -28,8 +26,7 @@ describe('minigame results', () => {
         xp: 5,
         score: 420,
         occurredAt: createdAt,
-        metadata: { gameType: 'WORD_SHOOTER' },
-      }),
+        metadata: { gameType: 'WORD_SHOOTER' } }),
     );
   });
 });

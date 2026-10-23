@@ -11,8 +11,7 @@ import {
   MaxLength,
   Min,
   MinLength,
-  ValidateNested,
-} from 'class-validator';
+  ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class SynthesizeTtsDto {

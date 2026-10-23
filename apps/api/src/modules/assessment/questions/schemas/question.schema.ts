@@ -1,121 +1,108 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { type HydratedDocument, Types } from 'mongoose';
+import { PgId } from '../../../../postgres/compat.js';
+import { PgField, PgEntity, PgSchemaFactory } from '../../../../postgres/compat.js';
+import { type PgDocument } from '../../../../postgres/compat.js';
 import { GeneratedAudioMetadata, GeneratedAudioMetadataSchema } from '../../../../common/media/generated-audio.schema.js';
 
-export type QuestionDocument = HydratedDocument<Question>;
+export type QuestionDocument = PgDocument<Question>;
 
-@Schema({ timestamps: true })
+@PgEntity({ timestamps: true })
 export class Question {
-  @Prop({
-    type: Types.ObjectId,
+  @PgField({
+    type: PgId,
     ref: 'Exam',
     required: true,
-    index: true,
-  })
-  examId: Types.ObjectId;
+    index: true })
+  examId: PgId;
 
-  @Prop({
-    type: Types.ObjectId,
+  @PgField({
+    type: PgId,
     ref: 'PassageGroup',
-    index: true,
-  })
-  passageGroupId?: Types.ObjectId;
+    index: true })
+  passageGroupId?: PgId;
 
-  @Prop({
+  @PgField({
     required: true,
-    enum: ['LISTENING', 'READING'],
-  })
+    enum: ['LISTENING', 'READING'] })
   section: 'LISTENING' | 'READING';
 
-  @Prop({
+  @PgField({
     required: true,
     min: 1,
-    max: 7,
-  })
+    max: 7 })
   part: number;
 
-  @Prop({
+  @PgField({
     required: function (this: any) {
       return !([6, 7].includes(this.get('part')) && /^https?:\/\//i.test(this.get('imageUrl') || ''));
     },
     default: '',
-    trim: true,
-  })
+    trim: true })
   content: string;
 
-  @Prop({
+  @PgField({
     type: [
       {
         key: {
           type: String,
           enum: ['A', 'B', 'C', 'D'],
-          required: true,
-        },
+          required: true },
         text: {
           type: String,
           default: '',
-          trim: true,
-        },
-      },
+          trim: true } },
     ],
     required: true,
     validate: {
       validator: function (this: any, options: Array<{ text?: string }>) {
         return [1, 2].includes(this.get('part')) || options.every((option) => Boolean(option.text?.trim()));
       },
-      message: 'Part 3–7 requires text for every answer option.',
-    },
-  })
+      message: 'Part 3–7 requires text for every answer option.' } })
   options: {
     key: 'A' | 'B' | 'C' | 'D';
     text: string;
   }[];
 
-  @Prop({
+  @PgField({
     required: true,
-    enum: ['A', 'B', 'C', 'D'],
-  })
+    enum: ['A', 'B', 'C', 'D'] })
   correctAnswer: 'A' | 'B' | 'C' | 'D';
 
-  @Prop({
-    trim: true,
-  })
+  @PgField({
+    trim: true })
   explanation?: string;
 
-  @Prop({ trim: true })
+  @PgField({ trim: true })
   imageUrl?: string;
 
-  @Prop({ trim: true })
+  @PgField({ trim: true })
   audioUrl?: string;
 
-  @Prop({ type: GeneratedAudioMetadataSchema, default: {} })
+  @PgField({ type: GeneratedAudioMetadataSchema, default: {} })
   audioMeta?: GeneratedAudioMetadata;
 
-  @Prop({ trim: true })
+  @PgField({ trim: true })
   importBatchId?: string;
 
-  @Prop()
+  @PgField()
   importIndex?: number;
 
-  @Prop()
+  @PgField()
   importFingerprint?: string;
 
-  @Prop()
+  @PgField()
   sourceOrder?: number;
 
-  @Prop({
+  @PgField({
     default: 0,
-    min: 0,
-  })
+    min: 0 })
   order: number;
 
-  @Prop({
-    default: true,
-  })
+  @PgField({
+    default: true })
   isActive: boolean;
 }
 
-export const QuestionSchema = SchemaFactory.createForClass(Question);
+export const QuestionSchema = PgSchemaFactory.createForClass(Question);
 QuestionSchema.index(
   { examId: 1, importBatchId: 1, importIndex: 1 },
   { unique: true, partialFilterExpression: { importBatchId: { $type: 'string' } } },

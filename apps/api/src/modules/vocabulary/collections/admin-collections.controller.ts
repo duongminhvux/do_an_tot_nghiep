@@ -5,8 +5,7 @@ import {
   Param,
   Patch,
   Post,
-  Query,
-} from '@nestjs/common';
+  Query } from '@nestjs/common';
 import { AdminController } from '../../auth/decorators/admin-controller.decorator.js';
 import { CollectionsService } from './collections.service.js';
 import { CreateCollectionDto } from './dto/create-collection.dto.js';

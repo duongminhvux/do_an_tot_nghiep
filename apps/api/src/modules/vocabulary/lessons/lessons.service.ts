@@ -1,6 +1,7 @@
+import { PgId } from '../../../postgres/compat.js';
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { type Model, Types } from 'mongoose';
+import { InjectPgModel } from '../../../postgres/compat.js';
+import { type Model } from '../../../postgres/compat.js';
 import { I18nContext, I18nService } from 'nestjs-i18n';
 import { Lesson, LessonDocument } from './lesson.schema.js';
 import { Section, SectionDocument } from './section.schema.js';
@@ -14,9 +15,9 @@ import { UpdateLessonWordDto } from './dto/update-lesson-word.dto.js';
 @Injectable()
 export class LessonsService {
   constructor(
-    @InjectModel(Lesson.name) private readonly lessonModel: Model<LessonDocument>,
-    @InjectModel(Section.name) private readonly sectionModel: Model<SectionDocument>,
-    @InjectModel(LessonWord.name) private readonly lessonWordModel: Model<LessonWordDocument>,
+    @InjectPgModel(Lesson.name) private readonly lessonModel: Model<LessonDocument>,
+    @InjectPgModel(Section.name) private readonly sectionModel: Model<SectionDocument>,
+    @InjectPgModel(LessonWord.name) private readonly lessonWordModel: Model<LessonWordDocument>,
     private readonly i18n: I18nService,
   ) {}
 
@@ -38,7 +39,7 @@ export class LessonsService {
   }
 
   async createLesson(createLessonDto: CreateLessonDto): Promise<Lesson> {
-    const collectionIdObj = new Types.ObjectId(createLessonDto.collectionId);
+    const collectionIdObj = new PgId(createLessonDto.collectionId);
     const rawSlug = createLessonDto.slug?.trim() || createLessonDto.title;
     const baseSlug = this.generateSlug(rawSlug) || 'lesson';
     let slug = baseSlug;
@@ -47,8 +48,7 @@ export class LessonsService {
       await this.lessonModel.exists({
         collectionId: collectionIdObj,
         slug,
-        isDeleted: { $ne: true },
-      })
+        isDeleted: { $ne: true } })
     ) {
       slug = `${baseSlug}-${counter++}`;
     }
@@ -57,8 +57,7 @@ export class LessonsService {
     if (order === undefined || order === null || order <= 0) {
       const count = await this.lessonModel.countDocuments({
         collectionId: collectionIdObj,
-        isDeleted: { $ne: true },
-      });
+        isDeleted: { $ne: true } });
       order = count + 1;
     }
 
@@ -66,15 +65,14 @@ export class LessonsService {
       ...createLessonDto,
       collectionId: collectionIdObj,
       slug,
-      order,
-    });
+      order });
     return createdLesson.save();
   }
 
   async findAllLessons(collectionId?: string): Promise<any[]> {
     const filter: Record<string, any> = { isDeleted: { $ne: true } };
     if (collectionId) {
-      filter.collectionId = new Types.ObjectId(collectionId);
+      filter.collectionId = new PgId(collectionId);
     }
     const lessons = await this.lessonModel
       .find(filter)
@@ -104,19 +102,18 @@ export class LessonsService {
     return lessons.map((l) => ({
       ...l,
       wordsCount: wordCountMap.get(l._id.toString()) || 0,
-      sectionsCount: sectionCountMap.get(l._id.toString()) || 0,
-    }));
+      sectionsCount: sectionCountMap.get(l._id.toString()) || 0 }));
   }
 
   async findBySlug(slug: string, collectionId?: string): Promise<any> {
     const lang = this.getLang();
     const filter: Record<string, any> = { slug, isDeleted: { $ne: true } };
-    if (collectionId && Types.ObjectId.isValid(collectionId)) {
-      filter.collectionId = new Types.ObjectId(collectionId);
+    if (collectionId && PgId.isValid(collectionId)) {
+      filter.collectionId = new PgId(collectionId);
     }
     let lesson = await this.lessonModel.findOne(filter).lean().exec();
     if (!lesson) {
-      if (Types.ObjectId.isValid(slug)) {
+      if (PgId.isValid(slug)) {
         return this.findOneLesson(slug);
       }
       throw new NotFoundException(
@@ -125,17 +122,14 @@ export class LessonsService {
     }
     const [wordsCount, sectionsCount] = await Promise.all([
       this.lessonWordModel.countDocuments({
-        lessonId: lesson._id,
-      }).exec(),
+        lessonId: lesson._id }).exec(),
       this.sectionModel.countDocuments({
-        lessonId: lesson._id,
-      }).exec(),
+        lessonId: lesson._id }).exec(),
     ]);
     return {
       ...lesson,
       wordsCount,
-      sectionsCount,
-    };
+      sectionsCount };
   }
 
   async findOneLesson(id: string): Promise<any> {
@@ -148,17 +142,14 @@ export class LessonsService {
     }
     const [wordsCount, sectionsCount] = await Promise.all([
       this.lessonWordModel.countDocuments({
-        lessonId: new Types.ObjectId(id),
-      }).exec(),
+        lessonId: new PgId(id) }).exec(),
       this.sectionModel.countDocuments({
-        lessonId: new Types.ObjectId(id),
-      }).exec(),
+        lessonId: new PgId(id) }).exec(),
     ]);
     return {
       ...lesson,
       wordsCount,
-      sectionsCount,
-    };
+      sectionsCount };
   }
 
 
@@ -166,7 +157,7 @@ export class LessonsService {
     const lang = this.getLang();
     const updateData: Partial<Lesson> = { ...updateLessonDto } as any;
     if (updateLessonDto.collectionId) {
-      updateData.collectionId = new Types.ObjectId(updateLessonDto.collectionId);
+      updateData.collectionId = new PgId(updateLessonDto.collectionId);
     }
 
     if (updateLessonDto.slug || updateLessonDto.title) {
@@ -182,8 +173,7 @@ export class LessonsService {
             _id: { $ne: id },
             collectionId: targetColId,
             slug,
-            isDeleted: { $ne: true },
-          })
+            isDeleted: { $ne: true } })
         ) {
           slug = `${baseSlug}-${counter++}`;
         }
@@ -250,10 +240,8 @@ export class LessonsService {
   async reorderLessons(items: { id: string; order: number }[]): Promise<void> {
     const operations = items.map((item) => ({
       updateOne: {
-        filter: { _id: new Types.ObjectId(item.id) },
-        update: { $set: { order: item.order } },
-      },
-    }));
+        filter: { _id: new PgId(item.id) },
+        update: { $set: { order: item.order } } } }));
     if (operations.length > 0) {
       await this.lessonModel.bulkWrite(operations);
     }
@@ -265,7 +253,7 @@ export class LessonsService {
   async createSection(lessonId: string, createSectionDto: CreateSectionDto): Promise<Section> {
     await this.findOneLesson(lessonId); // Validate lesson exists
 
-    const lessonIdObj = new Types.ObjectId(lessonId);
+    const lessonIdObj = new PgId(lessonId);
     const rawSlug = createSectionDto.slug?.trim() || createSectionDto.name;
     const baseSlug = this.generateSlug(rawSlug) || 'section';
     let slug = baseSlug;
@@ -273,8 +261,7 @@ export class LessonsService {
     while (
       await this.sectionModel.exists({
         lessonId: lessonIdObj,
-        slug,
-      })
+        slug })
     ) {
       slug = `${baseSlug}-${counter++}`;
     }
@@ -282,8 +269,7 @@ export class LessonsService {
     let order = createSectionDto.order;
     if (order === undefined || order === null || order <= 0) {
       const count = await this.sectionModel.countDocuments({
-        lessonId: lessonIdObj,
-      });
+        lessonId: lessonIdObj });
       order = count + 1;
     }
 
@@ -291,8 +277,7 @@ export class LessonsService {
       ...createSectionDto,
       lessonId: lessonIdObj,
       slug,
-      order,
-    });
+      order });
     return section.save();
   }
 
@@ -300,7 +285,7 @@ export class LessonsService {
     await this.findOneLesson(lessonId);
 
     const sections = await this.sectionModel
-      .find({ lessonId: new Types.ObjectId(lessonId) })
+      .find({ lessonId: new PgId(lessonId) })
       .sort({ order: 1, createdAt: 1 })
       .lean()
       .exec();
@@ -314,8 +299,7 @@ export class LessonsService {
 
     return sections.map((s) => ({
       ...s,
-      wordsCount: countMap.get(s._id.toString()) || 0,
-    }));
+      wordsCount: countMap.get(s._id.toString()) || 0 }));
   }
 
   async getSectionById(sectionId: string): Promise<any> {
@@ -327,12 +311,10 @@ export class LessonsService {
       );
     }
     const wordsCount = await this.lessonWordModel.countDocuments({
-      sectionId: new Types.ObjectId(sectionId),
-    }).exec();
+      sectionId: new PgId(sectionId) }).exec();
     return {
       ...section,
-      wordsCount,
-    };
+      wordsCount };
   }
 
   async updateSection(sectionId: string, updateSectionDto: UpdateSectionDto): Promise<Section> {
@@ -355,8 +337,7 @@ export class LessonsService {
         await this.sectionModel.exists({
           _id: { $ne: sectionId },
           lessonId: existing.lessonId,
-          slug,
-        })
+          slug })
       ) {
         slug = `${baseSlug}-${counter++}`;
       }
@@ -385,7 +366,7 @@ export class LessonsService {
     // Unassign sectionId for words that belonged to this section
     await this.lessonWordModel
       .updateMany(
-        { sectionId: new Types.ObjectId(sectionId) },
+        { sectionId: new PgId(sectionId) },
         { $unset: { sectionId: 1 } },
       )
       .exec();
@@ -394,10 +375,8 @@ export class LessonsService {
   async reorderSections(lessonId: string, items: { id: string; order: number }[]): Promise<void> {
     const operations = items.map((item) => ({
       updateOne: {
-        filter: { _id: new Types.ObjectId(item.id), lessonId: new Types.ObjectId(lessonId) },
-        update: { $set: { order: item.order } },
-      },
-    }));
+        filter: { _id: new PgId(item.id), lessonId: new PgId(lessonId) },
+        update: { $set: { order: item.order } } } }));
     if (operations.length > 0) {
       await this.sectionModel.bulkWrite(operations);
     }
@@ -413,37 +392,33 @@ export class LessonsService {
   ): Promise<LessonWord[]> {
     await this.findOneLesson(lessonId); // Validate lesson existence
 
-    const lessonObjectId = new Types.ObjectId(lessonId);
-    const sectionObjectId = sectionId ? new Types.ObjectId(sectionId) : undefined;
+    const lessonPgId = new PgId(lessonId);
+    const sectionPgId = sectionId ? new PgId(sectionId) : undefined;
 
-    const baseFilter: any = { lessonId: lessonObjectId };
-    if (sectionObjectId) {
-      baseFilter.sectionId = sectionObjectId;
+    const baseFilter: any = { lessonId: lessonPgId };
+    if (sectionPgId) {
+      baseFilter.sectionId = sectionPgId;
     }
     const currentCount = await this.lessonWordModel.countDocuments(baseFilter);
 
     const operations = wordIds.map((wordId, index) => {
       const setOnInsert: any = {
-        lessonId: lessonObjectId,
-        wordId: new Types.ObjectId(wordId),
-        order: currentCount + index + 1,
-      };
+        lessonId: lessonPgId,
+        wordId: new PgId(wordId),
+        order: currentCount + index + 1 };
 
       const updateDoc: any = {
-        $setOnInsert: setOnInsert,
-      };
+        $setOnInsert: setOnInsert };
 
-      if (sectionObjectId) {
-        updateDoc.$set = { sectionId: sectionObjectId };
+      if (sectionPgId) {
+        updateDoc.$set = { sectionId: sectionPgId };
       }
 
       return {
         updateOne: {
-          filter: { lessonId: lessonObjectId, wordId: new Types.ObjectId(wordId) },
+          filter: { lessonId: lessonPgId, wordId: new PgId(wordId) },
           update: updateDoc,
-          upsert: true,
-        },
-      };
+          upsert: true } };
     });
 
     if (operations.length > 0) {
@@ -456,9 +431,9 @@ export class LessonsService {
   async getWordsInLesson(lessonId: string, sectionId?: string): Promise<LessonWord[]> {
     await this.findOneLesson(lessonId); // Validate lesson existence
 
-    const filter: any = { lessonId: new Types.ObjectId(lessonId) };
+    const filter: any = { lessonId: new PgId(lessonId) };
     if (sectionId) {
-      filter.sectionId = new Types.ObjectId(sectionId);
+      filter.sectionId = new PgId(sectionId);
     }
 
     return this.lessonWordModel
@@ -479,7 +454,7 @@ export class LessonsService {
 
     if (updateDto.sectionId !== undefined) {
       if (updateDto.sectionId) {
-        updateSet.sectionId = new Types.ObjectId(updateDto.sectionId);
+        updateSet.sectionId = new PgId(updateDto.sectionId);
       } else {
         updateUnset.sectionId = 1;
       }
@@ -492,9 +467,8 @@ export class LessonsService {
     }
 
     const query = {
-      lessonId: new Types.ObjectId(lessonId),
-      wordId: new Types.ObjectId(wordId),
-    };
+      lessonId: new PgId(lessonId),
+      wordId: new PgId(wordId) };
 
     const updatePayload: any = {};
     if (Object.keys(updateSet).length > 0) updatePayload.$set = updateSet;
@@ -519,14 +493,14 @@ export class LessonsService {
     lessonId: string,
     items: { wordId: string; order: number; sectionId?: string | null }[],
   ): Promise<void> {
-    const lessonObjectId = new Types.ObjectId(lessonId);
+    const lessonPgId = new PgId(lessonId);
     const operations = items.map((item) => {
       const updateSet: any = { order: item.order };
       const updateUnset: any = {};
 
       if (item.sectionId !== undefined) {
         if (item.sectionId) {
-          updateSet.sectionId = new Types.ObjectId(item.sectionId);
+          updateSet.sectionId = new PgId(item.sectionId);
         } else {
           updateUnset.sectionId = 1;
         }
@@ -539,10 +513,8 @@ export class LessonsService {
 
       return {
         updateOne: {
-          filter: { lessonId: lessonObjectId, wordId: new Types.ObjectId(item.wordId) },
-          update: updatePayload,
-        },
-      };
+          filter: { lessonId: lessonPgId, wordId: new PgId(item.wordId) },
+          update: updatePayload } };
     });
 
     if (operations.length > 0) {
@@ -553,9 +525,8 @@ export class LessonsService {
   async removeWordFromLesson(lessonId: string, wordId: string): Promise<void> {
     const result = await this.lessonWordModel
       .deleteOne({
-        lessonId: new Types.ObjectId(lessonId),
-        wordId: new Types.ObjectId(wordId),
-      })
+        lessonId: new PgId(lessonId),
+        wordId: new PgId(wordId) })
       .exec();
 
     if (result.deletedCount === 0) {

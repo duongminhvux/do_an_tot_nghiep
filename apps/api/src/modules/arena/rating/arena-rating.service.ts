@@ -25,8 +25,7 @@ export class ArenaRatingService {
 
       ratingAfter: Math.max(0, rating + change),
 
-      ratingChange: change,
-    };
+      ratingChange: change };
   }
 
   /** Tính rating mới cho cả hai người chơi trong cùng một trận. */
@@ -53,7 +52,6 @@ export class ArenaRatingService {
         playerARating,
         resultB,
         kFactor,
-      ),
-    };
+      ) };
   }
 }

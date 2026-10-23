@@ -1,59 +1,48 @@
+import { PgId } from '../../../postgres/compat.js';
 vi.mock('../question/arena-question.service.js', () => ({
-  ArenaQuestionService: class {},
-}));
+  ArenaQuestionService: class {} }));
 vi.mock('../rating/arena-rating.service.js', () => ({
-  ArenaRatingService: class {},
-}));
-import { Types } from 'mongoose';
+  ArenaRatingService: class {} }));
 import { ArenaMatchService } from './arena-match.service.js';
 
 vi.mock('../schemas/friend-room.schema.js', () => ({
   FriendRoom: class {},
-  FriendRoomStatus: { WAITING: 'WAITING' },
-}));
+  FriendRoomStatus: { WAITING: 'WAITING' } }));
 vi.mock('../schemas/arena-match.schema.js', () => ({
   ArenaMatch: class {},
   ArenaMatchStatus: {
     PLAYING: 'PLAYING',
     FINISHING: 'FINISHING',
     FINISHED: 'FINISHED',
-    WAITING: 'WAITING',
-  },
+    WAITING: 'WAITING' },
   ArenaMatchType: { RANK: 'RANK', FRIEND: 'FRIEND', ROOM: 'ROOM' },
   ArenaQuestionMode: { MEANING_TO_WORD: 'MEANING_TO_WORD' },
   ArenaFriendMode: {
     WORD_CHAIN: 'WORD_CHAIN',
     WORD_GUESS: 'WORD_GUESS',
-    CLASSIC: 'CLASSIC',
-  },
-  ArenaMatchFinishReason: { NORMAL: 'NORMAL' },
-}));
+    CLASSIC: 'CLASSIC' },
+  ArenaMatchFinishReason: { NORMAL: 'NORMAL' } }));
 vi.mock('../schemas/arena-match-player.schema.js', () => ({
-  ArenaMatchPlayer: class {},
-}));
+  ArenaMatchPlayer: class {} }));
 vi.mock('../schemas/arena-profile.schema.js', () => ({
-  ArenaProfile: class {},
-}));
+  ArenaProfile: class {} }));
 vi.mock('../schemas/arena-rating-history.schema.js', () => ({
-  ArenaRatingHistory: class {},
-}));
+  ArenaRatingHistory: class {} }));
 
 function fixture(learningActivity?: { record: ReturnType<typeof vi.fn> }) {
   const match = {
-    _id: new Types.ObjectId(),
+    _id: new PgId(),
     type: 'FRIEND',
     status: 'PLAYING',
     winnerId: null,
     friendMode: 'WORD_CHAIN',
     chainPausedAt: null as Date | null,
-    turnDeadline: new Date(Date.now() + 15000),
-  };
+    turnDeadline: new Date(Date.now() + 15000) };
   const players = [0, 1].map((i) => ({
-    _id: new Types.ObjectId(),
-    userId: new Types.ObjectId(),
+    _id: new PgId(),
+    userId: new PgId(),
     score: i ? 80 : 100,
-    ratingBefore: 1000,
-  }));
+    ratingBefore: 1000 }));
   const matches = {
     findById: vi.fn(async () => match),
     findOne: vi.fn(async () => match),
@@ -66,30 +55,23 @@ function fixture(learningActivity?: { record: ReturnType<typeof vi.fn> }) {
     findOneAndUpdate: vi.fn(async (_filter, update) => {
       Object.assign(match, update.$set);
       return { ...match };
-    }),
-  };
+    }) };
   const playerModel = {
     find: vi.fn(() => ({ sort: vi.fn(async () => players) })),
     updateOne: vi.fn(async (_filter: unknown, _update: unknown) => ({
-      modifiedCount: 1,
-    })),
+      modifiedCount: 1 })),
     exists: vi.fn(async () => false),
     findOne: vi.fn(async () => ({
-      disconnectedAt: new Date(Date.now() - 5000),
-    })),
-    distinct: vi.fn(async () => [match._id]),
-  };
+      disconnectedAt: new Date(Date.now() - 5000) })),
+    distinct: vi.fn(async () => [match._id]) };
   const profiles = {
     updateOne: vi.fn(),
-    findOne: vi.fn(async () => ({ currentWinStreak: 0, bestWinStreak: 0 })),
-  };
+    findOne: vi.fn(async () => ({ currentWinStreak: 0, bestWinStreak: 0 })) };
   const history = { updateOne: vi.fn() };
   const rating = {
     calculateMatch: vi.fn(() => ({
       playerA: { ratingAfter: 1010, ratingChange: 10 },
-      playerB: { ratingAfter: 990, ratingChange: -10 },
-    })),
-  };
+      playerB: { ratingAfter: 990, ratingChange: -10 } })) };
   const friendRooms = { updateOne: vi.fn(), findOne: vi.fn(async () => null) };
   const deps = [
     {},
@@ -112,8 +94,7 @@ function fixture(learningActivity?: { record: ReturnType<typeof vi.fn> }) {
     playerModel,
     profiles,
     history,
-    rating,
-  };
+    rating };
 }
 
 describe('Learning activity', () => {
@@ -132,8 +113,7 @@ describe('Learning activity', () => {
       module: 'ARENA',
       sourceKey: `arena:${f.match._id}`,
       score: 100,
-      metadata: { won: true, isDraw: false },
-    });
+      metadata: { won: true, isDraw: false } });
   });
 });
 
@@ -147,20 +127,18 @@ describe('Friendly results and reconnect', () => {
     expect(f.profiles.updateOne).not.toHaveBeenCalled();
     expect(f.history.updateOne).not.toHaveBeenCalled();
     expect(f.playerModel.updateOne.mock.calls[0]?.[1]).toMatchObject({
-      $set: { ratingAfter: 1000, ratingChange: 0 },
-    });
+      $set: { ratingAfter: 1000, ratingChange: 0 } });
   });
   it('resets the existing room after a Friendly match without changing its settings', async () => {
     const f = fixture();
-    const roomId = new Types.ObjectId();
+    const roomId = new PgId();
     Object.assign(f.match, { roomId });
     await f.service.finishMatch(String(f.match._id));
     expect(f.friendRooms.updateOne).toHaveBeenCalledWith(
       { _id: roomId, currentMatchId: f.match._id },
       {
         $set: { status: 'WAITING', currentMatchId: null, guestReady: false },
-        $inc: { revision: 1 },
-      },
+        $inc: { revision: 1 } },
     );
   });
   it('equal Classic scores produce a draw', async () => {
@@ -168,8 +146,7 @@ describe('Friendly results and reconnect', () => {
     f.players[1]!.score = 100;
     expect(await f.service.finishMatch(String(f.match._id))).toMatchObject({
       isDraw: true,
-      winnerId: null,
-    });
+      winnerId: null });
   });
   it('Word Chain can force a winner even when scores are equal', async () => {
     const f = fixture();
@@ -209,8 +186,7 @@ describe('Friendly results and reconnect', () => {
   it('rejects a reconnect after the server grace period', async () => {
     const f = fixture();
     f.playerModel.findOne.mockResolvedValueOnce({
-      disconnectedAt: new Date(Date.now() - 21000),
-    });
+      disconnectedAt: new Date(Date.now() - 21000) });
     await expect(
       f.service.markReconnected(
         String(f.match._id),
@@ -226,11 +202,10 @@ describe('Room match results and turns', () => {
     const f = fixture();
     f.match.type = 'ROOM';
     f.players.push({
-      _id: new Types.ObjectId(),
-      userId: new Types.ObjectId(),
+      _id: new PgId(),
+      userId: new PgId(),
       score: 60,
-      ratingBefore: 1200,
-    });
+      ratingBefore: 1200 });
     const third = f.players[2]!;
     const result = await f.service.finishMatch(
       String(f.match._id),
@@ -247,11 +222,10 @@ describe('Room match results and turns', () => {
     const f = fixture();
     f.match.type = 'ROOM';
     f.players.push({
-      _id: new Types.ObjectId(),
-      userId: new Types.ObjectId(),
+      _id: new PgId(),
+      userId: new PgId(),
       score: 0,
-      ratingBefore: 1000,
-    });
+      ratingBefore: 1000 });
     const ids = f.players.map((p) => String(p.userId));
     expect(await f.service.nextRoomPlayer(String(f.match._id), ids[0]!)).toBe(
       ids[1],
@@ -271,16 +245,14 @@ describe('Room match results and turns', () => {
     const f = fixture();
     f.match.type = 'ROOM';
     f.players.push({
-      _id: new Types.ObjectId(),
-      userId: new Types.ObjectId(),
+      _id: new PgId(),
+      userId: new PgId(),
       score: 0,
-      ratingBefore: 1000,
-    });
+      ratingBefore: 1000 });
     Object.assign(f.match, {
       currentTurnUserId: f.players[0]!.userId,
       turnCount: 0,
-      eliminatedUserIds: [],
-    });
+      eliminatedUserIds: [] });
     await f.service.dropRoomPlayer(
       String(f.match._id),
       String(f.players[0]!.userId),
@@ -304,19 +276,16 @@ describe('Room match results and turns', () => {
 
 describe('Room match creation', () => {
   it('reserves and persists every participant, including the third player', async () => {
-    const ids = Array.from({ length: 3 }, () => String(new Types.ObjectId()));
+    const ids = Array.from({ length: 3 }, () => String(new PgId()));
     const redis = {
       set: vi.fn(
         async (_key: string, _token: string, _options: unknown) => 'OK',
       ),
-      eval: vi.fn(async () => 1),
-    };
+      eval: vi.fn(async () => 1) };
     const matches = {
       create: vi.fn(async (values) => ({
-        _id: new Types.ObjectId(),
-        ...values,
-      })),
-    };
+        _id: new PgId(),
+        ...values })) };
     const players = { insertMany: vi.fn(async (values) => values) };
     const profiles = { findOne: vi.fn(async () => ({ rating: 1000 })) };
     const rooms = { findOne: vi.fn(async (_filter: unknown) => null) };
@@ -335,10 +304,9 @@ describe('Room match creation', () => {
     const created = await service.createMatch(ids[0]!, ids[1]!, {
       type: 'ROOM' as never,
       additionalPlayerIds: [ids[2]!],
-      roomId: new Types.ObjectId(),
+      roomId: new PgId(),
       settingsSnapshot: { questionCount: 10, timePerQuestion: 15 },
-      questionMode: 'MEANING_TO_WORD' as never,
-    });
+      questionMode: 'MEANING_TO_WORD' as never });
     expect(created.players.map((p: any) => String(p.userId))).toEqual(ids);
     expect(redis.set.mock.calls.map((call) => call[0])).toEqual(
       [...ids].sort().map((id) => `arena:create-match:${id}`),
@@ -349,9 +317,8 @@ describe('Room match creation', () => {
     expect(String(created.match.hostId)).toBe(ids[0]);
     expect(rooms.findOne.mock.calls[0]?.[0]).toMatchObject({
       $or: expect.arrayContaining([
-        { 'members.userId': { $in: ids.map((id) => new Types.ObjectId(id)) } },
-      ]),
-    });
+        { 'members.userId': { $in: ids.map((id) => new PgId(id)) } },
+      ]) });
   });
 });
 
@@ -361,11 +328,10 @@ describe('Word Guess room departures', () => {
     f.match.type = 'ROOM';
     f.match.friendMode = 'WORD_GUESS';
     f.players.push({
-      _id: new Types.ObjectId(),
-      userId: new Types.ObjectId(),
+      _id: new PgId(),
+      userId: new PgId(),
       score: 0,
-      ratingBefore: 1000,
-    });
+      ratingBefore: 1000 });
     f.players.forEach((p) => (p.score = 0));
     Object.assign(f.match, {
       turnCount: 0,
@@ -375,10 +341,8 @@ describe('Word Guess room departures', () => {
         Array.from({ length: 5 }, () => ({
           userId: String(p.userId),
           word: 'crane',
-          feedback: [],
-        })),
-      ),
-    });
+          feedback: [] })),
+      ) });
     const result = await f.service.dropRoomPlayer(
       String(f.match._id),
       String(f.players[0]!.userId),
@@ -387,7 +351,6 @@ describe('Word Guess room departures', () => {
     expect(result).toMatchObject({
       status: 'FINISHED',
       isDraw: true,
-      winnerId: null,
-    });
+      winnerId: null });
   });
 });

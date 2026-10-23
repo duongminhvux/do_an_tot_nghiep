@@ -5,8 +5,7 @@ import {
   Param,
   Patch,
   Post,
-  Query,
-} from '@nestjs/common';
+  Query } from '@nestjs/common';
 import { AdminController } from '../../auth/decorators/admin-controller.decorator.js';
 import { LessonsService } from './lessons.service.js';
 import { CreateLessonDto } from './dto/create-lesson.dto.js';

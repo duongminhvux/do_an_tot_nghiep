@@ -1,4 +1,4 @@
-import { IsDateString, IsEnum, IsMongoId, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsDateString, IsEnum, IsUUID, IsNotEmpty, IsOptional } from 'class-validator';
 
 export class CreateSessionDto {
   @IsOptional()
@@ -6,7 +6,7 @@ export class CreateSessionDto {
   type?: 'LESSON' | 'REVIEW';
 
   @IsNotEmpty()
-  @IsMongoId()
+  @IsUUID('4')
   lessonId!: string;
 
   @IsOptional()

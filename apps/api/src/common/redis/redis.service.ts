@@ -1,8 +1,7 @@
 import {
     Injectable,
     OnModuleDestroy,
-    OnModuleInit,
-} from '@nestjs/common';
+    OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, RedisClientType } from 'redis';
 
@@ -14,8 +13,7 @@ export class RedisService
 
     async onModuleInit() {
         this.client = createClient({
-            url:this.configService.get<string>('REDIS_URL') || 'redis://localhost:6379',
-        });
+            url:this.configService.get<string>('REDIS_URL') || 'redis://localhost:6379' });
 
         this.client.on('error', (error) => {
             console.error('Redis error:', error);

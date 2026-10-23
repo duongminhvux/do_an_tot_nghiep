@@ -1,9 +1,8 @@
 import { Global, Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
+import { PgModelsModule } from '../../postgres/compat.js';
 import {
   LearningActivity,
-  LearningActivitySchema,
-} from './schemas/learning-activity.schema.js';
+  LearningActivitySchema } from './schemas/learning-activity.schema.js';
 import { LearningActivityService } from './learning-activity.service.js';
 import { LearningActivityController } from './learning-activity.controller.js';
 import { InternalLearningActivityController } from './internal-learning-activity.controller.js';
@@ -12,12 +11,11 @@ import { InternalLearningActivityController } from './internal-learning-activity
 @Global()
 @Module({
   imports: [
-    MongooseModule.forFeature([
+    PgModelsModule.forFeature([
       { name: LearningActivity.name, schema: LearningActivitySchema },
     ]),
   ],
   controllers: [LearningActivityController, InternalLearningActivityController],
   providers: [LearningActivityService],
-  exports: [LearningActivityService],
-})
+  exports: [LearningActivityService] })
 export class LearningActivityModule {}

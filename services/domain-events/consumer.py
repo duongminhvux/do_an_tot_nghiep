@@ -1,49 +1,46 @@
-"""Durable event receipt projection; demonstrates versioned idempotent consumers."""
+"""Idempotent domain event receipt, using service-owned PostgreSQL inbox."""
 import json
 import os
 import time
 import pika
-from pymongo import MongoClient
-from pymongo.errors import DuplicateKeyError
+import psycopg
 
-NAME = os.environ.get('EVENT_CONSUMER', 'learning')
-if NAME not in ('learning', 'notification'):
-    raise RuntimeError('Unsupported event consumer')
-MONGO = MongoClient(os.environ['MONGO_URI'])
-COL = MONGO.get_default_database()['processed_domain_events']
+NAME=os.getenv('CONSUMER_NAME','domain-events')
+EXCHANGE='domain.events'
+ROUTING=os.getenv('EVENT_ROUTING_KEY','#')
 
+def open_db():
+    return psycopg.connect(host=os.getenv('PGHOST','127.0.0.1'),port=int(os.getenv('PGPORT','5432')),
+        dbname=os.environ['PGDATABASE'],user=os.environ['PGUSER'],password=os.environ['PGPASSWORD'])
 
 def main():
     while True:
-        connection = None
+        conn=None;db=None
         try:
-            connection = pika.BlockingConnection(pika.URLParameters(os.environ['RABBITMQ_URL']))
-            ch = connection.channel()
-            ch.exchange_declare(exchange='domain.events', exchange_type='topic', durable=True)
-            queue = NAME + '.domain.events'
-            ch.queue_declare(queue=queue, durable=True, arguments={'x-queue-type':'quorum'})
-            ch.queue_bind(exchange='domain.events', queue=queue, routing_key='#')
+            db=open_db()
+            conn=pika.BlockingConnection(pika.URLParameters(os.environ['RABBITMQ_URL']))
+            ch=conn.channel();ch.exchange_declare(exchange=EXCHANGE,exchange_type='topic',durable=True)
+            ch.queue_declare(queue=NAME,durable=True)
+            ch.queue_bind(queue=NAME,exchange=EXCHANGE,routing_key=ROUTING)
             ch.basic_qos(prefetch_count=10)
-            def handle(ch, method, props, body):
-                try:
-                    data = json.loads(body)
-                    key = NAME + ':' + str(data['eventId'])
-                    COL.insert_one({'_id': key, 'consumer': NAME,
-                        'eventId': data['eventId'], 'type': data['type'],
-                        'receivedAt': time.time(), 'payload': data.get('payload',{})})
-                    ch.basic_ack(method.delivery_tag)
-                except DuplicateKeyError:
-                    ch.basic_ack(method.delivery_tag)
-                except Exception:
-                    ch.basic_nack(method.delivery_tag, requeue=True)
-            ch.basic_consume(queue=queue, on_message_callback=handle, auto_ack=False)
+            def on_message(channel,delivery,properties,body):
+                event=json.loads(body)
+                with db.transaction():
+                    with db.cursor() as cur:
+                        cur.execute('''INSERT INTO public.inbox_events(consumer_name,event_id) VALUES(%s,%s)
+                            ON CONFLICT DO NOTHING RETURNING event_id''',(NAME,event['eventId']))
+                        applied=cur.fetchone() is not None
+                        if applied:
+                            # Business-specific projections belong in dedicated handlers.
+                            print('Event received',NAME,event.get('type'),event['eventId'],flush=True)
+                channel.basic_ack(delivery.delivery_tag)
+            ch.basic_consume(queue=NAME,on_message_callback=on_message,auto_ack=False)
             ch.start_consuming()
         except Exception as exc:
-            print('Event consumer reconnecting:', exc, flush=True)
-            time.sleep(5)
+            print('Inbox consumer reconnect:',str(exc),flush=True);time.sleep(5)
         finally:
-            if connection and connection.is_open:
-                try: connection.close()
-                except Exception: pass
-
-if __name__ == '__main__': main()
+            if db:db.close()
+            if conn and conn.is_open:
+                try:conn.close()
+                except Exception:pass
+if __name__=='__main__':main()

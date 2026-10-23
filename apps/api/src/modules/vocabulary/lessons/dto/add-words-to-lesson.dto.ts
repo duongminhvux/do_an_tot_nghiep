@@ -1,13 +1,13 @@
-import { IsArray, IsMongoId, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsArray, IsUUID, IsNotEmpty, IsOptional } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
 
 export class AddWordsToLessonDto {
   @IsArray({ message: i18nValidationMessage('lesson.WORD_IDS_INVALID') })
   @IsNotEmpty({ message: i18nValidationMessage('lesson.WORD_IDS_REQUIRED') })
-  @IsMongoId({ each: true, message: i18nValidationMessage('lesson.WORD_IDS_INVALID') })
+  @IsUUID('4', { each: true, message: i18nValidationMessage('lesson.WORD_IDS_INVALID') })
   wordIds!: string[];
 
-  @IsMongoId()
+  @IsUUID('4')
   @IsOptional()
   sectionId?: string;
 }

@@ -1,20 +1,20 @@
-import { IsBoolean, IsDateString, IsEnum, IsMongoId, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsBoolean, IsDateString, IsEnum, IsUUID, IsNotEmpty, IsOptional } from 'class-validator';
 
 export class RecordActionDto {
   @IsOptional()
-  @IsMongoId()
+  @IsUUID('4')
   sessionId?: string;
 
   @IsOptional()
-  @IsMongoId()
+  @IsUUID('4')
   lessonId?: string;
 
   @IsNotEmpty()
-  @IsMongoId()
+  @IsUUID('4')
   wordId!: string;
 
   @IsOptional()
-  @IsMongoId()
+  @IsUUID('4')
   lessonWordId?: string;
 
   @IsOptional()

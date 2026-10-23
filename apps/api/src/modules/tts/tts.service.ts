@@ -2,13 +2,11 @@ import {
   BadGatewayException,
   GatewayTimeoutException,
   Injectable,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+  ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   SynthesizeSequenceTtsDto,
-  SynthesizeTtsDto,
-} from './tts.dto.js';
+  SynthesizeTtsDto } from './tts.dto.js';
 
 export interface TtsAudioResult {
   audio: Buffer;
@@ -72,8 +70,7 @@ export class TtsService {
     const response = await this.fetchTts(path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
+      body: JSON.stringify(payload) });
 
     if (!response.ok) {
       await this.throwUpstreamError(response, path);
@@ -90,8 +87,7 @@ export class TtsService {
             return {
               startMs,
               endMs,
-              durationMs: Math.max(0, endMs - startMs),
-            };
+              durationMs: Math.max(0, endMs - startMs) };
           })
           .filter((item) => Number.isFinite(item.startMs) && Number.isFinite(item.endMs))
       : undefined;
@@ -103,8 +99,7 @@ export class TtsService {
       sampleRate: response.headers.get('x-audio-sample-rate') ?? undefined,
       provider: response.headers.get('x-tts-provider') ?? undefined,
       device: response.headers.get('x-tts-device') ?? undefined,
-      segmentTimingsMs,
-    };
+      segmentTimingsMs };
   }
 
   private async fetchTts(
@@ -114,8 +109,7 @@ export class TtsService {
     try {
       return await fetch(`${this.baseUrl}${path}`, {
         ...init,
-        signal: AbortSignal.timeout(this.timeoutMs),
-      });
+        signal: AbortSignal.timeout(this.timeoutMs) });
     } catch (error) {
       if (error instanceof Error && error.name === 'TimeoutError') {
         throw new GatewayTimeoutException(

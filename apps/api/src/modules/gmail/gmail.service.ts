@@ -13,9 +13,7 @@ export class GmailService {
             service: 'gmail',
             auth: {
                 user: this.configService.get<string>('MAIL_USERNAME'),
-                pass: this.configService.get<string>('MAIL_PASSWORD'),
-            },
-        });
+                pass: this.configService.get<string>('MAIL_PASSWORD') } });
     }
 
     async sendEmail(to: string, subject: string, html: string) {
@@ -23,7 +21,6 @@ export class GmailService {
             from: `"${this.configService.get<string>('MAIL_FROM') || 'Support'}" <${this.configService.get<string>('MAIL_USERNAME')}>`,
             to,
             subject,
-            html,
-        });
+            html });
     }
 }

@@ -9,8 +9,7 @@ import { GmailService } from '../gmail/gmail.service.js';
 
 vi.mock('../users/users.service.js', () => ({ UsersService: class UsersService {} }));
 vi.mock('../users/schema/user.schema.js', () => ({
-  AuthProvider: { LOCAL: 'local', GOOGLE: 'google' },
-}));
+  AuthProvider: { LOCAL: 'local', GOOGLE: 'google' } }));
 
 describe('AuthService.verifyToken', () => {
   const secret = 'test-access-secret';
@@ -29,8 +28,7 @@ describe('AuthService.verifyToken', () => {
         { provide: ConfigService, useValue: new ConfigService({ JWT_ACCESS_SECRET: secret }) },
         { provide: GmailService, useValue: {} },
         { provide: I18nService, useValue: {} },
-      ],
-    }).compile();
+      ] }).compile();
     service = module.get(AuthService);
   });
 

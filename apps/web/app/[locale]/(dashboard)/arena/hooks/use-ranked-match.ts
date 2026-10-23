@@ -338,7 +338,7 @@ export function useRankedMatch(
         finishedRef.current
       )
         return;
-      if (!/^[a-f\d]{24}$/i.test(matchId)) {
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(matchId)) {
         setError("Mã trận đấu không hợp lệ.");
         return;
       }

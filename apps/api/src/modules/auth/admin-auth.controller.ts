@@ -7,8 +7,7 @@ import {
   Res,
   UnauthorizedException,
   Logger,
-  Get,
-} from '@nestjs/common';
+  Get } from '@nestjs/common';
 import express from 'express';
 import { AuthService } from './auth.service.js';
 import { Public } from './decorators/public.decorator.js';
@@ -43,8 +42,7 @@ export class AdminAuthController {
       httpOnly: true,
       secure: isProduction,
       sameSite: isProduction ? 'strict' : 'lax',
-      maxAge: typeof maxAge === 'number' ? maxAge : 7 * 24 * 60 * 60 * 1000,
-    });
+      maxAge: typeof maxAge === 'number' ? maxAge : 7 * 24 * 60 * 60 * 1000 });
   }
 
   private clearCookie(res: express.Response) {
@@ -74,8 +72,7 @@ export class AdminAuthController {
       username: admin.username,
       email: admin.email,
       avatarUrl: admin.avatarUrl,
-      role: 'ADMIN',
-    };
+      role: 'ADMIN' };
 
     const { accessToken, refreshToken } =
       await this.authService.generateTokens(payload);
@@ -91,9 +88,7 @@ export class AdminAuthController {
         username: admin.username,
         email: admin.email,
         avatarUrl: admin.avatarUrl,
-        role: 'ADMIN',
-      },
-    };
+        role: 'ADMIN' } };
   }
 
   @Public()
@@ -116,8 +111,7 @@ export class AdminAuthController {
 
     try {
       const payload = await this.jwtService.verifyAsync(refreshToken, {
-        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-      });
+        secret: this.configService.get<string>('JWT_REFRESH_SECRET') });
 
       if (payload.role !== 'ADMIN') {
         throw new UnauthorizedException(
@@ -140,8 +134,7 @@ export class AdminAuthController {
         username: admin.username,
         email: admin.email,
         avatarUrl: admin.avatarUrl,
-        role: 'ADMIN',
-      };
+        role: 'ADMIN' };
 
       const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
         await this.authService.generateTokens(newPayload);
@@ -151,8 +144,7 @@ export class AdminAuthController {
       return {
         message: await this.i18n.t('auth.REFRESH_TOKEN_SUCCESSFULLY'),
         accessToken: newAccessToken,
-        refreshToken: newRefreshToken,
-      };
+        refreshToken: newRefreshToken };
     } catch {
       throw new UnauthorizedException(
         await this.i18n.t('auth.INVALID_REFRESH_TOKEN'),
@@ -165,8 +157,7 @@ export class AdminAuthController {
   async logout(@Res({ passthrough: true }) res: express.Response) {
     this.clearCookie(res);
     return {
-      message: await this.i18n.t('auth.LOGOUT_SUCCESSFULLY'),
-    };
+      message: await this.i18n.t('auth.LOGOUT_SUCCESSFULLY') };
   }
 
   @UseGuards(RolesGuard)

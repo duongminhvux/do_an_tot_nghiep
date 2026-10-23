@@ -29,10 +29,9 @@ export class IdentityIntrospectionController {
     let payload: any;
     try {
       payload = await this.jwt.verifyAsync(accessToken, {
-        secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET'),
-      });
+        secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET') });
     } catch { throw new UnauthorizedException('Invalid access token'); }
-    if (!payload || typeof payload._id !== 'string' || !/^[a-f0-9]{24}$/i.test(payload._id)) {
+    if (!payload || typeof payload._id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(payload._id)) {
       throw new UnauthorizedException('Invalid token payload');
     }
     if (payload.role === 'ADMIN') {

@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
+import { PgModelsModule } from '../../postgres/compat.js';
 
 import { Word, WordSchema } from './words/word.schema.js';
 import { WordsController } from './words/words.controller.js';
@@ -25,7 +25,7 @@ import { LessonsService } from './lessons/lessons.service.js';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([
+    PgModelsModule.forFeature([
       { name: Word.name, schema: WordSchema },
       { name: VocabularyGroup.name, schema: VocabularyGroupSchema },
       { name: Collection.name, schema: CollectionSchema },
@@ -55,8 +55,7 @@ import { LessonsService } from './lessons/lessons.service.js';
     VocabularyGroupsService,
     CollectionsService,
     LessonsService,
-    MongooseModule,
-  ],
-})
+    PgModelsModule,
+  ] })
 export class VocabularyModule {}
 

@@ -5,8 +5,7 @@ import {
   UploadedFile,
   UseInterceptors,
   BadRequestException,
-  Body,
-} from '@nestjs/common';
+  Body } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ManagedMediaService } from './managed-media.service.js';
 import { Roles } from '../auth/decorators/roles.decorator.js';
@@ -31,9 +30,7 @@ export class UploadController {
   @UseInterceptors(
     FileInterceptor('file', {
       limits: {
-        fileSize: 50 * 1024 * 1024,
-      },
-    }),
+        fileSize: 50 * 1024 * 1024 } }),
   )
   async uploadFile(@UploadedFile() file?: Express.Multer.File) {
     if (!file) {

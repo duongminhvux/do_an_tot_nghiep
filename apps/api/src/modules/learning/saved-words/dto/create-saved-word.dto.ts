@@ -1,8 +1,8 @@
-import { IsMongoId, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsUUID, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreateSavedWordDto {
   @IsNotEmpty()
-  @IsMongoId()
+  @IsUUID('4')
   wordId: string;
 
   @IsOptional()
@@ -10,6 +10,6 @@ export class CreateSavedWordDto {
   note?: string;
 
   @IsOptional()
-  @IsMongoId()
+  @IsUUID('4')
   folderId?: string;
 }

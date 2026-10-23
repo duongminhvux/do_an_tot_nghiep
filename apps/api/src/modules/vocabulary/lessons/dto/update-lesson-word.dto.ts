@@ -1,7 +1,7 @@
-import { IsMongoId, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsUUID, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class UpdateLessonWordDto {
-  @IsMongoId()
+  @IsUUID('4')
   @IsOptional()
   sectionId?: string | null;
 

@@ -37,8 +37,7 @@ export class AuthController {
       httpOnly: true,
       secure: false,
       sameSite: 'strict',
-      maxAge: typeof maxAge === 'number' ? maxAge : 7 * 24 * 60 * 60 * 1000,
-    });
+      maxAge: typeof maxAge === 'number' ? maxAge : 7 * 24 * 60 * 60 * 1000 });
   }
 
   clearCookie(res: express.Response) {
@@ -64,8 +63,7 @@ export class AuthController {
       username: user.username,
       email: user.email,
       avatarUrl: user.avatarUrl,
-      role: "USER",
-    };
+      role: "USER" };
 
     const { accessToken, refreshToken } = await this.authService.generateTokens(payload);
 
@@ -83,8 +81,7 @@ export class AuthController {
       description: `Đăng nhập thành công với tài khoản ${user.email}`,
       metadata: { method: 'LOCAL' },
       ipAddress: ip,
-      userAgent,
-    }).catch(err => this.activityLogsService.reportError('activity log',err));
+      userAgent }).catch(err => this.activityLogsService.reportError('activity log',err));
 
     return {
       message: await this.i18n.t('auth.LOGIN_SUCCESSFULLY'),
@@ -94,8 +91,7 @@ export class AuthController {
         username: user.username,
         email: user.email,
         avatarUrl: user.avatarUrl
-      },
-    };
+      } };
   }
 
   @Public()
@@ -123,8 +119,7 @@ export class AuthController {
       description: `Đăng nhập Google thành công với tài khoản ${loginResult.profile.email}`,
       metadata: { method: 'GOOGLE' },
       ipAddress: ip,
-      userAgent,
-    }).catch(err => this.activityLogsService.reportError('activity log',err));
+      userAgent }).catch(err => this.activityLogsService.reportError('activity log',err));
 
     return res.redirect(`${frontendUrl}/auth/callback?token=${loginResult.accessToken}`);
   }
@@ -155,8 +150,7 @@ export class AuthController {
     this.setCookie(res, result.refreshToken);
     return {
       message: result.message,
-      accessToken: result.accessToken,
-    };
+      accessToken: result.accessToken };
   }
 
   @Public()
@@ -176,12 +170,10 @@ export class AuthController {
       category: ActivityCategory.AUTH,
       description: authUser?.email ? `Đăng xuất khỏi hệ thống (${authUser.email})` : `Đăng xuất khỏi hệ thống`,
       ipAddress: ip,
-      userAgent,
-    }).catch(err => this.activityLogsService.reportError('activity log',err));
+      userAgent }).catch(err => this.activityLogsService.reportError('activity log',err));
 
     return {
-      message: await this.i18n.t('auth.LOGOUT_SUCCESSFULLY'),
-    };
+      message: await this.i18n.t('auth.LOGOUT_SUCCESSFULLY') };
   }
 
   @UseGuards(JwtAuthGuard)

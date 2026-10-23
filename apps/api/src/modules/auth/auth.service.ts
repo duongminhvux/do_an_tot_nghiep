@@ -80,18 +80,15 @@ export class AuthService {
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
         secret: this.configService.get<string>('JWT_ACCESS_SECRET'),
-        expiresIn: this.configService.get<string>('JWT_ACCESS_TOKEN_EXPIRES') as any,
-      }),
+        expiresIn: this.configService.get<string>('JWT_ACCESS_TOKEN_EXPIRES') as any }),
       this.jwtService.signAsync(payload, {
         secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-        expiresIn: this.configService.get<string>('JWT_REFRESH_TOKEN_EXPIRES') as any,
-      }),
+        expiresIn: this.configService.get<string>('JWT_REFRESH_TOKEN_EXPIRES') as any }),
     ]);
 
     return {
       accessToken,
-      refreshToken,
-    };
+      refreshToken };
   }
 
   async verifyToken(token: string): Promise<{ _id: string; role: 'USER' }> {
@@ -108,7 +105,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid or expired access token');
     }
 
-    if (!payload || typeof payload._id !== 'string' || !/^[a-f\d]{24}$/i.test(payload._id) || payload.role !== 'USER') {
+    if (!payload || typeof payload._id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(payload._id) || payload.role !== 'USER') {
       throw new UnauthorizedException('Invalid access token payload');
     }
 
@@ -136,8 +133,7 @@ export class AuthService {
       return await this.usersService.create({
         ...createUserDto,
         authProvider: AuthProvider.GOOGLE,
-        password: undefined,
-      });
+        password: undefined });
     }
 
     if (!password) {
@@ -219,8 +215,7 @@ export class AuthService {
     const updatedUser = await this.usersService.update(user._id.toString(), {
       isVerified: true,
       code: null,
-      codeExpiresAt: null,
-    });
+      codeExpiresAt: null });
 
     if (!updatedUser) {
       throw new BadRequestException(await this.i18n.t('auth.USER_NOT_FOUND'));
@@ -276,8 +271,7 @@ export class AuthService {
         authProvider: AuthProvider.GOOGLE,
         isVerified: true,
         avatarUrl,
-        ggId,
-      };
+        ggId };
 
       const created = await this.usersService.create(newUserDto as any);
       user = (created && typeof (created as any).toObject === 'function') ? (created as any).toObject() : created;
@@ -288,16 +282,14 @@ export class AuthService {
       username: user!.username,
       email: user!.email,
       avatarUrl: user!.avatarUrl,
-      role: 'USER',
-    };
+      role: 'USER' };
 
     const { accessToken, refreshToken } = await this.generateTokens(payload);
 
     return {
       accessToken,
       refreshToken,
-      profile: payload,
-    };
+      profile: payload };
   }
 
   async refreshToken(refreshToken: string) {
@@ -307,8 +299,7 @@ export class AuthService {
 
     try {
       const payload = await this.jwtService.verifyAsync(refreshToken, {
-        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-      });
+        secret: this.configService.get<string>('JWT_REFRESH_SECRET') });
 
       const user = await this.usersService.findByEmail(payload.email);
       if (!user || user.isDeleted) {
@@ -320,8 +311,7 @@ export class AuthService {
         username: user.username,
         email: user.email,
         avatarUrl: user.avatarUrl,
-        role: 'USER',
-      };
+        role: 'USER' };
 
       const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
         await this.generateTokens(newPayload);
@@ -329,8 +319,7 @@ export class AuthService {
       return {
         accessToken: newAccessToken,
         refreshToken: newRefreshToken,
-        message: await this.i18n.t('auth.REFRESH_TOKEN_SUCCESSFULLY'),
-      };
+        message: await this.i18n.t('auth.REFRESH_TOKEN_SUCCESSFULLY') };
     } catch {
       throw new UnauthorizedException(await this.i18n.t('auth.INVALID_REFRESH_TOKEN'));
     }
@@ -357,8 +346,7 @@ export class AuthService {
     await this.usersService.update(userId, { password: hashPassword });
 
     return {
-      message: await this.i18n.t('auth.PASSWORD_CHANGED_SUCCESSFULLY'),
-    };
+      message: await this.i18n.t('auth.PASSWORD_CHANGED_SUCCESSFULLY') };
   }
 
   async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
@@ -378,8 +366,7 @@ export class AuthService {
 
     await this.usersService.update(user._id.toString(), {
       code,
-      codeExpiresAt,
-    });
+      codeExpiresAt });
 
     try {
       const lang = I18nContext.current()?.lang || 'vi';
@@ -391,8 +378,7 @@ export class AuthService {
     }
 
     return {
-      message: await this.i18n.t('auth.FORGOT_PASSWORD_CODE_SENT'),
-    };
+      message: await this.i18n.t('auth.FORGOT_PASSWORD_CODE_SENT') };
   }
 
   async resetPassword(resetPasswordDto: ResetPasswordDto) {
@@ -416,11 +402,9 @@ export class AuthService {
     await this.usersService.update(user._id.toString(), {
       password: hashPassword,
       code: null,
-      codeExpiresAt: null,
-    });
+      codeExpiresAt: null });
 
     return {
-      message: await this.i18n.t('auth.PASSWORD_RESET_SUCCESSFULLY'),
-    };
+      message: await this.i18n.t('auth.PASSWORD_RESET_SUCCESSFULLY') };
   }
 }

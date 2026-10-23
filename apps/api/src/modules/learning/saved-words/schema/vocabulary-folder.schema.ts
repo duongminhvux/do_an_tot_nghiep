@@ -1,25 +1,25 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { type HydratedDocument, Types } from 'mongoose';
+import { PgId } from '../../../../postgres/compat.js';
+import { PgField, PgEntity, PgSchemaFactory } from '../../../../postgres/compat.js';
+import { type PgDocument } from '../../../../postgres/compat.js';
 
-export type VocabularyFolderDocument = HydratedDocument<VocabularyFolder>;
+export type VocabularyFolderDocument = PgDocument<VocabularyFolder>;
 
-@Schema({ timestamps: true })
+@PgEntity({ timestamps: true })
 export class VocabularyFolder {
-  @Prop({
-    type: Types.ObjectId,
+  @PgField({
+    type: PgId,
     ref: 'User',
     required: true,
-    index: true,
-  })
-  userId: Types.ObjectId;
+    index: true })
+  userId: PgId;
 
-  @Prop({ required: true, trim: true, minlength: 1, maxlength: 80 })
+  @PgField({ required: true, trim: true, minlength: 1, maxlength: 80 })
   name: string;
 
-  @Prop({ trim: true, index: true })
+  @PgField({ trim: true, index: true })
   slug?: string;
 
-  @Prop({ trim: true, maxlength: 300, default: '' })
+  @PgField({ trim: true, maxlength: 300, default: '' })
   description: string;
 
   createdAt?: Date;
@@ -27,7 +27,7 @@ export class VocabularyFolder {
 }
 
 export const VocabularyFolderSchema =
-  SchemaFactory.createForClass(VocabularyFolder);
+  PgSchemaFactory.createForClass(VocabularyFolder);
 
 VocabularyFolderSchema.index({ userId: 1, name: 1 }, { unique: true });
 VocabularyFolderSchema.index(

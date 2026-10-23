@@ -1,16 +1,16 @@
+import { PgId } from '../../../postgres/compat.js';
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { type Model, type PipelineStage, Types } from 'mongoose';
+import { InjectPgModel } from '../../../postgres/compat.js';
+import { type Model, type PipelineStage } from '../../../postgres/compat.js';
 import { MiniGameResult } from '../schemas/minigame-result.schema.js';
 import { MiniGameType } from '../minigame.types.js';
 import {
   MiniGameResultQueryDto,
-  TopScoresQueryDto,
-} from '../dto/minigame-result-query.dto.js';
+  TopScoresQueryDto } from '../dto/minigame-result-query.dto.js';
 
 type ResultFilter = {
   gameType?: MiniGameType;
-  userId?: Types.ObjectId;
+  userId?: PgId;
   score?: { $gte?: number; $lte?: number };
   createdAt?: { $gte?: Date; $lt?: Date };
 };
@@ -18,14 +18,14 @@ type ResultFilter = {
 @Injectable()
 export class MiniGameAdminService {
   constructor(
-    @InjectModel(MiniGameResult.name)
+    @InjectPgModel(MiniGameResult.name)
     private readonly results: Model<MiniGameResult>,
   ) {}
 
   private dateFilter(query: MiniGameResultQueryDto): ResultFilter {
     const filter: ResultFilter = {};
     if (query.gameType) filter.gameType = query.gameType;
-    if (query.userId) filter.userId = new Types.ObjectId(query.userId);
+    if (query.userId) filter.userId = new PgId(query.userId);
     if (query.minScore !== undefined || query.maxScore !== undefined) {
       filter.score = {};
       if (query.minScore !== undefined) filter.score.$gte = query.minScore;
@@ -51,8 +51,7 @@ export class MiniGameAdminService {
       score_desc: { score: -1, createdAt: -1 },
       score_asc: { score: 1, createdAt: -1 },
       newest: { createdAt: -1, _id: -1 },
-      oldest: { createdAt: 1, _id: 1 },
-    };
+      oldest: { createdAt: 1, _id: 1 } };
     return sorts[sort ?? 'newest'];
   }
 
@@ -72,9 +71,7 @@ export class MiniGameAdminService {
           from: 'users',
           localField: 'userId',
           foreignField: '_id',
-          as: 'user',
-        },
-      },
+          as: 'user' } },
       { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
     );
     if (query.search) {
@@ -86,13 +83,11 @@ export class MiniGameAdminService {
         { 'user.username': search },
         { 'user.email': search },
       ];
-      if (query.search.match(/^[a-f\d]{24}$/i))
-        searchClauses.push({ userId: new Types.ObjectId(query.search) });
+      if (query.search.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i))
+        searchClauses.push({ userId: new PgId(query.search) });
       pipeline.push({
         $match: {
-          $or: searchClauses,
-        },
-      });
+          $or: searchClauses } });
     }
     pipeline.push(
       { $sort: this.sort(query.sort) },
@@ -110,22 +105,16 @@ export class MiniGameAdminService {
                 createdAt: 1,
                 player: {
                   username: '$user.username',
-                  email: '$user.email',
-                },
-              },
-            },
+                  email: '$user.email' } } },
           ],
-          total: [{ $count: 'count' }],
-        },
-      },
+          total: [{ $count: 'count' }] } },
     );
     const [result] = await this.results.aggregate(pipeline);
     return {
       items: result?.items ?? [],
       page: query.page,
       limit: query.limit,
-      total: result?.total?.[0]?.count ?? 0,
-    };
+      total: result?.total?.[0]?.count ?? 0 };
   }
 
   async statistics() {
@@ -148,9 +137,7 @@ export class MiniGameAdminService {
               { $group: { _id: '$gameType', plays: { $sum: 1 } } },
               { $sort: { plays: -1 } },
               { $limit: 1 },
-            ],
-          },
-        },
+            ] } },
       ]),
       this.results.aggregate([
         {
@@ -158,30 +145,23 @@ export class MiniGameAdminService {
             _id: '$gameType',
             plays: { $sum: 1 },
             users: { $addToSet: '$userId' },
-            bestScore: { $max: '$score' },
-          },
-        },
+            bestScore: { $max: '$score' } } },
         {
           $project: {
             _id: 0,
             gameType: '$_id',
             plays: 1,
             uniquePlayers: { $size: '$users' },
-            bestScore: 1,
-          },
-        },
+            bestScore: 1 } },
         { $sort: { plays: -1 } },
       ]),
       this.results.aggregate([
         {
-          $match: { createdAt: { $gte: new Date(Date.now() - 90 * 86400000) } },
-        },
+          $match: { createdAt: { $gte: new Date(Date.now() - 90 * 86400000) } } },
         {
           $group: {
             _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-            plays: { $sum: 1 },
-          },
-        },
+            plays: { $sum: 1 } } },
         { $project: { _id: 0, date: '$_id', plays: 1 } },
         { $sort: { date: 1 } },
       ]),
@@ -192,18 +172,14 @@ export class MiniGameAdminService {
             _id: '$gameType',
             score: { $first: '$score' },
             userId: { $first: '$userId' },
-            createdAt: { $first: '$createdAt' },
-          },
-        },
+            createdAt: { $first: '$createdAt' } } },
         {
           $project: {
             _id: 0,
             gameType: '$_id',
             score: 1,
             userId: 1,
-            createdAt: 1,
-          },
-        },
+            createdAt: 1 } },
       ]),
     ]);
     const data = summary[0] ?? {};
@@ -214,13 +190,11 @@ export class MiniGameAdminService {
       mostPlayedGame: data.mostPlayed?.[0]
         ? {
             gameType: data.mostPlayed[0]._id,
-            plays: data.mostPlayed[0].plays,
-          }
+            plays: data.mostPlayed[0].plays }
         : null,
       games,
       playsByDay: daily,
-      bestScores,
-    };
+      bestScores };
   }
 
   topScores(gameType: string, query: TopScoresQueryDto) {
@@ -233,9 +207,7 @@ export class MiniGameAdminService {
         $group: {
           _id: '$userId',
           score: { $first: '$score' },
-          createdAt: { $first: '$createdAt' },
-        },
-      },
+          createdAt: { $first: '$createdAt' } } },
       { $sort: { score: -1, createdAt: 1 } },
       { $limit: query.limit },
       {
@@ -243,9 +215,7 @@ export class MiniGameAdminService {
           from: 'users',
           localField: '_id',
           foreignField: '_id',
-          as: 'user',
-        },
-      },
+          as: 'user' } },
       { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
       {
         $project: {
@@ -253,9 +223,7 @@ export class MiniGameAdminService {
           userId: '$_id',
           score: 1,
           createdAt: 1,
-          player: { username: '$user.username', email: '$user.email' },
-        },
-      },
+          player: { username: '$user.username', email: '$user.email' } } },
     ]);
   }
 }

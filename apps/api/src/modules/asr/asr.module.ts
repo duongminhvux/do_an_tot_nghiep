@@ -5,6 +5,5 @@ import { AsrController } from './asr.controller.js';
 @Module({
   controllers: [AsrController],
   providers: [AsrService],
-  exports: [AsrService],
-})
+  exports: [AsrService] })
 export class AsrModule {}

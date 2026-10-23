@@ -1,31 +1,31 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
 import { IsEmail, IsOptional, IsUrl } from 'class-validator';
-import type { HydratedDocument } from 'mongoose';
+import type { PgDocument } from '../../../postgres/compat.js';
 
-export type AdminDocument = HydratedDocument<Admin>;
+export type AdminDocument = PgDocument<Admin>;
 
-@Schema({ timestamps: true, collection: 'admins' })
+@PgEntity({ timestamps: true, collection: 'admins' })
 export class Admin {
     @IsEmail()
-    @Prop({ unique: true, required: true, lowercase: true, trim: true })
+    @PgField({ unique: true, required: true, lowercase: true, trim: true })
     email!: string;
 
-    @Prop({ required: true, trim: true })
+    @PgField({ required: true, trim: true })
     username!: string;
 
-    @Prop({ required: true })
+    @PgField({ required: true })
     password!: string;
 
     @IsOptional()
     @IsUrl()
-    @Prop()
+    @PgField()
     avatarUrl?: string;
 
-    @Prop({ default: false })
+    @PgField({ default: false })
     isDeleted: boolean;
 
-    @Prop()
+    @PgField()
     deletedAt?: Date;
 }
 
-export const AdminSchema = SchemaFactory.createForClass(Admin);
+export const AdminSchema = PgSchemaFactory.createForClass(Admin);

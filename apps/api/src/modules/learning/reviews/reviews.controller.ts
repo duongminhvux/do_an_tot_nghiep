@@ -5,8 +5,7 @@ import {
   Body,
   Query,
   UseGuards,
-  Req,
-} from '@nestjs/common';
+  Req } from '@nestjs/common';
 import { ReviewsService } from './reviews.service.js';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 

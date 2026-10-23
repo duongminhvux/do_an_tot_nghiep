@@ -1,14 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import type { Model } from 'mongoose';
+import { InjectPgModel } from '../../postgres/compat.js';
+import type { Model } from '../../postgres/compat.js';
 import { User, UserDocument } from '../users/schema/user.schema.js';
 import { Exam, ExamDocument } from '../assessment/exams/schemas/exam.schema.js';
 import { Attempt, AttemptDocument } from '../assessment/attempts/schemas/attempt.schema.js';
 import { ToeicAttemptStatus } from '../assessment/attempts/attempt.types.js';
 import {
   ActivityLog,
-  ActivityLogDocument,
-} from '../activity-logs/schemas/activity-log.schema.js';
+  ActivityLogDocument } from '../activity-logs/schemas/activity-log.schema.js';
 
 const COMPLETED_ATTEMPT_STATUSES = [ToeicAttemptStatus.FINISHED, 'COMPLETED'] as const;
 
@@ -17,10 +16,10 @@ type Period = { $gte: Date; $lt: Date };
 @Injectable()
 export class DashboardService {
   constructor(
-    @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
-    @InjectModel(Exam.name) private readonly examModel: Model<ExamDocument>,
-    @InjectModel(Attempt.name) private readonly attemptModel: Model<AttemptDocument>,
-    @InjectModel(ActivityLog.name)
+    @InjectPgModel(User.name) private readonly userModel: Model<UserDocument>,
+    @InjectPgModel(Exam.name) private readonly examModel: Model<ExamDocument>,
+    @InjectPgModel(Attempt.name) private readonly attemptModel: Model<AttemptDocument>,
+    @InjectPgModel(ActivityLog.name)
     private readonly activityLogModel: Model<ActivityLogDocument>,
   ) {}
 
@@ -119,30 +118,25 @@ export class DashboardService {
         attempts: totalAttempts,
         attemptsGrowth: percentage(totalAttempts, previousAttempts),
         avgScore: averageScore,
-        scoreGrowth: averageScore - previousAverageScore,
-      },
+        scoreGrowth: averageScore - previousAverageScore },
       series: {
         newUsers: [...dailyMap.values()].map((item) => item.newUsers),
-        attempts: [...dailyMap.values()].map((item) => item.attempts),
-      },
+        attempts: [...dailyMap.values()].map((item) => item.attempts) },
       examTypes: examTypes
         .filter((item) => item._id === 'TOEIC')
         .map((item) => ({ type: item._id, count: item.count })),
       popularExams: popularExams.map((item) => ({
         id: String(item.id),
         name: item.name,
-        attempts: item.attempts,
-      })),
+        attempts: item.attempts })),
       newUsers:             newUsers.map((user) => {
         const item = user as User & { _id: unknown; createdAt?: Date };
         return {
           id: String(item._id),
           name: item.username || item.email.split('@')[0],
           email: item.email,
-          createdAt: item.createdAt,
-        };
+          createdAt: item.createdAt };
       }),
-      recentActivity,
-    };
+      recentActivity };
   }
 }

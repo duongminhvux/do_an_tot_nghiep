@@ -11,7 +11,6 @@ export const AUTH_ERRORS = {
   INVALID_CODE: 'auth.INVALID_CODE',
   CODE_EXPIRED: 'auth.CODE_EXPIRED',
   INVALID_REFRESH_TOKEN: 'auth.INVALID_REFRESH_TOKEN',
-  INVALID_OLD_PASSWORD: 'auth.INVALID_OLD_PASSWORD',
-} as const;
+  INVALID_OLD_PASSWORD: 'auth.INVALID_OLD_PASSWORD' } as const;
 
 export type AuthErrorCode = keyof typeof AUTH_ERRORS;
