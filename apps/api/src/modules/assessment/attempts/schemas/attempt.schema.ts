@@ -45,7 +45,11 @@ export class Attempt {
   @PgField({ type: PgSchemaDefinition.Types.Mixed, default: {} })
   answers: Record<string, string>;
 
-  @Prop({ type: MongooseSchema.Types.Mixed, default: {} })
+  // Missing on legacy attempts: preserve the service fallback to previously saved answers.
+  @PgField({ type: PgSchemaDefinition.Types.Mixed })
+  revealedAnswers?: Record<string, string>;
+
+  @PgField({ type: PgSchemaDefinition.Types.Mixed, default: {} })
   audioPlayCounts: Record<string, number>;
 
   @PgField({ type: [String], default: [] })
