@@ -6,6 +6,7 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { RedisModule } from '../common/redis/redis.module.js';
 import { NotificationClientModule } from '../common/clients/notification-client.js';
+import { LearningActivityClientModule } from '../common/clients/learning-activity-client.js';
 import { MediaStorageModule } from '../common/media/media-storage.module.js';
 import { DomainEventsModule } from '../common/events/domain-events.module.js';
 import { JwtModule } from '@nestjs/jwt';
@@ -42,7 +43,7 @@ export class PlatformModule {
         MongooseModule.forRootAsync({inject:[ConfigService],useFactory:(config:ConfigService)=>({
           uri:config.getOrThrow<string>('MONGO_URI'), dbName:DATABASE_NAMES[role],autoIndex:false,
         })}),
-        ...(role==='arena'?[RedisModule]:[]),JwtModule.register({}),MediaStorageModule,DomainEventsModule,NotificationClientModule,
+        ...(role==='arena'?[RedisModule]:[]),JwtModule.register({}),MediaStorageModule,DomainEventsModule,NotificationClientModule,LearningActivityClientModule,
         ...business,
       ], controllers:[HealthController],
     };

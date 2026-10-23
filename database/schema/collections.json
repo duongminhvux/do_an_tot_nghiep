@@ -2113,7 +2113,7 @@
           },
           "status": {
             "type": "mixed",
-            "tsType": "'IN_PROGRESS' | 'COMPLETED' | 'ABANDONED'",
+            "tsType": "'IN_PROGRESS' | 'FINISHED' | 'ABANDONED' | 'COMPLETED'",
             "required": true,
             "source": "apps/api/src/modules/assessment/attempts/schemas/attempt.schema.ts"
           },
@@ -5331,6 +5331,75 @@
         "indexes": [],
         "sources": [
           "database/schema/collections.json"
+        ]
+      },
+      "learning_activities": {
+        "fields": {
+          "userId": {
+            "type": "objectId",
+            "tsType": "Types.ObjectId",
+            "required": true,
+            "source": "apps/api/src/modules/learning-activity/schemas/learning-activity.schema.ts"
+          },
+          "module": {
+            "type": "string",
+            "tsType": "LearningModule",
+            "required": true,
+            "source": "apps/api/src/modules/learning-activity/schemas/learning-activity.schema.ts"
+          },
+          "type": {
+            "type": "string",
+            "tsType": "LearningActivityType",
+            "required": true,
+            "source": "apps/api/src/modules/learning-activity/schemas/learning-activity.schema.ts"
+          },
+          "sourceKey": {
+            "type": "string",
+            "tsType": "string",
+            "required": true,
+            "source": "apps/api/src/modules/learning-activity/schemas/learning-activity.schema.ts"
+          },
+          "xp": {
+            "type": "number",
+            "tsType": "number",
+            "required": true,
+            "source": "apps/api/src/modules/learning-activity/schemas/learning-activity.schema.ts"
+          },
+          "occurredAt": {
+            "type": "date",
+            "tsType": "Date",
+            "required": true,
+            "source": "apps/api/src/modules/learning-activity/schemas/learning-activity.schema.ts"
+          }
+        },
+        "indexes": [
+          {
+            "key": {
+              "userId": 1,
+              "sourceKey": 1
+            },
+            "options": {
+              "unique": true
+            }
+          },
+          {
+            "key": {
+              "userId": 1,
+              "occurredAt": -1
+            },
+            "options": {}
+          },
+          {
+            "key": {
+              "userId": 1,
+              "module": 1,
+              "occurredAt": -1
+            },
+            "options": {}
+          }
+        ],
+        "sources": [
+          "apps/api/src/modules/learning-activity/schemas/learning-activity.schema.ts"
         ]
       }
     },

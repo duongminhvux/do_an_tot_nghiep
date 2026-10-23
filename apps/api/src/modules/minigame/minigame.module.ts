@@ -5,6 +5,7 @@ import {
   GameDefinitionSchema,
 } from './schemas/game-definition.schema.js';
 import { Module } from '@nestjs/common';
+import { LearningActivityModule } from '../learning-activity/learning-activity.module.js';
 import { MongooseModule } from '@nestjs/mongoose';
 import {
   Collection,
@@ -36,6 +37,7 @@ import { MiniGameAdminService } from './services/minigame-admin.service.js';
 import { AdminMinigameController } from './admin-minigame.controller.js';
 @Module({
   imports: [
+    LearningActivityModule,
     MongooseModule.forFeature([
       { name: GameDefinition.name, schema: GameDefinitionSchema },
       { name: Collection.name, schema: CollectionSchema },

@@ -1,28 +1,21 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
-import request from 'supertest';
-import { AppModule } from './../src/app.module.js';
+import { describe, expect, it } from 'vitest';
 
-describe('AppController (e2e)', () => {
-  let app: INestApplication;
+// Runs against an actual Compose stack only when opted in. The old test
+// booted the retired monolith AppModule and expected a deleted Hello World
+// controller, so it could not test the deployed microservices.
+const gateway = process.env.E2E_GATEWAY_URL?.replace(/\/$/, '');
 
-  beforeEach(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    await app.init();
+describe.skipIf(!gateway)('Gateway microservices (live Compose e2e)', () => {
+  it('answers its own health endpoint', async () => {
+    const response = await fetch(`${gateway}/gateway/health`);
+    expect(response.status).toBe(200);
   });
-
-  it('/ (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/')
-      .expect(200)
-      .expect('Hello World!');
+  it('forwards Identity health instead of returning a local 404', async () => {
+    const response = await fetch(`${gateway}/gateway/identity-health`);
+    expect(response.status).toBe(200);
   });
-
-  afterEach(async () => {
-    await app.close();
+  it('routes learner dashboard to Learning, with auth required', async () => {
+    const response = await fetch(`${gateway}/api/learning-activity/home`);
+    expect([401, 403]).toContain(response.status);
   });
 });

@@ -33,6 +33,7 @@ import {
 
 import { VocabularyReadModelsModule } from '../vocabulary/vocabulary-read-models.module.js';
 import { SavedWordsModule } from './saved-words/saved-words.module.js';
+import { LearningActivityModule } from '../learning-activity/learning-activity.module.js';
 
 @Module({
   imports: [
@@ -64,6 +65,7 @@ import { SavedWordsModule } from './saved-words/saved-words.module.js';
       },
     ]),
     SavedWordsModule,
+    LearningActivityModule,
   ],
   controllers: [
     ProgressController,

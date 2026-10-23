@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types, Schema as MongooseSchema } from 'mongoose';
+import { type HydratedDocument, Types, Schema as MongooseSchema } from 'mongoose';
 import { ExamMode, ToeicAttemptStatus } from '../attempt.types.js';
 import type { SnapshotQuestion } from '../attempt.types.js';
 import type { RawSectionResult } from '../attempt.types.js';
@@ -77,10 +77,11 @@ export class Attempt {
   @Prop({
     required: true,
     type: String,
-    enum: Object.values(ToeicAttemptStatus),
+    // Legacy .dump attempts may contain COMPLETED; current submissions use FINISHED.
+    enum: [...Object.values(ToeicAttemptStatus), 'COMPLETED'],
     default: 'IN_PROGRESS',
   })
-  status: 'IN_PROGRESS' | 'FINISHED' | 'ABANDONED' | 'COMPLETED';
+  status: ToeicAttemptStatus | 'COMPLETED';
 
   @Prop({
     type: Date,

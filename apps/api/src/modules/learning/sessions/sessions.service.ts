@@ -2,7 +2,6 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
-  Optional,
 } from '@nestjs/common';
 import { XP } from '@repo/shared-types/learning-xp';
 import { LearningActivityService } from '../../learning-activity/learning-activity.service.js';
@@ -43,7 +42,7 @@ import {
 import { CreateSessionDto } from './dto/create-session.dto.js';
 import { RecordActionDto } from './dto/record-action.dto.js';
 import { I18nService } from 'nestjs-i18n';
-import { ActivityLogsService } from '../../activity-logs/activity-logs.service.js';
+import { NotificationClient } from '../../../common/clients/notification-client.js';
 import {
   ActivityAction,
   ActivityCategory,
@@ -69,7 +68,8 @@ export class SessionsService {
     @InjectModel(UserDailyActivity.name)
     private dailyActivityModel: Model<UserDailyActivityDocument>,
     private readonly i18n: I18nService,
-    private readonly activityLogsService: ActivityLogsService,
+    private readonly activityLogsService: NotificationClient,
+    private readonly learningActivity: LearningActivityService,
   ) {}
 
   /**
@@ -298,7 +298,7 @@ export class SessionsService {
         await this.incrementDailyActivity(userObjId, now, { wordsReviewed: 1 });
       }
       const learned = review.reviewCount === 1;
-      await this.learningActivity?.record({
+      await this.learningActivity.record({
         userId: userObjId,
         module: 'VOCABULARY',
         type: learned ? 'WORD_LEARNED' : 'WORD_REVIEWED',
@@ -409,7 +409,7 @@ export class SessionsService {
       studyMinutes,
     });
 
-    if (this.learningActivity) {
+    {
       const lesson = session.lessonId
         ? await this.lessonModel
             .findById(session.lessonId)

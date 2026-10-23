@@ -1,13 +1,14 @@
 import { ArenaSettingsService } from '../admin/arena-settings.service.js';
 import { arenaMatchXp } from '@repo/shared-types/learning-xp';
-import { LearningActivityService } from '../../learning-activity/learning-activity.service.js';
+import { LearningActivityClient } from '../../../common/clients/learning-activity-client.js';
+import type { LearningActivityWriter } from '../../learning-activity/learning-activity.service.js';
 import { ARENA_DEFAULTS } from '../admin/arena-settings.defaults.js';
 import {
   FriendRoom,
   FriendRoomStatus,
   FriendRoomSettings,
 } from '../schemas/friend-room.schema.js';
-import { Injectable, Optional } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { type Model, Types } from 'mongoose';
 
@@ -72,7 +73,7 @@ export class ArenaMatchService {
     @InjectModel(FriendRoom.name)
     private readonly friendRooms: Model<FriendRoom>,
     @Optional() private readonly settings?: ArenaSettingsService,
-    @Optional() private readonly learningActivity?: LearningActivityService,
+    @Optional() @Inject(LearningActivityClient) private readonly learningActivity?: LearningActivityWriter,
   ) {}
 
   /** Tạo một match 1v1 dùng chung cho rank, friend và room. */

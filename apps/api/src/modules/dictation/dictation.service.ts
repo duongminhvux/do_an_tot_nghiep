@@ -2,12 +2,14 @@ import { randomUUID } from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
   Optional,
 } from '@nestjs/common';
 import { dictationLessonXp } from '@repo/shared-types/learning-xp';
-import { LearningActivityService } from '../learning-activity/learning-activity.service.js';
+import { LearningActivityClient } from '../../common/clients/learning-activity-client.js';
+import type { LearningActivityWriter } from '../learning-activity/learning-activity.service.js';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { type Model, Types } from 'mongoose';
@@ -72,7 +74,7 @@ export class DictationService {
     private readonly mediaUploadService: ManagedMediaService,
     private readonly mediaStorage: MediaStorageService,
     private readonly configService: ConfigService,
-    @Optional() private readonly learningActivity?: LearningActivityService,
+    @Optional() @Inject(LearningActivityClient) private readonly learningActivity?: LearningActivityWriter,
   ) {
     this.asrStartPaddingMs = this.readNonNegativeInt('DICTATION_SEGMENT_START_PADDING_MS', 100);
     this.asrEndPaddingMs = this.readNonNegativeInt('DICTATION_SEGMENT_END_PADDING_MS', 150);

@@ -186,6 +186,7 @@ services:
       SERVICE_ROLE: identity
       MONGO_DB_NAME: identity_db
       NOTIFICATION_INTERNAL_URL: http://notification-service:5000
+      LEARNING_INTERNAL_URL: http://learning-service:5000
     volumes:
       - ./storage:/app/storage:ro
     depends_on:
@@ -261,6 +262,7 @@ services:
       SERVICE_ROLE: content
       MONGO_DB_NAME: content_db
       NOTIFICATION_INTERNAL_URL: http://notification-service:5000
+      LEARNING_INTERNAL_URL: http://learning-service:5000
     volumes:
       - ./storage:/app/storage
     depends_on:
@@ -334,6 +336,7 @@ services:
       SERVICE_ROLE: assessment
       MONGO_DB_NAME: assessment_db
       NOTIFICATION_INTERNAL_URL: http://notification-service:5000
+      LEARNING_INTERNAL_URL: http://learning-service:5000
     volumes:
       - ./storage:/app/storage:ro
     depends_on:
@@ -407,6 +410,7 @@ services:
       SERVICE_ROLE: arena
       MONGO_DB_NAME: arena_db
       NOTIFICATION_INTERNAL_URL: http://notification-service:5000
+      LEARNING_INTERNAL_URL: http://learning-service:5000
     volumes:
       - ./storage:/app/storage:ro
     depends_on:
@@ -480,6 +484,7 @@ services:
       SERVICE_ROLE: learning
       MONGO_DB_NAME: learning_db
       NOTIFICATION_INTERNAL_URL: http://notification-service:5000
+      LEARNING_INTERNAL_URL: http://learning-service:5000
     volumes:
       - ./storage:/app/storage:ro
     depends_on:
@@ -553,6 +558,7 @@ services:
       SERVICE_ROLE: media-jobs
       MONGO_DB_NAME: media_db
       NOTIFICATION_INTERNAL_URL: http://notification-service:5000
+      LEARNING_INTERNAL_URL: http://learning-service:5000
     volumes:
       - ./storage:/app/storage
     depends_on:
@@ -626,6 +632,7 @@ services:
       SERVICE_ROLE: ai-import
       MONGO_DB_NAME: ai_import_db
       NOTIFICATION_INTERNAL_URL: http://notification-service:5000
+      LEARNING_INTERNAL_URL: http://learning-service:5000
     volumes:
       - ./storage:/app/storage
     depends_on:
@@ -699,6 +706,7 @@ services:
       SERVICE_ROLE: notification
       MONGO_DB_NAME: notification_db
       NOTIFICATION_INTERNAL_URL: http://notification-service:5000
+      LEARNING_INTERNAL_URL: http://learning-service:5000
     volumes:
       - ./storage:/app/storage:ro
     depends_on:

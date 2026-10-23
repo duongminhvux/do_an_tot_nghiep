@@ -1,99 +1,11 @@
-import { MiniGameModule } from './modules/minigame/minigame.module.js';
-import { LearningActivityModule } from './modules/learning-activity/learning-activity.module.js';
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller.js';
-import { AppService } from './app.service.js';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { MongooseModule } from '@nestjs/mongoose';
-import { UsersModule } from './modules/users/users.module.js';
-import { AuthModule } from './modules/auth/auth.module.js';
-import { GmailModule } from './modules/gmail/gmail.module.js';
-import { HeaderResolver, I18nModule, AcceptLanguageResolver } from 'nestjs-i18n';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { VocabularyModule } from './modules/vocabulary/vocabulary.module.js';
-import { AdminsModule } from './modules/admins/admins.module.js';
-import { UploadModule } from './modules/upload/upload.module.js';
-import { LearningModule } from './modules/learning/learning.module.js';
-import { TtsModule } from './modules/tts/tts.module.js';
-import { AssessmentModule } from './modules/assessment/assessment.module.js';
-import { DictationModule } from './modules/dictation/dictation.module.js';
-import { ActivityLogsModule } from './modules/activity-logs/activity-logs.module.js';
-import { DashboardModule } from './modules/dashboard/dashboard.module.js';
-import { RedisModule } from './common/redis/redis.module.js';
-import { DomainEventsModule } from './common/events/domain-events.module.js';
-import { ArenaModule } from './modules/arena/arena.module.js';
-import { MediaStorageModule } from './common/media/media-storage.module.js';
-import { AudioProcessingModule } from './modules/audio-processing/audio-processing.module.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const rootEnvPath = path.resolve(__dirname, '../../../.env');
-
-// Prioritize source directory so Nest compiler clearing dist during watch mode never triggers ENOENT
-const candidatePaths = [
-  path.resolve(__dirname, '../src/i18n'),
-  path.resolve(process.cwd(), 'src/i18n'),
-  path.resolve(process.cwd(), 'apps/api/src/i18n'),
-  path.join(__dirname, 'i18n'),
-];
-const i18nPath = candidatePaths.find((p) => fs.existsSync(p)) || path.join(__dirname, 'i18n');
-const isDev = process.env.NODE_ENV !== 'production';
-
-@Module({
-  imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-      envFilePath: [
-        rootEnvPath,
-        path.resolve(process.cwd(), '../../.env'),
-        path.resolve(process.cwd(), '.env'),
-      ],
-    }),
-    I18nModule.forRoot({
-      fallbackLanguage: 'vi',
-      loaderOptions: {
-        path: i18nPath,
-        watch: isDev,
-      },
-      resolvers: [
-        new HeaderResolver(['x-custom-lang']),
-        AcceptLanguageResolver,
-      ],
-    }),
-    MongooseModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        uri:
-          configService.get<string>('MONGO_URI') ??
-          'mongodb://127.0.0.1:27017/english-platform',
-        // Transitional safety: keep existing index creation until all Mongoose
-        // indexes have been reviewed into versioned migrations.
-        autoIndex: configService.get<string>('MONGOOSE_AUTO_INDEX') !== 'false',
-      }),
-    }),
-    UsersModule,
-    AdminsModule,
-    AuthModule,
-    GmailModule,
-    VocabularyModule,
-    UploadModule,
-    LearningModule,
-    TtsModule,
-    AssessmentModule,
-    DictationModule,
-    ActivityLogsModule,
-    DashboardModule,
-    RedisModule,
-    DomainEventsModule,
-    LearningActivityModule,
-    MediaStorageModule,
-    AudioProcessingModule,
-    ArenaModule,
-    MiniGameModule,
-  ],
-  controllers: [AppController],
-  providers: [AppService],
-})
-export class AppModule { }
+/**
+ * Legacy compatibility token, NOT a production composition root.
+ * The eight Docker services bootstrap through src/entrypoints/*.ts and
+ * PlatformModule.forService(role, ...) to enforce database ownership.
+ * Do not register every feature here: that would recreate a monolith and
+ * bypass the service-specific wiring.
+ */
+@Module({})
+export class AppModule {}

@@ -35,6 +35,10 @@ export interface RecordActivityInput {
   metadata?: Record<string, unknown>;
 }
 
+export interface LearningActivityWriter {
+  record(input: RecordActivityInput): Promise<boolean>;
+}
+
 export interface DayTotals {
   xp: number;
   count: number;

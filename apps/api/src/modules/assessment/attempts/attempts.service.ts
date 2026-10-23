@@ -2,12 +2,14 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
   Optional,
 } from '@nestjs/common';
 import { toeicAttemptXp } from '@repo/shared-types/learning-xp';
-import { LearningActivityService } from '../../learning-activity/learning-activity.service.js';
+import { LearningActivityClient } from '../../../common/clients/learning-activity-client.js';
+import type { LearningActivityWriter } from '../../learning-activity/learning-activity.service.js';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { CreateAttemptDto } from './dto/create-attempt.dto.js';
@@ -122,7 +124,7 @@ export class AttemptsService {
     @InjectModel(Question.name) private readonly questions: Model<Question>,
     @InjectModel(Passage.name) private readonly passages: Model<Passage>,
     @Optional()
-    private readonly learningActivity?: LearningActivityService,
+    @Inject(LearningActivityClient) private readonly learningActivity?: LearningActivityWriter,
   ) {}
 
   async availableParts(idOrSlug: string) {
