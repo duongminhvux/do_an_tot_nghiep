@@ -321,7 +321,10 @@
     "retry": "Thử lưu lại",
     "question": "Câu",
     "flag": "Đánh dấu",
-    "check": "Kiểm tra đáp án",
+    "check": "Xem đáp án",
+    "your_answer": "Bạn đã chọn",
+    "explanation": "Giải thích",
+    "reveal_hint": "Bạn vẫn có thể đổi lựa chọn. Xem đáp án sẽ khóa câu này.",
     "checking": "Đang kiểm tra…",
     "previous": "Trước",
     "next": "Tiếp",
@@ -374,7 +377,8 @@
     "time_left": "Thời gian còn lại",
     "time_up_title": "Hết giờ làm bài",
     "time_up_desc": "Đang tự động nộp bài của bạn...",
-    "answer_locked": "Đáp án đã chọn không thể thay đổi."
+    "answer_locked": "Bạn đã xem đáp án. Câu này đã khóa và không thể đổi lựa chọn.",
+    "answer_changeable": "Bạn có thể đổi đáp án khi bài thi còn thời gian và chưa nộp."
   },
   "result": {
     "title": "Kết quả bài làm",

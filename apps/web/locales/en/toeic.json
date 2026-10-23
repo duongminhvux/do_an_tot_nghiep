@@ -321,7 +321,10 @@
     "retry": "Retry save",
     "question": "Question",
     "flag": "Flag",
-    "check": "Check answer",
+    "check": "Show answer",
+    "your_answer": "Your choice",
+    "explanation": "Explanation",
+    "reveal_hint": "You can still change your choice. Showing the answer locks this question.",
     "checking": "Checking…",
     "previous": "Previous",
     "next": "Next",
@@ -374,7 +377,8 @@
     "time_left": "Time left",
     "time_up_title": "Time is up",
     "time_up_desc": "Submitting your answers automatically...",
-    "answer_locked": "Your answer is final and cannot be changed."
+    "answer_locked": "The answer has been revealed. This question is locked and your choice cannot be changed.",
+    "answer_changeable": "You can change your answer while time remains and before submitting."
   },
   "result": {
     "title": "Test result",

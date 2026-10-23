@@ -793,7 +793,7 @@ export class AttemptsService {
           q,
           attempt.status === ToeicAttemptStatus.FINISHED,
         );
-        const answer = attempt.answers?.[q._id];
+        const answer = (attempt.revealedAnswers ?? attempt.answers)?.[q._id];
         if (
           attempt.mode === ExamMode.PRACTICE &&
           attempt.status === ToeicAttemptStatus.IN_PROGRESS &&
@@ -920,8 +920,16 @@ export class AttemptsService {
           _id: attempt._id,
           userId: attempt.userId,
           status: ToeicAttemptStatus.IN_PROGRESS,
-          // An answer is final in both modes: it can be chosen only once.
-          [`answers.${dto.questionId}`]: { $exists: false },
+          // Lock only answers whose feedback has been revealed. Legacy
+          // PRACTICE attempts already exposed every previously saved answer.
+          ...(attempt.mode === ExamMode.PRACTICE
+            ? {
+                [`revealedAnswers.${dto.questionId}`]: { $exists: false },
+                ...(attempt.revealedAnswers == null
+                  ? { [`answers.${dto.questionId}`]: { $exists: false } }
+                  : {}),
+              }
+            : {}),
           // Refuse answers once a timed test is past its deadline.
           $or: [
             { expiresAt: { $exists: false } },
@@ -933,6 +941,13 @@ export class AttemptsService {
         [
           {
             $set: {
+              ...(attempt.mode === ExamMode.PRACTICE
+                ? {
+                    revealedAnswers: {
+                      $ifNull: ['$revealedAnswers', { $ifNull: ['$answers', {}] }],
+                    },
+                  }
+                : {}),
               answers: {
                 $mergeObjects: [
                   { $ifNull: ['$answers', {}] },
@@ -1001,7 +1016,31 @@ export class AttemptsService {
     const question = attempt.questionSnapshot.find((q) => q._id === questionId);
     if (!question || !attempt.answers?.[questionId])
       throw new BadRequestException('Save an answer for this question first');
-    return answerFeedback(question, attempt.answers[questionId]);
+    // Old clients already saw this key on save. Keep their answer locked.
+    const existing = (attempt.revealedAnswers ?? attempt.answers)?.[questionId];
+    if (existing)
+      return { ...answerFeedback(question, existing), selectedAnswer: existing };
+    // Read and freeze the answer in the same atomic operation: another tab's
+    // save either wins before this reveal or is refused after it.
+    const updated = await this.attempts.findOneAndUpdate(
+      {
+        _id: attempt._id,
+        userId: attempt.userId,
+        mode: ExamMode.PRACTICE,
+        status: ToeicAttemptStatus.IN_PROGRESS,
+        [`answers.${questionId}`]: { $exists: true },
+      },
+      [{ $set: {
+        revealedAnswers: { $mergeObjects: [
+          { $ifNull: ['$revealedAnswers', {}] },
+          { [questionId]: `$answers.${questionId}` },
+        ] },
+      } }],
+      { updatePipeline: true, returnDocument: 'after' },
+    ).select('revealedAnswers').lean().exec();
+    if (!updated) throw new ConflictException('Attempt is no longer in progress');
+    const selectedAnswer = updated.revealedAnswers![questionId];
+    return { ...answerFeedback(question, selectedAnswer), selectedAnswer };
   }
 
   async submit(userId: string, id: string) {

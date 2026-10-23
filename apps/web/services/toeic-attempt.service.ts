@@ -16,6 +16,7 @@ export function audioPlayKey(identity: AudioIdentity) {
       : `question_${identity.questionId}`;
 }
 export interface AnswerFeedback {
+  selectedAnswer?: string;
   correct: boolean;
   correctAnswer: string;
   explanation?: string;
@@ -107,7 +108,7 @@ export const toeicAttemptService = {
     );
     return normalizeAttempt(response.data.data);
   },
-  /** PRACTICE mode returns the answer key for the saved question. */
+  /** Save a choice without revealing correctness in either mode. */
   async saveAnswer(id: string, questionId: string, answer: string) {
     return (
       await apiClient.patch<{

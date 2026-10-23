@@ -45,7 +45,7 @@ export class Attempt {
   @PgField({ type: PgSchemaDefinition.Types.Mixed, default: {} })
   answers: Record<string, string>;
 
-  @PgField({ type: PgSchemaDefinition.Types.Mixed, default: {} })
+  @Prop({ type: MongooseSchema.Types.Mixed, default: {} })
   audioPlayCounts: Record<string, number>;
 
   @PgField({ type: [String], default: [] })
