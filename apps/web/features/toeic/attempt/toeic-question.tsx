@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Headphones, Loader2, Play, RotateCcw, ZoomIn } from "lucide-react";
+import { Check, Headphones, Lightbulb, Loader2, Play, RotateCcw, X, ZoomIn } from "lucide-react";
 import { isAxiosError } from "axios";
 import {
   audioPlayKey,
@@ -329,7 +329,25 @@ export function ToeicQuestion({
         aria-label={t("attempt.choose_answer")}
         className={compactChoices ? "flex flex-wrap gap-2" : "grid gap-2"}
       >
-        {question.options.map((option) => (
+        {question.options.map((option) => {
+          const selected = answer === option.key;
+          const correct = feedback?.correctAnswer === option.key;
+          const incorrect = Boolean(feedback && selected && !feedback.correct);
+          const choiceColor = correct
+            ? "border-emerald-500 bg-emerald-50 text-emerald-950"
+            : incorrect
+              ? "border-red-400 bg-red-50 text-red-950"
+              : selected
+                ? "border-blue-600 bg-blue-50 text-blue-950"
+                : "border-slate-200 bg-white text-slate-700 enabled:hover:border-blue-300 enabled:hover:bg-slate-50";
+          const letterColor = correct
+            ? "border-emerald-600 bg-emerald-600 text-white"
+            : incorrect
+              ? "border-red-500 bg-red-500 text-white"
+              : selected
+                ? "border-blue-600 bg-blue-600 text-white"
+                : "border-slate-300 text-slate-500";
+          return (
           <button
             key={option.key}
             type="button"
@@ -337,36 +355,56 @@ export function ToeicQuestion({
             aria-checked={answer === option.key}
             disabled={disabled}
             onClick={() => onAnswer(option.key)}
-            className={`flex cursor-pointer items-start gap-3 rounded-lg border bg-white p-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-default ${answer === option.key ? "border-blue-600 bg-blue-50" : "border-slate-200 hover:border-blue-300 hover:bg-slate-50"} ${feedback?.correctAnswer === option.key ? "ring-2 ring-emerald-500" : ""} ${feedback && answer === option.key && !feedback.correct ? "border-red-400 bg-red-50" : ""}`}
+            className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-default ${choiceColor}`}
           >
             <span
-              className={`flex size-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold ${answer === option.key ? "border-blue-600 bg-blue-600 text-white" : "border-slate-300 text-slate-500"}`}
+              className={`flex size-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold ${letterColor}`}
             >
               {option.key}
             </span>
             {!compactChoices && (
               <span className="min-w-0 pt-0.5 leading-6">{option.text}</span>
             )}
+            {(correct || incorrect) && (
+              <span className="ml-auto inline-flex shrink-0 items-center gap-1 self-center text-xs font-semibold">
+                {correct ? <Check className="size-3.5" /> : <X className="size-3.5" />}
+                {t(correct ? "attempt.correct_answer" : "attempt.your_answer")}
+              </span>
+            )}
           </button>
-        ))}
+          );
+        })}
       </div>
       {feedback && (
         <div
           className={`space-y-3 rounded-lg border p-4 text-sm ${feedback.correct ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-red-200 bg-red-50 text-red-900"}`}
           aria-live="polite"
         >
-          <p className="font-semibold">
-            {t(feedback.correct ? "attempt.correct" : "attempt.incorrect")} ·{" "}
-            {t("attempt.correct_answer")}: {feedback.correctAnswer}
+          <p className="flex items-center gap-2 font-semibold">
+            {feedback.correct ? <Check className="size-5" /> : <X className="size-5" />}
+            {t(feedback.correct ? "attempt.correct" : "attempt.incorrect")}
           </p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="rounded-lg border border-current/10 bg-white/70 px-3 py-2">
+              <p className="text-xs opacity-75">{t("attempt.your_answer")}</p>
+              <p className="mt-1 text-lg font-bold">{answer || "—"}</p>
+            </div>
+            <div className="rounded-lg border border-emerald-200 bg-white/70 px-3 py-2 text-emerald-900">
+              <p className="text-xs">{t("attempt.correct_answer")}</p>
+              <p className="mt-1 text-lg font-bold">{feedback.correctAnswer}</p>
+            </div>
+          </div>
           {feedback.explanation && (
-            <p className="whitespace-pre-wrap">{feedback.explanation}</p>
+            <div className="space-y-1 border-t border-current/10 pt-3">
+              <h3 className="flex items-center gap-2 font-semibold"><Lightbulb className="size-4" />{t("attempt.explanation")}</h3>
+              <p className="whitespace-pre-wrap leading-6">{feedback.explanation}</p>
+            </div>
           )}
           {feedback.transcript && (
-            <div>
-              <h3 className="font-semibold">{t("attempt.transcript")}</h3>
-              <p className="whitespace-pre-wrap">{feedback.transcript}</p>
-            </div>
+            <details className="border-t border-current/10 pt-3">
+              <summary className="cursor-pointer font-semibold">{t("attempt.transcript")}</summary>
+              <p className="mt-2 whitespace-pre-wrap leading-6">{feedback.transcript}</p>
+            </details>
           )}
         </div>
       )}

@@ -14,6 +14,7 @@ import {
   Flag,
   Headphones,
   LayoutGrid,
+  LockKeyhole,
   Loader2,
   PanelRightClose,
   PanelRightOpen,
@@ -594,7 +595,8 @@ export function ToeicAttemptShell() {
                                   disabled={
                                     locked ||
                                     busy ||
-                                    Boolean(attempt.answers[question._id])
+                                    (attempt.mode === "PRACTICE" &&
+                                      Boolean(feedback))
                                   }
                                   feedback={feedback}
                                   playbackRate={playbackRate}
@@ -603,11 +605,32 @@ export function ToeicAttemptShell() {
                                     state.selectAnswer(question._id, answer);
                                   }}
                                 />
-                                {!locked &&
+                                {!locked && attempt.mode === "PRACTICE" && !feedback && (
+                                  <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      disabled={busy || !attempt.answers[question._id]}
+                                      onClick={() => void state.checkAnswer(question._id)}
+                                    >
+                                      {state.checkingQuestionId === question._id ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
+                                      {t(state.checkingQuestionId === question._id ? "attempt.checking" : "attempt.check")}
+                                    </Button>
+                                    <p className="flex-1 text-xs leading-5 text-slate-500">{t("attempt.reveal_hint")}</p>
+                                  </div>
+                                )}
+                                {!locked && attempt.mode === "PRACTICE" && feedback && (
+                                  <p className="flex items-center gap-2 text-xs text-slate-500">
+                                    <LockKeyhole className="size-3.5 shrink-0" />
+                                    {t("attempt.answer_locked")}
+                                  </p>
+                                )}
+                                {!locked && attempt.mode === "TEST" &&
                                   attempt.answers[question._id] &&
                                   !feedback && (
                                     <p className="text-xs text-slate-400">
-                                      {t("attempt.answer_locked")}
+                                      {t("attempt.answer_changeable")}
                                     </p>
                                   )}
                               </article>

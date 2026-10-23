@@ -9,7 +9,7 @@ import {
   AudioIdentity,
 } from "@/services/toeic-attempt.service";
 
-// PRACTICE attempts return the key of questions that are already answered.
+// PRACTICE returns keys only for questions whose feedback was revealed.
 function initialFeedback(attempt: ToeicAttempt) {
   const feedback: Record<string, AnswerFeedback> = {};
   if (attempt.mode !== "PRACTICE") return feedback;
@@ -17,6 +17,7 @@ function initialFeedback(attempt: ToeicAttempt) {
     const answer = attempt.answers[q._id];
     if (answer && q.correctAnswer)
       feedback[q._id] = {
+        selectedAnswer: answer,
         correct: answer === q.correctAnswer,
         correctAnswer: q.correctAnswer,
         explanation: q.explanation,
@@ -34,6 +35,7 @@ export function useToeicAttempt(id: string) {
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [checking, setChecking] = useState(false);
+  const [checkingQuestionId, setCheckingQuestionId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<Record<string, AnswerFeedback>>({});
   const pending = useRef(new Map<string, string>());
   const progress = useRef<{
@@ -44,6 +46,7 @@ export function useToeicAttempt(id: string) {
   const queue = useRef<Promise<void>>(Promise.resolve());
   const latest = useRef(attempt);
   const busy = useRef(false);
+  const revealed = useRef<Record<string, AnswerFeedback>>({});
 
   const flush = useCallback(() => {
     if (timer.current) clearTimeout(timer.current);
@@ -53,12 +56,7 @@ export function useToeicAttempt(id: string) {
         setSaving(true);
         try {
           for (const [questionId, answer] of pending.current) {
-            const saved = await api.saveAnswer(id, questionId, answer);
-            if (saved?.feedback)
-              setFeedback((value) => ({
-                ...value,
-                [questionId]: saved.feedback!,
-              }));
+            await api.saveAnswer(id, questionId, answer);
             if (pending.current.get(questionId) === answer)
               pending.current.delete(questionId);
           }
@@ -95,7 +93,9 @@ export function useToeicAttempt(id: string) {
         if (!active) return;
         latest.current = value;
         setAttempt(value);
-        setFeedback(initialFeedback(value));
+        const restored = initialFeedback(value);
+        revealed.current = restored;
+        setFeedback(restored);
         setError(false);
       })
       .catch(() => {
@@ -136,17 +136,17 @@ export function useToeicAttempt(id: string) {
     schedule();
   }
 
-  // An answer is final in both modes; PRACTICE shows its key right away.
+  // Choices stay editable until feedback is revealed or the attempt is locked.
   function selectAnswer(questionId: string, answer: string) {
     const value = latest.current;
     if (busy.current || value?.status !== "IN_PROGRESS") return;
-    if (value.answers[questionId]) return;
+    if (value.mode === "PRACTICE" && revealed.current[questionId]) return;
+    if (value.answers[questionId] === answer) return;
     pending.current.set(questionId, answer);
     change((current) => ({
       ...current,
       answers: { ...current.answers, [questionId]: answer },
     }));
-    if (value.mode === "PRACTICE") void flush().catch(() => {});
   }
 
   function goToQuestion(index: number) {
@@ -178,15 +178,24 @@ export function useToeicAttempt(id: string) {
     if (busy.current || latest.current?.mode !== "PRACTICE") return;
     busy.current = true;
     setChecking(true);
+    setCheckingQuestionId(questionId);
     try {
       await flush();
       const result = await api.check(id, questionId);
+      revealed.current = { ...revealed.current, [questionId]: result };
+      const value = latest.current;
+      if (value && result.selectedAnswer) {
+        const next = { ...value, answers: { ...value.answers, [questionId]: result.selectedAnswer } };
+        latest.current = next;
+        setAttempt(next);
+      }
       setFeedback((value) => ({ ...value, [questionId]: result }));
     } catch {
       setError(true);
     } finally {
       busy.current = false;
       setChecking(false);
+      setCheckingQuestionId(null);
     }
   }
 
@@ -244,6 +253,7 @@ export function useToeicAttempt(id: string) {
     saving,
     submitting,
     checking,
+    checkingQuestionId,
     feedback,
     flush,
     selectAnswer,

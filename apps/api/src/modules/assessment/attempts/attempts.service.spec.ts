@@ -602,40 +602,87 @@ describe.skipIf(!process.env.TOEIC_TEST_MONGO_URI)(
         expect(restored.flaggedQuestions).toEqual([String(q6)]);
         expect(restored.currentQuestionIndex).toBe(1);
         const [answered, unanswered] = restored.questions as any[];
-        // PRACTICE reveals the key of answered questions only; TEST never does.
-        expect(answered.correctAnswer).toBe(
-          mode === ExamMode.PRACTICE ? 'A' : undefined,
-        );
+        // Saving a choice never reveals the key in either mode.
+        expect(answered.correctAnswer).toBeUndefined();
         expect(JSON.stringify(unanswered)).not.toContain('correctAnswer"');
         expect(JSON.stringify(unanswered)).not.toContain('Explanation');
       },
     );
 
-    it.each([ExamMode.TEST, ExamMode.PRACTICE])(
-      'accepts only the first answer to a question in %s',
-      async (mode) => {
-        const id = await start(mode, [5]);
+    it('allows practice revisions until explicit reveal, then persists the lock', async () => {
+        const id = await start(ExamMode.PRACTICE, [5, 6]);
         const saved = await service.saveAnswer(userId, id, {
           questionId: String(q5),
           answer: 'B',
         });
-        if (mode === ExamMode.PRACTICE)
-          expect(saved).toMatchObject({
-            saved: true,
-            feedback: { correct: false, correctAnswer: 'A' },
-          });
-        else expect(saved).toEqual({ saved: true });
-        await expect(
-          service.saveAnswer(userId, id, {
+        expect(saved).toEqual({ saved: true });
+        expect(JSON.stringify((await service.findOne(userId, id)).questions)).not.toContain('correctAnswer');
+        await service.saveAnswer(userId, id, {
             questionId: String(q5),
             answer: 'A',
-          }),
-        ).rejects.toThrow('already been answered');
+          });
+        const checked = await service.checkAnswer(userId, id, String(q5));
+        expect(checked).toMatchObject({ correct: true, correctAnswer: 'A', selectedAnswer: 'A' });
+        expect(await service.checkAnswer(userId, id, String(q5))).toEqual(checked);
+        await expect(service.saveAnswer(userId, id, { questionId: String(q5), answer: 'B' })).rejects.toThrow('already been revealed');
         expect((await service.findOne(userId, id)).answers[String(q5)]).toBe(
-          'B',
+          'A',
         );
-      },
-    );
+        const restored = await service.findOne(userId, id);
+        expect(restored.questions[0].correctAnswer).toBe('A');
+        expect(restored.questions[1].correctAnswer).toBeUndefined();
+        expect((await attempts.collection.findOne({ _id: new Types.ObjectId(id) })).revealedAnswers).toEqual({ [String(q5)]: 'A' });
+        // Revealing one question must not lock another question.
+        await service.saveAnswer(userId, id, { questionId: String(q6), answer: 'A' });
+        await service.saveAnswer(userId, id, { questionId: String(q6), answer: 'B' });
+        expect((await service.findOne(userId, id)).answers[String(q6)]).toBe('B');
+    });
+
+    it('atomically freezes the latest saved choice when reveal races another tab', async () => {
+      const id = await start(ExamMode.PRACTICE, [5]);
+      await service.saveAnswer(userId, id, { questionId: String(q5), answer: 'A' });
+      const [saving, checking] = await Promise.allSettled([
+        service.saveAnswer(userId, id, { questionId: String(q5), answer: 'B' }),
+        service.checkAnswer(userId, id, String(q5)),
+      ]);
+      expect(checking.status).toBe('fulfilled');
+      if (checking.status !== 'fulfilled') throw checking.reason;
+      const restored = await service.findOne(userId, id);
+      expect(checking.value.selectedAnswer).toBe(restored.answers[String(q5)]);
+      expect(checking.value.correct).toBe(restored.answers[String(q5)] === 'A');
+      if (saving.status === 'fulfilled') expect(checking.value.selectedAnswer).toBe('B');
+      await expect(service.saveAnswer(userId, id, { questionId: String(q5), answer: 'A' })).rejects.toThrow('already been revealed');
+    });
+
+    it('keeps legacy auto-revealed answers locked while allowing unexposed questions to be edited', async () => {
+      const id = await start(ExamMode.PRACTICE, [5, 6]);
+      await attempts.collection.updateOne({ _id: new Types.ObjectId(id) }, {
+        $unset: { revealedAnswers: '' }, $set: { answers: { [String(q5)]: 'A' } },
+      });
+      expect((await service.findOne(userId, id)).questions[0].correctAnswer).toBe('A');
+      await expect(service.saveAnswer(userId, id, { questionId: String(q5), answer: 'B' })).rejects.toThrow('already been revealed');
+      await service.saveAnswer(userId, id, { questionId: String(q6), answer: 'A' });
+      await service.saveAnswer(userId, id, { questionId: String(q6), answer: 'B' });
+      const restored = await service.findOne(userId, id);
+      expect(restored.questions[0].correctAnswer).toBe('A');
+      expect(restored.questions[1].correctAnswer).toBeUndefined();
+    });
+
+    it('allows TEST answer revisions, resumes the latest choices and grades the final answer', async () => {
+      const id = await start(ExamMode.TEST, [5, 6]);
+      await service.saveAnswer(userId, id, { questionId: String(q5), answer: 'B' });
+      await service.saveAnswer(userId, id, { questionId: String(q6), answer: 'B' });
+      const saved = await service.saveAnswer(userId, id, { questionId: String(q5), answer: 'A' });
+      expect(saved).toEqual({ saved: true });
+      const restored = await service.findOne(userId, id);
+      expect(restored.answers).toEqual({ [String(q5)]: 'A', [String(q6)]: 'B' });
+      expect(restored.answeredQuestions).toBe(2);
+      expect(JSON.stringify(restored.questions)).not.toContain('correctAnswer');
+      const result = await service.submit(userId, id);
+      expect(result.answers[String(q5)]).toBe('A');
+      expect(result.correctAnswers).toBe(2);
+      await expect(service.saveAnswer(userId, id, { questionId: String(q5), answer: 'B' })).rejects.toThrow();
+    });
 
     it.each([[4], [], [5, 5]].map((parts) => ({ parts })))(
       'rejects unavailable, empty or duplicate Parts: $parts',
@@ -709,6 +756,8 @@ describe.skipIf(!process.env.TOEIC_TEST_MONGO_URI)(
         questionId: String(q3),
         answer: 'B',
       });
+      const saved = await service.findOne(userId, id);
+      expect(JSON.stringify(saved.questions)).not.toMatch(/correctAnswer|Hidden transcript|Passage text/);
       expect(await service.checkAnswer(userId, id, String(q3))).toMatchObject({
         correct: false,
         correctAnswer: 'A',
@@ -1210,6 +1259,12 @@ describe.skipIf(!process.env.TOEIC_TEST_MONGO_URI)(
         service.saveAnswer(userId, id, {
           questionId: String(q6),
           answer: 'A',
+        }),
+      ).rejects.toThrow('Time is up');
+      await expect(
+        service.saveAnswer(userId, id, {
+          questionId: String(q5),
+          answer: 'B',
         }),
       ).rejects.toThrow('Time is up');
       const graded = await service.findOne(userId, id);

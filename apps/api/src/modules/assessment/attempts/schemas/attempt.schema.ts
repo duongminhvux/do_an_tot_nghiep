@@ -47,6 +47,11 @@ export class Attempt {
   @Prop({ type: MongooseSchema.Types.Mixed, default: {} })
   answers: Record<string, string>;
 
+  // Freeze the selected answer when PRACTICE feedback is explicitly requested.
+  // Missing on legacy attempts, which revealed every saved answer immediately.
+  @Prop({ type: MongooseSchema.Types.Mixed, default: {} })
+  revealedAnswers?: Record<string, string>;
+
   @Prop({ type: MongooseSchema.Types.Mixed, default: {} })
   audioPlayCounts: Record<string, number>;
 
