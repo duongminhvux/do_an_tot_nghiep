@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { InjectModel, Schema, SchemaFactory, Prop } from '@nestjs/mongoose';
-import { Model, Schema as MongooseSchema } from 'mongoose';
+import { type Model, Schema as MongooseSchema } from 'mongoose';
 import { createHash } from 'node:crypto';
 import { PdfAiService } from './pdf-ai.service.js';
 

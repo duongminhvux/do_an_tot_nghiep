@@ -57,6 +57,18 @@ function AdminLoginForm() {
       dispatch(setCredentials({ user: profile, accessToken, refreshToken }));
       router.push(`/${locale}`);
     } catch (err: any) {
+      if (err?.response?.status === 404) {
+        setErrorMessage(
+          'Không tìm thấy API đăng nhập admin (404). Kiểm tra NEXT_PUBLIC_API_URL, gateway và identity-service.',
+        );
+        return;
+      }
+      if (!err?.response) {
+        setErrorMessage(
+          'Không kết nối được API. Kiểm tra gateway tại /gateway/health và các container Docker.',
+        );
+        return;
+      }
       const msg =
         err?.response?.data?.message ||
         err?.message ||

@@ -24,6 +24,9 @@ cases={
     '/api/admin/exams/abc/pdf-ai/jobs':'ai_import',
     '/api/admin/pdf-ai':'ai_import',
     '/api/attempts':'assessment',
+    '/api/sessions':'learning',
+    '/api/asr':'media_jobs',
+    '/api/pdf-ai':'ai_import',
     '/api/admin/questions':'assessment',
     '/api/arena':'arena',
     '/api/admin/arena':'arena',
@@ -42,16 +45,18 @@ cases={
     '/api/admin/activity-logs':'notification',
 }
 for path, expected in cases.items():
-    actual=next((svc for pattern,svc in patterns if pattern.match(path)), 'legacy')
+    actual=next((svc for pattern,svc in patterns if pattern.match(path)), None)
     if actual!=expected:raise SystemExit(f'WRONG ROUTE {path}: {actual}, expected {expected}')
 assert 'location ^~ /socket.io/' in nginx
 assert 'proxy_pass http://arena;' in nginx
 assert 'location ^~ /media/' in nginx
-assert 'location / { proxy_pass http://legacy; }' in nginx
+assert 'upstream legacy' not in nginx
+assert 'location / { return 404; }' in nginx
+assert 'location ^~ /api/_internal/ { return 404; }' in nginx
 # Internal identity route must not be exposed by public gateway.
 assert not any(pat.match('/api/_internal/identity/introspect') for pat,_ in patterns)
-role_src=(ROOT/'apps/api/src/service-roles.module.ts').read_text()
+role_src='\n'.join((ROOT/'apps/api/src/entrypoints'/f'{name}.ts').read_text() for name in ('identity','content','assessment','arena','learning','media-jobs','ai-import','notification'))
 for role in ('identity','content','assessment','arena','learning','media-jobs','ai-import','notification'):
-    assert re.search(r'^\s*[\'\"]?'+re.escape(role)+r'[\'\"]?\s*:',role_src,re.M),role
-assert 'legacy: [AppModule]' in role_src, 'Legacy fallback must keep old controllers'
-print('Gateway route smoke: PASS (%d HTTP routes, Socket.IO, media, legacy)'%len(cases))
+    assert f"bootstrapService('{role}'" in role_src, role
+assert 'legacy' not in role_src
+print('Gateway route smoke: PASS (%d HTTP routes, Socket.IO, media, no legacy)'%len(cases))

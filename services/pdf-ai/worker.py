@@ -7,7 +7,6 @@ import time
 import uuid
 import app as pdf_app
 from rabbit_queue import connect, publish, QUEUE, RETRY
-from gpu_lease import gpu_lease
 
 logging.basicConfig(level=logging.INFO)
 LOG = logging.getLogger('qwen-worker')
@@ -31,11 +30,10 @@ def process(job_id: str):
             raise ValueError('Unexpected input filename')
         files[name] = (directory / (name + '.pdf')).read_bytes()
     pdf_app.jobs[job_id] = state
-    with gpu_lease('qwen'):
-        if meta.get('bundle'):
-            pdf_app.run_job(job_id, b'', None, files, int(meta['test_number']))
-        else:
-            pdf_app.run_job(job_id, files['file'], files.get('answers'))
+    if meta.get('bundle'):
+        pdf_app.run_job(job_id, b'', None, files, int(meta['test_number']))
+    else:
+        pdf_app.run_job(job_id, files['file'], files.get('answers'))
     final = pdf_app.read_saved_job(job_id)
     return final is not None and final.get('state') == 'completed'
 

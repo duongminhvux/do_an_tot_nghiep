@@ -1,7 +1,7 @@
 import { ConflictException, Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { WsException } from '@nestjs/websockets';
-import { Model } from 'mongoose';
+import type { Model } from 'mongoose';
 import { ArenaSettings } from './arena-settings.schema.js';
 import { ARENA_DEFAULTS } from './arena-settings.defaults.js';
 import { UpdateArenaSettingsDto } from './arena-admin.dto.js';

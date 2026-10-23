@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { type HydratedDocument, Types } from 'mongoose';
 import { VocabularyGroup } from '../groups/vocabulary-group.schema.js';
 
 export type CollectionDocument = HydratedDocument<Collection>;

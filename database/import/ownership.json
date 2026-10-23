@@ -1,0 +1,173 @@
+{
+  "version": "v1",
+  "legacyDatabase": "english-platform",
+  "databases": {
+    "identity": "identity_db",
+    "content": "content_db",
+    "assessment": "assessment_db",
+    "arena": "arena_db",
+    "learning": "learning_db",
+    "media-jobs": "media_db",
+    "ai-import": "ai_import_db",
+    "notification": "notification_db"
+  },
+  "collections": {
+    "identity": [
+      "users",
+      "admins"
+    ],
+    "content": [
+      "words",
+      "vocabularygroups",
+      "collections",
+      "lessons",
+      "sections",
+      "lessonwords",
+      "dictationtopics",
+      "dictationsections",
+      "dictationlessons",
+      "dictationsegments",
+      "dictationprogresses",
+      "youtubelessons"
+    ],
+    "assessment": [
+      "exams",
+      "examgroups",
+      "questions",
+      "passages",
+      "passagegroups",
+      "attempts",
+      "attemptanswers"
+    ],
+    "arena": [
+      "arenasettings",
+      "arenainvitations",
+      "arenamatches",
+      "arenamatchplayers",
+      "arenamatchquestions",
+      "arenaplayeranswers",
+      "arenaprofiles",
+      "arenaratinghistories",
+      "arenarooms",
+      "friendrooms"
+    ],
+    "learning": [
+      "userdailyactivities",
+      "userlessonprogresses",
+      "userlessonwords",
+      "userwordreviews",
+      "learningsessions",
+      "learningsessionwords",
+      "usersavedwords",
+      "vocabularyfolders",
+      "gamedefinitions",
+      "minigameresults"
+    ],
+    "media-jobs": [
+      "audio_jobs",
+      "asr_jobs",
+      "media_assets",
+      "system_settings"
+    ],
+    "ai-import": [
+      "pdf_ai_correction_events"
+    ],
+    "notification": [
+      "activitylogs"
+    ]
+  },
+  "projections": {
+    "users": {
+      "arena": [
+        "_id",
+        "username",
+        "email",
+        "avatarUrl",
+        "isBanned",
+        "isDeleted",
+        "createdAt",
+        "updatedAt"
+      ],
+      "learning": [
+        "_id",
+        "username",
+        "email",
+        "avatarUrl",
+        "isBanned",
+        "isDeleted",
+        "createdAt",
+        "updatedAt"
+      ],
+      "notification": [
+        "_id",
+        "username",
+        "email",
+        "avatarUrl",
+        "isDeleted",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "words": {
+      "identity": "*",
+      "arena": "*",
+      "learning": "*",
+      "media-jobs": "*"
+    },
+    "collections": {
+      "identity": "*",
+      "learning": "*"
+    },
+    "lessons": {
+      "identity": "*",
+      "learning": "*"
+    },
+    "lessonwords": {
+      "identity": "*",
+      "learning": "*"
+    },
+    "sections": {
+      "learning": "*"
+    },
+    "exams": {
+      "learning": "*",
+      "ai-import": "*"
+    },
+    "attempts": {
+      "learning": "*"
+    },
+    "activitylogs": {
+      "learning": "*"
+    },
+    "userlessonprogresses": {
+      "identity": "*"
+    },
+    "userlessonwords": {
+      "identity": "*"
+    },
+    "userwordreviews": {
+      "identity": "*"
+    },
+    "learningsessions": {
+      "identity": "*"
+    },
+    "userdailyactivities": {
+      "identity": "*"
+    },
+    "questions": {
+      "media-jobs": "*"
+    },
+    "passages": {
+      "media-jobs": "*"
+    },
+    "passagegroups": {
+      "media-jobs": "*"
+    }
+  },
+  "ignoredLegacyCollections": [
+    "_import_metadata",
+    "domain_outbox",
+    "processed_domain_events",
+    "schema_migrations"
+  ]
+}

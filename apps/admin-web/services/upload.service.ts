@@ -42,7 +42,7 @@ export const uploadService = {
       });
       return res.data;
     } catch (err) {
-      console.warn('Could not delete Cloudinary asset:', err);
+      console.warn('Could not delete media asset:', err);
     }
   },
 };

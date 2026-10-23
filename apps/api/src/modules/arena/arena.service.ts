@@ -2,7 +2,7 @@ import { ArenaSettingsService } from './admin/arena-settings.service.js';
 import { ARENA_DEFAULTS } from './admin/arena-settings.defaults.js';
 import { Injectable, Optional } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { type Model, Types } from 'mongoose';
 import { ArenaReadService } from './arena-read.service.js';
 import {
   ArenaProfile,

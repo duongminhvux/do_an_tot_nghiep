@@ -48,7 +48,7 @@ export function EditCollectionDialog({
 
   // Track original cover URL from database
   const initialCoverUrl = useRef<string>('');
-  // Track temporarily uploaded Cloudinary URLs during this edit session
+  // Track temporarily uploaded managed media URLs during this edit session
   const tempUploadedUrls = useRef<Set<string>>(new Set());
 
   const cleanupTempUploads = () => {
@@ -61,7 +61,7 @@ export function EditCollectionDialog({
   };
 
   const handleCancelOrClose = () => {
-    // 1. Delete all newly uploaded temp images from Cloudinary
+    // 1. Delete all newly uploaded temp images from managed media
     cleanupTempUploads();
     // 2. Rollback/restore coverUrl and other fields to original backup
     setCoverUrl(initialCoverUrl.current);
@@ -110,11 +110,11 @@ export function EditCollectionDialog({
       return collectionService.update(collection._id, data);
     },
     onSuccess: () => {
-      // If collection originally had an image and it was replaced or removed, delete the old image from Cloudinary
+      // If collection originally had an image and it was replaced or removed, delete the old image from managed media
       if (
         initialCoverUrl.current &&
         initialCoverUrl.current !== coverUrl &&
-        initialCoverUrl.current.includes('cloudinary.com')
+        !initialCoverUrl.current.startsWith('data:')
       ) {
         uploadService.deleteFile(initialCoverUrl.current);
       }
@@ -142,7 +142,7 @@ export function EditCollectionDialog({
       setErrorMessage(null);
       const res = await uploadService.uploadFile(file);
       if (res?.url) {
-        // If user already uploaded another temp image in this session, delete it immediately from Cloudinary!
+        // If user already uploaded another temp image in this session, delete it immediately from managed media!
         tempUploadedUrls.current.forEach((prevUrl) => {
           if (prevUrl !== res.url) {
             uploadService.deleteFile(prevUrl);

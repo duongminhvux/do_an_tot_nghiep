@@ -1,22 +1,31 @@
-FROM node:24-bookworm-slim
-
-ENV PNPM_HOME=/pnpm \
-    PATH=/pnpm:$PATH
-
+# syntax=docker/dockerfile:1.7
+# All NestJS entrypoints are compiled ONCE into one runtime image,
+# then run as isolated Compose processes with distinct DBs and service roles.
+FROM node:24-bookworm-slim AS deps
+ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH
 RUN corepack enable && corepack prepare pnpm@11.25.0 --activate
-
 WORKDIR /app
+# Identical dependency stage for all Node services. BuildKit caches pnpm once.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY apps/api/package.json apps/api/package.json
+COPY apps/web/package.json apps/web/package.json
+COPY apps/admin-web/package.json apps/admin-web/package.json
+COPY packages/shared-types/package.json packages/shared-types/package.json
+COPY packages/ui/package.json packages/ui/package.json
+COPY packages/eslint-config/package.json packages/eslint-config/package.json
+COPY packages/typescript-config/package.json packages/typescript-config/package.json
+RUN --mount=type=cache,target=/pnpm/store,sharing=locked \
+    pnpm config set store-dir /pnpm/store \
+    && pnpm config set fetch-retries 5 \
+    && pnpm config set fetch-timeout 180000 \
+    && pnpm config set network-concurrency 3 \
+    && pnpm install --frozen-lockfile
 
+FROM deps AS application
 COPY . .
-
-RUN pnpm install --frozen-lockfile \
-    && pnpm --filter api build
-
+RUN pnpm --dir apps/api exec tsc -p tsconfig.docker.json \
+    && mkdir -p apps/api/dist/i18n \
+    && cp -r apps/api/src/i18n/. apps/api/dist/i18n/
 ENV NODE_ENV=production
-
 EXPOSE 5000
-
-HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=5 \
-  CMD node -e "const p=process.env.PORT||5000; fetch('http://127.0.0.1:'+p+'/api/health').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))"
-
-CMD ["pnpm", "--filter", "api", "start:prod"]
+CMD ["node", "apps/api/dist/entrypoints/identity.js"]

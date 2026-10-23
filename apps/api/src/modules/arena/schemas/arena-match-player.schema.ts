@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { type HydratedDocument, Types } from 'mongoose';
 import { ArenaFriendMode } from './arena-match.schema.js';
 
 export type ArenaMatchPlayerDocument = HydratedDocument<ArenaMatchPlayer>;

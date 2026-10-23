@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, Optional } from '@nestjs/common';
 import { XP } from '@repo/shared-types/learning-xp';
 import { LearningActivityService } from '../../learning-activity/learning-activity.service.js';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { type Model, Types } from 'mongoose';
 import { MiniGameResult } from '../schemas/minigame-result.schema.js';
 import { MiniGameType } from '../minigame.types.js';
 import type { CreateMiniGameResultDto } from '../dto/create-minigame-result.dto.js';

@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, PipelineStage, Types } from 'mongoose';
+import { type Model, type PipelineStage, Types } from 'mongoose';
 import { MiniGameResult } from '../schemas/minigame-result.schema.js';
 import { MiniGameType } from '../minigame.types.js';
 import {

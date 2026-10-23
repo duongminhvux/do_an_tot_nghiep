@@ -31,15 +31,12 @@ import {
   LearningSessionWordSchema,
 } from './sessions/schemas/learning-session-word.schema.js';
 
-import { VocabularyModule } from '../vocabulary/vocabulary.module.js';
+import { VocabularyReadModelsModule } from '../vocabulary/vocabulary-read-models.module.js';
 import { SavedWordsModule } from './saved-words/saved-words.module.js';
-import { ActivityLogsModule } from '../activity-logs/activity-logs.module.js';
 
 @Module({
   imports: [
-    VocabularyModule,
-    SavedWordsModule,
-    ActivityLogsModule,
+    VocabularyReadModelsModule,
     MongooseModule.forFeature([
       {
         name: UserLessonProgress.name,

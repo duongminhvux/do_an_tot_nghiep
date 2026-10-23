@@ -5,7 +5,6 @@ import {
   ArenaSettings,
   ArenaSettingsSchema,
 } from './admin/arena-settings.schema.js';
-import { ActivityLogsModule } from '../activity-logs/activity-logs.module.js';
 import { FriendRoom, FriendRoomSchema } from './schemas/friend-room.schema.js';
 import { ArenaFriendRoomService } from './friendly/arena-friend-room.service.js';
 import { Module } from '@nestjs/common';
@@ -57,7 +56,6 @@ import { ArenaRatingService } from './rating/arena-rating.service.js';
 @Module({
   imports: [
     ServiceJwtModule,
-    ActivityLogsModule,
     MongooseModule.forFeature([
       { name: ArenaSettings.name, schema: ArenaSettingsSchema },
       { name: FriendRoom.name, schema: FriendRoomSchema },

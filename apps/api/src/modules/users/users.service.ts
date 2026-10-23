@@ -3,7 +3,7 @@ import { CreateUserDto } from './dto/create-user.dto.js';
 import { UpdateProfileDto } from './dto/update-profile.dto.js';
 import { InjectModel } from '@nestjs/mongoose';
 import { AuthProvider, User, UserDocument } from './schema/user.schema.js';
-import { Model, UpdateQuery, isValidObjectId, Types } from 'mongoose';
+import { type Model, type UpdateQuery, isValidObjectId, Types } from 'mongoose';
 import { I18nService } from 'nestjs-i18n';
 import { QueryAdminUserDto } from './dto/query-admin-user.dto.js';
 import { CreateAdminUserDto, UpdateAdminUserDto } from './dto/create-admin-user.dto.js';

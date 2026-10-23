@@ -7,7 +7,7 @@ import {
 import { XP } from '@repo/shared-types/learning-xp';
 import { LearningActivityService } from '../../learning-activity/learning-activity.service.js';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { type Model, Types } from 'mongoose';
 import {
   LearningSession,
   LearningSessionDocument,
@@ -70,7 +70,6 @@ export class SessionsService {
     private dailyActivityModel: Model<UserDailyActivityDocument>,
     private readonly i18n: I18nService,
     private readonly activityLogsService: ActivityLogsService,
-    @Optional() private readonly learningActivity?: LearningActivityService,
   ) {}
 
   /**
@@ -435,7 +434,7 @@ export class SessionsService {
       });
     }
 
-    this.activityLogsService.log({
+    void this.activityLogsService.log({
       userId: String(session.userId),
       action: ActivityAction.VOCABULARY_LEARN,
       category: ActivityCategory.VOCABULARY,
@@ -449,7 +448,7 @@ export class SessionsService {
         completedWords: session.completedWords,
         durationSeconds,
       },
-    });
+    }).catch(err => this.activityLogsService.reportError('activity log',err));
 
     return session;
   }

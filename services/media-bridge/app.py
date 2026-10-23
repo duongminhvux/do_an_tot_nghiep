@@ -12,7 +12,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 app = FastAPI(title="internal-media-bridge", docs_url=None, redoc_url=None)
-ENDPOINT = os.getenv('S3_ENDPOINT', 'http://minio:9000')
+ENDPOINT = os.getenv('S3_ENDPOINT', 'http://objectstore:9000')
 BUCKET = os.getenv('S3_BUCKET', 'vocalearn-media')
 TOKEN = os.getenv('MEDIA_INTERNAL_TOKEN', '')
 if not TOKEN or len(TOKEN) < 24 or TOKEN.upper().startswith('REPLACE_'):

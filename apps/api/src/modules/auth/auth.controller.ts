@@ -15,8 +15,8 @@ import { ResetPasswordDto } from './dto/reset-password.dto.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { I18nService } from 'nestjs-i18n';
 import { GoogleOauthGuard } from './guards/google-oauth.guard.js';
-import { ActivityLogsService } from '../activity-logs/activity-logs.service.js';
-import { ActivityAction, ActivityCategory } from '../activity-logs/schemas/activity-log.schema.js';
+import { NotificationClient } from '../../common/clients/notification-client.js';
+import { ActivityAction, ActivityCategory } from '../../common/contracts/activity.types.js';
 
 @Controller('auth')
 export class AuthController {
@@ -26,7 +26,7 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
     private readonly i18n: I18nService,
-    private readonly activityLogsService: ActivityLogsService,
+    private readonly activityLogsService: NotificationClient,
   ) { }
 
   setCookie(res: express.Response, refresh_token: string) {
@@ -74,7 +74,7 @@ export class AuthController {
     const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip;
     const userAgent = req.headers['user-agent'];
 
-    this.activityLogsService.log({
+    void this.activityLogsService.log({
       userId: String(user._id),
       userEmail: user.email,
       userName: user.username,
@@ -84,7 +84,7 @@ export class AuthController {
       metadata: { method: 'LOCAL' },
       ipAddress: ip,
       userAgent,
-    });
+    }).catch(err => this.activityLogsService.reportError('activity log',err));
 
     return {
       message: await this.i18n.t('auth.LOGIN_SUCCESSFULLY'),
@@ -114,7 +114,7 @@ export class AuthController {
     const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip;
     const userAgent = req.headers['user-agent'];
 
-    this.activityLogsService.log({
+    void this.activityLogsService.log({
       userId: loginResult.profile._id,
       userEmail: loginResult.profile.email,
       userName: loginResult.profile.username,
@@ -124,7 +124,7 @@ export class AuthController {
       metadata: { method: 'GOOGLE' },
       ipAddress: ip,
       userAgent,
-    });
+    }).catch(err => this.activityLogsService.reportError('activity log',err));
 
     return res.redirect(`${frontendUrl}/auth/callback?token=${loginResult.accessToken}`);
   }
@@ -168,7 +168,7 @@ export class AuthController {
     const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip;
     const userAgent = req.headers['user-agent'];
 
-    this.activityLogsService.log({
+    void this.activityLogsService.log({
       userId: authUser?._id,
       userEmail: authUser?.email,
       userName: authUser?.username,
@@ -177,7 +177,7 @@ export class AuthController {
       description: authUser?.email ? `Đăng xuất khỏi hệ thống (${authUser.email})` : `Đăng xuất khỏi hệ thống`,
       ipAddress: ip,
       userAgent,
-    });
+    }).catch(err => this.activityLogsService.reportError('activity log',err));
 
     return {
       message: await this.i18n.t('auth.LOGOUT_SUCCESSFULLY'),

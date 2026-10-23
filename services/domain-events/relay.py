@@ -32,16 +32,17 @@ def main():
                     '$inc': {'attempts': 1}},
                     sort=[('occurredAt', 1)], return_document=ReturnDocument.AFTER)
                 if event is None:
-                    time.sleep(1)
+                    # Pump Pika heartbeats even when the MongoDB outbox is empty.
+                    conn.sleep(1)
                     continue
                 payload = {k: event[k] for k in ('eventId', 'type', 'aggregateId', 'payload', 'version', 'source')}
                 payload['occurredAt'] = event['occurredAt'].isoformat()
                 body = json.dumps(payload, ensure_ascii=False).encode('utf8')
-                ok = ch.basic_publish(exchange='domain.events', routing_key=event['type'], body=body,
+                # Pika BlockingChannel.basic_publish returns None on success;
+                # confirm_delivery() reports failures via exceptions.
+                ch.basic_publish(exchange='domain.events', routing_key=event['type'], body=body,
                     mandatory=True, properties=pika.BasicProperties(delivery_mode=2,
                         content_type='application/json', message_id=event['eventId']))
-                if not ok:
-                    raise RuntimeError('RabbitMQ publish not confirmed')
                 COL.update_one({'_id': event['_id'], 'owner': OWNER, 'state': 'publishing'},
                     {'$set': {'state': 'delivered', 'deliveredAt': datetime.now(timezone.utc)},
                      '$unset': {'owner': '', 'claimUntil': ''}})

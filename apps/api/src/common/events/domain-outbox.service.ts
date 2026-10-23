@@ -23,7 +23,7 @@ export class DomainOutboxService {
     await this.connection.db.collection('domain_outbox').insertOne({
       _id: eventId as any,
       eventId, type, aggregateId, payload,
-      version: 1, source: process.env.SERVICE_ROLE || 'legacy',
+      version: 1, source: process.env.SERVICE_ROLE || 'unset',
       occurredAt: new Date(), state: 'pending', attempts: 0,
     }, session ? { session } : {});
     return eventId;

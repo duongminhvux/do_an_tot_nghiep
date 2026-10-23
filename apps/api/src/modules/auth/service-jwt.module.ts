@@ -57,17 +57,12 @@ export class ServiceJwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   }
 }
 
-// Preserve the original JWT strategy/guard in the legacy monolith during a
-// gateway-first migration. Otherwise two strategies named 'jwt' compete and
-// existing logins may fail after upgrading the code without switching modes.
-const isolatedRole = Boolean(process.env.SERVICE_ROLE && process.env.SERVICE_ROLE !== 'legacy');
-
 @Global()
 @Module({
   imports: [PassportModule.register({defaultStrategy:'jwt'}), JwtModule.register({})],
   providers: [
     IdentityTokenVerifier,
-    ...(isolatedRole ? [ServiceJwtStrategy, { provide: APP_GUARD, useClass: JwtAuthGuard }] : []),
+    ServiceJwtStrategy, { provide: APP_GUARD, useClass: JwtAuthGuard },
   ],
   exports: [IdentityTokenVerifier],
 })

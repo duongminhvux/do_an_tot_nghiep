@@ -3,7 +3,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { createHash, randomUUID } from 'node:crypto';
-import { Model, Types } from 'mongoose';
+import { type Model, Types } from 'mongoose';
 import { AudioGenerationStatus, AudioSourceType, GeneratedAudioMetadata } from '../../common/media/generated-audio.schema.js';
 import { MediaStorageService } from '../../common/media/media-storage.service.js';
 import { TtsService } from '../tts/tts.service.js';

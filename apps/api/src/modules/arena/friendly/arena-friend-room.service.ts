@@ -4,7 +4,7 @@ import { Word } from '../../vocabulary/words/word.schema.js';
 import { Injectable, Optional } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { WsException } from '@nestjs/websockets';
-import { Model, Types } from 'mongoose';
+import { type Model, Types } from 'mongoose';
 import { randomInt, randomUUID } from 'node:crypto';
 import {
   FriendRoom,

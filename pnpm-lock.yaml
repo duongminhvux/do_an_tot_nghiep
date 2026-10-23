@@ -216,9 +216,6 @@ importers:
       class-validator:
         specifier: ^0.15.1
         version: 0.15.1
-      cloudinary:
-        specifier: ^2.11.0
-        version: 2.11.0
       cookie-parser:
         specifier: ^1.4.7
         version: 1.4.7

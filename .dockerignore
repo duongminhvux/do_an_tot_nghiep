@@ -26,3 +26,10 @@ storage/*
 !storage/.gitkeep
 
 backups
+
+# Reusable vocabulary import dataset is not needed to run/build the services
+combined_vocab.json
+**/*.archive
+**/*.archive.gz
+**/*.dump
+**/*.sha256

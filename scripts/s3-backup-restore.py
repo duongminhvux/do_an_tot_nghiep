@@ -44,9 +44,9 @@ def client():
     except ImportError as e:
         raise SystemExit('Install Python package: python -m pip install boto3') from e
     endpoint = os.environ.get('S3_BACKUP_ENDPOINT') or os.environ.get('S3_ENDPOINT', 'http://localhost:9000')
-    # .env normally contains Docker DNS 'minio'. Host-side backups should use
-    # the loopback port published by infra/compose/storage.yml instead.
-    if not os.environ.get('S3_BACKUP_ENDPOINT') and urlsplit(endpoint).hostname == 'minio':
+    # .env normally contains Docker DNS 'objectstore'. Host-side backups should use
+    # the loopback port published by root docker-compose.yml instead.
+    if not os.environ.get('S3_BACKUP_ENDPOINT') and urlsplit(endpoint).hostname in ('minio','objectstore'):
         endpoint = 'http://127.0.0.1:9000'
     access_key = os.environ.get('S3_ACCESS_KEY')
     secret_key = os.environ.get('S3_SECRET_KEY')
@@ -139,7 +139,7 @@ def restore(s3, folder: Path, accept: bool):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='MinIO/S3 backup and non-destructive restore')
+    parser = argparse.ArgumentParser(description='S3-compatible backup and non-destructive restore')
     parser.add_argument('action', choices=('backup','restore'))
     parser.add_argument('--env-file',default='.env')
     parser.add_argument('--out', default='backups/media')

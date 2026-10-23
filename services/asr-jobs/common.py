@@ -33,8 +33,8 @@ def broker():
     return c,ch
 
 def publish(ch,job_id,attempt=0,queue=QUEUE):
-    if not ch.basic_publish(exchange='',routing_key=queue,
+    # Publisher confirms raise on failure; successful basic_publish returns None.
+    ch.basic_publish(exchange='',routing_key=queue,
         body=json.dumps({'jobId':job_id,'attempt':attempt}).encode('utf8'),mandatory=True,
         properties=pika.BasicProperties(delivery_mode=2, content_type='application/json',
-            message_id=job_id+':'+str(attempt))):
-        raise RuntimeError('RabbitMQ message not confirmed')
+            message_id=job_id+':'+str(attempt)))
