@@ -1,12 +1,4 @@
-import {
-  Body,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Query,
-} from '@nestjs/common';
+import { Body, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { AdminController } from '../../auth/decorators/admin-controller.decorator.js';
 import { ExamsService } from './exams.service.js';
 import { CreateExamDto } from './dto/create-exam.dto.js';
@@ -39,18 +31,12 @@ export class AdminExamsController {
   }
 
   @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body() updateExamDto: UpdateExamDto,
-  ) {
+  update(@Param('id') id: string, @Body() updateExamDto: UpdateExamDto) {
     return this.examsService.update(id, updateExamDto);
   }
 
   @Patch(':id/active')
-  toggleActive(
-    @Param('id') id: string,
-    @Body() body: UpdateExamDto,
-  ) {
+  toggleActive(@Param('id') id: string, @Body() body: UpdateExamDto) {
     return this.examsService.toggleActive(id, body.isActive);
   }
 

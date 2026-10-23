@@ -1,10 +1,15 @@
 "use client";
-import Link from "next/link";
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Crosshair, Loader2 } from "lucide-react";
+import { Crosshair } from "lucide-react";
+import {
+  ErrorState,
+  LoadingState,
+  PageHeader,
+  PageShell,
+} from "@/components/ui/page";
 import { wordShooterService, gameErrorCode } from "./service";
 import { WordShooterSetup } from "./components/word-shooter-setup";
 import { WordShooterGame } from "./components/word-shooter-game";
@@ -71,43 +76,21 @@ export function WordShooterPage() {
       setStarting(false);
     }
   };
-  return (
-    <main
-      className={
-        session
-          ? "flex h-[calc(100dvh-3.5rem)] min-h-0 w-full min-w-0 flex-col gap-2 overflow-hidden p-2 sm:p-3"
-          : "w-full min-w-0 space-y-4 p-4 sm:p-6"
-      }
-    >
-      {!session && (
-        <Link
-          href={"/" + locale + "/games"}
-          className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-indigo-600"
-        >
-          <ArrowLeft className="size-4" />
-          {t("back_games")}
-        </Link>
-      )}
-      <header className="flex shrink-0 items-center gap-2">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white">
-          <Crosshair className="size-4" />
-        </div>
-        <div>
-          <h1 className="text-base font-bold text-slate-900 sm:text-lg">
-            {t("shooter_title")}
-          </h1>
-          <p className="text-xs text-slate-500">{t("shooter_subtitle")}</p>
-        </div>
-      </header>
-      {error && (
-        <p
-          role="alert"
-          className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700"
-        >
-          {error}
-        </p>
-      )}
-      {session ? (
+  if (session)
+    return (
+      <main className="flex h-[calc(100dvh-3.5rem)] min-h-0 w-full min-w-0 flex-col gap-2 overflow-hidden bg-background p-2 sm:p-3">
+        <header className="flex shrink-0 items-center gap-2.5">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+            <Crosshair className="size-4" />
+          </span>
+          <div className="min-w-0">
+            <h1 className="truncate text-base font-semibold text-slate-900">
+              {t("shooter_title")}
+            </h1>
+            <p className="truncate text-xs text-slate-500">{t("shooter_subtitle")}</p>
+          </div>
+        </header>
+        {error && <ErrorState message={error} className="shrink-0 py-2" />}
         <WordShooterGame
           key={session.key}
           session={session.data}
@@ -119,27 +102,25 @@ export function WordShooterPage() {
             setError("");
           }}
         />
-      ) : sources.isPending ? (
-        <div
-          role="status"
-          className="flex min-h-64 items-center justify-center gap-2 text-slate-500"
-        >
-          <Loader2 className="size-5 animate-spin" />
-          {t("loading_sources")}
-        </div>
+      </main>
+    );
+  return (
+    <PageShell>
+      <PageHeader
+        back={{ href: "/" + locale + "/games", label: t("back_games") }}
+        icon={Crosshair}
+        title={t("shooter_title")}
+        description={t("shooter_subtitle")}
+      />
+      {error && <ErrorState message={error} />}
+      {sources.isPending ? (
+        <LoadingState label={t("loading_sources")} />
       ) : sources.isError ? (
-        <div
-          role="alert"
-          className="rounded-xl border border-rose-200 bg-white p-6"
-        >
-          <p className="text-sm text-rose-600">{t("sources_failed")}</p>
-          <button
-            onClick={() => void sources.refetch()}
-            className="mt-3 text-sm font-semibold text-indigo-600"
-          >
-            {t("retry")}
-          </button>
-        </div>
+        <ErrorState
+          message={t("sources_failed")}
+          onRetry={() => void sources.refetch()}
+          retryLabel={t("retry")}
+        />
       ) : (
         <WordShooterSetup
           sources={sources.data!}
@@ -150,6 +131,6 @@ export function WordShooterPage() {
           onStart={() => void start()}
         />
       )}
-    </main>
+    </PageShell>
   );
 }

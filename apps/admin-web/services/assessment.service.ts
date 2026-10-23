@@ -8,6 +8,8 @@ import {
   CreateExamDto,
   ExamItem,
   ExamListResponse,
+  ExamAttemptList,
+  ExamAttemptItem,
   PassageGroupItem,
   PassageItem,
   QueryExamDto,
@@ -21,6 +23,35 @@ import {
 } from "@/types";
 
 export const examService = {
+  getAttempts: async (
+    examId: string,
+    params?: {
+      page?: number;
+      limit?: number;
+      status?: string;
+      mode?: string;
+      userId?: string;
+    },
+  ) => {
+    return (
+      await apiClient.get<ApiResponse<ExamAttemptList>>(
+        `/admin/exams/${examId}/attempts`,
+        { params },
+      )
+    ).data;
+  },
+  getAttempt: async (id: string) => {
+    return (
+      await apiClient.get<ApiResponse<ExamAttemptItem>>(`/admin/attempts/${id}`)
+    ).data;
+  },
+  getAttemptStats: async (examId: string) => {
+    return (
+      await apiClient.get<ApiResponse<Record<string, unknown>>>(
+        `/admin/exams/${examId}/attempts/stats`,
+      )
+    ).data;
+  },
   getAll: async (params?: QueryExamDto) => {
     const res = await apiClient.get<ApiResponse<ExamListResponse>>(
       "/admin/exams",
@@ -99,10 +130,13 @@ export const examService = {
   },
 
   getSavedImportQuestions: async (examId: string) => {
-    const res = await apiClient.get<ApiResponse<Array<{part: number; order: number; importBatchId?: string}>>>(
-      `/admin/questions/exam/${examId}`,
-    );
-    if (!Array.isArray(res.data.data)) throw new Error("Không kiểm tra được các Part đã lưu.");
+    const res = await apiClient.get<
+      ApiResponse<
+        Array<{ part: number; order: number; importBatchId?: string }>
+      >
+    >(`/admin/questions/exam/${examId}`);
+    if (!Array.isArray(res.data.data))
+      throw new Error("Không kiểm tra được các Part đã lưu.");
     return res.data.data;
   },
 
@@ -304,6 +338,15 @@ export const examGroupService = {
     return res.data;
   },
 
+  /** examIds: every exam of the group, in the new display order. */
+  reorderExams: async (id: string, examIds: string[]) => {
+    const res = await apiClient.patch<ApiResponse<ExamItem[]>>(
+      `/admin/exam-groups/${id}/exams/order`,
+      { examIds },
+    );
+    return res.data;
+  },
+
   removeExam: async (id: string, examId: string) => {
     const res = await apiClient.delete<ApiResponse<{ success: boolean }>>(
       `/admin/exam-groups/${id}/exams/${examId}`,
@@ -311,4 +354,3 @@ export const examGroupService = {
     return res.data;
   },
 };
-

@@ -1,4 +1,6 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Optional } from '@nestjs/common';
+import { XP } from '@repo/shared-types/learning-xp';
+import { LearningActivityService } from '../../learning-activity/learning-activity.service.js';
 import { InjectModel } from '@nestjs/mongoose';
 import { type Model, Types } from 'mongoose';
 import { MiniGameResult } from '../schemas/minigame-result.schema.js';
@@ -9,6 +11,8 @@ export class MiniGameResultService {
   constructor(
     @InjectModel(MiniGameResult.name)
     private readonly results: Model<MiniGameResult>,
+    @Optional()
+    private readonly learningActivity?: LearningActivityService,
   ) {}
   private game(value: string) {
     if (!Object.values(MiniGameType).includes(value as MiniGameType))
@@ -23,6 +27,18 @@ export class MiniGameResultService {
       userId: new Types.ObjectId(userId),
       gameType: dto.gameType,
       score: dto.score,
+    });
+    await this.learningActivity?.record({
+      userId,
+      module: 'MINIGAME',
+      type: 'MINIGAME_PLAY',
+      sourceKey: `minigame:${result._id}`,
+      xp: XP.MINIGAME_PLAY,
+      occurredAt: result.createdAt,
+      refId: String(result._id),
+      link: '/games',
+      score: result.score,
+      metadata: { gameType: result.gameType },
     });
     return {
       id: String(result._id),

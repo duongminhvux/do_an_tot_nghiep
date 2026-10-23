@@ -35,10 +35,10 @@ export const AudioSegmentMetadataSchema = SchemaFactory.createForClass(AudioSegm
 
 @Schema({ _id: false })
 export class GeneratedAudioMetadata {
-  @Prop({ enum: AudioSourceType, default: AudioSourceType.TTS })
+  @Prop({ type: String, enum: Object.values(AudioSourceType), default: AudioSourceType.TTS })
   source!: AudioSourceType;
 
-  @Prop({ enum: AudioGenerationStatus, default: AudioGenerationStatus.NONE })
+  @Prop({ type: String, enum: Object.values(AudioGenerationStatus), default: AudioGenerationStatus.NONE })
   status!: AudioGenerationStatus;
 
   @Prop({ trim: true, default: '' })

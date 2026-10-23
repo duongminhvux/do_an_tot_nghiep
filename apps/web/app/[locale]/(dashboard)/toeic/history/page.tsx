@@ -1,259 +1,370 @@
 'use client';
 
-import { useTranslation } from 'react-i18next';
-
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import {
-  History,
-  GraduationCap,
-  Calendar,
-  Award,
-  CheckCircle2,
+  CalendarDays,
+  ChevronRight,
+  ClipboardList,
   Clock,
-  ArrowRight,
+  FileCheck2,
+  Layers,
   Loader2,
-  Headphones,
-  BookOpen,
-  TrendingUp,
+  NotebookPen,
+  Square,
+  Timer,
 } from 'lucide-react';
-import { toeicService, ToeicAttemptSummary, ToeicExamSummary } from '@/services/toeic.service';
+import { Button } from '@/components/ui/button';
+import {
+  Badge,
+  EmptyState,
+  ErrorState,
+  LoadingState,
+  PageHeader,
+  PageShell,
+  Segmented,
+  StatCard,
+  Tabs,
+  surface,
+} from '@/components/ui/page';
+import { cn } from '@/lib/utils';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { toeicAttemptService } from '@/services/toeic-attempt.service';
+import { toeicService, ToeicAttemptSummary } from '@/services/toeic.service';
+import { dateLocale, formatDuration, formatPercent } from '@/features/toeic/format';
+import { estimateToeicScore } from '@/features/toeic/score';
 
-function unwrap<T>(value: any): T {
-  return (value?.data ?? value) as T;
-}
+const PAGE_SIZE = 10;
+type Tab = 'all' | 'test' | 'practice' | 'in_progress';
+const TAB_QUERY: Record<Tab, Record<string, string>> = {
+  all: {},
+  test: { mode: 'TEST' },
+  practice: { mode: 'PRACTICE' },
+  in_progress: { status: 'IN_PROGRESS' },
+};
 
 export default function ToeicHistoryPage() {
+  const { locale } = useParams<{ locale: string }>();
   const { t } = useTranslation('toeic');
-  const params = useParams();
-  const locale = (params?.locale as string) || 'vi';
+  const [tab, setTab] = useState<Tab>('all');
+  const [sort, setSort] = useState<'newest' | 'oldest'>('newest');
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['toeic-attempts'],
-    queryFn: () => toeicService.getAttempts({ limit: 100 }),
-    staleTime: 15_000,
+  const { data: statsResponse } = useQuery({
+    queryKey: ['toeic-stats', 'all'],
+    queryFn: () => toeicService.getStats(),
+    staleTime: 30_000,
   });
+  const stats = statsResponse?.data;
 
-  const rawAttempts = unwrap<any>(data);
-  const attempts: ToeicAttemptSummary[] = Array.isArray(rawAttempts)
-    ? rawAttempts
-    : Array.isArray(rawAttempts?.data)
-    ? rawAttempts.data
-    : [];
+  const history = useInfiniteQuery({
+    queryKey: ['toeic-attempts', tab, sort],
+    initialPageParam: 1,
+    queryFn: async ({ pageParam }) => {
+      const res = await toeicService.getAttempts({
+        ...TAB_QUERY[tab],
+        sort,
+        page: pageParam,
+        limit: PAGE_SIZE,
+      });
+      return Array.isArray(res?.data) ? res.data : [];
+    },
+    getNextPageParam: (last, pages) =>
+      last.length === PAGE_SIZE ? pages.length + 1 : undefined,
+  });
+  const attempts = history.data?.pages.flat() ?? [];
 
-  const stats = useMemo(() => {
-    if (!attempts.length) {
-      return { total: 0, highest: 0, avg: 0, totalCorrect: 0 };
-    }
-    const scores = attempts.map((a) => a.score || 0);
-    const highest = Math.max(...scores);
-    const avg = Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length);
-    const totalCorrect = attempts.reduce((sum, a) => sum + (a.totalCorrect || 0), 0);
-    return {
-      total: attempts.length,
-      highest,
-      avg,
-      totalCorrect,
-    };
-  }, [attempts]);
+  const cards = [
+    { key: 'total', value: stats?.totalAttempts, icon: ClipboardList, tone: 'violet' as const },
+    { key: 'test', value: stats?.testAttempts, icon: FileCheck2, tone: 'blue' as const },
+    { key: 'practice', value: stats?.practiceAttempts, icon: NotebookPen, tone: 'emerald' as const },
+    { key: 'in_progress', value: stats?.inProgress, icon: Timer, tone: 'orange' as const },
+  ];
 
   return (
-    <div className="min-h-screen bg-slate-50/50 p-5 sm:p-6 lg:p-8">
-      <div className="mx-auto max-w-6xl space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
-              <History className="h-3.5 w-3.5" /> {t('pages.practice')}
-            </div>
-            <h1 className="mt-2 text-2xl font-black text-slate-900 tracking-tight sm:text-3xl">
-              {t('pages.history_title')}
-            </h1>
-            <p className="mt-1 text-sm text-slate-500">
-              {t('pages.history_description')}
-            </p>
-          </div>
-          <Link
-            href={`/${locale}/toeic`}
-            className="inline-flex items-center gap-2 rounded bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition"
-          >
-            <GraduationCap className="h-4 w-4" />
-            {t('pages.new_test')}
-          </Link>
+    <PageShell>
+      <PageHeader
+        back={{ href: `/${locale}/toeic`, label: t('history.back') }}
+        title={t('history.title')}
+        description={t('history.description')}
+      />
+
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {cards.map(({ key, value, icon, tone }) => (
+          <StatCard key={key} icon={icon} tone={tone} label={t(`history.card_${key}`)} value={value ?? '—'} />
+        ))}
+      </div>
+
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <Tabs
+          className="min-w-0 flex-1"
+          value={tab}
+          onChange={setTab}
+          items={(Object.keys(TAB_QUERY) as Tab[]).map((key) => ({ value: key, label: t(`history.tab_${key}`) }))}
+        />
+        <div className="mb-1.5" role="group" aria-label={t('history.sort_label')}>
+          <Segmented
+            value={sort}
+            onChange={setSort}
+            items={[
+              { value: 'newest' as const, label: t('history.sort_newest') },
+              { value: 'oldest' as const, label: t('history.sort_oldest') },
+            ]}
+          />
         </div>
+      </div>
 
-        {/* Overview Stats Cards */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded border border-slate-200 bg-white p-5 shadow-xs">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-slate-500">{t('pages.total_attempts')}</p>
-                <p className="mt-1 text-2xl font-bold text-slate-900">{stats.total}</p>
-              </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded bg-blue-50 text-blue-600">
-                <History className="h-5 w-5" />
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded border border-slate-200 bg-white p-5 shadow-xs">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-slate-500">{t('pages.highest_score')}</p>
-                <p className="mt-1 text-2xl font-bold text-blue-600">
-                  {stats.highest > 0 ? `${stats.highest}/990` : '—'}
-                </p>
-              </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded bg-emerald-50 text-emerald-600">
-                <Award className="h-5 w-5" />
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded border border-slate-200 bg-white p-5 shadow-xs">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-slate-500">{t('pages.average_score')}</p>
-                <p className="mt-1 text-2xl font-bold text-slate-900">
-                  {stats.avg > 0 ? `${stats.avg}/990` : '—'}
-                </p>
-              </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded bg-amber-50 text-amber-600">
-                <TrendingUp className="h-5 w-5" />
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded border border-slate-200 bg-white p-5 shadow-xs">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-slate-500">{t('pages.total_correct')}</p>
-                <p className="mt-1 text-2xl font-bold text-slate-900">{stats.totalCorrect}</p>
-              </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded bg-purple-50 text-purple-600">
-                <CheckCircle2 className="h-5 w-5" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Attempt History List */}
-        <div className="rounded border border-slate-200 bg-white shadow-xs overflow-hidden">
-          <div className="border-b border-slate-100 px-6 py-4 flex items-center justify-between">
-            <h2 className="text-sm font-bold text-slate-900">{t('pages.completed_tests')}</h2>
-            <span className="text-xs font-medium text-slate-400">{attempts.length} {t('pages.attempts')}</span>
-          </div>
-
-          {isLoading ? (
-            <div className="flex min-h-[220px] items-center justify-center text-slate-500">
-              <Loader2 className="mr-2 h-5 w-5 animate-spin text-blue-600" />
-              <span className="text-sm font-medium">{t('pages.loading_history')}</span>
-            </div>
-          ) : attempts.length === 0 ? (
-            <div className="p-12 text-center">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded bg-blue-50 text-blue-600">
-                <History className="h-6 w-6" />
-              </div>
-              <p className="mt-3 text-sm font-bold text-slate-800">{t('pages.empty_history')}</p>
-              <p className="mt-1 text-xs text-slate-500 max-w-sm mx-auto">
-                {t('pages.empty_history_description')}
-              </p>
-              <Link
-                href={`/${locale}/toeic`}
-                className="mt-4 inline-flex items-center gap-1.5 rounded bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition"
+      {history.isLoading ? (
+        <LoadingState label={t('history.loading')} />
+      ) : history.isError ? (
+        <ErrorState message={t('history.error')} />
+      ) : attempts.length === 0 ? (
+        <EmptyState
+          icon={ClipboardList}
+          title={t('history.empty')}
+          description={t('history.empty_description')}
+          action={
+            <Button asChild>
+              <Link href={`/${locale}/toeic`}>{t('history.start')}</Link>
+            </Button>
+          }
+        />
+      ) : (
+        <div className="space-y-4">
+          {attempts.map((attempt) => (
+            <AttemptCard key={attempt._id} attempt={attempt} locale={locale} />
+          ))}
+          {history.hasNextPage && (
+            <div className="flex justify-center">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => history.fetchNextPage()}
+                disabled={history.isFetchingNextPage}
               >
-                {t('pages.start_test')}
-              </Link>
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {attempts.map((attempt) => {
-                const exam =
-                  typeof attempt.examId === 'object' && attempt.examId
-                    ? (attempt.examId as ToeicExamSummary)
-                    : null;
-                const examTitle = exam?.name || t('pages.test');
-                const examCode = 'TOEIC';
-                const dateStr = attempt.completedAt || attempt.createdAt;
-                const formattedDate = dateStr
-                  ? new Date(dateStr).toLocaleDateString(locale === 'en' ? 'en-US' : 'vi-VN', {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })
-                  : '—';
-
-                return (
-                  <div
-                    key={attempt._id}
-                    className="grid gap-4 p-5 transition hover:bg-slate-50/80 sm:grid-cols-[minmax(0,1fr)_120px_160px_100px] sm:items-center"
-                  >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">
-                          {examCode}
-                        </span>
-                        <p className="text-sm font-bold text-slate-800 line-clamp-1">{examTitle}</p>
-                      </div>
-                      <div className="mt-1 flex items-center gap-3 text-xs text-slate-400">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" /> {formattedDate}
-                        </span>
-                        {attempt.durationSpent && (
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {Math.round(attempt.durationSpent / 60)} {t('pages.minutes')}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div>
-                      <p className="text-[11px] font-medium text-slate-400">{t('pages.correct_answers')}</p>
-                      <p className="mt-0.5 text-sm font-bold text-slate-700">
-                        {attempt.totalCorrect || 0}/{attempt.totalQuestions || 200}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-[11px] font-medium text-slate-400">{t('pages.listening_reading')}</p>
-                      <div className="mt-0.5 flex items-center gap-2 text-xs font-semibold text-slate-700">
-                        <span className="flex items-center gap-1 text-blue-600">
-                          <Headphones className="h-3 w-3" /> {attempt.listeningScore || 0}
-                        </span>
-                        <span>/</span>
-                        <span className="flex items-center gap-1 text-emerald-600">
-                          <BookOpen className="h-3 w-3" /> {attempt.readingScore || 0}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between sm:justify-end gap-2">
-                      <div className="text-right">
-                        <span className="text-lg font-black text-blue-600">
-                          {attempt.score ?? 0}
-                        </span>
-                        <span className="text-[10px] text-slate-400 block -mt-1">/990</span>
-                      </div>
-                      <Link
-                        href={exam?.groupId && exam.slug ? `/${locale}/toeic/${typeof exam.groupId === 'object' ? exam.groupId.slug || exam.groupId._id : exam.groupId}/${exam.slug}` : `/${locale}/toeic`}
-                        className="rounded-lg p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition"
-                        title={t('pages.view_result')}
-                      >
-                        <ArrowRight className="h-4 w-4" />
-                      </Link>
-                    </div>
-                  </div>
-                );
-              })}
+                {history.isFetchingNextPage && <Loader2 className="animate-spin" />}
+                {t('history.load_more')}
+              </Button>
             </div>
           )}
         </div>
+      )}
+    </PageShell>
+  );
+}
+
+function AttemptCard({ attempt, locale }: { attempt: ToeicAttemptSummary; locale: string }) {
+  const { t } = useTranslation('toeic');
+  const queryClient = useQueryClient();
+  const [confirmStop, setConfirmStop] = useState(false);
+  const stop = useMutation({
+    mutationFn: () => toeicAttemptService.abandon(attempt._id),
+    onSuccess: () => {
+      setConfirmStop(false);
+      void queryClient.invalidateQueries({
+        predicate: (query) =>
+          typeof query.queryKey[0] === 'string' && query.queryKey[0].startsWith('toeic-'),
+      });
+    },
+  });
+  const exam = typeof attempt.examId === 'object' && attempt.examId ? attempt.examId : null;
+  // A timed test past its deadline is graded by the API when it is opened.
+  const timedOut =
+    attempt.status === 'IN_PROGRESS' &&
+    Boolean(attempt.expiresAt) &&
+    new Date(attempt.expiresAt!).getTime() < Date.now();
+  const inProgress = attempt.status === 'IN_PROGRESS' && !timedOut;
+  const finished = attempt.status === 'FINISHED' || attempt.status === 'COMPLETED';
+  const total = attempt.totalQuestions ?? 0;
+  const answered = attempt.answeredQuestions ?? 0;
+  const correct = attempt.totalCorrect ?? attempt.correctAnswers ?? 0;
+  const accuracy = attempt.accuracy ?? (total ? (correct / total) * 100 : 0);
+  const progress = total ? Math.round((answered / total) * 100) : 0;
+  const score =
+    finished && attempt.mode === 'TEST'
+      ? estimateToeicScore(attempt.listeningResult, attempt.readingResult)
+      : null;
+  const href = finished || timedOut
+    ? `/${locale}/toeic/attempts/${attempt._id}/result`
+    : `/${locale}/toeic/attempts/${attempt._id}`;
+
+  const badge: { label: string; tone: 'red' | 'orange' | 'slate' | 'blue' | 'emerald' } = timedOut
+    ? { label: t('history.badge_time_up'), tone: 'red' }
+    : inProgress
+    ? { label: t('history.badge_in_progress'), tone: 'orange' }
+    : !finished
+      ? { label: t('history.badge_abandoned'), tone: 'slate' }
+      : attempt.mode === 'TEST'
+        ? { label: t('history.badge_test'), tone: 'blue' }
+        : { label: t('history.badge_practice'), tone: 'emerald' };
+
+  const breakdown: { label: string; correct: number; total: number }[] =
+    attempt.mode === 'TEST' || (attempt.partResults?.length ?? 0) > 3
+      ? [
+          { label: t('history.listening'), result: attempt.listeningResult },
+          { label: t('history.reading'), result: attempt.readingResult },
+        ]
+          .filter((row) => row.result?.total)
+          .map((row) => ({ label: row.label, correct: row.result!.correct, total: row.result!.total }))
+      : (attempt.partResults ?? []).map((p) => ({ label: `Part ${p.part}`, correct: p.correct, total: p.total }));
+
+  const date = attempt.createdAt
+    ? new Date(attempt.createdAt).toLocaleString(dateLocale(locale), {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : '—';
+
+  return (
+    <article className={cn(surface, 'grid gap-4 p-5 transition hover:border-blue-200 lg:grid-cols-[1fr_220px_auto]')}>
+      <div className="min-w-0 space-y-2.5">
+        <h2 className="truncate text-base font-semibold text-slate-900">{exam?.name || 'TOEIC'}</h2>
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <Badge tone={badge.tone}>{badge.label}</Badge>
+          <Badge>
+            <Layers className="h-3.5 w-3.5" />
+            {t('history.parts', { parts: attempt.selectedParts?.join(', ') || '—' })}
+          </Badge>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-slate-500">
+          <span className="inline-flex items-center gap-1.5">
+            <CalendarDays className="h-3.5 w-3.5" /> {date}
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <Clock className="h-3.5 w-3.5" />
+            {inProgress
+              ? t('history.answered_progress', { answered, total })
+              : formatDuration(attempt.durationSpent, t)}
+          </span>
+        </div>
       </div>
-    </div>
+
+      <div className="border-slate-100 lg:border-l lg:pl-5">
+        {inProgress ? (
+          <div className="flex h-full flex-col justify-center gap-2">
+            <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+              <div className="h-full rounded-full bg-blue-600" style={{ width: `${progress}%` }} />
+            </div>
+            <p className="text-right text-xs font-semibold text-slate-600">{progress}%</p>
+          </div>
+        ) : score ? (
+          <div className="space-y-1" title={t('history.estimated_hint')}>
+            <p className="text-xs text-slate-500">{t('history.total_score')}</p>
+            <p className="text-2xl font-bold tracking-tight text-slate-900">
+              {score.total}
+              <span className="ml-1 text-xs font-medium text-slate-400">/ {score.max}</span>
+            </p>
+            <dl className="grid grid-cols-[1fr_auto] gap-x-4 text-xs text-slate-600">
+              {[
+                { label: t('history.listening'), value: score.listening },
+                { label: t('history.reading'), value: score.reading },
+              ]
+                .filter((row) => row.value != null)
+                .map((row) => (
+                  <div key={row.label} className="contents">
+                    <dt>{row.label}</dt>
+                    <dd className="text-right font-semibold text-slate-800">{row.value}</dd>
+                  </div>
+                ))}
+            </dl>
+            <p className="text-xs text-slate-400">
+              {correct} / {total} · {formatPercent(accuracy, locale)}
+            </p>
+          </div>
+        ) : finished ? (
+          <div className="space-y-1">
+            <p className="text-xs text-slate-500">{t('history.correct_answers')}</p>
+            <p className="text-xl font-bold text-slate-900">
+              <span className="text-emerald-600">{correct}</span>
+              <span className="text-slate-400"> / {total}</span>
+              <span className="ml-2 text-xs font-semibold text-slate-500">({formatPercent(accuracy, locale)})</span>
+            </p>
+            <dl className="grid grid-cols-[1fr_auto] gap-x-4 text-xs text-slate-600">
+              {breakdown.map((row) => (
+                <div key={row.label} className="contents">
+                  <dt>{row.label}</dt>
+                  <dd className="text-right font-semibold text-slate-800">
+                    {row.correct} / {row.total}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        ) : (
+          <p className="text-sm text-slate-400">—</p>
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {inProgress && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              stop.reset();
+              setConfirmStop(true);
+            }}
+            className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+          >
+            <Square className="fill-current" />
+            {t('history.stop')}
+          </Button>
+        )}
+        <Button asChild variant={inProgress ? 'default' : 'secondary'}>
+          <Link href={href}>
+            {t(inProgress ? 'history.continue' : 'history.view_detail')}
+            <ChevronRight />
+          </Link>
+        </Button>
+      </div>
+
+      <Dialog
+        open={confirmStop}
+        onOpenChange={(open) => {
+          if (!stop.isPending) setConfirmStop(open);
+        }}
+      >
+        <DialogContent className="rounded-2xl border-slate-200">
+          <DialogTitle>{t('history.stop_title')}</DialogTitle>
+          <DialogDescription>
+            {t('history.stop_desc', { name: exam?.name || 'TOEIC', answered, total })}
+          </DialogDescription>
+          {stop.isError && (
+            <p role="alert" className="text-sm text-red-600">
+              {t('history.stop_error')}
+            </p>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={stop.isPending}
+              onClick={() => setConfirmStop(false)}
+            >
+              {t('history.stop_cancel')}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={stop.isPending}
+              onClick={() => stop.mutate()}
+            >
+              {stop.isPending && <Loader2 className="animate-spin" />}
+              {t('history.stop_confirm')}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </article>
   );
 }

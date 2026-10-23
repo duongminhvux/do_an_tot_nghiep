@@ -58,6 +58,10 @@ export class Exam {
   })
   groupId?: Types.ObjectId | null;
 
+  // Position inside `groupId` (1-based, set by admins via drag & drop).
+  @Prop({ default: 0, min: 0 })
+  groupOrder: number;
+
   @Prop({
     default: false,
   })
@@ -75,3 +79,4 @@ ExamSchema.index(
   { unique: true, partialFilterExpression: { isDeleted: false } },
 );
 ExamSchema.index({ groupId: 1 });
+ExamSchema.index({ groupId: 1, groupOrder: 1 });

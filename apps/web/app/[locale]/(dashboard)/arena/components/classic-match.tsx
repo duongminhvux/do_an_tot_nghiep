@@ -22,6 +22,8 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Badge, surface } from "@/components/ui/page";
 import { useAppSelector } from "@/redux/hooks";
 import type { useRankedMatch } from "../hooks/use-ranked-match";
 import { RoomStandings } from "./room-standings";
@@ -123,13 +125,13 @@ export function ClassicMatch({
 
   if (!finished && !currentQuestion) {
     return (
-      <main className="flex min-h-[calc(100dvh-3.5rem)] items-center justify-center bg-slate-50 px-4">
-        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+      <main className="flex min-h-[calc(100dvh-3.5rem)] items-center justify-center bg-background px-4">
+        <div className={cn(surface, "w-full max-w-md p-8 text-center")}>
           <span className="mx-auto flex size-16 items-center justify-center rounded-full bg-blue-50 text-blue-600">
             <Swords className="size-8 animate-pulse" />
           </span>
 
-          <h1 className="mt-5 text-xl font-extrabold text-slate-900">
+          <h1 className="mt-5 text-xl font-bold text-slate-900">
             {error
               ? text("Chưa thể vào trận đấu", "Unable to join match")
               : !connected
@@ -148,20 +150,16 @@ export function ClassicMatch({
           {error && (
             <p
               role="alert"
-              className="mt-4 rounded-xl bg-rose-50 p-3 text-sm text-rose-600"
+              className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"
             >
               {error}
             </p>
           )}
           <div className="mt-5 flex flex-wrap justify-center gap-2">
             {error && (
-              <button
-                type="button"
-                onClick={retryReady}
-                className="min-h-11 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700"
-              >
+              <Button type="button" size="lg" onClick={retryReady}>
                 {text("Thử lại", "Retry")}
-              </button>
+              </Button>
             )}
             <Link
               href={`/${locale}/arena`}
@@ -171,7 +169,7 @@ export function ClassicMatch({
                   void handleLeaveClick();
                 }
               }}
-              className="inline-flex min-h-11 items-center rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-600"
+              className={buttonVariants({ variant: "outline", size: "lg" })}
             >
               {text("Về đấu trường", "Back to Arena")}
             </Link>
@@ -249,7 +247,7 @@ export function ClassicMatch({
      ====================================================== */
 
   return (
-    <main className="mx-auto flex min-h-[calc(100dvh-3.5rem)] w-full max-w-[900px] flex-col px-3 py-3 sm:px-5">
+    <main className="mx-auto flex min-h-[calc(100dvh-3.5rem)] w-full max-w-[900px] flex-col bg-background px-3 py-3 sm:px-5">
       {/* HEADER */}
 
       <div className="mb-2 flex items-center justify-between gap-3">
@@ -257,20 +255,20 @@ export function ClassicMatch({
           type="button"
           disabled={leaving || friendly?.busy}
           onClick={handleLeaveClick}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 transition hover:text-blue-600"
+          className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg text-sm font-medium text-slate-500 transition-colors hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
         >
           <ArrowLeft className="size-4" />
 
           {text("Đấu trường", "Arena")}
         </button>
 
-        <span className="flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[10px] font-semibold text-blue-600">
+        <Badge tone="blue">
           <Swords className="size-3" />
 
           {friendly
             ? text("Đấu bạn bè · Cổ điển", "Friendly · Classic")
             : text("Đấu xếp hạng", "Ranked")}
-        </span>
+        </Badge>
       </div>
       {(exitError || friendly?.notice) && (
         <p role="alert" className="mb-3 text-sm text-red-600">
@@ -287,8 +285,8 @@ export function ClassicMatch({
           vi={locale !== "en"}
         />
       ) : (
-        <section className="relative overflow-hidden rounded-2xl border border-blue-100 bg-white px-3 py-2.5 shadow-sm sm:px-4">
-          <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-blue-500 via-blue-100 to-violet-500" />
+        <section className={cn(surface, "relative overflow-hidden px-3 py-3 sm:px-5")}>
+          <div className="absolute inset-x-0 top-0 h-0.5 bg-blue-600" />
 
           <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-6">
             <Player
@@ -301,17 +299,17 @@ export function ClassicMatch({
             />
 
             <div className="text-center">
-              <div className="flex items-center justify-center gap-2 text-xl font-extrabold tabular-nums sm:gap-3 sm:text-2xl">
+              <div className="flex items-center justify-center gap-2 text-xl font-black tabular-nums sm:gap-3 sm:text-2xl">
                 <span className="text-blue-600">{score.toLocaleString()}</span>
 
                 <span className="text-sm font-medium text-slate-300">:</span>
 
-                <span className="text-violet-600">
+                <span className="text-slate-700">
                   {opponentScore.toLocaleString()}
                 </span>
               </div>
 
-              <p className="mt-1 text-[9px] font-semibold uppercase tracking-widest text-slate-400">
+              <p className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                 {text("Điểm", "Score")}
               </p>
             </div>
@@ -335,7 +333,7 @@ export function ClassicMatch({
       {/* ROUND INFO */}
 
       <div className="my-2 flex items-center justify-between gap-3">
-        <span className="rounded-lg bg-blue-100/60 px-3 py-1.5 text-xs font-bold text-blue-700">
+        <span className="rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700">
           {text("Vòng", "Round")} {questionIndex}/{totalQuestions}
         </span>
 
@@ -349,8 +347,8 @@ export function ClassicMatch({
               "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold tabular-nums",
 
               timeLeft <= 5
-                ? "bg-rose-50 text-rose-600"
-                : "bg-amber-50 text-amber-600",
+                ? "bg-red-50 text-red-600"
+                : "bg-blue-50 text-blue-700",
             )}
           >
             <Clock3 className="size-3.5" />
@@ -370,15 +368,15 @@ export function ClassicMatch({
       <div className="grid flex-1 content-start grid-cols-[36px_minmax(0,1fr)] items-start gap-2 sm:grid-cols-[48px_minmax(0,1fr)] sm:gap-3">
         {/* PROGRESS */}
 
-        <aside className="flex min-h-[300px] flex-col items-center rounded-2xl border border-blue-100 bg-gradient-to-b from-blue-50 to-white px-1 py-3">
+        <aside className={cn(surface, "flex min-h-[300px] flex-col items-center px-1 py-3")}>
           <Trophy className="size-4 text-amber-500" />
 
-          <span className="mt-1 text-[9px] font-bold text-slate-500">
+          <span className="mt-1 text-[11px] font-bold text-slate-500">
             {totalQuestions}
           </span>
 
           <div className="relative my-3 flex flex-1 flex-col-reverse items-center justify-between gap-5">
-            <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-blue-100" />
+            <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-slate-200" />
 
             {Array.from({
               length: totalQuestions,
@@ -396,10 +394,10 @@ export function ClassicMatch({
                     answerResult === true
                       ? "border-emerald-400 bg-emerald-400 text-white"
                       : answerResult === false
-                        ? "border-rose-300 bg-rose-300 text-white"
+                        ? "border-red-400 bg-red-400 text-white"
                         : active
-                          ? "border-blue-500 bg-white text-blue-600 ring-4 ring-blue-100"
-                          : "border-white bg-blue-200 text-white",
+                          ? "border-blue-600 bg-white text-blue-600 ring-4 ring-blue-100"
+                          : "border-white bg-slate-200 text-white",
                   )}
                 >
                   {answerResult === true ? (
@@ -414,16 +412,16 @@ export function ClassicMatch({
             })}
           </div>
 
-          <Flag className="size-4 text-blue-500" />
+          <Flag className="size-4 text-blue-600" />
 
-          <span className="mt-1 text-[7px] font-bold uppercase text-blue-500">
+          <span className="mt-1 text-center text-[9px] font-bold uppercase leading-3 text-blue-600">
             {text("Bắt đầu", "Start")}
           </span>
         </aside>
 
         {/* QUESTION CARD */}
 
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <section className={cn(surface, "overflow-hidden")}>
           {/* TIMER BAR */}
 
           <div
@@ -437,7 +435,7 @@ export function ClassicMatch({
               className={cn(
                 "h-full transition-[width] duration-1000 ease-linear",
 
-                timeLeft <= 5 ? "bg-rose-500" : "bg-amber-400",
+                timeLeft <= 5 ? "bg-red-500" : "bg-blue-600",
               )}
               style={{
                 width: `${progress}%`,
@@ -445,11 +443,11 @@ export function ClassicMatch({
             />
           </div>
 
-          <div className="p-3 sm:p-4">
+          <div className="p-4 sm:p-5">
             {/* VISUAL */}
 
-            <div className="relative flex h-24 items-center justify-center overflow-hidden rounded-xl border border-blue-50 bg-gradient-to-br from-blue-50 via-slate-50 to-violet-50 sm:h-28">
-              <span className="absolute left-3 top-3 rounded-md bg-white/80 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-blue-400">
+            <div className="relative flex h-24 items-center justify-center overflow-hidden rounded-lg border border-slate-100 bg-slate-50 sm:h-28">
+              <span className="absolute left-3 top-3 rounded-full bg-white px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-blue-600 ring-1 ring-inset ring-blue-100">
                 {text("Nghĩa → Từ", "Meaning → Word")}
               </span>
 
@@ -490,7 +488,7 @@ export function ClassicMatch({
                         ? "border-amber-300 bg-amber-50 text-amber-700"
                         : answer.trim()[letter]
                           ? "border-blue-300 bg-blue-50 text-blue-700"
-                          : "border-blue-100 bg-blue-50/50 text-blue-300",
+                          : "border-slate-200 bg-white text-slate-300",
                   )}
                 >
                   {shownLetters[letter] ??
@@ -512,14 +510,14 @@ export function ClassicMatch({
 
             {/* MEANING */}
 
-            <div className="flex items-center gap-2 rounded-lg border border-blue-100 bg-blue-50/70 px-3 py-2">
-              <Languages className="size-4 shrink-0 text-blue-500" />
+            <div className="flex items-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2">
+              <Languages className="size-4 shrink-0 text-blue-600" />
 
               <span className="text-xs font-medium text-blue-600">
                 {text("Bản dịch:", "Meaning:")}
               </span>
 
-              <h1 className="text-sm font-bold text-blue-900 sm:text-base">
+              <h1 className="text-sm font-bold text-slate-900 sm:text-base">
                 {currentQuestion?.meaning}
               </h1>
             </div>
@@ -529,7 +527,7 @@ export function ClassicMatch({
               <Hint
                 icon={BookOpen}
                 label={text("Giải thích", "Explanation")}
-                color="text-amber-500"
+                color="text-amber-600"
               >
                 {currentQuestion?.explanation ||
                   text("Chưa có giải thích", "No explanation available")}
@@ -537,7 +535,7 @@ export function ClassicMatch({
               <Hint
                 icon={Languages}
                 label={text("Ví dụ", "Example")}
-                color="text-emerald-500"
+                color="text-emerald-600"
               >
                 <span className="font-medium italic text-slate-700">
                   {currentQuestion?.example
@@ -546,7 +544,7 @@ export function ClassicMatch({
                 </span>
 
                 {currentQuestion?.translation && (
-                  <span className="mt-0.5 block text-xs text-slate-400">
+                  <span className="mt-0.5 block text-xs text-slate-500">
                     {currentQuestion.translation}
                   </span>
                 )}
@@ -554,7 +552,7 @@ export function ClassicMatch({
               <Hint
                 icon={Tag}
                 label={text("Loại từ", "Part of speech")}
-                color="text-violet-500"
+                color="text-violet-600"
               >
                 {currentQuestion?.type ||
                   text("Chưa có loại từ", "Part of speech unavailable")}
@@ -567,18 +565,18 @@ export function ClassicMatch({
               <div
                 role="status"
                 className={cn(
-                  "mt-3 rounded-xl border px-3 py-2",
+                  "mt-3 rounded-lg border px-3 py-2",
 
                   result.correct
-                    ? "border-emerald-100 bg-emerald-50"
-                    : "border-rose-100 bg-rose-50",
+                    ? "border-emerald-200 bg-emerald-50"
+                    : "border-red-200 bg-red-50",
                 )}
               >
                 <p
                   className={cn(
                     "text-xs font-semibold",
 
-                    result.correct ? "text-emerald-700" : "text-rose-700",
+                    result.correct ? "text-emerald-700" : "text-red-700",
                   )}
                 >
                   {result.correct
@@ -613,7 +611,7 @@ export function ClassicMatch({
       {error && (
         <div
           role="alert"
-          className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-100 bg-rose-50 p-3 text-xs text-rose-600"
+          className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"
         >
           <span>{error}</span>
           {!connected && (
@@ -637,7 +635,7 @@ export function ClassicMatch({
         </div>
       )}
       {roundEnded && (
-        <p role="status" className="mt-2 text-center text-xs text-slate-400">
+        <p role="status" className="mt-2 text-center text-xs text-slate-500">
           {text(
             "Đang chờ câu tiếp theo từ máy chủ...",
             "Waiting for the next question...",
@@ -647,7 +645,7 @@ export function ClassicMatch({
       {/* ANSWER */}
 
       {!finished && (
-        <footer className="sticky bottom-0 z-10 mt-3 border-t border-slate-200 bg-slate-50/95 py-2 backdrop-blur">
+        <footer className="sticky bottom-0 z-10 mt-3 border-t border-slate-200 bg-background/95 py-2 backdrop-blur">
           <form
             onSubmit={(event) => {
               event.preventDefault();
@@ -680,7 +678,7 @@ export function ClassicMatch({
                 "Nhập từ tiếng Anh...",
                 "Enter the English word...",
               )}
-              className="h-11 min-w-0 flex-1 rounded-xl border border-blue-200 bg-white px-4 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 disabled:bg-slate-100"
+              className="h-11 min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-4 text-base text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
             />
 
             <button
@@ -693,7 +691,7 @@ export function ClassicMatch({
                 timeLeft === 0 ||
                 matchStatus !== "PLAYING"
               }
-              className="flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+              className="flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-primary text-white shadow-sm transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
               aria-label={text("Gửi đáp án", "Submit answer")}
             >
               {submitting ? (
@@ -704,7 +702,7 @@ export function ClassicMatch({
             </button>
           </form>
 
-          <p className="mt-2 text-center text-[10px] text-slate-400">
+          <p className="mt-2 text-center text-[11px] text-slate-500">
             {text(
               "Nhập đáp án và nhấn Enter để gửi",
               "Type your answer and press Enter to submit",
@@ -759,8 +757,8 @@ function Player({
           "flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full ring-2 sm:size-11",
 
           right
-            ? "bg-violet-50 text-violet-500 ring-violet-100"
-            : "bg-blue-50 text-blue-500 ring-blue-100",
+            ? "bg-slate-100 text-slate-500 ring-slate-200"
+            : "bg-blue-50 text-blue-600 ring-blue-100",
         )}
       >
         {avatar ? (
@@ -778,15 +776,15 @@ function Player({
       </span>
 
       <div className="min-w-0">
-        <p className="truncate text-xs font-bold text-slate-800 sm:text-sm">
+        <p className="truncate text-sm font-semibold text-slate-900">
           {name}
         </p>
 
         <p
           className={cn(
-            "mt-1 flex items-center gap-1 text-[10px] font-semibold sm:text-xs",
+            "mt-0.5 flex items-center gap-1 text-[11px] font-semibold sm:text-xs",
 
-            right ? "justify-end text-violet-500" : "text-blue-500",
+            right ? "justify-end text-slate-500" : "text-blue-600",
           )}
         >
           {friendly ? (
@@ -800,7 +798,7 @@ function Player({
           )}
 
           {me && (
-            <span className="ml-1 rounded bg-blue-50 px-1 text-[8px]">
+            <span className="ml-1 rounded-full bg-blue-50 px-1.5 text-[11px] text-blue-700">
               {text("BẠN", "YOU")}
             </span>
           )}
@@ -829,8 +827,8 @@ function Hint({
     <div className="flex items-start gap-2">
       <Icon className={cn("mt-0.5 size-3.5 shrink-0", color)} />
 
-      <div className="text-xs leading-4 text-slate-500">
-        <span className="mr-1 font-bold text-slate-700">{label}:</span>
+      <div className="text-xs leading-5 text-slate-500">
+        <span className="mr-1 font-semibold text-slate-700">{label}:</span>
 
         {children}
       </div>

@@ -28,6 +28,9 @@ import { WordGuessMatch } from "../../components/word-guess-match";
 import { ClassicMatch } from "../../components/classic-match";
 import { MatchExitDialog } from "../../components/match-exit-dialog";
 import { MatchResultView } from "../../components/match-result-view";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { surface } from "@/components/ui/page";
 
 type Turn = {
   matchId: string;
@@ -404,20 +407,21 @@ export default function FriendlyMatchPage() {
     );
   }
   return (
-    <main className="min-h-[calc(100vh-3.5rem)] bg-[radial-gradient(ellipse_at_top,#e6efff_0%,#f5f8ff_70%)] px-3 py-4 text-[#11163f] sm:px-6">
+    <main className="min-h-[calc(100dvh-3.5rem)] bg-background px-3 py-4 text-slate-900 sm:px-6">
       <div className="mx-auto max-w-7xl">
         <header className="mb-5 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <button
+            <Button
+              variant="outline"
+              size="icon"
               onClick={handleLeaveClick}
               disabled={busy}
               aria-label={vi ? "Quay lại" : "Go back"}
-              className="rounded-xl bg-white p-2.5 text-slate-500 shadow-sm disabled:opacity-40"
             >
               <ArrowLeft className="size-5" />
-            </button>
+            </Button>
             <div>
-              <h1 className="text-lg font-extrabold">
+              <h1 className="text-lg font-bold text-slate-900">
                 {vi ? "Đấu với bạn bè" : "Friendly duel"}
               </h1>
               <p className="text-sm text-slate-500">
@@ -431,19 +435,20 @@ export default function FriendlyMatchPage() {
               </p>
             </div>
           </div>
-          <button
+          <Button
+            variant="outline"
             disabled={busy}
             onClick={handleLeaveClick}
-            className="flex items-center gap-2 rounded-xl bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-600 disabled:opacity-40"
+            className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
           >
-            <LogOut className="size-4" />
+            <LogOut />
             {vi ? "Rời trận" : "Leave match"}
-          </button>
+          </Button>
         </header>
         {multiplayer &&
           turn?.eliminatedUserIds?.includes(userId) &&
           !game.finished && (
-            <p role="status" className="mb-4 rounded-xl bg-amber-50 p-4">
+            <p role="status" className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
               {vi
                 ? "Bạn đã bị loại. Bạn có thể theo dõi đến hết trận hoặc rời phòng."
                 : "You have been eliminated. You can watch the rest of the match or leave."}
@@ -465,10 +470,14 @@ export default function FriendlyMatchPage() {
                 {[me, opponent].map((p, i) => (
                   <div
                     key={i}
-                    className={`${i === 1 ? "col-start-3 row-start-1" : ""} flex min-w-0 flex-col items-center gap-3 rounded-2xl border border-white bg-white/70 p-3 shadow-[0_8px_30px_#c4d8ff20] sm:flex-row sm:p-4`}
+                    className={cn(
+                      surface,
+                      i === 1 && "col-start-3 row-start-1",
+                      "flex min-w-0 flex-col items-center gap-3 p-3 sm:flex-row sm:p-4",
+                    )}
                   >
                     <div
-                      className={`relative shrink-0 rounded-full p-1 ${i === 0 ? "ring-2 ring-blue-500" : "ring-2 ring-white"}`}
+                      className={`relative shrink-0 rounded-full p-1 ${i === 0 ? "ring-2 ring-blue-500" : "ring-2 ring-slate-200"}`}
                     >
                       <div className="size-14 overflow-hidden rounded-full sm:size-18">
                         <FriendlyAvatar
@@ -486,15 +495,15 @@ export default function FriendlyMatchPage() {
                               ? "Trực tuyến"
                               : "Online"
                         }
-                        className={`absolute bottom-0 right-0 size-4 rounded-full border-2 border-white ${p?.disconnectedAt || !p ? "bg-slate-300" : "bg-emerald-400"}`}
+                        className={`absolute bottom-0 right-0 size-4 rounded-full border-2 border-white ${p?.disconnectedAt || !p ? "bg-slate-300" : "bg-emerald-500"}`}
                       />
                     </div>
                     <div className="min-w-0 text-center sm:text-left">
-                      <strong className="block truncate text-sm sm:text-base">
+                      <strong className="block truncate text-sm font-semibold text-slate-900 sm:text-base">
                         {p?.username || "…"}
                       </strong>
                       <span
-                        className={`mt-1 inline-block rounded-lg px-2 py-0.5 text-xs font-semibold ${i === 0 ? "bg-blue-100 text-blue-600" : "bg-rose-100 text-rose-500"}`}
+                        className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${i === 0 ? "bg-blue-50 text-blue-700 ring-blue-100" : "bg-slate-100 text-slate-600 ring-slate-200"}`}
                       >
                         {i === 0
                           ? vi
@@ -524,13 +533,13 @@ export default function FriendlyMatchPage() {
                     </div>
                   </div>
                 ))}
-                <span className="col-start-2 row-start-1 bg-gradient-to-br from-cyan-400 via-blue-500 to-violet-600 bg-clip-text text-center text-3xl font-black italic text-transparent drop-shadow-sm sm:text-6xl">
+                <span className="col-start-2 row-start-1 text-center text-3xl font-black italic text-blue-600 sm:text-5xl">
                   VS
                 </span>
               </section>
             )}
             {(!game.connected || disconnected) && !game.finished && (
-              <p className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-800">
+              <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
                 {!game.connected
                   ? vi
                     ? "Mất kết nối. Đang kết nối lại…"
@@ -541,7 +550,7 @@ export default function FriendlyMatchPage() {
             {notice && (
               <p
                 role="alert"
-                className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-800"
+                className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800"
               >
                 {notice}
               </p>
@@ -552,19 +561,23 @@ export default function FriendlyMatchPage() {
               </p>
             )}
             {!room && (
-              <div className="mt-6 rounded-3xl bg-white p-8 text-center">
-                <p>{vi ? "Đang tải phòng…" : "Loading lobby…"}</p>
-                <button
+              <div className={cn(surface, "mt-6 p-8 text-center")}>
+                <p className="text-sm text-slate-500">
+                  {vi ? "Đang tải phòng…" : "Loading lobby…"}
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={game.retryReady}
-                  className="mt-4 text-blue-600"
+                  className="mt-4"
                 >
                   {vi ? "Thử lại" : "Retry"}
-                </button>
+                </Button>
               </div>
             )}
             {room?.status === "WAITING" && !game.finished && (
-              <section className="mt-6 rounded-3xl bg-white p-8 text-center shadow-sm">
-                <h2 className="text-xl font-bold">
+              <section className={cn(surface, "mt-6 p-6 text-center sm:p-8")}>
+                <h2 className="text-xl font-bold text-slate-900">
                   {vi ? "Phòng chờ giao hữu" : "Friendly lobby"}
                 </h2>
                 {host && (
@@ -574,7 +587,7 @@ export default function FriendlyMatchPage() {
                         disabled={busy}
                         key={mode}
                         onClick={() => void action("friend:mode", { mode })}
-                        className={`rounded-xl border px-5 py-3 ${room.mode === mode ? "border-blue-500 bg-blue-50 text-blue-600" : "border-slate-200"}`}
+                        className={`cursor-pointer rounded-lg border px-5 py-2.5 text-sm font-semibold transition-colors disabled:opacity-50 ${room.mode === mode ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
                       >
                         {mode === "CLASSIC"
                           ? vi
@@ -592,7 +605,8 @@ export default function FriendlyMatchPage() {
                     ? "Người được mời bấm Sẵn sàng, sau đó chủ phòng bắt đầu."
                     : "The invited player readies, then the host starts."}
                 </p>
-                <button
+                <Button
+                  size="lg"
                   disabled={
                     busy ||
                     !game.connected ||
@@ -603,7 +617,7 @@ export default function FriendlyMatchPage() {
                   onClick={() =>
                     void action(host ? "friend:start" : "friend:ready")
                   }
-                  className="mt-6 rounded-xl bg-blue-600 px-8 py-3 font-bold text-white disabled:bg-slate-200 disabled:text-slate-400"
+                  className="mt-6 px-8"
                 >
                   {host
                     ? vi
@@ -616,18 +630,18 @@ export default function FriendlyMatchPage() {
                       : vi
                         ? "Sẵn sàng"
                         : "Ready"}
-                </button>
+                </Button>
               </section>
             )}
             {room?.status === "PLAYING" &&
               !game.finished &&
               (chain ? (
-                <section className="relative mt-4 overflow-hidden rounded-2xl border border-white bg-gradient-to-b from-blue-100/70 via-white/80 to-white/95 px-4 py-6 shadow-[0_8px_30px_#c4d8ff20] sm:px-8">
+                <section className={cn(surface, "relative mt-4 overflow-hidden bg-gradient-to-b from-blue-50 via-white to-white px-4 py-6 sm:px-8")}>
                   <svg
                     aria-hidden="true"
                     viewBox="0 0 800 360"
                     preserveAspectRatio="none"
-                    className="pointer-events-none absolute inset-x-0 top-8 h-72 w-full text-blue-200/40"
+                    className="pointer-events-none absolute inset-x-0 top-8 h-72 w-full text-blue-100/50"
                   >
                     <path
                       fill="currentColor"
@@ -647,11 +661,11 @@ export default function FriendlyMatchPage() {
                     ))}
                   </svg>
                   <div className="relative text-center">
-                    <span className="rounded-lg bg-blue-100/80 px-3 py-1 text-xs text-slate-500">
+                    <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-100">
                       {vi ? "Từ vừa rồi" : "Previous word"}
                     </span>
-                    <div className="relative mx-auto mt-2 flex min-h-16 max-w-sm items-center justify-center rounded-xl bg-white/85 px-12 py-3">
-                      <h2 className="break-all text-3xl font-black">
+                    <div className="relative mx-auto mt-2 flex min-h-16 max-w-sm items-center justify-center rounded-lg border border-slate-200 bg-white px-12 py-3 shadow-sm">
+                      <h2 className="break-all text-3xl font-black text-slate-900">
                         {turn?.previousWord.toUpperCase() ||
                           (vi ? "Bạn bắt đầu!" : "First word!")}
                       </h2>
@@ -660,19 +674,19 @@ export default function FriendlyMatchPage() {
                         onClick={speakWord}
                         disabled={!turn?.previousWord}
                         aria-label={vi ? "Nghe phát âm" : "Hear pronunciation"}
-                        className="absolute right-4 rounded-lg p-2 text-slate-500 hover:bg-blue-50 disabled:opacity-30"
+                        className="absolute right-4 cursor-pointer rounded-lg p-2 text-slate-500 transition-colors hover:bg-blue-50 hover:text-blue-600 disabled:opacity-30"
                       >
                         <Volume2 className="size-4" />
                       </button>
                     </div>
                     <ArrowDown className="mx-auto my-3 size-7 text-blue-600" />
-                    <span className="rounded-lg bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
+                    <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-100">
                       {vi ? "Chữ cái tiếp theo" : "Next letter"}
                     </span>
-                    <div className="mx-auto mt-2 flex size-24 items-center justify-center rounded-full border-2 border-emerald-300 bg-emerald-50/90 text-4xl font-black text-emerald-600">
+                    <div className="mx-auto mt-2 flex size-24 items-center justify-center rounded-full border-2 border-emerald-300 bg-emerald-50 text-4xl font-black text-emerald-600">
                       {requiredPrefix || "?"}
                     </div>
-                    <p className="mt-3 text-sm font-medium">
+                    <p className="mt-3 text-sm font-medium text-slate-700">
                       {requiredPrefix ? (
                         <>
                           {vi
@@ -708,13 +722,14 @@ export default function FriendlyMatchPage() {
                             vi ? "Nhập từ tiếng Anh…" : "Enter an English word…"
                           }
                           maxLength={80}
-                          className="h-14 w-full rounded-xl border-2 border-blue-500 bg-white/90 px-4 text-base outline-none focus:ring-4 focus:ring-blue-100 disabled:border-blue-200 disabled:bg-white/60"
+                          className="h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-base shadow-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-50"
                         />
-                        <button
+                        <Button
+                          size="lg"
                           disabled={inputDisabled || !word.trim()}
-                          className="mt-3 flex h-12 w-full items-center justify-center gap-3 rounded-xl bg-blue-600 font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-40"
+                          className="mt-3 w-full"
                         >
-                          <Send className="size-5" />
+                          <Send />
                           {busy
                             ? vi
                               ? "Đang gửi…"
@@ -722,7 +737,7 @@ export default function FriendlyMatchPage() {
                             : vi
                               ? "Gửi từ"
                               : "Send word"}
-                        </button>
+                        </Button>
                       </form>
                       <div
                         role="timer"
@@ -735,7 +750,7 @@ export default function FriendlyMatchPage() {
                       >
                         <svg
                           viewBox="0 0 100 100"
-                          className={`size-full -rotate-90 ${seconds <= 5 ? "text-rose-500" : "text-emerald-500"}`}
+                          className={`size-full -rotate-90 ${seconds <= 5 ? "text-red-500" : "text-blue-600"}`}
                           aria-hidden="true"
                         >
                           <circle
@@ -743,7 +758,7 @@ export default function FriendlyMatchPage() {
                             cy="50"
                             r="43"
                             fill="white"
-                            stroke="#d1fae5"
+                            stroke="#dbeafe"
                             strokeWidth="7"
                           />
                           <circle
@@ -762,7 +777,7 @@ export default function FriendlyMatchPage() {
                           />
                         </svg>
                         <div className="absolute inset-0 flex flex-col items-center justify-center">
-                          <strong className="text-3xl font-black tabular-nums">
+                          <strong className="text-3xl font-black tabular-nums text-slate-900">
                             {seconds}
                           </strong>
                           <span className="text-xs text-slate-500">
@@ -771,7 +786,7 @@ export default function FriendlyMatchPage() {
                         </div>
                       </div>
                     </div>
-                    <div className="mx-auto mt-4 flex max-w-xl items-center gap-4 rounded-xl bg-blue-50/90 px-4 py-3 text-left text-xs leading-5 text-slate-500">
+                    <div className="mx-auto mt-4 flex max-w-xl items-center gap-4 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-left text-xs leading-5 text-slate-600">
                       <Info className="size-5 shrink-0 text-blue-600" />
                       <ul className="list-disc pl-4">
                         <li>
@@ -800,8 +815,8 @@ export default function FriendlyMatchPage() {
                 </section>
               ) : null)}
             {game.finished && (
-              <section className="mt-6 rounded-3xl bg-white p-8 text-center shadow-sm">
-                <h2 className="text-3xl font-extrabold text-blue-600">
+              <section className={cn(surface, "mt-6 p-6 text-center sm:p-8")}>
+                <h2 className="text-3xl font-bold text-blue-600">
                   {final?.isDraw
                     ? vi
                       ? "Hòa!"
@@ -814,7 +829,7 @@ export default function FriendlyMatchPage() {
                         ? "Thất bại"
                         : "Defeat"}
                 </h2>
-                <p className="mt-4 text-slate-500">
+                <p className="mt-3 text-sm text-slate-500">
                   {final?.finishReason === "TURN_TIMEOUT"
                     ? vi
                       ? `Hết thời gian tìm từ${final.requiredLetter ? ` bắt đầu bằng ${final.requiredLetter.toUpperCase()}` : ""}.`
@@ -830,7 +845,7 @@ export default function FriendlyMatchPage() {
                         : ""}
                 </p>
                 {chain ? (
-                  <p className="mt-4 text-xl font-bold">
+                  <p className="mt-4 text-xl font-bold text-slate-900">
                     {final?.turnCount ?? 0}{" "}
                     {vi ? "từ đã nối" : "words connected"} ·{" "}
                     {Math.floor(duration / 60)}
@@ -848,7 +863,7 @@ export default function FriendlyMatchPage() {
                               ?.username
                           }
                         </strong>
-                        <span className="mt-2 block text-3xl font-black">
+                        <span className="mt-2 block text-3xl font-black tabular-nums text-slate-900">
                           {p.score}
                         </span>
                       </p>
@@ -856,39 +871,41 @@ export default function FriendlyMatchPage() {
                   </div>
                 )}
                 <div className="mt-8 flex justify-center gap-3">
-                  <button
+                  <Button
+                    size="lg"
                     onClick={() =>
                       router.push(
                         `/${locale}/arena/friend/room/${room?.code || ""}`,
                       )
                     }
-                    className="rounded-xl bg-blue-600 px-6 py-3 font-bold text-white disabled:opacity-40"
                   >
                     {vi ? "Trở về phòng" : "Back to room"}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="lg"
                     onClick={() => router.push(`/${locale}/arena`)}
-                    className="rounded-xl border px-6 py-3 font-semibold"
                   >
                     {vi ? "Đấu trường" : "Arena"}
-                  </button>
+                  </Button>
                 </div>
               </section>
             )}
             {room?.status === "CANCELLED" && (
-              <button
+              <Button
+                size="lg"
                 onClick={() => router.push(`/${locale}/arena`)}
-                className="mt-5 rounded-xl bg-blue-600 px-6 py-3 text-white"
+                className="mt-5"
               >
                 {vi ? "Mời người chơi khác" : "Invite another player"}
-              </button>
+              </Button>
             )}
           </div>
           {chain && (
             <aside className="flex min-w-0 flex-col gap-4">
-              <section className="rounded-2xl border border-white bg-white/80 p-4 shadow-[0_8px_30px_#c4d8ff20]">
+              <section className={cn(surface, "p-4 sm:p-5")}>
                 <div className="mb-3 flex items-center justify-between gap-2">
-                  <h2 className="flex items-center gap-2 text-sm font-bold">
+                  <h2 className="flex items-center gap-2 text-base font-semibold text-slate-900">
                     <ChartNoAxesColumnIncreasing className="size-5 text-blue-600" />
                     {vi ? "Lịch sử nối từ" : "Word history"}
                   </h2>
@@ -898,7 +915,7 @@ export default function FriendlyMatchPage() {
                 </div>
                 <div className="max-h-[480px] overflow-y-auto">
                   {usedWords.length === 0 && (
-                    <p className="py-10 text-center text-sm text-slate-400">
+                    <p className="py-10 text-center text-sm text-slate-500">
                       {vi ? "Chưa có từ nào được nối" : "No words played yet"}
                     </p>
                   )}
@@ -916,15 +933,15 @@ export default function FriendlyMatchPage() {
                       return (
                         <li
                           key={`${index}-${entry}`}
-                          className={`flex items-center gap-2 rounded-xl px-2 py-2.5 ${index === usedWords.length - 1 ? "bg-blue-50" : "border-b border-slate-100"}`}
+                          className={`flex items-center gap-2 rounded-lg px-2 py-2.5 ${index === usedWords.length - 1 ? "bg-blue-50" : "border-b border-slate-100"}`}
                         >
                           <span
-                            className={`flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${mine ? "bg-blue-50 text-blue-500" : "bg-rose-50 text-rose-500"}`}
+                            className={`flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${mine ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-600"}`}
                           >
                             {index + 1}
                           </span>
                           <ArrowRight
-                            className={`size-3 shrink-0 ${mine ? "text-blue-400" : "text-rose-300"}`}
+                            className={`size-3 shrink-0 ${mine ? "text-blue-400" : "text-slate-300"}`}
                           />
                           <div
                             title={player?.username}
@@ -939,9 +956,9 @@ export default function FriendlyMatchPage() {
                             />
                           </div>
                           <ArrowRight
-                            className={`size-3 shrink-0 ${mine ? "text-blue-400" : "text-rose-300"}`}
+                            className={`size-3 shrink-0 ${mine ? "text-blue-400" : "text-slate-300"}`}
                           />
-                          <span className="min-w-0 break-all text-xs font-bold uppercase">
+                          <span className="min-w-0 break-all text-xs font-bold uppercase text-slate-800">
                             {entry}
                           </span>
                         </li>
@@ -953,9 +970,9 @@ export default function FriendlyMatchPage() {
               </section>
               <section
                 aria-live="polite"
-                className="rounded-2xl border border-white bg-white/80 p-5"
+                className={cn(surface, "p-5")}
               >
-                <h2 className="flex items-center gap-2 text-sm font-bold">
+                <h2 className="flex items-center gap-2 text-base font-semibold text-slate-900">
                   <Clock3 className="size-5 text-slate-500" />
                   {game.finished
                     ? vi
@@ -987,7 +1004,7 @@ export default function FriendlyMatchPage() {
                     />
                   </div>
                   <div>
-                    <p className="text-sm font-medium">
+                    <p className="text-sm font-semibold text-slate-900">
                       {(multiplayer ? currentPlayer : myTurn ? me : opponent)
                         ?.username || "…"}
                     </p>

@@ -2,6 +2,7 @@
 
 import { ArrowRight, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { demoQuestions } from "../arena-data";
 
 import type { ArenaController } from "../hooks/use-arena-controller";
@@ -20,7 +21,6 @@ type Props = Pick<
   | "setFinished"
   | "startGame"
   | "chooseAnswer"
-  | "button"
 >;
 
 export function DemoGamePanel({
@@ -36,7 +36,6 @@ export function DemoGamePanel({
   setFinished,
   startGame,
   chooseAnswer,
-  button,
 }: Props) {
   return (
     <>
@@ -44,7 +43,7 @@ export function DemoGamePanel({
         <div className="mt-5">
           {finished ? (
             <div className="py-4 text-center">
-              <Trophy className="mx-auto size-14 text-amber-400" />
+              <Trophy className="mx-auto size-14 text-amber-500" />
               <h3 className="mt-4 text-xl font-bold text-slate-900">
                 {text("Hoàn thành trận đấu!", "Match complete!")}
               </h3>
@@ -57,17 +56,13 @@ export function DemoGamePanel({
                   "correct answers · Demo results do not affect your rating",
                 )}
               </p>
-              <button
-                type="button"
-                onClick={startGame}
-                className={cn(button, "mt-6 w-full bg-blue-600 text-white")}
-              >
+              <Button type="button" onClick={startGame} className="mt-6 w-full">
                 {text("Chơi lại", "Play again")}
-              </button>
+              </Button>
             </div>
           ) : (
             <>
-              <div className="flex items-center justify-between text-[11px] text-slate-500">
+              <div className="flex items-center justify-between text-xs text-slate-500">
                 <span>
                   {text("Bạn", "You")}{" "}
                   <strong className="text-blue-600">{score}</strong>
@@ -103,13 +98,13 @@ export function DemoGamePanel({
                     disabled={answer !== null}
                     onClick={() => chooseAnswer(index)}
                     className={cn(
-                      "min-h-14 cursor-pointer rounded-xl border px-3 text-sm font-medium transition-colors disabled:cursor-default",
+                      "min-h-14 cursor-pointer rounded-lg border px-3 text-sm font-medium transition-colors disabled:cursor-default",
                       answer === null
                         ? "border-slate-200 text-slate-700 hover:border-blue-400 hover:bg-blue-50"
                         : index === demoQuestions[question]!.answer
                           ? "border-emerald-300 bg-emerald-50 text-emerald-700"
                           : index === answer
-                            ? "border-rose-300 bg-rose-50 text-rose-600"
+                            ? "border-red-300 bg-red-50 text-red-600"
                             : "border-slate-100 text-slate-400",
                     )}
                   >
@@ -127,7 +122,7 @@ export function DemoGamePanel({
                           "The correct answer is highlighted in green.",
                         )}
                   </p>
-                  <button
+                  <Button
                     type="button"
                     onClick={() => {
                       if (question === demoQuestions.length - 1)
@@ -137,13 +132,13 @@ export function DemoGamePanel({
                         setAnswer(null);
                       }
                     }}
-                    className={cn(button, "mt-3 w-full bg-blue-600 text-white")}
+                    className="mt-3 w-full"
                   >
                     {question === demoQuestions.length - 1
                       ? text("Xem kết quả", "See results")
                       : text("Câu tiếp theo", "Next question")}
-                    <ArrowRight className="size-4" />
-                  </button>
+                    <ArrowRight />
+                  </Button>
                 </div>
               )}
             </>

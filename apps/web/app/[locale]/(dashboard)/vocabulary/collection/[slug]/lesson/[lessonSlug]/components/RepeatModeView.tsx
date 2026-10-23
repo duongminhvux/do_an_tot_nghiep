@@ -88,10 +88,10 @@ export function RepeatModeView({
         <button
           type="button"
           onClick={() => playAudio()}
-          className={`w-20 h-20 sm:w-24 sm:h-24 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-lg ${
+          className={`flex h-20 w-20 cursor-pointer items-center justify-center rounded-full bg-primary text-white shadow-sm transition-all sm:h-24 sm:w-24 ${
             isPlayingAudio
-              ? 'bg-blue-600 text-white ring-8 ring-blue-100 scale-105 animate-pulse'
-              : 'bg-gradient-to-tr from-blue-600 to-indigo-600 text-white hover:scale-105 hover:shadow-xl hover:shadow-blue-500/25'
+              ? 'scale-105 animate-pulse ring-8 ring-blue-100'
+              : 'hover:scale-105 hover:bg-blue-700'
           }`}
           title={t('listen_pronounce')}
         >
@@ -119,7 +119,7 @@ export function RepeatModeView({
           <button
             type="button"
             onClick={() => playAudio(audioUs || defaultAudioUrl, 'en-US')}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200 text-xs font-semibold text-slate-800 shadow-2xs group cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 text-xs font-semibold text-slate-800 group cursor-pointer"
             title={t('listen_us')}
           >
             <Volume2 className="w-3.5 h-3.5 text-blue-600 group-hover:scale-110" />
@@ -129,10 +129,10 @@ export function RepeatModeView({
           <button
             type="button"
             onClick={() => playAudio(audioUk || defaultAudioUrl, 'en-GB')}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-indigo-50 border border-slate-200 text-xs font-semibold text-slate-800 shadow-2xs group cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 text-xs font-semibold text-slate-800 group cursor-pointer"
             title={t('listen_uk')}
           >
-            <Volume2 className="w-3.5 h-3.5 text-indigo-600 group-hover:scale-110" />
+            <Volume2 className="w-3.5 h-3.5 text-blue-600 group-hover:scale-110" />
             <span>{t('listen_uk')}</span>
           </button>
         </div>
@@ -144,7 +144,7 @@ export function RepeatModeView({
 
       {/* Hint Pill if available */}
       {hintsRevealed > 0 && !isCorrect && (
-        <div className="px-4 py-1.5 rounded-xl border border-dashed border-blue-400 bg-blue-50 font-mono text-sm tracking-widest text-blue-700 font-black inline-block shadow-sm">
+        <div className="px-4 py-1.5 rounded-lg border border-dashed border-blue-400 bg-blue-50 font-mono text-sm tracking-widest text-blue-700 font-bold inline-block shadow-sm">
           {maskedHint}
         </div>
       )}
@@ -158,8 +158,8 @@ export function RepeatModeView({
               handleCheckGuess();
             }
           }}
-          className={`relative flex items-center rounded-2xl border bg-white shadow-sm transition-all p-1 ${
-            shake ? 'animate-shake border-rose-500 ring-4 ring-rose-100' : ''
+          className={`relative flex items-center rounded-lg border bg-white shadow-sm transition-all p-1 ${
+            shake ? 'animate-shake border-red-500 ring-4 ring-red-100' : ''
           } ${
             isCorrect
               ? 'border-emerald-500 ring-4 ring-emerald-100'
@@ -173,7 +173,7 @@ export function RepeatModeView({
             <button
               type="button"
               onClick={handleDontKnow}
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-500 hover:text-amber-800 bg-slate-100 hover:bg-amber-50 border border-slate-200 hover:border-amber-300 transition-all shrink-0 cursor-pointer ml-0.5 shadow-2xs"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-500 hover:text-amber-800 bg-slate-100 hover:bg-amber-50 border border-slate-200 hover:border-amber-300 transition-all shrink-0 cursor-pointer ml-0.5"
               title={t('dont_know')}
             >
               <HelpCircle className="w-3.5 h-3.5 text-amber-500" />
@@ -224,7 +224,7 @@ export function RepeatModeView({
             {!isCorrect && !isDontKnow && (
               <button
                 type="submit"
-                className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 transition-colors shadow-sm cursor-pointer"
+                className="w-8 h-8 rounded-lg bg-primary text-white flex items-center justify-center hover:bg-blue-700 transition-colors shadow-sm cursor-pointer"
               >
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
@@ -236,26 +236,26 @@ export function RepeatModeView({
         {isAnswerChecked && (
           <div className="mt-3 animate-in fade-in">
             {isCorrect ? (
-              <div className="p-3.5 bg-emerald-50/90 rounded-2xl border border-emerald-200 text-center space-y-1.5 shadow-2xs">
+              <div className="p-3.5 bg-emerald-50 rounded-lg border border-emerald-200 text-center space-y-1.5">
                 <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-emerald-700">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                   <span>{t('correct_feedback')}</span>
                 </div>
                 <div className="flex items-center justify-center gap-2 pt-0.5">
-                  <h4 className="text-xl sm:text-2xl font-black text-slate-900">
+                  <h4 className="text-xl sm:text-2xl font-bold text-slate-900">
                     {wordText}
                   </h4>
                   <div className="flex items-center gap-1.5 flex-wrap justify-center">
                     {ipaUs && (
                       <span className="text-xs font-mono text-slate-600 font-semibold bg-white px-2 py-0.5 rounded-md border border-slate-200 inline-flex items-center gap-1">
                         <span>{ipaUs}</span>
-                        <span className="text-[10px] font-black text-blue-700 bg-blue-50 px-1 rounded">US</span>
+                        <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-1 rounded-md">US</span>
                       </span>
                     )}
                     {ipaUk && (
                       <span className="text-xs font-mono text-slate-600 font-semibold bg-white px-2 py-0.5 rounded-md border border-slate-200 inline-flex items-center gap-1">
                         <span>{ipaUk}</span>
-                        <span className="text-[10px] font-black text-indigo-700 bg-indigo-50 px-1 rounded">UK</span>
+                        <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-1 rounded-md">UK</span>
                       </span>
                     )}
                   </div>
@@ -265,26 +265,26 @@ export function RepeatModeView({
                 </p>
               </div>
             ) : isDontKnow ? (
-              <div className="p-3.5 bg-amber-50/90 rounded-2xl border border-amber-200 text-center space-y-1.5 shadow-2xs">
+              <div className="p-3.5 bg-amber-50 rounded-lg border border-amber-200 text-center space-y-1.5">
                 <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-amber-700">
                   <HelpCircle className="w-4 h-4 text-amber-600" />
                   <span>{t('dont_know_feedback')}</span>
                 </div>
                 <div className="flex items-center justify-center gap-2 pt-0.5">
-                  <h4 className="text-xl sm:text-2xl font-black text-slate-900">
+                  <h4 className="text-xl sm:text-2xl font-bold text-slate-900">
                     {wordText}
                   </h4>
                   <div className="flex items-center gap-1.5 flex-wrap justify-center">
                     {ipaUs && (
                       <span className="text-xs font-mono text-slate-600 font-semibold bg-white px-2 py-0.5 rounded-md border border-slate-200 inline-flex items-center gap-1">
                         <span>{ipaUs}</span>
-                        <span className="text-[10px] font-black text-blue-700 bg-blue-50 px-1 rounded">US</span>
+                        <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-1 rounded-md">US</span>
                       </span>
                     )}
                     {ipaUk && (
                       <span className="text-xs font-mono text-slate-600 font-semibold bg-white px-2 py-0.5 rounded-md border border-slate-200 inline-flex items-center gap-1">
                         <span>{ipaUk}</span>
-                        <span className="text-[10px] font-black text-indigo-700 bg-indigo-50 px-1 rounded">UK</span>
+                        <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-1 rounded-md">UK</span>
                       </span>
                     )}
                   </div>
@@ -294,7 +294,7 @@ export function RepeatModeView({
                 </p>
               </div>
             ) : (
-              <span className="text-rose-700 inline-flex items-center gap-1.5 bg-rose-50 px-3 py-1 rounded-full border border-rose-200 text-xs font-bold">
+              <span className="text-red-700 inline-flex items-center gap-1.5 bg-red-50 px-3 py-1 rounded-full border border-red-200 text-xs font-bold">
                 <X className="w-4 h-4" /> {t('incorrect_feedback')}
               </span>
             )}

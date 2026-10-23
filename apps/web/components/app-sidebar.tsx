@@ -85,7 +85,9 @@ export function AppSidebar() {
     pathname === `/${locale}/toeic` ||
     pathname === `/${locale}/toeic/exams` ||
     pathname?.startsWith(`/${locale}/toeic/exams/`);
-  const isToeicHistoryActive = pathname?.startsWith(`/${locale}/toeic/history`);
+  const isToeicHistoryActive =
+    pathname?.startsWith(`/${locale}/toeic/history`) ||
+    (pathname?.startsWith(`/${locale}/toeic/attempts/`) && pathname.endsWith('/result'));
   const isToeicStatsActive =
     pathname?.startsWith(`/${locale}/toeic/stats`) ||
     pathname?.startsWith(`/${locale}/toeic/analytics`);
@@ -100,7 +102,7 @@ export function AppSidebar() {
       {/* Brand Header */}
       <SidebarHeader className="border-b border-slate-100 px-3.5 h-16 flex items-center justify-between">
         <div className="flex items-center gap-3 min-w-0 w-full">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-blue-600 text-white shadow-sm shadow-blue-500/20">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm">
             <BookOpen className="h-5 w-5" />
           </div>
           <div className="flex flex-col overflow-hidden group-data-[collapsible=icon]:hidden">
@@ -131,7 +133,7 @@ export function AppSidebar() {
                   isActive={isHomeActive}
                   tooltip={t('nav.home', 'Trang chủ')}
                   className={cn(
-                    'h-10 px-3 rounded text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-all font-medium text-[15px]',
+                    'h-10 px-3 rounded-lg text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-all font-medium text-sm',
                     isHomeActive && 'bg-blue-50/80 text-blue-600 font-semibold shadow-xs'
                   )}
                 >
@@ -156,7 +158,7 @@ export function AppSidebar() {
                     type="button"
                     onClick={() => setToeicMenuOpen(!toeicMenuOpen)}
                     className={cn(
-                      'w-full flex items-center justify-between h-10 px-3 rounded text-slate-700 hover:text-blue-600 hover:bg-slate-50 transition-all font-semibold text-[15px] cursor-pointer group',
+                      'w-full flex items-center justify-between h-10 px-3 rounded-lg text-slate-700 hover:text-blue-600 hover:bg-slate-50 transition-all font-semibold text-sm cursor-pointer group',
                       isToeicSectionActive && 'text-blue-600'
                     )}
                     title={t('nav.toeic', 'TOEIC')}
@@ -187,7 +189,7 @@ export function AppSidebar() {
                       <Link
                         href={`/${locale}/toeic`}
                         className={cn(
-                          'flex items-center gap-2.5 px-3 py-2 rounded text-sm font-medium transition-all',
+                          'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all',
                           isToeicExamsActive
                             ? 'bg-blue-50 text-blue-600 font-semibold'
                             : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
@@ -205,7 +207,7 @@ export function AppSidebar() {
                       <Link
                         href={`/${locale}/toeic/history`}
                         className={cn(
-                          'flex items-center gap-2.5 px-3 py-2 rounded text-sm font-medium transition-all',
+                          'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all',
                           isToeicHistoryActive
                             ? 'bg-blue-50 text-blue-600 font-semibold'
                             : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
@@ -223,7 +225,7 @@ export function AppSidebar() {
                       <Link
                         href={`/${locale}/toeic/stats`}
                         className={cn(
-                          'flex items-center gap-2.5 px-3 py-2 rounded text-sm font-medium transition-all',
+                          'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all',
                           isToeicStatsActive
                             ? 'bg-blue-50 text-blue-600 font-semibold'
                             : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
@@ -249,7 +251,7 @@ export function AppSidebar() {
                     type="button"
                     onClick={() => setGamesMenuOpen(!gamesMenuOpen)}
                     className={cn(
-                      'w-full flex items-center justify-between h-10 px-3 rounded text-slate-700 hover:text-blue-600 hover:bg-slate-50 transition-all font-semibold text-[15px] cursor-pointer group',
+                      'w-full flex items-center justify-between h-10 px-3 rounded-lg text-slate-700 hover:text-blue-600 hover:bg-slate-50 transition-all font-semibold text-sm cursor-pointer group',
                       isGamesSectionActive && 'text-blue-600'
                     )}
                     title={t('nav.games', 'Trò chơi')}
@@ -279,7 +281,7 @@ export function AppSidebar() {
                       <Link
                         href={`/${locale}/arena`}
                         className={cn(
-                          'flex items-center gap-2.5 px-3 py-2 rounded text-sm font-medium transition-all',
+                          'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all',
                           isArenaActive
                             ? 'bg-blue-50 text-blue-600 font-semibold'
                             : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
@@ -297,7 +299,7 @@ export function AppSidebar() {
                       <Link
                         href={`/${locale}/games`}
                         className={cn(
-                          'flex items-center gap-2.5 px-3 py-2 rounded text-sm font-medium transition-all',
+                          'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all',
                           isGamesListActive
                             ? 'bg-blue-50 text-blue-600 font-semibold'
                             : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
@@ -325,7 +327,7 @@ export function AppSidebar() {
                     type="button"
                     onClick={() => setVocabMenuOpen(!vocabMenuOpen)}
                     className={cn(
-                      'w-full flex items-center justify-between h-10 px-3 rounded text-slate-700 hover:text-blue-600 hover:bg-slate-50 transition-all font-semibold text-[15px] cursor-pointer group',
+                      'w-full flex items-center justify-between h-10 px-3 rounded-lg text-slate-700 hover:text-blue-600 hover:bg-slate-50 transition-all font-semibold text-sm cursor-pointer group',
                       isVocabSectionActive && 'text-blue-600'
                     )}
                   >
@@ -355,7 +357,7 @@ export function AppSidebar() {
                       <Link
                         href={`/${locale}/vocabulary`}
                         className={cn(
-                          'flex items-center gap-2.5 px-3 py-2 rounded text-sm font-medium transition-all',
+                          'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all',
                           isVocabExploreActive
                             ? 'bg-blue-50 text-blue-600 font-semibold'
                             : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
@@ -373,7 +375,7 @@ export function AppSidebar() {
                       <Link
                         href={`/${locale}/vocabulary/my-words`}
                         className={cn(
-                          'flex items-center gap-2.5 px-3 py-2 rounded text-sm font-medium transition-all',
+                          'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all',
                           isVocabMyWordsActive
                             ? 'bg-blue-50 text-blue-600 font-semibold'
                             : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
@@ -399,7 +401,7 @@ export function AppSidebar() {
                   isActive={isPracticeActive}
                   tooltip={t('nav.dictation', 'Dictation')}
                   className={cn(
-                    'h-10 px-3 rounded text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-all font-medium text-[15px]',
+                    'h-10 px-3 rounded-lg text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-all font-medium text-sm',
                     isPracticeActive && 'bg-blue-50/80 text-blue-600 font-semibold shadow-xs'
                   )}
                 >
@@ -424,7 +426,7 @@ export function AppSidebar() {
                   isActive={isProgressActive}
                   tooltip={t('nav.dictation_progress', 'Tiến độ Dictation')}
                   className={cn(
-                    'h-10 px-3 rounded text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-all font-medium text-[15px]',
+                    'h-10 px-3 rounded-lg text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-all font-medium text-sm',
                     isProgressActive && 'bg-blue-50/80 text-blue-600 font-semibold shadow-xs'
                   )}
                 >
@@ -460,7 +462,7 @@ export function AppSidebar() {
         <SidebarSeparator className="my-1 group-data-[collapsible=icon]:hidden" />
 
         {/* User Card Matching Mockup */}
-        <div className="flex items-center justify-between gap-2.5 p-2.5 rounded bg-slate-50/80 hover:bg-slate-100 border border-slate-200/80 transition-colors group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:border-0 cursor-pointer">
+        <div className="flex items-center justify-between gap-2.5 p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-colors group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:border-0 cursor-pointer">
           <div className="flex items-center gap-3 min-w-0">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white font-bold text-sm shadow-xs">
               {(user?.username?.[0] || 'N').toUpperCase()}

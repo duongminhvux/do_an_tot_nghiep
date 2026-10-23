@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface StudySettingsModalProps {
   show: boolean;
@@ -25,52 +26,46 @@ export function StudySettingsModal({
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
-      <div className="bg-white rounded-3xl border border-slate-200 p-6 max-w-sm w-full space-y-4 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs animate-in fade-in">
+      <div className="w-full max-w-sm space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-          <h3 className="text-base font-bold text-slate-900">{t('settings_title')}</h3>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 p-1 rounded-lg cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <h3 className="text-base font-semibold text-slate-900">{t('settings_title')}</h3>
+          <Button type="button" variant="ghost" size="icon-sm" onClick={onClose} className="text-slate-400">
+            <X />
+          </Button>
         </div>
 
-        <div className="space-y-3 text-xs">
-          <label className="flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50 cursor-pointer">
+        <div className="space-y-3 text-sm">
+          <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-slate-200 p-3 hover:bg-slate-50">
             <div>
-              <span className="font-bold text-slate-800 block">{t('sound_effects')}</span>
-              <span className="text-[11px] text-slate-400 font-normal">{t('sound_effects_desc')}</span>
+              <span className="block font-semibold text-slate-800">{t('sound_effects')}</span>
+              <span className="text-xs font-normal text-slate-500">{t('sound_effects_desc')}</span>
             </div>
             <input
               type="checkbox"
               checked={soundEnabled}
               onChange={(e) => setSoundEnabled(e.target.checked)}
-              className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+              className="h-4 w-4 cursor-pointer rounded accent-blue-600"
             />
           </label>
 
-          <label className="flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50 cursor-pointer">
+          <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-slate-200 p-3 hover:bg-slate-50">
             <div>
-              <span className="font-bold text-slate-800 block">{t('auto_pronounce')}</span>
-              <span className="text-[11px] text-slate-400 font-normal">{t('auto_pronounce_desc')}</span>
+              <span className="block font-semibold text-slate-800">{t('auto_pronounce')}</span>
+              <span className="text-xs font-normal text-slate-500">{t('auto_pronounce_desc')}</span>
             </div>
             <input
               type="checkbox"
               checked={autoPlayAudio}
               onChange={(e) => setAutoPlayAudio(e.target.checked)}
-              className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+              className="h-4 w-4 cursor-pointer rounded accent-blue-600"
             />
           </label>
         </div>
 
-        <button
-          onClick={onClose}
-          className="w-full py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 shadow-md shadow-blue-500/20 cursor-pointer"
-        >
+        <Button type="button" onClick={onClose} className="w-full">
           {t('save_close')}
-        </button>
+        </Button>
       </div>
     </div>
   );

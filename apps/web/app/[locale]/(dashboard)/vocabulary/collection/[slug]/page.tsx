@@ -14,13 +14,14 @@ import { CollectionItem, LessonItem } from '@/types/vocabulary';
 import { CollectionProgressDetail } from '@/types/learning';
 import {
   BookOpen,
-  ArrowRight,
-  ChevronRight,
-  Home,
+  ArrowLeft,
   FileText,
   BarChart3,
   Info,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { PageShell, PageHeader, Tabs, EmptyState } from '@/components/ui/page';
 import { CollectionHero } from './components/CollectionHero';
 import { CollectionProgressOverview } from './components/CollectionProgressOverview';
 import { CollectionLessonsTab } from './components/CollectionLessonsTab';
@@ -109,66 +110,49 @@ export default function CollectionDetailPage() {
     el?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const breadcrumbs = [
+    { label: t('collection_detail.breadcrumb_home'), href: `/${locale}` },
+    { label: t('collection_detail.breadcrumb_vocab'), href: `/${locale}/vocabulary` },
+    { label: t('collection_detail.breadcrumb_explore'), href: `/${locale}/vocabulary` },
+    { label: isColLoading ? '...' : collection?.name || '...' },
+  ];
+
   // No slug state
   if (!slug) {
     return (
-      <div className="w-full max-w-[1400px] mx-auto p-6 sm:p-8">
-        <div className="text-center py-20">
-          <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <p className="text-sm font-semibold text-slate-600">
-            {t('collection_detail.not_found_title')}
-          </p>
-          <p className="text-xs text-slate-400 mt-1">
-            {t('collection_detail.not_found_desc')}
-          </p>
-          <Link
-            href={`/${locale}/vocabulary`}
-            className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors"
-          >
-            <ArrowRight className="w-3.5 h-3.5 rotate-180" />
-            <span>{t('back')}</span>
-          </Link>
-        </div>
-      </div>
+      <PageShell>
+        <EmptyState
+          icon={BookOpen}
+          title={t('collection_detail.not_found_title')}
+          description={t('collection_detail.not_found_desc')}
+          action={
+            <Button asChild size="sm">
+              <Link href={`/${locale}/vocabulary`}>
+                <ArrowLeft />
+                <span>{t('back')}</span>
+              </Link>
+            </Button>
+          }
+          className="py-20"
+        />
+      </PageShell>
     );
   }
 
   return (
-    <div className="w-full max-w-[1400px] mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
-      {/* 1. BREADCRUMB */}
-      <nav className="flex items-center gap-1.5 text-xs text-slate-500 flex-wrap">
-        <Link
-          href={`/${locale}`}
-          className="flex items-center gap-1 hover:text-blue-600 transition-colors"
-          title={t('collection_detail.breadcrumb_home')}
-        >
-          <Home className="w-3.5 h-3.5" />
-        </Link>
-        <ChevronRight className="w-3 h-3 text-slate-300" />
-        <Link
-          href={`/${locale}/vocabulary`}
-          className="hover:text-blue-600 transition-colors font-medium"
-        >
-          {t('collection_detail.breadcrumb_vocab')}
-        </Link>
-        <ChevronRight className="w-3 h-3 text-slate-300" />
-        <Link
-          href={`/${locale}/vocabulary`}
-          className="hover:text-blue-600 transition-colors font-medium"
-        >
-          {t('collection_detail.breadcrumb_explore')}
-        </Link>
-        <ChevronRight className="w-3 h-3 text-slate-300" />
-        {isColLoading ? (
-          <span className="h-3 w-20 bg-slate-100 rounded animate-pulse" />
-        ) : (
-          <span className="font-semibold text-slate-900 truncate max-w-[200px]">
-            {collection?.name || '...'}
-          </span>
-        )}
-      </nav>
+    <PageShell>
+      <PageHeader
+        breadcrumbs={breadcrumbs}
+        title={
+          isColLoading ? (
+            <Skeleton className="h-8 w-64 max-w-full" />
+          ) : (
+            collection?.name || '...'
+          )
+        }
+      />
 
-      {/* 2. HERO SECTION */}
+      {/* HERO SECTION */}
       <CollectionHero
         collection={collection}
         groupName={groupName}
@@ -178,38 +162,32 @@ export default function CollectionDetailPage() {
         onStartClick={handleStartClick}
       />
 
-      {/* 3. PROGRESS OVERVIEW */}
+      {/* PROGRESS OVERVIEW */}
       <CollectionProgressOverview
         collectionProgress={collectionProgress}
         lessonsCount={lessons.length}
         totalWordsCount={totalWordsCount}
       />
 
-      {/* 4. TAB NAVIGATION */}
-      <div className="flex items-center gap-1 border-b border-slate-200 overflow-x-auto scrollbar-none">
-        {TAB_KEYS.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold whitespace-nowrap border-b-2 transition-all cursor-pointer ${
-                isActive
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              <span>{t(`collection_detail.${tab.labelKey}`)}</span>
-            </button>
-          );
-        })}
-      </div>
+      {/* TABS + CONTENT */}
+      <div id="lessons-section" className="scroll-mt-20 space-y-5">
+        <Tabs
+          items={TAB_KEYS.map((tab) => {
+            const Icon = tab.icon;
+            return {
+              value: tab.id,
+              label: (
+                <span className="inline-flex items-center gap-1.5">
+                  <Icon className="h-4 w-4" />
+                  {t(`collection_detail.${tab.labelKey}`)}
+                </span>
+              ),
+            };
+          })}
+          value={activeTab}
+          onChange={setActiveTab}
+        />
 
-      {/* 5. TAB CONTENT */}
-      <div id="lessons-section">
         {activeTab === 'lessons' && (
           <CollectionLessonsTab
             lessons={lessons}
@@ -240,6 +218,6 @@ export default function CollectionDetailPage() {
           />
         )}
       </div>
-    </div>
+    </PageShell>
   );
 }

@@ -537,7 +537,7 @@ export default function ExamDetailPage() {
           <Users className="h-4 w-4" />
           <span>{t('tabs.attempts')}</span>
           <span className="px-1.5 py-0.5 rounded-full bg-slate-100 text-[10px] text-slate-600">
-            0
+            {exam.totalAttempts ?? 0}
           </span>
         </button>
       </div>

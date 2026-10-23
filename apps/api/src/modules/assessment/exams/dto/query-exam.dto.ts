@@ -1,4 +1,12 @@
-import { IsBoolean, IsEnum, IsNumber, IsOptional, IsString, Min, IsIn } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+  IsIn,
+} from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { ExamType } from './create-exam.dto.js';
 
@@ -23,7 +31,9 @@ export class QueryExamDto {
   @IsOptional()
   type?: ExamType;
 
-  @Transform(({ value }) => value === 'true' ? true : value === 'false' ? false : value)
+  @Transform(({ value }) =>
+    value === 'true' ? true : value === 'false' ? false : value,
+  )
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
@@ -31,7 +41,6 @@ export class QueryExamDto {
   @IsString()
   @IsOptional()
   groupId?: string;
-
 
   @Type(() => Number)
   @IsNumber()

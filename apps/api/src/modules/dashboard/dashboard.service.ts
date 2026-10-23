@@ -52,14 +52,14 @@ export class DashboardService {
       this.userModel.countDocuments({ createdAt: { $lt: start }, isDeleted: { $ne: true } }),
       this.examModel.countDocuments({ isDeleted: { $ne: true }, type: 'TOEIC' }),
       this.examModel.countDocuments({ isDeleted: { $ne: true }, type: 'TOEIC', isActive: true }),
-      this.attemptModel.countDocuments({ createdAt: period, status: 'COMPLETED' }),
-      this.attemptModel.countDocuments({ createdAt: previousPeriod, status: 'COMPLETED' }),
+      this.attemptModel.countDocuments({ createdAt: period, status: { $in: ['FINISHED', 'COMPLETED'] } }),
+      this.attemptModel.countDocuments({ createdAt: previousPeriod, status: { $in: ['FINISHED', 'COMPLETED'] } }),
       this.attemptModel.aggregate([
-        { $match: { createdAt: period, status: 'COMPLETED', score: { $type: 'number' } } },
+        { $match: { createdAt: period, status: { $in: ['FINISHED', 'COMPLETED'] }, score: { $type: 'number' } } },
         { $group: { _id: null, value: { $avg: '$score' } } },
       ]),
       this.attemptModel.aggregate([
-        { $match: { createdAt: previousPeriod, status: 'COMPLETED', score: { $type: 'number' } } },
+        { $match: { createdAt: previousPeriod, status: { $in: ['FINISHED', 'COMPLETED'] }, score: { $type: 'number' } } },
         { $group: { _id: null, value: { $avg: '$score' } } },
       ]),
       this.userModel.aggregate([
@@ -68,7 +68,7 @@ export class DashboardService {
         { $sort: { _id: 1 } },
       ]),
       this.attemptModel.aggregate([
-        { $match: { createdAt: period, status: 'COMPLETED' } },
+        { $match: { createdAt: period, status: { $in: ['FINISHED', 'COMPLETED'] } } },
         { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, count: { $sum: 1 } } },
         { $sort: { _id: 1 } },
       ]),
@@ -78,7 +78,7 @@ export class DashboardService {
         { $sort: { count: -1 } },
       ]),
       this.attemptModel.aggregate([
-        { $match: { status: 'COMPLETED' } },
+        { $match: { status: { $in: ['FINISHED', 'COMPLETED'] } } },
         { $group: { _id: '$examId', attempts: { $sum: 1 } } },
         { $sort: { attempts: -1 } },
         { $limit: 5 },

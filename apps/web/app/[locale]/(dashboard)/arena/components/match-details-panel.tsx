@@ -25,10 +25,10 @@ export function MatchDetailsPanel({
             className={cn(
               "mx-auto flex size-16 items-center justify-center rounded-full",
               selectedMatch.draw
-                ? "bg-blue-50 text-blue-500"
+                ? "bg-amber-50 text-amber-600"
                 : selectedMatch.won
-                  ? "bg-emerald-50 text-emerald-500"
-                  : "bg-rose-50 text-rose-500",
+                  ? "bg-emerald-50 text-emerald-600"
+                  : "bg-red-50 text-red-600",
             )}
           >
             <Trophy className="size-8" />
@@ -40,22 +40,22 @@ export function MatchDetailsPanel({
                 ? text("Chiến thắng!", "Victory!")
                 : text("Cố gắng ở trận sau!", "Better luck next time!")}
           </h3>
-          <p className="mt-2 text-xs text-slate-500">
+          <p className="mt-1.5 text-sm text-slate-500">
             {modeLabel(selectedMatch.mode)} · {timeLabel(selectedMatch.minutes)}
           </p>
-          <div className="my-6 flex items-center justify-between rounded-xl bg-slate-50 p-4">
-            <span className="text-xs font-semibold">{text("Bạn", "You")}</span>
-            <span className="text-sm font-bold text-violet-600">
+          <div className="my-6 flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <span className="text-sm font-semibold text-slate-700">{text("Bạn", "You")}</span>
+            <span className="text-lg font-bold tabular-nums text-slate-900">
               {selectedMatch.mode === "word-chain"
                 ? text("Nối từ", "Word Chain")
                 : `${selectedMatch.score[0]} : ${selectedMatch.score[1]}`}
             </span>
-            <span className="max-w-24 text-xs font-semibold">
+            <span className="max-w-24 truncate text-sm font-semibold text-slate-700">
               {selectedMatch.name}
             </span>
           </div>
           {selectedMatch.mode === "word-chain" ? (
-            <p className="text-sm font-semibold text-violet-600">
+            <p className="text-sm font-semibold text-blue-600">
               {text(
                 "Kết quả dựa trên số lượt nối từ hợp lệ",
                 "Result based on valid word-chain turns",
@@ -66,10 +66,10 @@ export function MatchDetailsPanel({
               className={cn(
                 "text-sm font-semibold",
                 selectedMatch.draw
-                  ? "text-blue-600"
+                  ? "text-amber-600"
                   : selectedMatch.won
                     ? "text-emerald-600"
-                    : "text-rose-500",
+                    : "text-red-600",
               )}
             >
               {selectedMatch.points > 0 ? "+" : ""}

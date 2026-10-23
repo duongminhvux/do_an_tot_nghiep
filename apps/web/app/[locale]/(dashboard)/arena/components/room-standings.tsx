@@ -1,6 +1,8 @@
 "use client";
 import type { FriendPlayer } from "@/lib/friendly-arena";
 import { FriendlyAvatar } from "./friendly-avatar";
+import { cn } from "@/lib/utils";
+import { surface } from "@/components/ui/page";
 
 export function RoomStandings({
   players,
@@ -24,16 +26,21 @@ export function RoomStandings({
   return (
     <section
       aria-label={vi ? "Bảng điểm phòng" : "Room scoreboard"}
-      className="my-4 rounded-2xl border border-blue-100 bg-white p-4"
+      className={cn(surface, "my-4 p-4 sm:p-5")}
     >
-      <h2 className="mb-3 font-bold">
+      <h2 className="mb-3 text-base font-semibold text-slate-900">
         {vi ? "Bảng điểm phòng" : "Room scoreboard"}
       </h2>
       <ol className="grid gap-2 sm:grid-cols-2">
         {ordered.map((player) => (
           <li
             key={player.userId}
-            className={`flex items-center gap-3 rounded-xl p-3 ${player.userId === currentTurnUserId ? "bg-blue-100 ring-1 ring-blue-400" : "bg-slate-50"}`}
+            className={cn(
+              "flex items-center gap-3 rounded-lg border p-3",
+              player.userId === currentTurnUserId
+                ? "border-blue-300 bg-blue-50 ring-1 ring-blue-300"
+                : "border-slate-200 bg-slate-50",
+            )}
           >
             <div className="size-10 shrink-0 overflow-hidden rounded-full">
               <FriendlyAvatar
@@ -42,7 +49,7 @@ export function RoomStandings({
               />
             </div>
             <div className="min-w-0 flex-1">
-              <strong className="block truncate text-sm">
+              <strong className="block truncate text-sm font-semibold text-slate-900">
                 {player.username}
                 {player.userId === currentUserId
                   ? vi

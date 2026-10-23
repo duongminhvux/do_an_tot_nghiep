@@ -11,8 +11,6 @@ import {
   Crown,
   Flame,
   Gamepad2,
-  HelpCircle,
-  Link as LinkIcon,
   Loader2,
   LogOut,
   RefreshCw,
@@ -42,6 +40,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { FriendlyAvatar } from "./friendly-avatar";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { surface } from "@/components/ui/page";
 import { arenaSocket } from "@/lib/arena-socket";
 import apiClient from "@/lib/axios";
 import {
@@ -403,35 +404,36 @@ export function FriendlyLobby({
   const currentModeInfo = modeBadge(room?.mode ?? mode);
 
   return (
-    <main className="relative min-h-[calc(100vh-3.5rem)] overflow-hidden bg-[radial-gradient(ellipse_at_top,#e6efff_0%,#f5f8ff_50%,#f8fafc_100%)] px-3 py-4 text-slate-900 sm:px-6 sm:py-6">
-      {/* Background ambient glowing orbs */}
-      <div className="pointer-events-none absolute -top-40 left-1/2 -z-10 h-96 w-96 -translate-x-1/2 rounded-full bg-blue-400/20 blur-[128px]" />
-      <div className="pointer-events-none absolute top-1/4 -left-20 -z-10 h-80 w-80 rounded-full bg-indigo-400/15 blur-[120px]" />
-      <div className="pointer-events-none absolute bottom-10 -right-20 -z-10 h-80 w-80 rounded-full bg-violet-400/15 blur-[120px]" />
-      {/* Subtle tech dots pattern */}
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(#3b82f612_1px,transparent_1px)] [background-size:20px_20px]" />
+    <main className="relative min-h-[calc(100dvh-3.5rem)] bg-background px-3 py-4 text-slate-900 sm:px-6 sm:py-6">
 
       <div className="mx-auto max-w-7xl">
         {/* Top Navigation Bar */}
-        <header className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/80 bg-white/80 p-3.5 shadow-[0_8px_30px_rgba(30,58,138,0.06)] backdrop-blur-xl sm:px-5">
+        <header
+          className={cn(
+            surface,
+            "mb-6 flex flex-wrap items-center justify-between gap-3 p-3.5 sm:px-5",
+          )}
+        >
           <div className="flex min-w-0 items-center gap-3">
-            <button
+            <Button
+              variant="outline"
+              size="icon"
               onClick={() => void leave()}
               disabled={busy}
               aria-label={text("Quay lại đấu trường", "Back to Arena")}
-              className="group flex size-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 disabled:opacity-40"
+              className="shrink-0"
             >
-              <ArrowLeft className="size-5 transition-transform group-hover:-translate-x-0.5" />
-            </button>
+              <ArrowLeft className="size-5" />
+            </Button>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="flex size-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-500/20 animate-pulse" />
-                <h1 className="truncate text-base font-black tracking-tight text-slate-900 sm:text-lg">
+                <span className="flex size-2.5 shrink-0 rounded-full bg-emerald-500 ring-4 ring-emerald-500/20" />
+                <h1 className="truncate text-base font-bold tracking-tight text-slate-900 sm:text-lg">
                   {multiplayer
                     ? text("Phòng Đấu Nhóm", "Battle Party Room")
                     : text("Đấu Trường Solo 1v1", "Friendly 1v1 Arena")}
                 </h1>
-                <span className="hidden rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[11px] font-bold text-blue-700 sm:inline-flex">
+                <span className="hidden rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-100 sm:inline-flex">
                   {multiplayer ? text("Nhiều người", "Multiplayer") : "1 vs 1"}
                 </span>
               </div>
@@ -447,23 +449,24 @@ export function FriendlyLobby({
           </div>
 
           <div className="flex items-center gap-2.5">
-            <div className="hidden items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-xs md:flex">
+            <div className="hidden items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 md:flex">
               <span
-                className={`size-2 rounded-full ${connected ? "bg-emerald-500 shadow-[0_0_8px_#10b981]" : "bg-amber-400 animate-ping"}`}
+                className={`size-2 rounded-full ${connected ? "bg-emerald-500" : "animate-pulse bg-amber-400"}`}
               />
               {connected
                 ? text("Máy chủ trực tuyến", "Server online")
                 : text("Đang kết nối lại…", "Reconnecting…")}
             </div>
 
-            <button
+            <Button
+              variant="outline"
               onClick={() => void leave()}
               disabled={busy}
-              className="flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-bold text-rose-600 shadow-xs transition hover:bg-rose-100 hover:text-rose-700 disabled:opacity-40"
+              className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
             >
-              <LogOut className="size-4" />
+              <LogOut />
               <span>{text("Rời phòng", "Leave room")}</span>
-            </button>
+            </Button>
           </div>
         </header>
 
@@ -471,9 +474,9 @@ export function FriendlyLobby({
         {!connected && (
           <div
             role="status"
-            className="mb-4 flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-800 shadow-sm backdrop-blur-md"
+            className="mb-4 flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-800"
           >
-            <Loader2 className="size-5 animate-spin text-amber-500" />
+            <Loader2 className="size-5 animate-spin text-amber-600" />
             <p className="text-sm font-medium">
               {text(
                 "Đang kết nối lại tới máy chủ Đấu trường… Vui lòng đợi trong giây lát.",
@@ -486,25 +489,32 @@ export function FriendlyLobby({
         {notice && (
           <div
             role="alert"
-            className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50/90 p-4 text-blue-900 shadow-sm backdrop-blur-md"
+            className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4 text-blue-900"
           >
             <p className="text-sm font-medium">{notice}</p>
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setNotice("")}
-              className="text-xs font-bold text-blue-600 hover:text-blue-800"
+              className="shrink-0 text-blue-700 hover:bg-blue-100 hover:text-blue-800"
             >
               {text("Đóng", "Dismiss")}
-            </button>
+            </Button>
           </div>
         )}
 
         {!room ? (
-          <div className="flex min-h-[360px] flex-col items-center justify-center gap-4 rounded-xl border border-white bg-white/80 p-12 text-center shadow-[0_12px_40px_rgba(30,58,138,0.06)] backdrop-blur-xl">
+          <div
+            className={cn(
+              surface,
+              "flex min-h-[360px] flex-col items-center justify-center gap-4 p-12 text-center",
+            )}
+          >
             <div className="relative">
-              <div className="size-16 rounded-full border-2 border-blue-200 border-t-blue-600 animate-spin" />
-              <Swords className="absolute inset-0 m-auto size-7 text-blue-600 animate-pulse" />
+              <div className="size-16 animate-spin rounded-full border-2 border-blue-100 border-t-blue-600" />
+              <Swords className="absolute inset-0 m-auto size-7 text-blue-600" />
             </div>
-            <p className="text-base font-bold text-slate-700">
+            <p className="text-sm font-medium text-slate-600">
               {text(
                 "Đang chuẩn bị đấu trường phòng…",
                 "Preparing arena lobby…",
@@ -514,20 +524,25 @@ export function FriendlyLobby({
         ) : (
           <>
             {/* HERO BAR: Room Code & Quick Info Hub */}
-            <section className="relative mb-6 overflow-hidden rounded-xl border border-white/80 bg-white/85 p-4 shadow-[0_12px_40px_rgba(30,58,138,0.08)] backdrop-blur-2xl sm:p-6">
+            <section
+              className={cn(
+                surface,
+                "relative mb-6 overflow-hidden p-4 sm:p-6",
+              )}
+            >
               <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                 {/* Room Code Badge */}
                 <div className="flex flex-wrap items-center gap-4">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-blue-600 shadow-xs">
+                    <div className="rounded-xl bg-blue-50 p-3 text-blue-600">
                       <Gamepad2 className="size-6" />
                     </div>
                     <div>
-                      <span className="text-[11px] font-extrabold tracking-wider uppercase text-blue-600">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-blue-600">
                         {text("MÃ PHÒNG ĐẤU", "ROOM CODE")}
                       </span>
                       <div className="flex items-center gap-2">
-                        <strong className="font-mono text-3xl font-black tracking-[0.22em] text-slate-900 drop-shadow-xs">
+                        <strong className="font-mono text-3xl font-black tracking-[0.22em] text-slate-900">
                           {room.code}
                         </strong>
                       </div>
@@ -535,9 +550,9 @@ export function FriendlyLobby({
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <button
+                    <Button
+                      variant="secondary"
                       onClick={() => void handleCopyCode()}
-                      className="group flex items-center gap-2 rounded-xl border border-blue-200/80 bg-blue-50/80 px-3.5 py-2.5 text-xs font-bold text-blue-700 shadow-xs transition hover:border-blue-300 hover:bg-blue-100 active:scale-95"
                     >
                       {copiedCode ? (
                         <>
@@ -548,15 +563,15 @@ export function FriendlyLobby({
                         </>
                       ) : (
                         <>
-                          <Copy className="size-4 text-blue-600 transition group-hover:scale-110" />
+                          <Copy className="size-4 text-blue-600" />
                           <span>{text("Chép mã", "Copy code")}</span>
                         </>
                       )}
-                    </button>
+                    </Button>
 
-                    <button
+                    <Button
+                      variant="outline"
                       onClick={() => void handleCopyLink()}
-                      className="group flex items-center gap-2 rounded-xl border border-indigo-200/80 bg-indigo-50/80 px-3.5 py-2.5 text-xs font-bold text-indigo-700 shadow-xs transition hover:border-indigo-300 hover:bg-indigo-100 active:scale-95"
                     >
                       {copiedLink ? (
                         <>
@@ -567,7 +582,7 @@ export function FriendlyLobby({
                         </>
                       ) : (
                         <>
-                          <Share2 className="size-4 text-indigo-600 transition group-hover:scale-110" />
+                          <Share2 className="size-4 text-slate-500" />
                           <span className="hidden sm:inline">
                             {text("Chia sẻ link", "Share link")}
                           </span>
@@ -576,33 +591,33 @@ export function FriendlyLobby({
                           </span>
                         </>
                       )}
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
                 {/* Game Specs Pills */}
                 <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
-                  <div className="flex items-center gap-2.5 rounded-lg border border-slate-200/80 bg-slate-50/80 px-4 py-2.5 shadow-xs backdrop-blur-md">
+                  <div className="flex items-center gap-2.5 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5">
                     <currentModeInfo.icon className="size-5 text-blue-600" />
                     <div>
-                      <p className="text-[10px] font-bold uppercase text-slate-500">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                         {text("Chế độ", "Game mode")}
                       </p>
-                      <p className="text-xs font-black text-slate-800">
+                      <p className="text-sm font-bold text-slate-900">
                         {currentModeInfo.title}
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2.5 rounded-lg border border-slate-200/80 bg-slate-50/80 px-4 py-2.5 shadow-xs backdrop-blur-md">
-                    <Clock className="size-5 text-amber-500" />
+                  <div className="flex items-center gap-2.5 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5">
+                    <Clock className="size-5 text-amber-600" />
                     <div>
-                      <p className="text-[10px] font-bold uppercase text-slate-500">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                         {room.mode === "WORD_CHAIN"
                           ? text("Lượt chơi", "Turn time")
                           : text("Thời gian", "Time")}
                       </p>
-                      <p className="text-xs font-black text-slate-800">
+                      <p className="text-sm font-bold text-slate-900">
                         {room.settings.timePerQuestion ??
                           room.settings.turnTime ??
                           15}
@@ -612,13 +627,13 @@ export function FriendlyLobby({
                   </div>
 
                   {room.mode === "CLASSIC" && (
-                    <div className="flex items-center gap-2.5 rounded-lg border border-slate-200/80 bg-slate-50/80 px-4 py-2.5 shadow-xs backdrop-blur-md">
-                      <Zap className="size-5 text-emerald-500" />
+                    <div className="flex items-center gap-2.5 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5">
+                      <Zap className="size-5 text-emerald-600" />
                       <div>
-                        <p className="text-[10px] font-bold uppercase text-slate-500">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                           {text("Số câu", "Questions")}
                         </p>
-                        <p className="text-xs font-black text-slate-800">
+                        <p className="text-sm font-bold text-slate-900">
                           {room.settings.questionCount ?? 10}{" "}
                           {text("câu", "qs")}
                         </p>
@@ -626,13 +641,13 @@ export function FriendlyLobby({
                     </div>
                   )}
 
-                  <div className="flex items-center gap-2.5 rounded-lg border border-slate-200/80 bg-slate-50/80 px-4 py-2.5 shadow-xs backdrop-blur-md">
-                    <Users className="size-5 text-violet-500" />
+                  <div className="flex items-center gap-2.5 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5">
+                    <Users className="size-5 text-violet-600" />
                     <div>
-                      <p className="text-[10px] font-bold uppercase text-slate-500">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                         {text("Thành viên", "Players")}
                       </p>
-                      <p className="text-xs font-black text-slate-800">
+                      <p className="text-sm font-bold text-slate-900">
                         <span className="text-blue-600">
                           {room.players.length}
                         </span>
@@ -653,15 +668,20 @@ export function FriendlyLobby({
               <div className="space-y-6">
                 {/* 1V1 VERSUS FACE-OFF STAGE */}
                 {!multiplayer ? (
-                  <section className="relative overflow-hidden rounded-xl border border-white/80 bg-white/85 p-6 shadow-[0_12px_40px_rgba(30,58,138,0.06)] backdrop-blur-2xl sm:p-8">
+                  <section
+                    className={cn(
+                      surface,
+                      "relative overflow-hidden p-5 sm:p-6",
+                    )}
+                  >
                     {/* Stage Header */}
                     <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
                       <div className="flex items-center gap-2.5">
-                        <div className="flex size-8 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20">
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
                           <Swords className="size-4" />
                         </div>
                         <div>
-                          <h2 className="text-base font-black tracking-wide text-slate-900">
+                          <h2 className="text-base font-semibold text-slate-900">
                             {text("SÀN ĐẤU ĐỐI ĐẦU 1V1", "1V1 FACE-OFF ARENA")}
                           </h2>
                           <p className="text-xs text-slate-500">
@@ -678,7 +698,7 @@ export function FriendlyLobby({
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">
+                      <div className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-100">
                         <CheckCircle2 className="size-3.5" />
                         <span>
                           {readyPlayersCount}/2 {text("sẵn sàng", "ready")}
@@ -696,38 +716,37 @@ export function FriendlyLobby({
                         const isMe = hostPlayer?.userId === userId;
 
                         return hostPlayer ? (
-                          <div className="relative group flex flex-col items-center rounded-xl border border-blue-200 bg-gradient-to-b from-blue-50/60 via-white to-slate-50/80 p-6 text-center shadow-sm backdrop-blur-xl transition hover:border-blue-400 hover:shadow-md">
+                          <div className="relative flex flex-col items-center rounded-xl border border-blue-200 bg-blue-50/40 p-6 text-center transition-colors">
                             {/* Crown badge */}
-                            <div className="absolute -top-3.5 flex items-center gap-1 rounded-full border border-amber-300 bg-gradient-to-r from-amber-400 to-yellow-300 px-3 py-0.5 text-[11px] font-black tracking-wider text-slate-950 shadow-md">
+                            <div className="absolute -top-3 flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-3 py-0.5 text-[11px] font-bold tracking-wider text-amber-700">
                               <Crown className="size-3.5" />
                               <span>{text("CHỦ PHÒNG", "HOST")}</span>
                             </div>
 
                             {/* Avatar Frame with Aura */}
                             <div className="relative my-3">
-                              <div className="absolute inset-0 rounded-full bg-blue-400/20 blur-md" />
-                              <div className="relative size-24 overflow-hidden rounded-full border-4 border-blue-500/80 p-0.5 shadow-md sm:size-28">
+                              <div className="relative size-24 overflow-hidden rounded-full border-4 border-blue-500 bg-white p-0.5 sm:size-28">
                                 <FriendlyAvatar
                                   avatar={hostPlayer.avatarUrl}
                                   name={hostPlayer.username}
                                 />
                               </div>
-                              <span className="absolute bottom-1 right-1 flex size-5 items-center justify-center rounded-full border-2 border-white bg-emerald-500 shadow-md">
+                              <span className="absolute bottom-1 right-1 flex size-5 items-center justify-center rounded-full border-2 border-white bg-emerald-500">
                                 <Check className="size-3 stroke-[3] text-white" />
                               </span>
                             </div>
 
-                            <strong className="mt-2 block max-w-full truncate text-lg font-black text-slate-900 sm:text-xl">
+                            <strong className="mt-2 block max-w-full truncate text-lg font-bold text-slate-900">
                               {hostPlayer.username}
                             </strong>
 
                             <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
                               {isMe && (
-                                <span className="rounded-lg bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-blue-700">
+                                <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-100">
                                   {text("Bạn", "You")}
                                 </span>
                               )}
-                              <span className="flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-black text-emerald-700">
+                              <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-100">
                                 <CheckCircle2 className="size-3" />
                                 {text("Sẵn sàng chiến", "Ready")}
                               </span>
@@ -738,12 +757,12 @@ export function FriendlyLobby({
 
                       {/* VS Centerpiece */}
                       <div className="my-2 flex flex-col items-center justify-center">
-                        <div className="relative flex size-16 items-center justify-center rounded-full border-2 border-rose-300 bg-gradient-to-br from-rose-500 via-pink-500 to-indigo-600 font-black italic tracking-wider text-white shadow-[0_8px_25px_rgba(244,63,94,0.35)] animate-pulse sm:size-20">
-                          <span className="text-xl font-black drop-shadow-md sm:text-2xl">
+                        <div className="relative flex size-16 items-center justify-center rounded-full bg-blue-600 font-black italic tracking-wider text-white shadow-sm ring-4 ring-blue-100 sm:size-20">
+                          <span className="text-xl font-black sm:text-2xl">
                             VS
                           </span>
                         </div>
-                        <span className="mt-2 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[10px] font-black tracking-widest text-slate-500 uppercase">
+                        <span className="mt-2 rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500 ring-1 ring-inset ring-slate-200">
                           {text("Thách đấu", "Duel")}
                         </span>
                       </div>
@@ -757,13 +776,13 @@ export function FriendlyLobby({
 
                         return guestPlayer ? (
                           <div
-                            className={`relative group flex flex-col items-center rounded-xl border p-6 text-center backdrop-blur-xl transition ${
+                            className={`relative flex flex-col items-center rounded-xl border p-6 text-center transition-colors ${
                               guestPlayer.isReady
-                                ? "border-emerald-300 bg-gradient-to-b from-emerald-50/60 via-white to-slate-50/80 shadow-sm hover:border-emerald-400"
-                                : "border-amber-300 bg-gradient-to-b from-amber-50/60 via-white to-slate-50/80 shadow-sm hover:border-amber-400"
+                                ? "border-emerald-200 bg-emerald-50/40"
+                                : "border-amber-200 bg-amber-50/40"
                             }`}
                           >
-                            <div className="absolute -top-3.5 flex items-center gap-1 rounded-full border border-violet-200 bg-gradient-to-r from-violet-600 to-indigo-600 px-3 py-0.5 text-[11px] font-black tracking-wider text-white shadow-md">
+                            <div className="absolute -top-3 flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-0.5 text-[11px] font-bold tracking-wider text-slate-700">
                               <Swords className="size-3.5" />
                               <span>{text("ĐỐI THỦ", "CHALLENGER")}</span>
                             </div>
@@ -771,10 +790,7 @@ export function FriendlyLobby({
                             {/* Avatar Frame with Aura */}
                             <div className="relative my-3">
                               <div
-                                className={`absolute inset-0 rounded-full blur-md ${guestPlayer.isReady ? "bg-emerald-400/20" : "bg-amber-400/20"}`}
-                              />
-                              <div
-                                className={`relative size-24 overflow-hidden rounded-full border-4 p-0.5 shadow-md sm:size-28 ${
+                                className={`relative size-24 overflow-hidden rounded-full border-4 bg-white p-0.5 sm:size-28 ${
                                   guestPlayer.isReady
                                     ? "border-emerald-500"
                                     : "border-amber-500"
@@ -786,7 +802,7 @@ export function FriendlyLobby({
                                 />
                               </div>
                               <span
-                                className={`absolute bottom-1 right-1 flex size-5 items-center justify-center rounded-full border-2 border-white shadow-md ${
+                                className={`absolute bottom-1 right-1 flex size-5 items-center justify-center rounded-full border-2 border-white ${
                                   guestPlayer.isReady
                                     ? "bg-emerald-500"
                                     : "bg-amber-500"
@@ -800,21 +816,21 @@ export function FriendlyLobby({
                               </span>
                             </div>
 
-                            <strong className="mt-2 block max-w-full truncate text-lg font-black text-slate-900 sm:text-xl">
+                            <strong className="mt-2 block max-w-full truncate text-lg font-bold text-slate-900">
                               {guestPlayer.username}
                             </strong>
 
                             <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
                               {isMe && (
-                                <span className="rounded-lg bg-indigo-100 px-2.5 py-0.5 text-xs font-bold text-indigo-700">
+                                <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-100">
                                   {text("Bạn", "You")}
                                 </span>
                               )}
                               <span
-                                className={`flex items-center gap-1 rounded-lg border px-2.5 py-0.5 text-xs font-black ${
+                                className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${
                                   guestPlayer.isReady
-                                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                                    : "border-amber-200 bg-amber-50 text-amber-700 animate-pulse"
+                                    ? "bg-emerald-50 text-emerald-700 ring-emerald-100"
+                                    : "bg-amber-50 text-amber-700 ring-amber-100"
                                 }`}
                               >
                                 {guestPlayer.isReady ? (
@@ -838,19 +854,19 @@ export function FriendlyLobby({
                             onClick={openInvite}
                             disabled={!host || !waiting}
                             aria-haspopup="dialog"
-                            className="relative flex w-full flex-col items-center justify-center rounded-xl border border-dashed border-blue-200 bg-blue-50/30 p-8 text-center backdrop-blur-xl transition enabled:hover:border-blue-400 enabled:hover:bg-blue-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-default"
+                            className="relative flex w-full cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center transition-colors enabled:hover:border-blue-400 enabled:hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default"
                           >
-                            <span className="relative mb-3 flex size-20 items-center justify-center rounded-full border-2 border-blue-200 bg-blue-100/70">
-                              <span className="absolute inset-0 rounded-full border border-blue-400/50 animate-ping opacity-60" />
+                            <span className="relative mb-3 flex size-20 items-center justify-center rounded-full border-2 border-blue-100 bg-blue-50">
+                              <span className="absolute inset-0 animate-ping rounded-full border border-blue-300 opacity-50" />
                               <UserPlus className="size-8 text-blue-600" />
                             </span>
-                            <strong className="text-base font-extrabold text-slate-800">
+                            <strong className="text-base font-semibold text-slate-800">
                               {text(
                                 "Chờ đối thủ gia nhập…",
                                 "Waiting for challenger…",
                               )}
                             </strong>
-                            <span className="mt-2 max-w-[200px] text-xs font-semibold text-blue-600">
+                            <span className="mt-1.5 max-w-[220px] text-sm font-medium text-blue-600">
                               {host
                                 ? text(
                                     "Bấm để mời người chơi",
@@ -868,15 +884,20 @@ export function FriendlyLobby({
                   </section>
                 ) : (
                   /* MULTIPLAYER / PARTY ROOM STAGE */
-                  <section className="relative overflow-hidden rounded-xl border border-white/80 bg-white/85 p-6 shadow-[0_12px_40px_rgba(30,58,138,0.06)] backdrop-blur-2xl sm:p-8">
+                  <section
+                    className={cn(
+                      surface,
+                      "relative overflow-hidden p-5 sm:p-6",
+                    )}
+                  >
                     {/* Header */}
                     <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
                       <div className="flex items-center gap-2.5">
-                        <div className="flex size-8 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-500/20">
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
                           <Users className="size-4" />
                         </div>
                         <div>
-                          <h2 className="text-base font-black tracking-wide text-slate-900">
+                          <h2 className="text-base font-semibold text-slate-900">
                             {text(
                               "DANH SÁCH THÀNH VIÊN",
                               "ROOM DUELISTS ROSTER",
@@ -891,7 +912,7 @@ export function FriendlyLobby({
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">
+                      <div className="flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 ring-1 ring-inset ring-blue-100">
                         <CheckCircle2 className="size-3.5" />
                         <span>
                           {readyPlayersCount}/{room.players.length}{" "}
@@ -901,9 +922,9 @@ export function FriendlyLobby({
                     </div>
 
                     {/* Progress Bar of Ready Players */}
-                    <div className="mb-6 overflow-hidden rounded-full bg-slate-100 p-0.5">
+                    <div className="mb-6 overflow-hidden rounded-full bg-slate-100">
                       <div
-                        className="h-2 rounded-full bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-500 transition-all duration-500"
+                        className="h-2 rounded-full bg-blue-600 transition-all duration-500"
                         style={{
                           width: `${(readyPlayersCount / Math.max(1, room.players.length)) * 100}%`,
                         }}
@@ -920,23 +941,23 @@ export function FriendlyLobby({
                         return player ? (
                           <div
                             key={player.userId}
-                            className={`group relative flex items-center gap-3.5 rounded-lg border p-3.5 backdrop-blur-xl transition hover:scale-[1.02] shadow-xs ${
+                            className={`relative flex items-center gap-3.5 rounded-lg border p-3.5 transition-colors ${
                               isOwner
-                                ? "border-amber-300 bg-gradient-to-br from-amber-50/70 via-white to-amber-50/30"
+                                ? "border-amber-200 bg-amber-50/50"
                                 : player.isReady
-                                  ? "border-emerald-300 bg-gradient-to-br from-emerald-50/70 via-white to-emerald-50/30"
+                                  ? "border-emerald-200 bg-emerald-50/50"
                                   : "border-slate-200 bg-white"
-                            } ${isMe ? "ring-2 ring-blue-500/40" : ""}`}
+                            } ${isMe ? "ring-2 ring-blue-500/30" : ""}`}
                           >
                             {/* Slot Number Tag */}
-                            <span className="absolute top-2.5 right-3 text-[10px] font-black text-slate-400">
+                            <span className="absolute right-3 top-2.5 text-[11px] font-semibold text-slate-400">
                               #{String(index + 1).padStart(2, "0")}
                             </span>
 
                             {/* Avatar */}
                             <div className="relative shrink-0">
                               <div
-                                className={`size-13 overflow-hidden rounded-full border-2 p-0.5 shadow-xs ${
+                                className={`size-13 overflow-hidden rounded-full border-2 bg-white p-0.5 ${
                                   isOwner
                                     ? "border-amber-400"
                                     : player.isReady
@@ -963,28 +984,28 @@ export function FriendlyLobby({
                             </div>
 
                             <div className="min-w-0 flex-1 pr-6">
-                              <strong className="block truncate text-sm font-black text-slate-900">
+                              <strong className="block truncate text-sm font-semibold text-slate-900">
                                 {player.username}
                               </strong>
 
                               <div className="mt-1 flex flex-wrap items-center gap-1.5">
                                 {isMe && (
-                                  <span className="rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700">
+                                  <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 ring-1 ring-inset ring-blue-100">
                                     {text("Bạn", "You")}
                                   </span>
                                 )}
                                 <span
-                                  className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-black ${
+                                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${
                                     isOwner
-                                      ? "border border-amber-200 bg-amber-50 text-amber-800"
+                                      ? "bg-amber-50 text-amber-700 ring-amber-100"
                                       : player.isReady
-                                        ? "border border-emerald-200 bg-emerald-50 text-emerald-800"
-                                        : "border border-slate-200 bg-slate-100 text-slate-600"
+                                        ? "bg-emerald-50 text-emerald-700 ring-emerald-100"
+                                        : "bg-slate-100 text-slate-600 ring-slate-200"
                                   }`}
                                 >
                                   {isOwner ? (
                                     <>
-                                      <Crown className="size-3 text-amber-500" />
+                                      <Crown className="size-3 text-amber-600" />
                                       {text("Chủ phòng", "Host")}
                                     </>
                                   ) : player.isReady ? (
@@ -1014,17 +1035,17 @@ export function FriendlyLobby({
                               `Mời vào vị trí ${index + 1}`,
                               `Invite to seat ${index + 1}`,
                             )}
-                            className="flex min-h-[76px] w-full items-center gap-3 rounded-lg border border-dashed border-slate-200 bg-slate-50/50 p-3.5 text-left text-slate-400 transition enabled:hover:border-blue-300 enabled:hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-default"
+                            className="flex min-h-[76px] w-full cursor-pointer items-center gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3.5 text-left text-slate-400 transition-colors enabled:hover:border-blue-300 enabled:hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default"
                           >
                             <span className="flex size-11 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400">
                               <UserPlus className="size-4" />
                             </span>
                             <span className="min-w-0">
-                              <span className="block text-xs font-bold text-slate-600">
+                              <span className="block text-sm font-semibold text-slate-600">
                                 {text("Vị trí trống", "Open Slot")} #
                                 {String(index + 1).padStart(2, "0")}
                               </span>
-                              <span className="mt-0.5 block truncate text-[11px] text-slate-400">
+                              <span className="mt-0.5 block truncate text-xs text-slate-500">
                                 {host
                                   ? text(
                                       "Bấm để mời người chơi",
@@ -1044,11 +1065,16 @@ export function FriendlyLobby({
                 )}
 
                 {/* BOTTOM CTA LAUNCH PAD */}
-                <div className="flex flex-col gap-4 rounded-xl border border-white/80 bg-white/90 p-5 shadow-[0_12px_40px_rgba(30,58,138,0.08)] backdrop-blur-2xl sm:flex-row sm:items-center sm:justify-between sm:p-6">
+                <div
+                  className={cn(
+                    surface,
+                    "flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6",
+                  )}
+                >
                   <div>
                     <div className="flex items-center gap-2">
                       <ShieldCheck className="size-5 text-blue-600" />
-                      <h3 className="text-sm font-black tracking-wide text-slate-900 uppercase sm:text-base">
+                      <h3 className="text-base font-semibold text-slate-900">
                         {canStart && !settingsChanged
                           ? text(
                               "Đấu trường đã sẵn sàng khai hỏa!",
@@ -1085,8 +1111,9 @@ export function FriendlyLobby({
 
                   <div className="flex shrink-0 items-center gap-3">
                     {host ? (
-                      <button
-                        className="group relative flex w-full items-center justify-center gap-2.5 overflow-hidden rounded-lg bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 px-7 py-4 text-sm font-black tracking-wider text-white uppercase shadow-[0_10px_30px_rgba(59,130,246,0.35)] transition hover:from-blue-500 hover:to-violet-500 hover:shadow-[0_12px_35px_rgba(59,130,246,0.45)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
+                      <Button
+                        size="lg"
+                        className="h-12 w-full px-7 sm:w-auto"
                         disabled={
                           busy ||
                           !connected ||
@@ -1102,16 +1129,18 @@ export function FriendlyLobby({
                           })
                         }
                       >
-                        <Swords className="size-5 transition-transform group-hover:rotate-12" />
+                        <Swords className="size-5" />
                         <span>{text("BẮT ĐẦU TRẬN ĐẤU", "START MATCH")}</span>
-                      </button>
+                      </Button>
                     ) : (
-                      <button
-                        className={`group relative flex w-full items-center justify-center gap-2.5 overflow-hidden rounded-lg px-7 py-4 text-sm font-black tracking-wider uppercase shadow-md transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto ${
-                          myReady
-                            ? "border border-emerald-400 bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-emerald-500/25 hover:from-emerald-500 hover:to-teal-500"
-                            : "border border-amber-300 bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-amber-500/25 hover:from-amber-400 hover:to-orange-400"
-                        }`}
+                      <Button
+                        size="lg"
+                        variant={myReady ? "outline" : "default"}
+                        className={cn(
+                          "h-12 w-full px-7 sm:w-auto",
+                          myReady &&
+                            "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800",
+                        )}
                         disabled={busy || !connected || !waiting}
                         onClick={() =>
                           void run(async () => {
@@ -1140,7 +1169,7 @@ export function FriendlyLobby({
                             <span>{text("SẴN SÀNG CHIẾN", "READY UP")}</span>
                           </>
                         )}
-                      </button>
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -1150,10 +1179,15 @@ export function FriendlyLobby({
               <div className="space-y-6">
                 {/* Only the host can see the settings controls. */}
                 {host ? (
-                  <section className="relative overflow-hidden rounded-xl border border-white/80 bg-white/85 p-5 shadow-[0_12px_40px_rgba(30,58,138,0.06)] backdrop-blur-2xl sm:p-6">
+                  <section
+                    className={cn(
+                      surface,
+                      "relative overflow-hidden p-5 sm:p-6",
+                    )}
+                  >
                     <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-3">
-                      <h2 className="flex items-center gap-2 text-sm font-black tracking-wide text-slate-900 uppercase">
-                        <Settings className="size-4 text-violet-600" />
+                      <h2 className="flex items-center gap-2 text-base font-semibold text-slate-900">
+                        <Settings className="size-4 text-blue-600" />
                         {text("CÀI ĐẶT TRẬN ĐẤU", "MATCH SETTINGS")}
                       </h2>
                     </div>
@@ -1162,7 +1196,7 @@ export function FriendlyLobby({
                       {/* Capacity (multiplayer only) */}
                       {room.maxPlayers > 2 && (
                         <div>
-                          <label className="block text-xs font-bold text-slate-700">
+                          <label className="block text-xs font-semibold text-slate-700">
                             {text("Số người chơi tối đa", "Maximum duelists")}
                           </label>
                           <Select
@@ -1177,7 +1211,7 @@ export function FriendlyLobby({
                                 "Số người chơi tối đa",
                                 "Maximum players",
                               )}
-                              className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-bold text-slate-900 outline-none focus:border-blue-500 disabled:opacity-60"
+                              className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3.5 text-sm font-medium text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:opacity-60"
                             >
                               <SelectValue />
                             </SelectTrigger>
@@ -1198,7 +1232,7 @@ export function FriendlyLobby({
 
                       {/* Mode selection buttons */}
                       <div>
-                        <label className="block text-xs font-bold text-slate-700">
+                        <label className="block text-xs font-semibold text-slate-700">
                           {text("Chế độ thi đấu", "Game mode")}
                         </label>
                         <div className="mt-2 grid grid-cols-1 gap-2">
@@ -1235,9 +1269,9 @@ export function FriendlyLobby({
                                   setMode(item.id);
                                   setSeconds(item.id === "CLASSIC" ? 15 : 20);
                                 }}
-                                className={`flex items-center justify-between rounded-xl border p-2.5 text-left transition ${
+                                className={`flex cursor-pointer items-center justify-between rounded-lg border p-2.5 text-left transition-colors ${
                                   isSelected
-                                    ? "border-blue-500 bg-blue-50 text-blue-900 shadow-xs"
+                                    ? "border-blue-500 bg-blue-50 text-blue-900"
                                     : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
                                 } disabled:cursor-not-allowed`}
                               >
@@ -1246,10 +1280,10 @@ export function FriendlyLobby({
                                     className={`size-4 ${isSelected ? "text-blue-600" : "text-slate-400"}`}
                                   />
                                   <div>
-                                    <span className="block text-xs font-black">
+                                    <span className="block text-sm font-semibold">
                                       {item.name}
                                     </span>
-                                    <span className="block text-[10px] text-slate-500">
+                                    <span className="block text-xs text-slate-500">
                                       {item.desc}
                                     </span>
                                   </div>
@@ -1266,7 +1300,7 @@ export function FriendlyLobby({
                       {/* Question count (Classic mode only) */}
                       {mode === "CLASSIC" && (
                         <div>
-                          <label className="block text-xs font-bold text-slate-700">
+                          <label className="block text-xs font-semibold text-slate-700">
                             {text("Số câu hỏi", "Question count")}
                           </label>
                           <div className="mt-1.5 flex gap-1.5">
@@ -1276,9 +1310,9 @@ export function FriendlyLobby({
                                 type="button"
                                 disabled={!host || !waiting || busy}
                                 onClick={() => setQuestionCount(count)}
-                                className={`flex-1 rounded-xl border py-2 text-xs font-black transition ${
+                                className={`flex-1 cursor-pointer rounded-lg border py-2 text-xs font-semibold transition-colors ${
                                   questionCount === count
-                                    ? "border-blue-600 bg-blue-600 text-white shadow-xs"
+                                    ? "border-blue-600 bg-blue-600 text-white shadow-sm"
                                     : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
                                 } disabled:cursor-not-allowed`}
                               >
@@ -1292,7 +1326,7 @@ export function FriendlyLobby({
                       {/* Seconds per question / turn */}
                       {mode !== "WORD_GUESS" && (
                         <div>
-                          <label className="block text-xs font-bold text-slate-700">
+                          <label className="block text-xs font-semibold text-slate-700">
                             {mode === "CLASSIC"
                               ? text("Thời gian mỗi câu", "Time per question")
                               : text("Thời gian mỗi lượt", "Time per turn")}
@@ -1304,9 +1338,9 @@ export function FriendlyLobby({
                                 type="button"
                                 disabled={!host || !waiting || busy}
                                 onClick={() => setSeconds(s)}
-                                className={`flex-1 rounded-xl border py-2 text-xs font-black transition ${
+                                className={`flex-1 cursor-pointer rounded-lg border py-2 text-xs font-semibold transition-colors ${
                                   seconds === s
-                                    ? "border-blue-600 bg-blue-600 text-white shadow-xs"
+                                    ? "border-blue-600 bg-blue-600 text-white shadow-sm"
                                     : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
                                 } disabled:cursor-not-allowed`}
                               >
@@ -1339,12 +1373,9 @@ export function FriendlyLobby({
 
                       {/* Host Save Settings Button */}
                       {host && (
-                        <button
-                          className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-xs font-black tracking-wider uppercase transition active:scale-95 shadow-xs ${
-                            settingsChanged
-                              ? "border border-blue-600 bg-blue-600 text-white shadow-blue-500/30 animate-pulse"
-                              : "border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
-                          }`}
+                        <Button
+                          variant={settingsChanged ? "default" : "outline"}
+                          className="w-full"
                           disabled={
                             busy || !connected || !waiting || !settingsChanged
                           }
@@ -1358,13 +1389,13 @@ export function FriendlyLobby({
                               ? text("LƯU CÀI ĐẶT MỚI", "SAVE NEW SETTINGS")
                               : text("CÀI ĐẶT ĐÃ LƯU", "SETTINGS SAVED")}
                           </span>
-                        </button>
+                        </Button>
                       )}
                     </div>
                   </section>
                 ) : (
-                  <section className="overflow-hidden rounded-xl border border-white/80 bg-white/85 p-5 shadow-[0_12px_40px_rgba(30,58,138,0.06)] backdrop-blur-2xl sm:p-6">
-                    <h2 className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3 text-sm font-black tracking-wide text-slate-900 uppercase">
+                  <section className={cn(surface, "overflow-hidden p-5 sm:p-6")}>
+                    <h2 className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3 text-base font-semibold text-slate-900">
                       <Gamepad2 className="size-4 text-blue-600" />
                       {text("THÔNG TIN PHÒNG", "ROOM INFORMATION")}
                     </h2>
@@ -1442,7 +1473,7 @@ export function FriendlyLobby({
                           className="flex items-start justify-between gap-4 py-3 text-sm"
                         >
                           <dt className="shrink-0 text-slate-500">{label}</dt>
-                          <dd className="min-w-0 break-words text-right font-bold text-slate-900">
+                          <dd className="min-w-0 break-words text-right font-semibold text-slate-900">
                             {value}
                           </dd>
                         </div>
@@ -1473,7 +1504,7 @@ export function FriendlyLobby({
                       {notice && (
                         <p
                           role="alert"
-                          className="rounded-xl bg-blue-50 p-3 text-sm text-blue-800"
+                          className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800"
                         >
                           {notice}
                         </p>
@@ -1489,7 +1520,7 @@ export function FriendlyLobby({
                             "Tìm tên người chơi…",
                             "Search players…",
                           )}
-                          className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pr-4 pl-9 text-xs text-slate-900 placeholder-slate-400 outline-none transition focus:border-blue-500 shadow-xs"
+                          className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-4 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                         />
                       </div>
 
@@ -1497,7 +1528,7 @@ export function FriendlyLobby({
                       {pending && (
                         <div
                           role="status"
-                          className="mt-3 flex items-center justify-between rounded-xl border border-blue-200 bg-blue-50 p-2.5 text-xs text-blue-700"
+                          className="mt-3 flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 p-2.5 text-xs text-blue-700"
                         >
                           <span className="flex items-center gap-1.5 font-bold">
                             <Loader2 className="size-3.5 animate-spin text-blue-600" />
@@ -1519,7 +1550,7 @@ export function FriendlyLobby({
                                 setPending(null);
                               })
                             }
-                            className="font-bold text-rose-600 hover:text-rose-700"
+                            className="cursor-pointer font-semibold text-red-600 hover:text-red-700"
                           >
                             {text("Hủy", "Cancel")}
                           </button>
@@ -1543,7 +1574,7 @@ export function FriendlyLobby({
                         {players.map((player) => (
                           <div
                             key={player.userId}
-                            className="flex items-center justify-between gap-3 rounded-xl border border-slate-200/80 bg-slate-50/60 p-2.5 transition hover:border-slate-300 hover:bg-slate-100/80"
+                            className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-2.5 transition-colors hover:bg-slate-50"
                           >
                             <div className="flex min-w-0 items-center gap-2.5">
                               <div className="relative size-8 shrink-0 overflow-hidden rounded-full border border-slate-200">
@@ -1553,10 +1584,10 @@ export function FriendlyLobby({
                                 />
                               </div>
                               <div className="min-w-0">
-                                <strong className="block truncate text-xs font-black text-slate-900">
+                                <strong className="block truncate text-sm font-semibold text-slate-900">
                                   {player.username}
                                 </strong>
-                                <span className="flex items-center gap-1 text-[10px] text-slate-500">
+                                <span className="flex items-center gap-1 text-xs text-slate-500">
                                   <span
                                     className={`size-1.5 rounded-full ${player.online ? "bg-emerald-500" : "bg-slate-400"}`}
                                   />
@@ -1565,8 +1596,10 @@ export function FriendlyLobby({
                               </div>
                             </div>
 
-                            <button
-                              className="shrink-0 rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-bold text-blue-700 shadow-xs transition hover:bg-blue-600 hover:text-white disabled:opacity-40"
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="shrink-0"
                               disabled={
                                 busy ||
                                 !connected ||
@@ -1586,19 +1619,19 @@ export function FriendlyLobby({
                               }
                             >
                               {text("Mời", "Invite")}
-                            </button>
+                            </Button>
                           </div>
                         ))}
 
                         {!playersLoading && !players.length && (
                           <div className="py-4 text-center">
-                            <p className="text-xs text-slate-500">
+                            <p className="text-sm text-slate-500">
                               {text(
                                 "Không tìm thấy người chơi trực tuyến.",
                                 "No online players found.",
                               )}
                             </p>
-                            <p className="mt-1 text-[11px] text-slate-400">
+                            <p className="mt-1 text-xs text-slate-400">
                               {text(
                                 "Hãy chia sẻ mã phòng để bạn bè cùng tham gia!",
                                 "Share room code with friends to duel!",

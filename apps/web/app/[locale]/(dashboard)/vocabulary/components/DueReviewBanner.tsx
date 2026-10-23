@@ -4,6 +4,9 @@ import React from 'react';
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
 import { RotateCcw, ArrowRight, Clock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { surface, tones } from '@/components/ui/page';
+import { cn } from '@/lib/utils';
 
 interface DueReviewBannerProps {
   dueCount: number;
@@ -23,33 +26,35 @@ export function DueReviewBanner({
   }
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-blue-200/80 bg-gradient-to-r from-blue-50/90 via-sky-50/80 to-indigo-50/70 p-4 sm:p-5 shadow-xs transition-all animate-in fade-in slide-in-from-top-2 duration-300">
-      {/* Subtle blue background glow */}
-      <div className="absolute -top-12 -right-12 w-48 h-48 bg-blue-200/40 rounded-full blur-2xl pointer-events-none" />
-
-      <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div
+      className={cn(
+        surface,
+        'border-amber-200 bg-amber-50/60 p-5 animate-in fade-in slide-in-from-top-2 duration-300',
+      )}
+    >
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         {/* Left: Icon + Content */}
-        <div className="flex items-start sm:items-center gap-3.5 min-w-0">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-500/25">
-            <RotateCcw className="w-5 h-5 text-white" />
-          </div>
+        <div className="flex min-w-0 items-start gap-3.5 sm:items-center">
+          <span className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-xl', tones.amber)}>
+            <RotateCcw className="h-5 w-5" />
+          </span>
 
-          <div className="space-y-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
+          <div className="min-w-0 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-base font-semibold text-slate-900">
                 {t('review.banner_title')}
               </h3>
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-600 text-white shadow-2xs">
-                <Clock className="w-3 h-3" />
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500 px-2.5 py-0.5 text-xs font-semibold text-white">
+                <Clock className="h-3 w-3" />
                 {dueCount}
               </span>
             </div>
 
-            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+            <p className="text-sm text-slate-600">
               {t('review.banner_desc', { count: dueCount })}
               {previewWords.length > 0 && (
-                <span className="hidden sm:inline text-blue-900/80 font-medium ml-1">
-                  ({t('review.preview_label')} <strong className="font-bold text-blue-950">{previewWords.join(', ')}</strong>...)
+                <span className="ml-1 hidden font-medium text-slate-500 sm:inline">
+                  ({t('review.preview_label')} <strong className="font-semibold text-slate-800">{previewWords.join(', ')}</strong>...)
                 </span>
               )}
             </p>
@@ -57,14 +62,13 @@ export function DueReviewBanner({
         </div>
 
         {/* Right: CTA Button */}
-        <div className="shrink-0 flex items-center gap-2">
-          <Link
-            href={`/${locale}/vocabulary/review`}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-2 transition-all shadow-sm shadow-blue-500/25 cursor-pointer"
-          >
-            <span>{t('review.btn_review_now')}</span>
-            <ArrowRight className="w-4 h-4" />
-          </Link>
+        <div className="flex shrink-0 items-center gap-2">
+          <Button asChild className="w-full sm:w-auto">
+            <Link href={`/${locale}/vocabulary/review`}>
+              <span>{t('review.btn_review_now')}</span>
+              <ArrowRight />
+            </Link>
+          </Button>
         </div>
       </div>
     </div>

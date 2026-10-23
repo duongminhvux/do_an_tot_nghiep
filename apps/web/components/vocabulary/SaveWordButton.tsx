@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { createPortal } from "react-dom";
-import { Bookmark, Folder, Plus, X } from "lucide-react";
+import { Bookmark, Plus, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { savedWordsService } from "@/services/saved-words.service";
@@ -212,19 +212,19 @@ export function SaveWordButton({
   let variantStyle = "";
   if (variant === "pill") {
     variantStyle = isSaved
-      ? "bg-sky-100 text-sky-700 border-sky-300 shadow-2xs font-semibold"
-      : "bg-slate-50 hover:bg-sky-50 text-slate-600 hover:text-sky-700 border-slate-200 hover:border-sky-200 font-semibold";
+      ? "bg-blue-100 text-blue-700 border-blue-300 font-semibold"
+      : "bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-blue-700 border-slate-200 hover:border-blue-200 font-semibold";
   } else if (variant === "icon-only") {
     variantStyle = isSaved
-      ? "text-sky-600 hover:text-rose-600 hover:bg-rose-50"
-      : "text-slate-400 hover:text-sky-600 hover:bg-slate-100";
+      ? "text-blue-600 hover:text-red-600 hover:bg-red-50"
+      : "text-slate-400 hover:text-blue-600 hover:bg-slate-100";
   } else if (variant === "ghost") {
     variantStyle = isSaved
-      ? "text-sky-600 hover:bg-sky-50"
-      : "text-slate-500 hover:text-sky-600 hover:bg-slate-50";
+      ? "text-blue-600 hover:bg-blue-50"
+      : "text-slate-500 hover:text-blue-600 hover:bg-slate-50";
   }
 
-  const iconColor = isSaved ? "fill-sky-500 text-sky-500" : "text-slate-400";
+  const iconColor = isSaved ? "fill-blue-500 text-blue-500" : "text-slate-400";
 
   return (
     <div className="relative inline-flex">
@@ -261,7 +261,7 @@ export function SaveWordButton({
             }}
           >
             <div
-              className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white text-left shadow-2xl shadow-slate-900/20"
+              className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white text-left shadow-xl"
               role="dialog"
               aria-modal="true"
               aria-label={t("folders.choose_title")}
@@ -310,7 +310,7 @@ export function SaveWordButton({
                     <SelectTrigger
                       autoFocus
                       aria-label={t("folders.select_label", "Chọn thư mục")}
-                      className="mt-2 h-11 w-full rounded-xl border-slate-200 bg-slate-50/60 text-sm font-medium"
+                      className="mt-2 h-11 w-full rounded-lg border-slate-200 bg-slate-50 text-sm font-medium"
                     >
                       <SelectValue
                         placeholder={t(
@@ -336,7 +336,7 @@ export function SaveWordButton({
                   </Select>
                 </label>
                 {foldersLoadError && (
-                  <div role="alert" className="text-sm text-rose-600">
+                  <div role="alert" className="text-sm text-red-600">
                     <p>{t("folders.load_error")}</p>
                     <button
                       type="button"
@@ -356,7 +356,7 @@ export function SaveWordButton({
                   </p>
                 )}
               </div>
-              <div className="mx-6 mt-5 rounded-xl border border-dashed border-slate-200 bg-slate-50/70 p-4">
+              <div className="mx-6 mt-5 rounded-lg border border-dashed border-slate-200 bg-slate-50 p-4">
                 <p className="mb-3 text-sm font-semibold text-slate-700">
                     {t("folders.quick_create", "Tạo nhanh thư mục")}
                 </p>
@@ -400,7 +400,7 @@ export function SaveWordButton({
                   </button>
                 </div>
                 {folderError && (
-                  <p role="alert" className="mt-2 text-xs text-rose-600">
+                  <p role="alert" className="mt-2 text-xs text-red-600">
                     {folderError}
                   </p>
                 )}
@@ -419,7 +419,7 @@ export function SaveWordButton({
                     folderId: selectedFolderId,
                   });
                 }}
-                className="mx-6 mb-6 mt-5 flex h-11 w-[calc(100%-3rem)] items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="mx-6 mb-6 mt-5 flex h-11 w-[calc(100%-3rem)] items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Bookmark className="h-4 w-4" />
                 {t(

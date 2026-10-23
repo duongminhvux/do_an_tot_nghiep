@@ -1,11 +1,14 @@
 import type { Metadata } from 'next';
 import localFont from 'next/font/local';
+import { Be_Vietnam_Pro } from 'next/font/google';
 import AppProviders from '@/providers';
 import './globals.css';
 
-const geistSans = localFont({
-  src: './fonts/GeistVF.woff',
-  variable: '--font-geist-sans',
+const beVietnam = Be_Vietnam_Pro({
+  subsets: ['latin', 'vietnamese'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-be-vietnam',
+  display: 'swap',
 });
 const geistMono = localFont({
   src: './fonts/GeistMonoVF.woff',
@@ -26,7 +29,7 @@ export default function RootLayout({
     <html lang="vi" suppressHydrationWarning className="h-full antialiased">
       <body
         suppressHydrationWarning
-        className={`${geistSans.variable} ${geistMono.variable} min-h-full flex flex-col bg-slate-50 text-slate-900`}
+        className={`${beVietnam.variable} ${geistMono.variable} min-h-full flex flex-col bg-background font-sans text-slate-900`}
       >
         <AppProviders>{children}</AppProviders>
       </body>

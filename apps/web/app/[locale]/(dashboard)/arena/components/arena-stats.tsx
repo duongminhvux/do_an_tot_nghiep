@@ -3,6 +3,7 @@
 import { BarChart3, Flame, Target, Trophy } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { surface } from "@/components/ui/page";
 
 import type { ArenaController } from "../hooks/use-arena-controller";
 
@@ -100,7 +101,7 @@ export function ArenaStats({ text, number, profile }: Props) {
   return (
     <section
       aria-label={text("Thống kê của bạn", "Your statistics")}
-      className="grid min-w-0 gap-2 @min-[340px]/arena:grid-cols-2 @min-[640px]/arena:grid-cols-3 @min-[1080px]/arena:grid-cols-5 sm:gap-3"
+      className="grid min-w-0 gap-3 @min-[340px]/arena:grid-cols-2 @min-[640px]/arena:grid-cols-3 @min-[1080px]/arena:grid-cols-5 sm:gap-4"
     >
       {stats.map((stat) => {
         const isPositive =
@@ -112,26 +113,26 @@ export function ArenaStats({ text, number, profile }: Props) {
         return (
           <article
             key={stat.title}
-            className="flex min-w-0 items-center gap-2 rounded border border-slate-200/70 bg-white p-3 @min-[340px]/arena:last:col-span-2 @min-[640px]/arena:gap-3 @min-[640px]/arena:p-4 @min-[640px]/arena:last:col-span-1"
+            className={cn(surface, "flex min-w-0 items-center gap-3 p-4 @min-[340px]/arena:last:col-span-2 @min-[640px]/arena:p-5 @min-[640px]/arena:last:col-span-1")}
           >
             <span
               className={cn(
-                "flex size-8 shrink-0 items-center justify-center rounded-xl @min-[640px]/arena:size-11",
+                "flex size-10 shrink-0 items-center justify-center rounded-xl @min-[640px]/arena:size-11",
                 stat.color,
               )}
             >
-              <stat.icon className="size-4 @min-[640px]/arena:size-6" />
+              <stat.icon className="size-5" />
             </span>
 
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-medium text-slate-500">
+              <p className="text-xs font-medium text-slate-500">
                 {stat.title}
               </p>
 
               <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                 <p
                   className={cn(
-                    "text-lg font-bold tracking-tight text-slate-900",
+                    "text-xl font-bold tracking-tight text-slate-900",
                     stat.progress && "text-blue-600",
                   )}
                 >
@@ -151,9 +152,9 @@ export function ArenaStats({ text, number, profile }: Props) {
               ) : (
                 <p
                   className={cn(
-                    "mt-0.5 text-[9px] text-slate-500",
-                    isPositive && "text-emerald-500",
-                    isNegative && "text-red-500",
+                    "mt-0.5 text-xs text-slate-500",
+                    isPositive && "text-emerald-600",
+                    isNegative && "text-red-600",
                   )}
                 >
                   {stat.note}

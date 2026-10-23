@@ -1,7 +1,9 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { type Model, Types, type PipelineStage } from 'mongoose';
@@ -10,14 +12,42 @@ import { Exam, ExamDocument } from './schemas/exam.schema.js';
 import { CreateExamGroupDto } from './dto/create-exam-group.dto.js';
 import { UpdateExamGroupDto } from './dto/update-exam-group.dto.js';
 import { QueryExamGroupDto } from './dto/query-exam-group.dto.js';
+import { Attempt } from '../attempts/schemas/attempt.schema.js';
+import { withAttemptCounts } from '../attempts/exam-attempt-counts.js';
+import { GROUP_EXAM_SORT, nextGroupOrder } from './group-order.js';
 
 @Injectable()
 export class ExamGroupsService {
+  private async withGroupAttemptCounts<T extends { _id: unknown }>(
+    groups: T[],
+  ) {
+    if (!groups.length) return groups;
+    const exams = await this.examModel
+      .find({
+        groupId: {
+          $in: groups.map((group) => new Types.ObjectId(String(group._id))),
+        },
+        isDeleted: { $ne: true },
+      })
+      .select('_id groupId')
+      .lean()
+      .exec();
+    const counted = await withAttemptCounts(this.attempts, exams);
+    return groups.map((group) => ({
+      ...group,
+      totalAttempts: counted
+        .filter((exam) => String(exam.groupId) === String(group._id))
+        .reduce((sum, exam) => sum + exam.totalAttempts, 0),
+    }));
+  }
   constructor(
     @InjectModel(ExamGroup.name)
     private readonly examGroupModel: Model<ExamGroupDocument>,
     @InjectModel(Exam.name)
     private readonly examModel: Model<ExamDocument>,
+    @Optional()
+    @InjectModel(Attempt.name)
+    private readonly attempts?: Model<Attempt>,
   ) {}
 
   private generateSlug(text: string): string {
@@ -50,13 +80,17 @@ export class ExamGroupsService {
     const baseSlug = this.generateSlug(rawSlug) || 'exam-group';
     let slug = baseSlug;
     let counter = 1;
-    while (await this.examGroupModel.exists({ slug, isDeleted: { $ne: true } })) {
+    while (
+      await this.examGroupModel.exists({ slug, isDeleted: { $ne: true } })
+    ) {
       slug = `${baseSlug}-${counter++}`;
     }
 
     let order = dto.order;
     if (order === undefined || order === null || order < 0) {
-      const count = await this.examGroupModel.countDocuments({ isDeleted: { $ne: true } });
+      const count = await this.examGroupModel.countDocuments({
+        isDeleted: { $ne: true },
+      });
       order = count + 1;
     }
 
@@ -72,7 +106,9 @@ export class ExamGroupsService {
     return created.save();
   }
 
-  async findAll(query: QueryExamGroupDto): Promise<{ data: any[]; total: number; page: number; limit: number }> {
+  async findAll(
+    query: QueryExamGroupDto,
+  ): Promise<{ data: any[]; total: number; page: number; limit: number }> {
     const { search, q, isActive, page = 1, limit = 20 } = query;
     const matchStage: Record<string, any> = { isDeleted: { $ne: true } };
 
@@ -128,7 +164,7 @@ export class ExamGroupsService {
     ]);
 
     return {
-      data,
+      data: await this.withGroupAttemptCounts(data),
       total,
       page,
       limit,
@@ -153,8 +189,9 @@ export class ExamGroupsService {
       isDeleted: { $ne: true },
     });
 
+    const [countedGroup] = await this.withGroupAttemptCounts([group]);
     return {
-      ...group,
+      ...countedGroup,
       examCount,
     };
   }
@@ -186,7 +223,9 @@ export class ExamGroupsService {
         });
 
         if (existing) {
-          throw new ConflictException('Exam group with this name already exists');
+          throw new ConflictException(
+            'Exam group with this name already exists',
+          );
         }
       }
       updateData.name = trimmedName;
@@ -206,7 +245,9 @@ export class ExamGroupsService {
           slug = `${baseSlug}-${counter++}`;
         }
         updateData.slug = slug;
-      } else if (trimmedName.toLowerCase() !== currentGroup.name.toLowerCase()) {
+      } else if (
+        trimmedName.toLowerCase() !== currentGroup.name.toLowerCase()
+      ) {
         const baseSlug = this.generateSlug(trimmedName) || 'exam-group';
         let slug = baseSlug;
         let counter = 1;
@@ -270,7 +311,11 @@ export class ExamGroupsService {
     const nextActive = isActive ?? !group.isActive;
 
     const updated = await this.examGroupModel
-      .findByIdAndUpdate(id, { isActive: nextActive }, { returnDocument: 'after' })
+      .findByIdAndUpdate(
+        id,
+        { isActive: nextActive },
+        { returnDocument: 'after' },
+      )
       .exec();
 
     if (!updated) {
@@ -300,7 +345,7 @@ export class ExamGroupsService {
     // Unset groupId from associated exams
     await this.examModel.updateMany(
       { groupId: new Types.ObjectId(id) },
-      { $set: { groupId: null } },
+      { $set: { groupId: null, groupOrder: 0 } },
     );
 
     return group;
@@ -321,17 +366,21 @@ export class ExamGroupsService {
       groupObjectId = group._id as Types.ObjectId;
     }
 
-    return this.examModel
+    const exams = await this.examModel
       .find({
         groupId: groupObjectId,
         isDeleted: { $ne: true },
       })
-      .sort({ order: 1, createdAt: -1 })
+      .sort(GROUP_EXAM_SORT)
       .lean()
       .exec();
+    return withAttemptCounts(this.attempts, exams);
   }
 
-  async addExams(groupId: string, examIds: string[]): Promise<{ updatedCount: number }> {
+  async addExams(
+    groupId: string,
+    examIds: string[],
+  ): Promise<{ updatedCount: number }> {
     await this.findOne(groupId);
     if (!examIds || !examIds.length) {
       return { updatedCount: 0 };
@@ -341,15 +390,66 @@ export class ExamGroupsService {
       .filter((id) => Types.ObjectId.isValid(id))
       .map((id) => new Types.ObjectId(id));
 
-    const result = await this.examModel.updateMany(
-      { _id: { $in: objectIds }, isDeleted: { $ne: true } },
-      { $set: { groupId: new Types.ObjectId(groupId) } },
+    const group = new Types.ObjectId(groupId);
+    // Newly added exams go to the end of the group, in the order given.
+    const incoming = await this.examModel
+      .find({
+        _id: { $in: objectIds },
+        isDeleted: { $ne: true },
+        groupId: { $ne: group },
+      })
+      .select('_id')
+      .lean()
+      .exec();
+    const ids = objectIds.filter((id) =>
+      incoming.some((exam) => String(exam._id) === String(id)),
+    );
+    if (!ids.length) return { updatedCount: 0 };
+    const start = await nextGroupOrder(this.examModel, group);
+    const result = await this.examModel.bulkWrite(
+      ids.map((id, index) => ({
+        updateOne: {
+          filter: { _id: id },
+          update: { $set: { groupId: group, groupOrder: start + index } },
+        },
+      })),
     );
 
     return { updatedCount: result.modifiedCount };
   }
 
-  async removeExam(groupId: string, examId: string): Promise<{ success: boolean }> {
+  async reorderExams(groupId: string, examIds: string[]) {
+    const group = await this.findOne(groupId);
+    const current = await this.examModel
+      .find({ groupId: group._id, isDeleted: { $ne: true } })
+      .select('_id')
+      .lean()
+      .exec();
+    const currentIds = new Set(current.map((exam) => String(exam._id)));
+    if (
+      examIds.length !== currentIds.size ||
+      new Set(examIds).size !== examIds.length ||
+      examIds.some((id) => !currentIds.has(id))
+    )
+      throw new BadRequestException(
+        'examIds must list every exam of the group exactly once',
+      );
+    if (examIds.length)
+      await this.examModel.bulkWrite(
+        examIds.map((id, index) => ({
+          updateOne: {
+            filter: { _id: new Types.ObjectId(id), groupId: group._id },
+            update: { $set: { groupOrder: index + 1 } },
+          },
+        })),
+      );
+    return this.getExams(groupId);
+  }
+
+  async removeExam(
+    groupId: string,
+    examId: string,
+  ): Promise<{ success: boolean }> {
     await this.findOne(groupId);
     if (!Types.ObjectId.isValid(examId)) {
       throw new NotFoundException('Exam not found');
@@ -357,7 +457,7 @@ export class ExamGroupsService {
 
     await this.examModel.updateOne(
       { _id: new Types.ObjectId(examId), groupId: new Types.ObjectId(groupId) },
-      { $set: { groupId: null } },
+      { $set: { groupId: null, groupOrder: 0 } },
     );
 
     return { success: true };

@@ -4,6 +4,8 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Headphones, BookOpen } from 'lucide-react';
 import { ToeicExamPart } from '@/services/toeic.service';
+import { Badge, surface } from '@/components/ui/page';
+import { cn } from '@/lib/utils';
 
 interface ExamStructureTableProps {
   parts: ToeicExamPart[];
@@ -15,11 +17,11 @@ export function ExamStructureTable({ parts, partTimeMap }: ExamStructureTablePro
 
   return (
     <div>
-      <h2 className="mb-3 text-base font-bold text-slate-900">{t('exam_detail.structure_title')}</h2>
-      <div className="rounded border border-slate-200 bg-white overflow-hidden shadow-xs">
+      <h2 className="mb-3 text-base font-semibold text-slate-900">{t('exam_detail.structure_title')}</h2>
+      <div className={cn(surface, 'overflow-x-auto')}>
         <table className="w-full">
           <thead>
-            <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+            <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-500">
               <th className="px-5 py-3 text-left">{t('exam_detail.col_section')}</th>
               <th className="px-4 py-3 text-left">{t('exam_detail.col_part')}</th>
               <th className="px-4 py-3 text-left">{t('exam_detail.col_type')}</th>
@@ -32,18 +34,18 @@ export function ExamStructureTable({ parts, partTimeMap }: ExamStructureTablePro
               const isL = p.section === 'LISTENING';
               const partTime = partTimeMap[p.part] ?? 0;
               return (
-                <tr key={p._id} className="hover:bg-slate-50/50 transition-colors">
+                <tr key={p._id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-5 py-3.5">
                     {isL ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-md bg-cyan-50 px-2.5 py-1 text-[11px] font-bold text-cyan-700">
+                      <Badge tone="blue">
                         <Headphones className="h-3 w-3" />
                         LISTENING
-                      </span>
+                      </Badge>
                     ) : (
-                      <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
+                      <Badge tone="emerald">
                         <BookOpen className="h-3 w-3" />
                         READING
-                      </span>
+                      </Badge>
                     )}
                   </td>
                   <td className="px-4 py-3.5 text-slate-600 font-medium">Part {p.part}</td>

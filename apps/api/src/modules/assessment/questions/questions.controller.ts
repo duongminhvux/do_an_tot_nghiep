@@ -1,6 +1,5 @@
 /// <reference types="multer" />
 import {
-  Controller,
   Get,
   Post,
   Body,
@@ -15,8 +14,9 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { QuestionsService } from './questions.service.js';
 import { CreateQuestionDto } from './dto/create-question.dto.js';
 import { UpdateQuestionDto } from './dto/update-question.dto.js';
+import { AdminController } from '../../auth/decorators/admin-controller.decorator.js';
 
-@Controller('admin/questions')
+@AdminController('questions')
 export class QuestionsController {
   constructor(private readonly questionsService: QuestionsService) {}
 

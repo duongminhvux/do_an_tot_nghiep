@@ -4,7 +4,6 @@ import Image from "next/image";
 import {
   ArrowLeft,
   Award,
-  CheckCircle2,
   Clock,
   Crown,
   Flame,
@@ -21,6 +20,8 @@ import {
 import type { FriendPlayer } from "@/lib/friendly-arena";
 import { RoomStandings } from "./room-standings";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { surface } from "@/components/ui/page";
 
 export interface MatchResultViewProps {
   standings?: FriendPlayer[];
@@ -122,14 +123,14 @@ export function MatchResultView({
   const reasonText = getFinishReasonText();
 
   return (
-    <main className="flex min-h-[calc(100dvh-3.5rem)] items-center justify-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-50/70 via-slate-50 to-white px-3 py-6 sm:px-6">
+    <main className="flex min-h-[calc(100dvh-3.5rem)] items-center justify-center bg-background px-3 py-6 sm:px-6">
       <div className="w-full max-w-2xl animate-in fade-in-0 zoom-in-95 duration-300">
-        <div className="relative overflow-hidden rounded-[2.5rem] border border-slate-200/80 bg-white/95 p-6 shadow-2xl backdrop-blur-md sm:p-9">
-          {/* Header Glow Backdrop */}
+        <div className={cn(surface, "relative overflow-hidden p-6 sm:p-8")}>
+          {/* Result accent */}
           <div
             className={cn(
-              "pointer-events-none absolute -top-24 left-1/2 size-72 -translate-x-1/2 rounded-full blur-3xl opacity-35",
-              won ? "bg-amber-400" : isDraw ? "bg-blue-400" : "bg-rose-400",
+              "pointer-events-none absolute inset-x-0 top-0 h-1",
+              won ? "bg-emerald-500" : isDraw ? "bg-amber-400" : "bg-red-400",
             )}
           />
 
@@ -137,36 +138,36 @@ export function MatchResultView({
           <div className="relative mx-auto flex flex-col items-center text-center">
             <div
               className={cn(
-                "relative flex size-24 items-center justify-center rounded-3xl p-1 shadow-lg transition-transform",
+                "relative flex size-20 items-center justify-center rounded-2xl ring-8",
                 won
-                  ? "bg-gradient-to-tr from-amber-400 via-yellow-400 to-amber-200 text-amber-950 shadow-amber-500/25 ring-8 ring-amber-100/70"
+                  ? "bg-emerald-50 text-emerald-600 ring-emerald-50/60"
                   : isDraw
-                    ? "bg-gradient-to-tr from-blue-500 via-indigo-400 to-sky-300 text-white shadow-blue-500/25 ring-8 ring-blue-100/70"
-                    : "bg-gradient-to-tr from-slate-600 via-slate-500 to-slate-400 text-white shadow-slate-500/25 ring-8 ring-slate-100/70",
+                    ? "bg-amber-50 text-amber-600 ring-amber-50/60"
+                    : "bg-red-50 text-red-600 ring-red-50/60",
               )}
             >
               {won ? (
                 <>
-                  <Trophy className="size-12 animate-pulse" />
-                  <Sparkles className="absolute -right-2 -top-2 size-6 text-amber-500" />
-                  <Crown className="absolute -left-2 -top-3 size-6 -rotate-12 text-amber-500" />
+                  <Trophy className="size-10" />
+                  <Sparkles className="absolute -right-2 -top-2 size-5 text-amber-500" />
+                  <Crown className="absolute -left-2 -top-3 size-5 -rotate-12 text-amber-500" />
                 </>
               ) : isDraw ? (
-                <Swords className="size-12" />
+                <Swords className="size-10" />
               ) : (
-                <Shield className="size-12 text-slate-100" />
+                <Shield className="size-10" />
               )}
             </div>
 
             {/* Title */}
             <h1
               className={cn(
-                "mt-6 text-3xl font-black tracking-tight sm:text-4xl",
+                "mt-5 text-2xl font-bold tracking-tight sm:text-3xl",
                 won
-                  ? "text-transparent bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 bg-clip-text"
+                  ? "text-emerald-600"
                   : isDraw
-                    ? "text-blue-600"
-                    : "text-slate-800",
+                    ? "text-amber-600"
+                    : "text-red-600",
               )}
             >
               {won
@@ -182,7 +183,7 @@ export function MatchResultView({
                     : "DEFEAT"}
             </h1>
 
-            <p className="mt-2 text-xs font-medium text-slate-500 sm:text-sm">
+            <p className="mt-1.5 text-sm text-slate-500">
               {won
                 ? vi
                   ? "Xuất sắc! Bạn đã thi đấu ấn tượng và giành chiến thắng."
@@ -197,14 +198,14 @@ export function MatchResultView({
             </p>
 
             {reasonText && (
-              <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-slate-100/80 px-3.5 py-1 text-[11px] font-semibold text-slate-600">
+              <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-inset ring-slate-200">
                 <span>{reasonText}</span>
               </div>
             )}
           </div>
 
           {/* Versus Score Card */}
-          <div className="relative mt-8 overflow-hidden rounded-3xl border border-slate-100 bg-gradient-to-b from-slate-50/80 to-white p-5 shadow-inner sm:p-6">
+          <div className="relative mt-6 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
             {standings ? (
               <RoomStandings
                 players={standings}
@@ -218,10 +219,8 @@ export function MatchResultView({
                 <div className="flex flex-col items-center text-center">
                   <div
                     className={cn(
-                      "relative size-16 sm:size-20 overflow-hidden rounded-2xl ring-4 shadow-md",
-                      won
-                        ? "ring-amber-400 shadow-amber-200"
-                        : "ring-blue-200 shadow-slate-100",
+                      "relative size-16 overflow-hidden rounded-xl ring-4 sm:size-20",
+                      won ? "ring-emerald-400" : "ring-blue-100",
                     )}
                   >
                     {myAvatar ? (
@@ -239,17 +238,17 @@ export function MatchResultView({
                       </div>
                     )}
                     {won && (
-                      <span className="absolute bottom-0 inset-x-0 bg-amber-500 text-[9px] font-black text-amber-950 py-0.5 uppercase tracking-wider">
+                      <span className="absolute inset-x-0 bottom-0 bg-emerald-600 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white">
                         {vi ? "THẮNG" : "WINNER"}
                       </span>
                     )}
                   </div>
 
                   <div className="mt-3 flex items-center gap-1">
-                    <span className="truncate max-w-[110px] text-xs font-bold text-slate-800 sm:text-sm">
+                    <span className="max-w-[110px] truncate text-sm font-semibold text-slate-900">
                       {myName}
                     </span>
-                    <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[9px] font-black text-blue-700">
+                    <span className="rounded-full bg-blue-50 px-1.5 py-0.5 text-[11px] font-bold text-blue-700 ring-1 ring-inset ring-blue-100">
                       {vi ? "BẠN" : "YOU"}
                     </span>
                   </div>
@@ -258,7 +257,7 @@ export function MatchResultView({
                     <p
                       className={cn(
                         "mt-1 text-3xl font-black tabular-nums sm:text-4xl",
-                        won ? "text-amber-600" : "text-blue-600",
+                        won ? "text-emerald-600" : "text-blue-600",
                       )}
                     >
                       {myScore}
@@ -271,10 +270,10 @@ export function MatchResultView({
 
                 {/* VS Divider */}
                 <div className="flex flex-col items-center px-2">
-                  <span className="text-2xl sm:text-3xl font-black italic tracking-tighter text-slate-300">
+                  <span className="text-2xl font-black italic tracking-tighter text-slate-300 sm:text-3xl">
                     VS
                   </span>
-                  <span className="mt-1 rounded-full bg-slate-200/70 px-2 py-0.5 text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+                  <span className="mt-1 whitespace-nowrap rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-600 ring-1 ring-inset ring-slate-200">
                     {isWordChain
                       ? vi
                         ? "Nối từ"
@@ -289,10 +288,8 @@ export function MatchResultView({
                 <div className="flex flex-col items-center text-center">
                   <div
                     className={cn(
-                      "relative size-16 sm:size-20 overflow-hidden rounded-2xl ring-4 shadow-md",
-                      !won && !isDraw
-                        ? "ring-amber-400 shadow-amber-200"
-                        : "ring-violet-200 shadow-slate-100",
+                      "relative size-16 overflow-hidden rounded-xl ring-4 sm:size-20",
+                      !won && !isDraw ? "ring-emerald-400" : "ring-slate-200",
                     )}
                   >
                     {opponentAvatar ? (
@@ -305,18 +302,18 @@ export function MatchResultView({
                         className="size-full object-cover"
                       />
                     ) : (
-                      <div className="flex size-full items-center justify-center bg-violet-100 text-violet-600">
+                      <div className="flex size-full items-center justify-center bg-slate-100 text-slate-500">
                         <UserRound className="size-8 sm:size-10" />
                       </div>
                     )}
                     {!won && !isDraw && (
-                      <span className="absolute bottom-0 inset-x-0 bg-amber-500 text-[9px] font-black text-amber-950 py-0.5 uppercase tracking-wider">
+                      <span className="absolute inset-x-0 bottom-0 bg-emerald-600 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white">
                         {vi ? "THẮNG" : "WINNER"}
                       </span>
                     )}
                   </div>
 
-                  <span className="mt-3 truncate max-w-[120px] text-xs font-bold text-slate-800 sm:text-sm">
+                  <span className="mt-3 max-w-[120px] truncate text-sm font-semibold text-slate-900">
                     {opponentName}
                   </span>
 
@@ -324,7 +321,7 @@ export function MatchResultView({
                     <p
                       className={cn(
                         "mt-1 text-3xl font-black tabular-nums sm:text-4xl",
-                        !won && !isDraw ? "text-amber-600" : "text-violet-600",
+                        !won && !isDraw ? "text-emerald-600" : "text-slate-700",
                       )}
                     >
                       {opponentScore}
@@ -339,25 +336,25 @@ export function MatchResultView({
 
             {/* Elo Change Badge (Ranked Mode Only) */}
             {!isFriendly && ratingChange !== undefined && (
-              <div className="mt-6 flex items-center justify-between rounded-2xl border border-slate-100 bg-white p-3.5 shadow-sm">
+              <div className="mt-5 flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3.5">
                 <div className="flex items-center gap-2">
                   <div
                     className={cn(
-                      "flex size-9 items-center justify-center rounded-xl",
+                      "flex size-9 items-center justify-center rounded-lg",
                       ratingChange > 0
                         ? "bg-emerald-50 text-emerald-600"
                         : ratingChange < 0
-                          ? "bg-rose-50 text-rose-600"
-                          : "bg-slate-50 text-slate-600",
+                          ? "bg-red-50 text-red-600"
+                          : "bg-slate-100 text-slate-600",
                     )}
                   >
                     <Award className="size-5" />
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-slate-700">
+                    <p className="text-sm font-semibold text-slate-800">
                       {vi ? "Điểm xếp hạng Elo" : "Rank Rating (Elo)"}
                     </p>
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-xs text-slate-500">
                       {ratingAfter !== undefined
                         ? vi
                           ? `Hiện tại: ${ratingAfter.toLocaleString(locale)} Elo`
@@ -371,62 +368,62 @@ export function MatchResultView({
 
                 <div
                   className={cn(
-                    "flex items-center gap-1 rounded-xl px-3 py-1.5 text-base font-black tabular-nums",
+                    "flex items-center gap-1 rounded-lg px-3 py-1.5 text-base font-black tabular-nums",
                     ratingChange > 0
-                      ? "bg-emerald-100 text-emerald-700"
+                      ? "bg-emerald-50 text-emerald-700"
                       : ratingChange < 0
-                        ? "bg-rose-100 text-rose-700"
+                        ? "bg-red-50 text-red-700"
                         : "bg-slate-100 text-slate-700",
                   )}
                 >
                   <span>
                     {ratingChange > 0 ? `+${ratingChange}` : ratingChange}
                   </span>
-                  <span className="text-[10px] font-bold">Elo</span>
+                  <span className="text-xs font-bold">Elo</span>
                 </div>
               </div>
             )}
           </div>
 
           {/* Performance Stats Chips */}
-          <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {accuracy !== undefined && (
-              <div className="flex flex-col items-center rounded-2xl border border-slate-100 bg-slate-50/70 p-3 text-center">
-                <div className="flex size-7 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
+              <div className="flex flex-col items-center rounded-lg border border-slate-200 bg-slate-50 p-3 text-center">
+                <div className="flex size-7 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
                   <Target className="size-4" />
                 </div>
-                <span className="mt-2 text-base font-black text-slate-800 tabular-nums">
+                <span className="mt-2 text-base font-bold tabular-nums text-slate-900">
                   {accuracy}%
                 </span>
-                <span className="text-[10px] text-slate-400 font-medium">
+                <span className="text-xs font-medium text-slate-500">
                   {vi ? "Chính xác" : "Accuracy"}
                 </span>
               </div>
             )}
 
             {streak > 0 && (
-              <div className="flex flex-col items-center rounded-2xl border border-slate-100 bg-slate-50/70 p-3 text-center">
-                <div className="flex size-7 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
+              <div className="flex flex-col items-center rounded-lg border border-slate-200 bg-slate-50 p-3 text-center">
+                <div className="flex size-7 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
                   <Flame className="size-4" />
                 </div>
-                <span className="mt-2 text-base font-black text-slate-800 tabular-nums">
+                <span className="mt-2 text-base font-bold tabular-nums text-slate-900">
                   {streak}
                 </span>
-                <span className="text-[10px] text-slate-400 font-medium">
+                <span className="text-xs font-medium text-slate-500">
                   {vi ? "Chuỗi cao nhất" : "Max Streak"}
                 </span>
               </div>
             )}
 
             {turnCount !== undefined && turnCount > 0 && (
-              <div className="flex flex-col items-center rounded-2xl border border-slate-100 bg-slate-50/70 p-3 text-center">
-                <div className="flex size-7 items-center justify-center rounded-lg bg-violet-100 text-violet-600">
+              <div className="flex flex-col items-center rounded-lg border border-slate-200 bg-slate-50 p-3 text-center">
+                <div className="flex size-7 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
                   <Layers className="size-4" />
                 </div>
-                <span className="mt-2 text-base font-black text-slate-800 tabular-nums">
+                <span className="mt-2 text-base font-bold tabular-nums text-slate-900">
                   {turnCount}
                 </span>
-                <span className="text-[10px] text-slate-400 font-medium">
+                <span className="text-xs font-medium text-slate-500">
                   {isWordChain
                     ? vi
                       ? "Từ đã nối"
@@ -439,17 +436,17 @@ export function MatchResultView({
             )}
 
             {durationSeconds !== undefined && durationSeconds > 0 && (
-              <div className="flex flex-col items-center rounded-2xl border border-slate-100 bg-slate-50/70 p-3 text-center">
-                <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
+              <div className="flex flex-col items-center rounded-lg border border-slate-200 bg-slate-50 p-3 text-center">
+                <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
                   <Clock className="size-4" />
                 </div>
-                <span className="mt-2 text-base font-black text-slate-800 tabular-nums">
+                <span className="mt-2 text-base font-bold tabular-nums text-slate-900">
                   {Math.floor(durationSeconds / 60)}
                   {vi ? " phút " : "m "}
                   {durationSeconds % 60}
                   {vi ? " giây" : "s"}
                 </span>
-                <span className="text-[10px] text-slate-400 font-medium">
+                <span className="text-xs font-medium text-slate-500">
                   {vi ? "Thời gian" : "Duration"}
                 </span>
               </div>
@@ -458,56 +455,47 @@ export function MatchResultView({
 
           {/* Result Notice */}
           {resultNotice && (
-            <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/80 p-2.5 text-center text-xs font-semibold text-blue-700 animate-pulse">
+            <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50 p-2.5 text-center text-sm font-medium text-blue-700">
               {resultNotice}
             </div>
           )}
 
           {/* Action Toolbar */}
-          <div className="mt-7 flex flex-col gap-2.5 sm:flex-row">
+          <div className="mt-6 flex flex-col gap-2.5 sm:flex-row">
             {isFriendly && onBackToRoom && (
-              <button
+              <Button
                 type="button"
+                size="lg"
                 onClick={onBackToRoom}
-                className={cn(
-                  "flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl text-xs sm:text-sm font-bold text-white transition",
-                  "bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 shadow-lg shadow-blue-500/25",
-                  "hover:brightness-110 active:scale-[0.99]",
-                  "disabled:cursor-not-allowed disabled:opacity-50",
-                )}
+                className="flex-1"
               >
-                <RotateCcw className="size-4" />
+                <RotateCcw />
                 <span>{vi ? "Trở về phòng" : "Back to room"}</span>
-              </button>
+              </Button>
             )}
 
             {!isFriendly && onFindNextMatch && (
-              <button
+              <Button
                 type="button"
+                size="lg"
                 onClick={onFindNextMatch}
-                className={cn(
-                  "flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl text-xs sm:text-sm font-bold text-white transition",
-                  "bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 shadow-lg shadow-blue-500/25",
-                  "hover:brightness-110 active:scale-[0.99]",
-                )}
+                className="flex-1"
               >
-                <Zap className="size-4" />
+                <Zap />
                 <span>{vi ? "Tìm trận tiếp theo" : "Find Next Match"}</span>
-              </button>
+              </Button>
             )}
 
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="lg"
               onClick={onBackToArena}
-              className={cn(
-                "flex h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-6",
-                "text-xs sm:text-sm font-bold text-slate-700 transition hover:bg-slate-50 hover:text-slate-900",
-                isFriendly ? "flex-1" : "flex-1 sm:flex-initial",
-              )}
+              className={isFriendly ? "flex-1" : "flex-1 sm:flex-initial"}
             >
-              <ArrowLeft className="size-4" />
+              <ArrowLeft />
               <span>{vi ? "Về đấu trường" : "Back to Arena"}</span>
-            </button>
+            </Button>
           </div>
         </div>
       </div>

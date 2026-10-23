@@ -1,7 +1,7 @@
 "use client";
 
 import { Search } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { Avatar } from "./arena-avatar";
 import type { ArenaController } from "../hooks/use-arena-controller";
 
@@ -17,7 +17,6 @@ type Props = Pick<
   | "setInvited"
   | "filteredFriends"
   | "startGame"
-  | "button"
 >;
 
 export function FriendsPanel({
@@ -31,7 +30,6 @@ export function FriendsPanel({
   setInvited,
   filteredFriends,
   startGame,
-  button,
 }: Props) {
   return (
     <>
@@ -44,64 +42,58 @@ export function FriendsPanel({
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder={text("Tìm tên bạn bè...", "Search friends...")}
-              className="h-10 w-full rounded-lg border border-slate-200 pl-10 pr-3 text-sm outline-none focus:border-blue-500"
+              className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
             />
           </label>
           <div className="mt-3 space-y-2">
             {filteredFriends.map((friend) => (
               <div
                 key={friend.name}
-                className="flex items-center gap-3 rounded-lg bg-slate-50 p-3"
+                className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-3"
               >
                 <Avatar initials={friend.initials} color={friend.color} />
                 <div className="flex-1">
-                  <p className="text-xs font-semibold text-slate-800">
+                  <p className="text-sm font-semibold text-slate-800">
                     {friend.name}
                   </p>
-                  <p className="mt-1 text-[10px] text-slate-400">
+                  <p className="mt-0.5 text-xs text-slate-500">
                     {friend.rating} Elo ·{" "}
-                    <span className={friend.online ? "text-emerald-500" : ""}>
+                    <span className={friend.online ? "text-emerald-600" : ""}>
                       {friend.online ? "Online" : "Offline"}
                     </span>
                   </p>
                 </div>
-                <button
+                <Button
                   type="button"
+                  size="sm"
+                  variant="secondary"
                   disabled={!friend.online || invited}
                   onClick={() => {
                     setOpponent(friend.name);
                     setInvited(true);
                   }}
-                  className={cn(
-                    button,
-                    "min-h-8 bg-blue-50 px-2.5 text-[10px] text-blue-600",
-                  )}
                 >
                   {text("Thách đấu", "Challenge")}
-                </button>
+                </Button>
               </div>
             ))}
             {filteredFriends.length === 0 && (
-              <p className="py-6 text-center text-xs text-slate-400">
+              <p className="py-6 text-center text-sm text-slate-500">
                 {text("Không tìm thấy bạn bè.", "No friends found.")}
               </p>
             )}
           </div>
           {invited && (
-            <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 p-4">
-              <p className="text-xs text-emerald-700" role="status">
+            <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+              <p className="text-sm text-emerald-700" role="status">
                 {text(
                   `Đã gửi lời mời đến ${opponent}.`,
                   `Invitation sent to ${opponent}.`,
                 )}
               </p>
-              <button
-                type="button"
-                onClick={startGame}
-                className={cn(button, "mt-3 w-full bg-emerald-600 text-white")}
-              >
+              <Button type="button" onClick={startGame} className="mt-3 w-full">
                 {text("Chơi thử trận đấu", "Play demo match")}
-              </button>
+              </Button>
             </div>
           )}
         </div>

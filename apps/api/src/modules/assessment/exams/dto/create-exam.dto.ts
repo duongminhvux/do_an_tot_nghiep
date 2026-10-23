@@ -35,10 +35,14 @@ export class CreateExamDto {
   slug?: string;
 
   @IsNotEmpty({ message: i18nValidationMessage('exam.EXAM_TYPE_REQUIRED') })
-  @IsEnum(ExamType, { message: i18nValidationMessage('exam.EXAM_TYPE_INVALID') })
+  @IsEnum(ExamType, {
+    message: i18nValidationMessage('exam.EXAM_TYPE_INVALID'),
+  })
   type!: ExamType;
 
-  @IsString({ message: i18nValidationMessage('exam.EXAM_DESCRIPTION_MUST_BE_STRING') })
+  @IsString({
+    message: i18nValidationMessage('exam.EXAM_DESCRIPTION_MUST_BE_STRING'),
+  })
   @IsOptional()
   description?: string;
 
@@ -51,7 +55,6 @@ export class CreateExamDto {
   @Min(0)
   @IsOptional()
   totalQuestions?: number;
-
 
   @IsBoolean()
   @IsOptional()

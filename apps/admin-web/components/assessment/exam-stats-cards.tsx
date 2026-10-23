@@ -9,6 +9,7 @@ interface ExamStatsCardsProps {
   targetQuestions: number;
   passagesCount: number;
   durationMinutes: number;
+  totalAttempts?: number;
 }
 
 export function ExamStatsCards({
@@ -16,6 +17,7 @@ export function ExamStatsCards({
   targetQuestions,
   passagesCount,
   durationMinutes,
+  totalAttempts = 0,
 }: ExamStatsCardsProps) {
   const { t } = useTranslation('assessment');
 
@@ -87,9 +89,9 @@ export function ExamStatsCards({
           <p className="text-xs text-slate-500 font-medium">
             {t('detailPage.cardAttemptsTitle')}
           </p>
-          <p className="text-2xl font-bold text-slate-900 mt-0.5">0</p>
+          <p className="text-2xl font-bold text-slate-900 mt-0.5">{totalAttempts}</p>
           <p className="text-[11px] text-slate-400 font-medium mt-0.5">
-            {t('detailPage.noAttempts')}
+            {totalAttempts === 0 ? t('detailPage.noAttempts') : t('detailPage.cardAttemptsTitle')}
           </p>
         </div>
       </div>

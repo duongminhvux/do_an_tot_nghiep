@@ -1,4 +1,10 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 
 export class QueryExamGroupDto {
@@ -10,7 +16,9 @@ export class QueryExamGroupDto {
   @IsOptional()
   q?: string;
 
-  @Transform(({ value }) => value === 'true' ? true : value === 'false' ? false : value)
+  @Transform(({ value }) =>
+    value === 'true' ? true : value === 'false' ? false : value,
+  )
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;

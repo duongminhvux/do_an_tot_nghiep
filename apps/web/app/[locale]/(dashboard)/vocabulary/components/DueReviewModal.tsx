@@ -6,6 +6,9 @@ import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { RotateCcw, Clock, X, ArrowRight } from 'lucide-react';
 import { learningService } from '@/services/learning.service';
+import { Button } from '@/components/ui/button';
+import { Badge, tones } from '@/components/ui/page';
+import { cn } from '@/lib/utils';
 
 interface DueReviewModalProps {
   locale?: string;
@@ -70,42 +73,40 @@ export function DueReviewModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs animate-in fade-in duration-200">
       <div
-        className="relative bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-md w-full p-6 sm:p-7 space-y-5 animate-in zoom-in-95 duration-200 overflow-hidden"
+        className="relative w-full max-w-md space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-xl animate-in zoom-in-95 duration-200"
         role="dialog"
         aria-modal="true"
       >
-        {/* Glow ambient circle in background */}
-        <div className="absolute -top-16 -right-16 w-44 h-44 rounded-full bg-blue-200/40 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-16 -left-16 w-44 h-44 rounded-full bg-sky-200/30 blur-3xl pointer-events-none" />
-
         {/* Close X button */}
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon-sm"
           onClick={handleDismiss}
-          className="absolute top-4 right-4 p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+          className="absolute right-4 top-4 text-slate-400"
           title={t('review.btn_later')}
         >
-          <X className="w-5 h-5" />
-        </button>
+          <X />
+        </Button>
 
         {/* Badge & Icon */}
-        <div className="flex flex-col items-center text-center space-y-3 pt-1">
+        <div className="flex flex-col items-center space-y-3 pt-1 text-center">
           <div className="relative">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 via-sky-600 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/25">
-              <RotateCcw className="w-8 h-8 text-white" />
-            </div>
-            <span className="absolute -bottom-1.5 -right-2 px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-600 text-white border-2 border-white shadow-xs">
+            <span className={cn('flex h-14 w-14 items-center justify-center rounded-xl', tones.amber)}>
+              <RotateCcw className="h-7 w-7" />
+            </span>
+            <span className="absolute -bottom-1.5 -right-2 rounded-full border-2 border-white bg-amber-500 px-2 py-0.5 text-[11px] font-semibold text-white">
               +{dueCount}
             </span>
           </div>
 
-          <div className="space-y-1.5 max-w-sm">
-            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-snug">
+          <div className="max-w-sm space-y-1.5">
+            <h2 className="text-xl font-bold tracking-tight text-slate-900">
               {t('review.modal_title', { count: dueCount })}
             </h2>
-            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+            <p className="text-sm text-slate-600">
               {t('review.modal_desc')}
             </p>
           </div>
@@ -113,22 +114,19 @@ export function DueReviewModal({
 
         {/* Preview Words pills if available */}
         {previewWords.length > 0 && (
-          <div className="bg-blue-50/70 rounded-2xl border border-blue-100 p-3 space-y-1.5">
-            <div className="flex items-center gap-1.5 text-[11px] font-bold text-blue-900 uppercase tracking-wider">
-              <Clock className="w-3.5 h-3.5 text-blue-600" />
+          <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <Clock className="h-3.5 w-3.5 text-amber-500" />
               <span>{t('review.preview_label')}</span>
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
               {previewWords.map((word, idx) => (
-                <span
-                  key={idx}
-                  className="px-2.5 py-1 rounded-lg bg-white border border-blue-200 text-xs font-bold text-blue-900 shadow-2xs"
-                >
+                <Badge key={idx} tone="blue">
                   {word}
-                </span>
+                </Badge>
               ))}
               {dueCount > previewWords.length && (
-                <span className="text-xs font-semibold text-blue-700">
+                <span className="text-xs font-medium text-slate-500">
                   {t('review.more_words', { count: dueCount - previewWords.length })}
                 </span>
               )}
@@ -138,24 +136,13 @@ export function DueReviewModal({
 
         {/* 2 Action Buttons */}
         <div className="grid grid-cols-2 gap-3 pt-1">
-          {/* Secondary: Để sau */}
-          <button
-            type="button"
-            onClick={handleDismiss}
-            className="w-full py-2.5 px-4 rounded-xl border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold transition-all cursor-pointer text-center"
-          >
+          <Button type="button" variant="outline" onClick={handleDismiss} className="w-full">
             {t('review.btn_later')}
-          </button>
-
-          {/* Primary: Ôn tập ngay */}
-          <button
-            type="button"
-            onClick={handleGoToReview}
-            className="w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs sm:text-sm font-semibold inline-flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/25 active:scale-98 transition-all cursor-pointer text-center"
-          >
+          </Button>
+          <Button type="button" onClick={handleGoToReview} className="w-full">
             <span>{t('review.btn_review_now')}</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+            <ArrowRight />
+          </Button>
         </div>
       </div>
     </div>

@@ -3,6 +3,8 @@
 import Image from "next/image";
 import { BarChart3, Gamepad2, Star, Trophy } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { PageHeader, tones } from "@/components/ui/page";
+import { cn } from "@/lib/utils";
 
 export function GamesBanner() {
   const { t } = useTranslation("common");
@@ -11,24 +13,24 @@ export function GamesBanner() {
       icon: Star,
       title: t("games_page.banner_practice"),
       description: t("games_page.banner_practice_desc"),
-      color: "bg-pink-100 text-pink-500",
+      color: tones.pink,
     },
     {
       icon: Trophy,
       title: t("games_page.banner_memory"),
       description: t("games_page.banner_memory_desc"),
-      color: "bg-amber-100 text-amber-600",
+      color: tones.amber,
     },
     {
       icon: BarChart3,
       title: t("games_page.banner_progress"),
       description: t("games_page.banner_progress_desc"),
-      color: "bg-emerald-100 text-emerald-600",
+      color: tones.emerald,
     },
   ];
 
   return (
-    <header className="relative isolate overflow-hidden rounded-xl border border-blue-100 bg-gradient-to-r from-[#f0f7ff] via-[#edf5ff] to-[#e1ecff] text-slate-900">
+    <div className="relative isolate overflow-hidden rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-indigo-50">
       <div
         className="pointer-events-none absolute inset-y-0 right-0 hidden w-[75%] md:block"
         aria-hidden="true"
@@ -45,37 +47,32 @@ export function GamesBanner() {
           className="object-contain object-right"
         />
       </div>
-      <div
-        className="pointer-events-none absolute -bottom-24 -left-12 size-64 rounded-full bg-blue-200/30 blur-3xl"
-        aria-hidden="true"
-      />
-      <div className="relative z-10 p-5 sm:p-6 md:w-[68%] lg:w-[60%] xl:w-[56%]">
-        <p className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-indigo-600 sm:text-xs">
-          <Gamepad2 className="size-4 text-indigo-600" />
-          MINIGAME
-        </p>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
-          {t("games_page.banner_title")}
-        </h1>
-        <p className="mt-2 text-xs leading-5 text-slate-600 sm:text-sm">
-          {t("games_page.banner_subtitle")}
-        </p>
-        <div className="mt-4 grid gap-2 sm:grid-cols-3">
+      <div className="relative z-10 space-y-5 p-6 md:w-[68%] lg:w-[60%] xl:w-[56%]">
+        <PageHeader
+          icon={Gamepad2}
+          eyebrow="Minigame"
+          title={t("games_page.banner_title")}
+          description={t("games_page.banner_subtitle")}
+        />
+        <div className="grid gap-2 sm:grid-cols-3">
           {benefits.map((benefit) => (
             <div
               key={benefit.title}
-              className="flex min-w-0 items-center gap-2 rounded-lg border border-white/80 bg-white/70 px-2.5 py-2 backdrop-blur-sm"
+              className="flex min-w-0 items-center gap-2.5 rounded-lg border border-slate-200/70 bg-white/80 px-3 py-2.5 backdrop-blur-sm"
             >
               <span
-                className={`flex size-8 shrink-0 items-center justify-center rounded-md ${benefit.color}`}
+                className={cn(
+                  "flex size-8 shrink-0 items-center justify-center rounded-lg",
+                  benefit.color,
+                )}
               >
                 <benefit.icon className="size-4" />
               </span>
               <div className="min-w-0">
-                <p className="text-[11px] font-semibold leading-4 text-slate-800">
+                <p className="text-xs font-semibold text-slate-800">
                   {benefit.title}
                 </p>
-                <p className="mt-0.5 text-[10px] leading-4 text-slate-500">
+                <p className="mt-0.5 text-[11px] leading-4 text-slate-500">
                   {benefit.description}
                 </p>
               </div>
@@ -83,6 +80,6 @@ export function GamesBanner() {
           ))}
         </div>
       </div>
-    </header>
+    </div>
   );
 }

@@ -10,6 +10,9 @@ import {
   Layers,
 } from 'lucide-react';
 import { LessonItem } from '@/types/vocabulary';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState, surface } from '@/components/ui/page';
+import { cn } from '@/lib/utils';
 
 interface CollectionLessonsTabProps {
   lessons: LessonItem[];
@@ -34,26 +37,20 @@ export function CollectionLessonsTab({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {isLessonsLoading
           ? [1, 2, 3, 4].map((i) => (
-              <div
-                key={i}
-                className="rounded border border-slate-200 bg-white p-3 space-y-3 animate-pulse"
-              >
-                <div className="w-full aspect-[16/9] rounded bg-slate-100" />
-                <div className="h-3 w-12 rounded bg-slate-100" />
-                <div className="h-4 w-32 rounded bg-slate-100" />
-                <div className="h-3 w-20 rounded bg-slate-100" />
+              <div key={i} className={cn(surface, 'space-y-3 p-4')}>
+                <Skeleton className="aspect-[16/9] w-full rounded-lg" />
+                <Skeleton className="h-3 w-12" />
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-20" />
               </div>
             ))
           : lessons.length === 0 ? (
-              <div className="col-span-full py-12 text-center rounded border border-dashed border-slate-200 bg-white">
-                <Layers className="w-9 h-9 text-slate-300 mx-auto mb-2" />
-                <p className="text-sm font-semibold text-slate-700">
-                  {t('collection_detail.no_lessons_title')}
-                </p>
-                <p className="text-xs text-slate-400 mt-1">
-                  {t('collection_detail.no_lessons_desc')}
-                </p>
-              </div>
+              <EmptyState
+                icon={Layers}
+                title={t('collection_detail.no_lessons_title')}
+                description={t('collection_detail.no_lessons_desc')}
+                className="col-span-full"
+              />
             ) : (
               lessons.map((lesson, index) => {
                 const unitLabel = `Unit ${index + 1}`;
@@ -62,11 +59,11 @@ export function CollectionLessonsTab({
                   <Link
                     key={lesson._id}
                     href={`/${locale}/vocabulary/collection/${slug}/lesson/${lesson.slug || lesson._id}`}
-                    className="group rounded border border-slate-200 bg-white p-3 hover:border-blue-400 hover:shadow-sm transition-all duration-200 flex flex-col justify-between"
+                    className={cn(surface, 'group flex flex-col justify-between p-4 transition-colors hover:border-blue-300')}
                   >
                     <div className="space-y-2.5">
                       {/* 16:9 Lesson Thumbnail */}
-                      <div className="w-full aspect-[16/9] rounded overflow-hidden border border-slate-100 bg-slate-900 relative">
+                      <div className="relative aspect-[16/9] w-full overflow-hidden rounded-lg border border-slate-100 bg-blue-50">
                         {lesson.coverUrl ? (
                           <img
                             src={lesson.coverUrl}
@@ -74,9 +71,9 @@ export function CollectionLessonsTab({
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                           />
                         ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-gradient-to-br from-blue-900 to-indigo-950 text-white">
-                            <BookOpen className="w-6 h-6 text-blue-300 mb-1" />
-                            <span className="text-xs font-bold truncate max-w-full">
+                          <div className="flex h-full w-full flex-col items-center justify-center p-3 text-center text-blue-600">
+                            <BookOpen className="mb-1 h-6 w-6" />
+                            <span className="max-w-full truncate text-xs font-semibold text-blue-700">
                               {lesson.title}
                             </span>
                           </div>
@@ -84,17 +81,17 @@ export function CollectionLessonsTab({
                       </div>
 
                       {/* Unit Label */}
-                      <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">
+                      <span className="block text-xs font-semibold uppercase tracking-wider text-blue-600">
                         {unitLabel}
                       </span>
 
                       {/* Title */}
-                      <h3 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate leading-tight">
+                      <h3 className="truncate text-sm font-semibold leading-tight text-slate-900 transition-colors group-hover:text-blue-600">
                         {lesson.title}
                       </h3>
 
                       {/* Word count & Sections count */}
-                      <div className="flex items-center gap-2 text-[11px] text-slate-400 font-medium">
+                      <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
                         <div className="flex items-center gap-1">
                           <FileText className="w-3 h-3" />
                           <span>{t('words_count', { count: lesson.wordsCount || 0 })}</span>
@@ -118,9 +115,9 @@ export function CollectionLessonsTab({
                       const st = progData?.status ?? 'NOT_STARTED';
 
                       return (
-                        <div className="pt-3 border-t border-slate-100 mt-2 flex items-center justify-between gap-2">
+                        <div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
                           <div className="flex-1 space-y-1">
-                            <div className="flex items-center justify-between text-[10px] font-semibold text-slate-400">
+                            <div className="flex items-center justify-between text-[11px] font-medium text-slate-500">
                               <span>
                                 {st === 'COMPLETED'
                                   ? t('collection_detail.status_completed')
@@ -133,14 +130,14 @@ export function CollectionLessonsTab({
                             <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
                               <div
                                 className={`h-full rounded-full transition-all duration-300 ${
-                                  st === 'COMPLETED' ? 'bg-emerald-500' : 'bg-blue-600'
+                                  st === 'COMPLETED' ? 'bg-emerald-500' : 'bg-primary'
                                 }`}
                                 style={{ width: `${prog}%` }}
                               />
                             </div>
                           </div>
 
-                          <div className="w-6 h-6 rounded-full border border-blue-200 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors shrink-0">
+                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600 transition-colors group-hover:bg-primary group-hover:text-white">
                             <ArrowRight className="w-3 h-3" />
                           </div>
                         </div>

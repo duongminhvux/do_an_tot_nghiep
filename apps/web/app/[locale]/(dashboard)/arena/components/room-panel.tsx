@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Copy, Plus, Trophy } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 import type { ArenaController } from "../hooks/use-arena-controller";
 
@@ -19,7 +19,6 @@ type Props = Pick<
   | "copied"
   | "startGame"
   | "copyCode"
-  | "button"
 >;
 
 export function RoomPanel({
@@ -35,7 +34,6 @@ export function RoomPanel({
   copied,
   startGame,
   copyCode,
-  button,
 }: Props) {
   return (
     <>
@@ -63,7 +61,7 @@ export function RoomPanel({
                     "Ví dụ: Hội yêu từ vựng",
                     "e.g. Vocabulary club",
                   )}
-                  className="mt-2 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-violet-500"
+                  className="mt-2 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                 />
               </label>
               <label className="block text-xs font-semibold text-slate-700">
@@ -86,16 +84,10 @@ export function RoomPanel({
                   "Topic: General vocabulary · 5 questions in the demo.",
                 )}
               </div>
-              <button
-                type="submit"
-                className={cn(
-                  button,
-                  "w-full bg-violet-600 text-white hover:bg-violet-700",
-                )}
-              >
-                <Plus className="size-4" />
+              <Button type="submit" className="w-full">
+                <Plus />
                 {text("Tạo phòng", "Create room")}
-              </button>
+              </Button>
             </form>
           ) : (
             <div className="text-center">
@@ -107,7 +99,7 @@ export function RoomPanel({
                 1 / {capacity} {text("người chơi", "players")}
               </p>
               <div className="mt-5 rounded-xl border border-dashed border-violet-200 bg-violet-50 p-4">
-                <p className="text-[10px] text-violet-500">
+                <p className="text-xs text-violet-600">
                   {text(
                     "Chia sẻ mã phòng với bạn bè",
                     "Share this room code with friends",
@@ -116,10 +108,12 @@ export function RoomPanel({
                 <p className="mt-2 select-all text-2xl font-bold tracking-widest text-violet-700">
                   {roomCode}
                 </p>
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={copyCode}
-                  className={cn(button, "mt-2 text-violet-600")}
+                  className="mt-2"
                 >
                   {copied ? (
                     <Check className="size-3.5" />
@@ -129,18 +123,18 @@ export function RoomPanel({
                   {copied
                     ? text("Đã sao chép", "Copied")
                     : text("Sao chép mã", "Copy code")}
-                </button>
+                </Button>
               </div>
-              <button
+              <Button
                 type="button"
                 onClick={() => {
                   setOpponent("Trần Phương Thảo");
                   startGame();
                 }}
-                className={cn(button, "mt-5 w-full bg-violet-600 text-white")}
+                className="mt-5 w-full"
               >
                 {text("Bắt đầu trận thử", "Start demo match")}
-              </button>
+              </Button>
             </div>
           )}
         </div>

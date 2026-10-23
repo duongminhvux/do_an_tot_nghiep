@@ -1,7 +1,7 @@
-export type ExamType = 'TOEIC' | 'IELTS';
-export type ExamMode = 'PRACTICE' | 'FULL_TEST';
-export type ExamSection = 'LISTENING' | 'READING' | 'FULL_TEST';
-export type ExamStatus = 'ACTIVE' | 'INACTIVE';
+export type ExamType = "TOEIC" | "IELTS";
+export type ExamMode = "PRACTICE" | "FULL_TEST";
+export type ExamSection = "LISTENING" | "READING" | "FULL_TEST";
+export type ExamStatus = "ACTIVE" | "INACTIVE";
 
 export interface ExamGroupItem {
   _id: string;
@@ -42,6 +42,8 @@ export interface ExamGroupListResponse {
 
 export interface ExamItem {
   _id: string;
+  totalAttempts?: number;
+  completedAttempts?: number;
   name: string;
   slug: string;
   type: ExamType;
@@ -54,6 +56,41 @@ export interface ExamItem {
   group?: ExamGroupItem;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface RawAttemptResult {
+  total: number;
+  answered: number;
+  correct: number;
+  incorrect: number;
+  unanswered: number;
+  accuracy: number;
+}
+export interface ExamAttemptItem {
+  _id: string;
+  userId: string | { _id: string; username?: string; email?: string } | null;
+  examId: string | { _id: string; name: string; slug: string } | null;
+  mode?: "TEST" | "PRACTICE";
+  status: "IN_PROGRESS" | "FINISHED" | "COMPLETED" | "ABANDONED";
+  selectedParts?: number[];
+  totalQuestions: number;
+  answeredQuestions: number;
+  correctAnswers?: number;
+  incorrectAnswers?: number;
+  unansweredQuestions?: number;
+  accuracy?: number;
+  durationSpent?: number;
+  createdAt?: string;
+  submittedAt?: string;
+  partResults?: (RawAttemptResult & { part: number })[];
+  listeningResult?: RawAttemptResult;
+  readingResult?: RawAttemptResult;
+}
+export interface ExamAttemptList {
+  data: ExamAttemptItem[];
+  total: number;
+  page: number;
+  limit: number;
 }
 
 export interface CreateExamDto {
@@ -71,8 +108,8 @@ export interface CreateExamDto {
 export interface UpdateExamDto extends Partial<CreateExamDto> {}
 
 export interface QueryExamDto {
-  sortBy?: 'name' | 'totalQuestions' | 'durationMinutes' | 'order' | 'isActive';
-  sortOrder?: 'asc' | 'desc';
+  sortBy?: "name" | "totalQuestions" | "durationMinutes" | "order" | "isActive";
+  sortOrder?: "asc" | "desc";
   search?: string;
   q?: string;
   type?: ExamType;
@@ -89,7 +126,6 @@ export interface ExamListResponse {
   limit: number;
 }
 
-
 export interface GeneratedAudioSegmentMeta {
   text?: string;
   speaker?: string;
@@ -99,8 +135,8 @@ export interface GeneratedAudioSegmentMeta {
 }
 
 export interface GeneratedAudioMeta {
-  source?: 'TTS' | 'UPLOAD';
-  status?: 'NONE' | 'PROCESSING' | 'READY' | 'STALE' | 'FAILED';
+  source?: "TTS" | "UPLOAD";
+  status?: "NONE" | "PROCESSING" | "READY" | "STALE" | "FAILED";
   storageKey?: string;
   provider?: string;
   device?: string;
@@ -115,7 +151,7 @@ export interface GeneratedAudioMeta {
 }
 
 export interface QuestionOption {
-  key: 'A' | 'B' | 'C' | 'D';
+  key: "A" | "B" | "C" | "D";
   text: string;
 }
 
@@ -125,11 +161,11 @@ export interface QuestionItem {
   passageGroupId?: string;
   passageId?: string;
   passageTitle?: string;
-  section: 'LISTENING' | 'READING';
+  section: "LISTENING" | "READING";
   part: number;
   content: string;
   options: QuestionOption[];
-  correctAnswer: 'A' | 'B' | 'C' | 'D';
+  correctAnswer: "A" | "B" | "C" | "D";
   explanation?: string;
   audioUrl?: string;
   audioMeta?: GeneratedAudioMeta;
@@ -141,17 +177,12 @@ export interface QuestionItem {
 }
 
 export type PassageType =
-  | 'TEXT'
-  | 'EMAIL'
-  | 'ADVERTISEMENT'
-  | 'ARTICLE'
-  | 'NOTICE'
-  | 'CHAT';
+  "TEXT" | "EMAIL" | "ADVERTISEMENT" | "ARTICLE" | "NOTICE" | "CHAT";
 
 export interface PassageGroupItem {
   _id: string;
   examId: string;
-  section: 'LISTENING' | 'READING';
+  section: "LISTENING" | "READING";
   part: number;
   title?: string;
   order: number;
@@ -166,7 +197,7 @@ export interface PassageItem {
   examId?: string;
   type?: PassageType;
   title?: string;
-  section?: 'LISTENING' | 'READING';
+  section?: "LISTENING" | "READING";
   part?: number;
   content?: string;
   audioUrl?: string;
