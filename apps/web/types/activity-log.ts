@@ -28,9 +28,11 @@ export type ActivityCategory =
 export type ActivityStatus = 'SUCCESS' | 'FAILED' | 'INFO' | 'WARNING';
 
 export interface CreateActivityLogPayload {
+  descriptionKey?: string;
+  descriptionArgs?: Record<string, unknown>;
   action: ActivityAction;
   category?: ActivityCategory;
-  description: string;
+  description?: string;
   metadata?: Record<string, any>;
   userId?: string;
   userEmail?: string;

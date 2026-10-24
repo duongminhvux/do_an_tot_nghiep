@@ -1,3 +1,4 @@
+import { I18nService, I18nContext } from 'nestjs-i18n';
 import {
   Get,
   NotFoundException,
@@ -10,7 +11,7 @@ import { QueryActivityStatsDto } from './dto/query-activity-stats.dto.js';
 
 @AdminController('activity-logs')
 export class AdminActivityLogsController {
-  constructor(private readonly activityLogsService: ActivityLogsService) {}
+  constructor(private readonly activityLogsService: ActivityLogsService, private readonly i18n: I18nService) {}
 
   @Get()
   async getLogs(@Query() query: QueryActivityLogsDto) {
@@ -36,7 +37,7 @@ export class AdminActivityLogsController {
   async getLogById(@Param('id') id: string, @Query('lang') lang?: string) {
     const log = await this.activityLogsService.findById(id, lang);
     if (!log) {
-      throw new NotFoundException(`Activity log with id "${id}" not found`);
+      throw new NotFoundException(await this.i18n.translate('activity-log.errors.NOT_FOUND', { lang: lang || I18nContext.current()?.lang || 'vi' }));
     }
     return log;
   }

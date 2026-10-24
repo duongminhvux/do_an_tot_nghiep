@@ -1,3 +1,4 @@
+import { LearningActivity, LearningActivitySchema } from '../learning-activity/schemas/learning-activity.schema.js';
 import { Module } from '@nestjs/common';
 import { PgModelsModule } from '../../postgres/compat.js';
 import {
@@ -13,6 +14,7 @@ import { AdminActivityLogsController } from './admin-activity-logs.controller.js
     PgModelsModule.forFeature([
       { name: ActivityLog.name, schema: ActivityLogSchema },
       { name: User.name, schema: UserSchema },
+      { name: LearningActivity.name, schema: LearningActivitySchema },
     ]),
   ],
   controllers: [ActivityLogsController, AdminActivityLogsController],

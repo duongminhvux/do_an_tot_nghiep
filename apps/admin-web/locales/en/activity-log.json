@@ -8,7 +8,8 @@
     "search_placeholder": "Search by email, name or description...",
     "start_date": "From Date",
     "end_date": "To Date",
-    "reset": "Reset Filters"
+    "reset": "Reset Filters",
+    "no_logs": "No matching activities found."
   },
   "columns": {
     "user": "User",
@@ -35,7 +36,14 @@
     "DICTATION_SUBMIT": "Submit Dictation",
     "TOEIC_START": "Start TOEIC Exam",
     "TOEIC_SUBMIT": "Submit TOEIC Exam",
-    "CUSTOM": "Custom Activity"
+    "CUSTOM": "Custom Activity",
+    "WORD_LEARNED": "Learn a new word",
+    "WORD_REVIEWED": "Review vocabulary",
+    "VOCAB_SESSION": "Complete a vocabulary session",
+    "DICTATION_LESSON": "Complete a dictation lesson",
+    "TOEIC_ATTEMPT": "Complete a TOEIC test",
+    "ARENA_MATCH": "Finish an Arena match",
+    "MINIGAME_PLAY": "Play a minigame"
   },
   "categories": {
     "AUTH": "Authentication",
@@ -43,7 +51,9 @@
     "VOCABULARY": "Vocabulary",
     "DICTATION": "Dictation Practice",
     "ASSESSMENT": "TOEIC Assessment",
-    "GENERAL": "General"
+    "GENERAL": "General",
+    "ARENA": "Vocabulary Arena",
+    "MINIGAME": "Minigames"
   },
   "status": {
     "SUCCESS": "Success",
@@ -59,5 +69,27 @@
     "category_distribution": "Category Breakdown",
     "activity_timeline": "Activity Frequency Timeline",
     "most_active_users": "Most Active Users"
+  },
+  "feed": {
+    "refresh": "Refresh",
+    "loading": "Loading activity history...",
+    "empty": "No recorded activities match the selected filters.",
+    "error": "Could not load activity history. Please try again.",
+    "total": "Total: {{count}} activities",
+    "previous": "Previous page",
+    "next": "Next page",
+    "source_learning": "Learning result",
+    "source_interaction": "System interaction",
+    "score": "Score: {{score}}",
+    "xp": "{{xp}} XP",
+    "accuracy": "Correct: {{correct}}/{{total}}",
+    "win": "Win",
+    "loss": "Loss",
+    "draw": "Draw",
+    "gameTypes": {
+      "WORD_SHOOTER": "Word Shooter",
+      "TYPING_RUSH": "Typing Rush",
+      "MEANING_TYPING": "Meaning Typing"
+    }
   }
 }

@@ -4,6 +4,8 @@ export enum ActivityCategory {
   VOCABULARY = 'VOCABULARY',
   DICTATION = 'DICTATION',
   ASSESSMENT = 'ASSESSMENT',
+  ARENA = 'ARENA',
+  MINIGAME = 'MINIGAME',
   GENERAL = 'GENERAL' }
 
 export enum ActivityAction {
