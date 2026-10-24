@@ -107,7 +107,7 @@ export class WordsService {
     const [data, total] = await Promise.all([
       this.wordModel
         .find(filter)
-        .select('word ipa audio audioMeta parts.partOfSpeech parts.meanings.definition level isActive createdAt')
+        .select('word ipa audio audioMeta parts.partOfSpeech parts.meanings.definition parts.meanings.translation level isActive createdAt')
         .sort(sortObj)
         .skip(skip)
         .limit(limit)

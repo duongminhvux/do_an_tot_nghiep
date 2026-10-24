@@ -157,9 +157,13 @@ export function AppSidebar() {
           label: t("nav.curriculum"),
           href: `/${locale}/vocabulary/groups`,
           icon: Layers,
-          active:
-            active(`/${locale}/vocabulary/groups`) ||
-            active(`/${locale}/vocabulary/collections`),
+          active: active(`/${locale}/vocabulary/groups`),
+        },
+        {
+          label: t("nav.collections"),
+          href: `/${locale}/vocabulary/collections`,
+          icon: FolderTree,
+          active: active(`/${locale}/vocabulary/collections`),
         },
         {
           label: t("nav.dictionary"),

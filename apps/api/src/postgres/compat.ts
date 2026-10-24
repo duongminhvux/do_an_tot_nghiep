@@ -89,6 +89,25 @@ function getValue(doc:any, key:string):any {
   if (key==='id') return doc._id || doc.id;
   return key.split('.').reduce((v,k)=>Array.isArray(v)&&!/^\d+$/.test(k)?v.map(item=>item?.[k]):v?.[k],doc);
 }
+// Inclusive projection with Mongoose-style dotted paths ("parts.meanings.definition"), applied through arrays.
+type ProjectionTree = { [key:string]: true|ProjectionTree };
+function projectionTree(paths:string[]):ProjectionTree {
+  const tree:ProjectionTree={};
+  for(const path of paths){
+    let node=tree;const segs=path.split('.');
+    segs.forEach((seg,i)=>{
+      if(node[seg]===true)return;
+      if(i===segs.length-1){node[seg]=true;return;}
+      node=(node[seg]??={}) as ProjectionTree;
+    });
+  }
+  return tree;
+}
+function project(value:any, tree:true|ProjectionTree):any {
+  if(tree===true||value==null||typeof value!=='object'||value instanceof Date||value instanceof PgId)return value;
+  if(Array.isArray(value))return value.map(item=>project(item,tree));
+  return Object.fromEntries(Object.entries(tree).filter(([key])=>value[key]!==undefined).map(([key,sub])=>[key,project(value[key],sub)]));
+}
 function eq(a:any,b:any):boolean {
   if (a===undefined||b===undefined) return a===b;
   if (a instanceof Date||b instanceof Date) return new Date(a).getTime()===new Date(b).getTime();
@@ -258,9 +277,9 @@ export class PgQuery<T=any> implements PromiseLike<T> {
       const included=keys.filter(key=>!key.startsWith('-')&&!key.startsWith('+'));
       const forced=keys.filter(key=>key.startsWith('+')).map(key=>key.slice(1));
       // +field overrides a hidden field; it does not turn the query into an inclusive projection.
+      const tree=included.length?projectionTree([...included,...forced,'_id'].filter(key=>!excluded.includes(key))):undefined;
       arr=arr.map(doc=>{
-        if(included.length)return Object.fromEntries([...new Set([...included,...forced,'_id'])]
-          .filter(key=>!excluded.includes(key)&&doc[key]!==undefined).map(key=>[key,doc[key]]));
+        if(tree)return project(doc,tree);
         for(const key of excluded)delete doc[key];
         return doc;
       });
