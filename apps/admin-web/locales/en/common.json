@@ -33,7 +33,8 @@
     "dictation_lessons": "Lessons",
     "dictation_structure": "Topic & Section",
     "exam_groups": "Exam Groups",
-    "exams": "Exams"
+    "exams": "Exams",
+    "systemSettings": "System settings"
   },
   "nav.dashboard": "Dashboard",
   "nav.vocabulary": "Vocabulary",

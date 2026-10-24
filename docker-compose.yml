@@ -870,6 +870,7 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
+      MEDIA_JOBS_INTERNAL_URL: http://media-jobs-service:5000
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000/api}
       NEXT_PUBLIC_ARENA_SOCKET_URL: ${NEXT_PUBLIC_ARENA_SOCKET_URL:-http://localhost:5000/arena}
     ports:
@@ -890,6 +891,7 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
+      MEDIA_JOBS_INTERNAL_URL: http://media-jobs-service:5000
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000/api}
     ports:
     - ${PUBLIC_BIND_ADDRESS:-127.0.0.1}:${ADMIN_PUBLISHED_PORT:-3001}:3001

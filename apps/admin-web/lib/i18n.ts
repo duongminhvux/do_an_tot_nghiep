@@ -1,3 +1,5 @@
+import viSiteSettings from '../locales/vi/site-settings.json';
+import enSiteSettings from '../locales/en/site-settings.json';
 import viArena from '../locales/vi/arena.json';
 import enArena from '../locales/en/arena.json';
 import viGames from '../locales/vi/games.json';
@@ -26,6 +28,7 @@ const resources = {
     common: viCommon,
     games: viGames,
     arena: viArena,
+    siteSettings: viSiteSettings,
     auth: viAuth,
     dashboard: viDashboard,
     vocabulary: viVocabulary,
@@ -37,6 +40,7 @@ const resources = {
     common: enCommon,
     games: enGames,
     arena: enArena,
+    siteSettings: enSiteSettings,
     auth: enAuth,
     dashboard: enDashboard,
     vocabulary: enVocabulary,

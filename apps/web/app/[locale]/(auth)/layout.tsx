@@ -1,4 +1,6 @@
 'use client';
+import { SiteLogo } from '@/components/site-logo';
+import { useSiteSettings } from '@/providers/site-settings-provider';
 
 import React, { useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
@@ -10,6 +12,7 @@ export default function AuthLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const settings = useSiteSettings();
   const router = useRouter();
   const params = useParams();
   const locale = (params?.locale as string) || 'vi';
@@ -39,6 +42,7 @@ export default function AuthLayout({
 
       {/* Auth Card */}
       <div className="relative z-10 bg-white p-6 rounded-2xl w-full max-w-[400px]">
+        <div className="mb-4 flex justify-center"><SiteLogo fallback={<span className="font-semibold text-slate-700">{settings.siteName}</span>} /></div>
         {children}
       </div>
     </div>

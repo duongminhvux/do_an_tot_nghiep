@@ -1,5 +1,6 @@
 'use client';
 
+import { useSiteSettings } from "@/providers/site-settings-provider";
 import { useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -23,16 +24,20 @@ import { BarChart, Legend, LineChart, SERIES_COLORS } from '@/features/toeic/sta
 
 const PERIODS = [7, 30, 90, 0] as const;
 
-// YYYY-MM-DD in the viewer's zone, matching the API's daily buckets.
-function dayKey(date: Date) {
-  return date.toLocaleDateString('en-CA');
+// YYYY-MM-DD in the configured zone, matching the API daily buckets.
+function dayKey(date: Date, timezone: string) {
+  return date.toLocaleDateString('en-CA', { timeZone: timezone });
 }
 
-function fillDays(timeline: ToeicStatsDay[], days: number): ToeicStatsDay[] {
+function fillDays(timeline: ToeicStatsDay[], days: number, timezone: string): ToeicStatsDay[] {
   if (!days) return timeline;
   const byDate = new Map(timeline.map((d) => [d.date, d]));
+  const today = dayKey(new Date(), timezone);
   return Array.from({ length: days }, (_, i) => {
-    const date = dayKey(new Date(Date.now() - (days - 1 - i) * 86_400_000));
+    // Calendar arithmetic keeps every date exactly once across DST changes.
+    const calendar = new Date(`${today}T00:00:00Z`);
+    calendar.setUTCDate(calendar.getUTCDate() - (days - 1 - i));
+    const date = calendar.toISOString().slice(0, 10);
     return (
       byDate.get(date) ?? {
         date,
@@ -55,7 +60,7 @@ export default function ToeicStatsPage() {
   const { locale } = useParams<{ locale: string }>();
   const [days, setDays] = useState<number>(30);
   const [metric, setMetric] = useState<'score' | 'accuracy'>('score');
-  const timezone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, []);
+  const { timezone } = useSiteSettings();
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['toeic-stats', days, timezone],
@@ -67,7 +72,7 @@ export default function ToeicStatsPage() {
     staleTime: 30_000,
   });
 
-  const timeline = useMemo(() => fillDays(data?.timeline ?? [], days), [data, days]);
+  const timeline = useMemo(() => fillDays(data?.timeline ?? [], days, timezone), [data, days, timezone]);
   const lang = dateLocale(locale);
   const shortDate = (date: string) =>
     new Date(`${date}T00:00:00`).toLocaleDateString(lang, { day: '2-digit', month: '2-digit' });
