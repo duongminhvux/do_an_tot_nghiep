@@ -54,3 +54,6 @@ storage/*
 backups/
 media-data/
 *.archive.gz
+
+.agents
+.archify
