@@ -34,6 +34,16 @@ const escapeRegex = (value: string) =>
   Array.from(value, (char) =>
     '[](){}.*+?^$|\\'.includes(char) ? '\\' + char : char,
   ).join('');
+// PostgreSQL JSON payloads return timestamps as ISO strings.
+const timestamp = (value: Date | string | null | undefined): number =>
+  value == null ? NaN : new Date(value).getTime();
+const matchDuration = (
+  startedAt: Date | string | null | undefined,
+  finishedAt: Date | string | null | undefined,
+): number | null => {
+  const elapsed = timestamp(finishedAt) - timestamp(startedAt);
+  return Number.isFinite(elapsed) ? Math.max(0, Math.round(elapsed / 1000)) : null;
+};
 @Injectable()
 export class ArenaAdminService {
   constructor(
@@ -91,15 +101,7 @@ export class ArenaAdminService {
     const users = await this.userMap(players.map((p) => p.userId));
     return rows.map((match) => ({
       ...match,
-      duration:
-        match.startedAt && match.finishedAt
-          ? Math.max(
-              0,
-              Math.round(
-                (match.finishedAt.getTime() - match.startedAt.getTime()) / 1000,
-              ),
-            )
-          : null,
+      duration: matchDuration(match.startedAt, match.finishedAt),
       players: players
         .filter((p) => String(p.matchId) === String(match._id))
         .map((p) => {
@@ -418,7 +420,7 @@ export class ArenaAdminService {
       stale:
         room.status === 'WAITING' &&
         !!room.updatedAt &&
-        room.updatedAt.getTime() < Date.now() - 1800000 }));
+        timestamp(room.updatedAt) < Date.now() - 1800000 }));
   }
   async roomList(query: ArenaRoomQuery) {
     const filter: Record<string, unknown> = {
