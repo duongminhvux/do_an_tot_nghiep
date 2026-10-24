@@ -1,0 +1,10 @@
+{
+  "identity": {"version":"0009_numeric_collation","migrationsChecksum":"0ffe5b33ab317f1464feb52bb416e369e5e651d80bc6aaaa99ce4db38c57f377","fingerprint":"1379b6ee30b9e2e9e912941ef9bc609082ec43f8d902306e6e123a42798b273c"},
+  "content": {"version":"0009_numeric_collation","migrationsChecksum":"3dab844a0e629435a3f17be19abba79ee54156c2f6947c8489aa28947de71a8e","fingerprint":"537499c77607aaa2c423f3872413f81697d6fa6c9e34a36c3063243ccec9f111"},
+  "assessment": {"version":"0009_numeric_collation","migrationsChecksum":"f1e95301c31195d3e624977082cdcf40907ed75fb292bc2a70b38aaf51a0a1ad","fingerprint":"47163cad71f4a2c2367c0cd4b5e9032631979940ecaca640eaf3d58ec8a82548"},
+  "arena": {"version":"0009_numeric_collation","migrationsChecksum":"f8d5ff32ba13672f9ef16bde1c80159d7748b0cb6e4e4e6fd166683a7c833674","fingerprint":"14247c3da5f316ad64ee6813616061d14ffd94d7fb528ed274c498d0922b6793"},
+  "learning": {"version":"0009_numeric_collation","migrationsChecksum":"b87fc93603a434d605bce0636862a5b9674da3a00b9edfbb0fa9c8a12f11155c","fingerprint":"7229a5d47184a5dd97ccb20e1a27340ffaa21231546fa96e54b6586981a2dae8"},
+  "media-jobs": {"version":"0010_asr_durable_jobs","migrationsChecksum":"ad66505734746c0ebf0669b6d2491b7b71e1dff2ab5b7e14e6daace7fbad8c17","fingerprint":"37006da1032b28da829cb10fcf116a162beef1fbe1d15292643912c8b190f59c"},
+  "ai-import": {"version":"0009_numeric_collation","migrationsChecksum":"2bb515977d057215eb45f27cde98119203804e0306ec5f5a9f7ad8a9675dbc0e","fingerprint":"9d1bf13509bed52031976d2dbee266a3eb090c2251bb0677ef0d327ecf0826f5"},
+  "notification": {"version":"0009_numeric_collation","migrationsChecksum":"bbc342a7036c37e8fbb07f9fedef920ad0652da7fb5fa443bc7409510088a9b0","fingerprint":"e013ee1370de9ad104995c4729c8775c01c517a21bb503b62a1d23ebbec0c852"}
+}
