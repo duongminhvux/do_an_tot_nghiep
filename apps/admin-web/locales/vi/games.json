@@ -91,5 +91,17 @@
   "roundDurationSeconds": "Thời gian mỗi lượt (giây)",
   "roundDurationSecondsHint": "Từ 3 đến 120 giây. Bắn đúng sẽ đặt lại thời gian này.",
   "wrongShotPenaltySeconds": "Thời gian trừ khi bắn sai (giây)",
-  "wrongShotPenaltySecondsHint": "Từ 1 đến 60 giây và phải nhỏ hơn thời gian mỗi lượt. Hết giờ sẽ kết thúc game."
+  "wrongShotPenaltySecondsHint": "Từ 1 đến 60 giây và phải nhỏ hơn thời gian mỗi lượt. Hết giờ sẽ kết thúc game.",
+  "audioTitle": "Âm thanh trò chơi",
+  "audioHint": "Tải tệp âm thanh tối đa 50 MB hoặc dán URL http(s) hay đường dẫn /audio/. Để trống để tắt âm thanh đó. Áp dụng cho ván mới.",
+  "backgroundMusicUrl": "Nhạc nền khi chơi",
+  "correctSoundUrl": "Âm thanh trả lời đúng",
+  "wrongSoundUrl": "Âm thanh trả lời sai",
+  "loseSoundUrl": "Âm thanh khi thua",
+  "audioUpload": "Tải âm thanh lên",
+  "audioUploadError": "Không tải được âm thanh. Chọn tệp âm thanh tối đa 50 MB rồi thử lại.",
+  "audioRemove": "Xóa âm thanh",
+  "audioPreviewError": "Không phát được âm thanh. Kiểm tra đường dẫn hoặc chọn tệp khác.",
+  "audioEnabled": "Bật âm thanh cho người chơi",
+  "audioEnabledHint": "Tắt sẽ ngừng toàn bộ âm thanh ở ván mới, giữ nguyên các tệp đã cấu hình. Người chơi vẫn có thể tự tắt âm thanh khi mục này được bật."
 }

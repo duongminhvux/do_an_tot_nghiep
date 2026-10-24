@@ -1,3 +1,4 @@
+import type { GameAudioSettings } from "@/features/minigames/shared/audio-settings";
 import apiClient from "@/lib/axios";
 import { ApiResponse } from "@/services/types";
 
@@ -53,6 +54,13 @@ export type ArenaRecentMatch = {
 };
 
 export const arenaService = {
+  getMatchAudio: async (matchId: string, signal?: AbortSignal) =>
+    (
+      await apiClient.get<ApiResponse<GameAudioSettings>>(
+        `/arena/matches/${matchId}/audio`,
+        { signal },
+      )
+    ).data.data,
   getPresence: async () => {
     const response =
       await apiClient.get<ApiResponse<{ onlineCount: number }>>(

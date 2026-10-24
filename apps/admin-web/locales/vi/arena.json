@@ -173,5 +173,7 @@
     "correct": "Đúng vị trí",
     "present": "Có trong từ, sai vị trí",
     "absent": "Không có trong từ"
-  }
+  },
+  "audioTitle": "Âm thanh đấu trường",
+  "audioHint": "Dùng chung cho xếp hạng, giao hữu và phòng nhiều người. Tải tệp âm thanh tối đa 50 MB hoặc dán URL. Có thể nghe thử; để trống để tắt. Chỉ áp dụng cho trận mới, trận đang chạy giữ nguyên âm thanh."
 }

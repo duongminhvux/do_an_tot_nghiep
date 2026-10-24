@@ -190,6 +190,7 @@ export class ArenaMatchService {
             ? config.group.reconnectGrace
             : config.friendly.reconnectGrace };
     const match = await this.arenaMatchModel.create({
+      audioSettings: structuredClone(config.audio),
       runtimePolicy,
       type: options.type ?? ArenaMatchType.RANK,
       status:

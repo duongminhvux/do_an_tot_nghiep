@@ -1,4 +1,5 @@
 "use client";
+import { GameAudioFields } from "../minigames/game-audio-fields";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -101,6 +102,7 @@ function SettingsForm({
   const [config, setConfig] = useState<ArenaConfig>(() =>
     structuredClone(initial.config),
   );
+  const [uploading, setUploading] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [reason, setReason] = useState("");
   const mutation = useMutation({
@@ -125,7 +127,10 @@ function SettingsForm({
           mutation.reset();
         }}
       >
-        <fieldset disabled={mutation.isPending} className="space-y-4">
+        <fieldset
+          disabled={mutation.isPending || uploading}
+          className="space-y-4"
+        >
           <Panel>
             <label className="flex items-center gap-3 text-sm font-semibold text-slate-800">
               <input
@@ -196,6 +201,18 @@ function SettingsForm({
               </div>
             </Panel>
           ))}
+          <GameAudioFields
+            title={t("audioTitle")}
+            hint={t("audioHint")}
+            settings={config.audio ?? {}}
+            onBusyChange={setUploading}
+            onChange={(audio) =>
+              setConfig((current) => ({
+                ...current,
+                audio: { ...current.audio, ...audio },
+              }))
+            }
+          />
           <p className="text-xs leading-5 text-slate-500">{t("fixedRules")}</p>
           <div className="flex justify-end">
             <button className={primary} type="submit">

@@ -33,6 +33,11 @@ export class ArenaController {
     private readonly arenaRoomService: ArenaRoomService,
   ) {}
 
+  @Get('matches/:matchId/audio')
+  getMatchAudio(@Req() req: ArenaRequest, @Param('matchId') matchId: string) {
+    return this.arenaReadService.getMatchAudio(String(req.user._id), matchId);
+  }
+
   @Get('presence')
   getPresence() {
     return this.presence.overview();

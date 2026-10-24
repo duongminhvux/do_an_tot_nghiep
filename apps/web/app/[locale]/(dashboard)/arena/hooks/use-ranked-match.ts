@@ -1,5 +1,6 @@
 "use client";
 
+import { useArenaAudio } from "./use-arena-audio";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { arenaSocket } from "@/lib/arena-socket";
@@ -87,6 +88,7 @@ export function useRankedMatch(
   currentUserId: string,
   friendly = false,
 ) {
+  const { playAnswer: playAudioAnswer, audioEnabled } = useArenaAudio(matchId, currentUserId);
   const queryClient = useQueryClient();
   const [matchStatus, setMatchStatus] = useState<
     "WAITING" | "PLAYING" | "FINISHED"
@@ -217,6 +219,7 @@ export function useRankedMatch(
       lastAttemptRef.current = null;
       setSubmitting(false);
       setError(null);
+      playAudioAnswer(data.correct);
       setResult({ ...data, timedOut: data.timedOut ?? false });
       setScore(data.totalScore);
       setStreak(data.streak);
@@ -338,7 +341,11 @@ export function useRankedMatch(
         finishedRef.current
       )
         return;
-      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(matchId)) {
+      if (
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          matchId,
+        )
+      ) {
         setError("Mã trận đấu không hợp lệ.");
         return;
       }
@@ -416,7 +423,7 @@ export function useRankedMatch(
       arenaSocket.off("disconnect", handleDisconnect);
       arenaSocket.off("connect_error", handleConnectError);
     };
-  }, [matchId, currentUserId, queryClient, friendly]);
+  }, [matchId, currentUserId, queryClient, friendly, playAudioAnswer]);
 
   const sendAnswer = useCallback(
     (value: string, timedOut = false) => {
@@ -508,6 +515,8 @@ export function useRankedMatch(
     if (attempt) sendAnswer(attempt.answer, attempt.timedOut);
   };
   return {
+    playAudioAnswer,
+    audioEnabled,
     matchStatus,
     currentQuestion: currentQuestion
       ? {

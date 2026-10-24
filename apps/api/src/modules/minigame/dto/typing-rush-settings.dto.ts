@@ -1,5 +1,6 @@
+import { GameAudioSettingsDto } from './game-audio-settings.dto.js';
 import { IsInt, Max, Min } from 'class-validator';
-export class TypingRushSettingsDto {
+export class TypingRushSettingsDto extends GameAudioSettingsDto {
   @IsInt() @Min(1) @Max(30) meaningDurationSeconds: number;
   @IsInt() @Min(1) @Max(500) minWordCount: number;
   @IsInt() @Min(1) @Max(10) lives: number;

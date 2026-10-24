@@ -1,4 +1,5 @@
 "use client";
+import { GameAudioToggle } from "@/features/minigames/shared/game-audio-toggle";
 
 import Link from "next/link";
 import { useState } from "react";
@@ -196,6 +197,7 @@ export function ClassicMatch({
 
     return (
       <MatchResultView
+        audioEnabled={game.audioEnabled}
         standings={friendly?.players?.map((p) => ({
           ...p,
           score:
@@ -251,6 +253,7 @@ export function ClassicMatch({
       {/* HEADER */}
 
       <div className="mb-2 flex items-center justify-between gap-3">
+          <GameAudioToggle enabled={game.audioEnabled} />
         <button
           type="button"
           disabled={leaving || friendly?.busy}

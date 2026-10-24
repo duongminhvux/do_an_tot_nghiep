@@ -1,4 +1,5 @@
 "use client";
+import { GameAudioToggle } from "@/features/minigames/shared/game-audio-toggle";
 
 import Image from "next/image";
 import {
@@ -24,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { surface } from "@/components/ui/page";
 
 export interface MatchResultViewProps {
+  audioEnabled?: boolean;
   standings?: FriendPlayer[];
   currentUserId?: string;
   winnerId?: string | null;
@@ -54,6 +56,7 @@ export interface MatchResultViewProps {
 }
 
 export function MatchResultView({
+  audioEnabled = true,
   standings,
   currentUserId,
   winnerId,
@@ -125,6 +128,7 @@ export function MatchResultView({
   return (
     <main className="flex min-h-[calc(100dvh-3.5rem)] items-center justify-center bg-background px-3 py-6 sm:px-6">
       <div className="w-full max-w-2xl animate-in fade-in-0 zoom-in-95 duration-300">
+        <div className="mb-3 flex justify-end"><GameAudioToggle enabled={audioEnabled} /></div>
         <div className={cn(surface, "relative overflow-hidden p-6 sm:p-8")}>
           {/* Result accent */}
           <div

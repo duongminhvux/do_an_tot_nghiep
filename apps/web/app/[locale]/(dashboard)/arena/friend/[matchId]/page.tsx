@@ -1,4 +1,6 @@
 "use client";
+import { getAudioMuted } from "@/features/minigames/shared/audio-preference";
+import { GameAudioToggle } from "@/features/minigames/shared/game-audio-toggle";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -330,7 +332,7 @@ export default function FriendlyMatchPage() {
     void action("word-chain:submit", { word: normalized });
   };
   const speakWord = () => {
-    if (!turn?.previousWord || !("speechSynthesis" in window)) return;
+    if (!game.audioEnabled || getAudioMuted() || !turn?.previousWord || !("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(turn.previousWord);
     utterance.lang = "en-US";
@@ -349,6 +351,8 @@ export default function FriendlyMatchPage() {
   if (room?.mode === "WORD_GUESS")
     return (
       <WordGuessMatch
+        audioEnabled={game.audioEnabled}
+        onAudioAnswer={game.playAudioAnswer}
         matchId={matchId}
         userId={userId}
         room={room}
@@ -382,6 +386,7 @@ export default function FriendlyMatchPage() {
   if (game.finished && final) {
     return (
       <MatchResultView
+        audioEnabled={game.audioEnabled}
         standings={multiplayer ? standings : undefined}
         winnerId={final.winnerId}
         currentUserId={userId}
@@ -410,6 +415,7 @@ export default function FriendlyMatchPage() {
     <main className="min-h-[calc(100dvh-3.5rem)] bg-background px-3 py-4 text-slate-900 sm:px-6">
       <div className="mx-auto max-w-7xl">
         <header className="mb-5 flex items-center justify-between gap-3">
+          <GameAudioToggle enabled={game.audioEnabled} />
           <div className="flex items-center gap-3">
             <Button
               variant="outline"

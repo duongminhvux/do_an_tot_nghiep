@@ -1,4 +1,5 @@
 "use client";
+import { useGameAudio } from "../../shared/use-game-audio";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ export function WordShooterGame({
   const { t } = useTranslation("minigames");
   const engine = useMemo(() => new WordShooterEngine(session), [session]);
   const [state, setState] = useState(() => engine.snapshot());
+  useGameAudio(session.config, state);
   const field = useRef<HTMLDivElement>(null);
   const cannonBaseRef = useRef<HTMLDivElement>(null);
 

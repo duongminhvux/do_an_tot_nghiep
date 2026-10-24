@@ -173,5 +173,7 @@
     "correct": "Correct position",
     "present": "In the word, wrong position",
     "absent": "Not in the word"
-  }
+  },
+  "audioTitle": "Arena audio",
+  "audioHint": "Shared by ranked, friendly and group matches. Upload audio up to 50 MB or paste a URL. Preview before saving; leave blank to disable. Applies to new matches; active matches keep their audio."
 }

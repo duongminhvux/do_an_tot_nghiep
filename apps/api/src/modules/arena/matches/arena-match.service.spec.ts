@@ -1,3 +1,4 @@
+import { ARENA_DEFAULTS } from '../admin/arena-settings.defaults.js';
 import { PgId } from '../../../postgres/compat.js';
 vi.mock('../question/arena-question.service.js', () => ({
   ArenaQuestionService: class {} }));
@@ -314,6 +315,8 @@ describe('Room match creation', () => {
     expect(redis.eval).toHaveBeenCalledTimes(3);
     expect(profiles.findOne).toHaveBeenCalledTimes(3);
     expect(created.match.type).toBe('ROOM');
+    expect(created.match.audioSettings).toEqual(ARENA_DEFAULTS.audio);
+    expect(created.match.audioSettings).not.toBe(ARENA_DEFAULTS.audio);
     expect(String(created.match.hostId)).toBe(ids[0]);
     expect(rooms.findOne.mock.calls[0]?.[0]).toMatchObject({
       $or: expect.arrayContaining([

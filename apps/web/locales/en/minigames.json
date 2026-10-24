@@ -96,5 +96,8 @@
   "shooter_miss": "Wrong shot! −{{seconds}} seconds",
   "shooter_play_hint": "Click a word to shoot · Correct: new round and timer reset · Wrong: time penalty · Esc pauses",
   "shooter_correct": "Correct: {{count}}",
-  "shooter_wrong": "Wrong: {{count}}"
+  "shooter_wrong": "Wrong: {{count}}",
+  "audio_mute": "Mute audio",
+  "audio_unmute": "Unmute audio",
+  "audio_admin_disabled": "Audio disabled by admin"
 }

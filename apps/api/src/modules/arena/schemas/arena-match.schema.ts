@@ -197,6 +197,9 @@ export class ArenaMatch {
     turnTime?: number;
   } | null;
 
+  @PgField({ type: Object, default: null, immutable: true })
+  audioSettings?: { audioEnabled?: boolean; backgroundMusicUrl?: string; correctSoundUrl?: string; wrongSoundUrl?: string; loseSoundUrl?: string } | null;
+
   createdAt: Date;
   updatedAt: Date;
 }

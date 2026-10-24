@@ -1,3 +1,4 @@
+import { GameAudioSettingsDto } from '../../minigame/dto/game-audio-settings.dto.js';
 import { Type, Transform } from 'class-transformer';
 import {
   IsBoolean,
@@ -90,6 +91,10 @@ export class GroupSettingsDto {
   @IsInt() @Min(5) @Max(120) reconnectGrace: number;
 }
 export class ArenaConfigDto {
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => GameAudioSettingsDto)
+  audio?: GameAudioSettingsDto;
   @IsBoolean() maintenance: boolean;
   @IsDefined()
   @ValidateNested()
