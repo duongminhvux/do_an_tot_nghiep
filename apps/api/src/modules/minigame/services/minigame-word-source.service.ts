@@ -9,6 +9,8 @@ import {
 import { InjectPgModel } from '../../../postgres/compat.js';
 import { type Model } from '../../../postgres/compat.js';
 import { randomInt } from 'node:crypto';
+import { InjectPgConnection, type PgConnection } from '../../../postgres/compat.js';
+import { serviceUrl } from '../../../postgres/ownership.js';
 import { Collection } from '../../vocabulary/collections/collection.schema.js';
 import { Lesson } from '../../vocabulary/lessons/lesson.schema.js';
 import { LessonWord } from '../../vocabulary/lessons/lesson-word.schema.js';
@@ -42,6 +44,7 @@ export function uniqueGameWords(words: GameWord[]): GameWord[] {
 @Injectable()
 export class MiniGameWordSourceService {
   constructor(
+    @InjectPgConnection() private readonly database: PgConnection,
     @InjectPgModel(Collection.name)
     private readonly collections: Model<Collection>,
     @InjectPgModel(Lesson.name) private readonly lessons: Model<Lesson>,
@@ -133,43 +136,39 @@ export class MiniGameWordSourceService {
     return groups;
   }
   async list(userId: string) {
-    const [system, personal] = await Promise.all([
-      this.collections
-        .find(available)
-        .select('_id name coverUrl')
-        .sort({ order: 1, name: 1 })
-        .lean(),
-      this.folders
-        .find({ userId: new PgId(userId) })
-        .select('_id name')
-        .sort({ name: 1 })
-        .lean(),
-    ]);
-    const groups = await this.groups(
-      userId,
-      system.map((c) => c._id),
-      personal.map((c) => c._id),
-    );
-    const count = (type: string, id: unknown) =>
-      uniqueGameWords(groups.get(type + ':' + String(id)) || []).length;
+    // Run Content's aggregation in its own database. This endpoint must not load
+    // whole Content tables into Learning's memory just to compute collection counts.
+    const token = process.env.INTERNAL_SERVICE_TOKEN;
+    if (!token || token.length < 24) throw new Error('Internal read authentication not configured');
+    const response = await fetch(`${serviceUrl('content')}/api/_internal/minigame-source-summary`, {
+      headers: { 'x-internal-token': token },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!response.ok) throw new Error(`Content source summary unavailable (${response.status})`);
+    const payload = await response.json() as any;
+    const summaries = (payload?.data ?? payload) as Array<{
+      id: string; name: string; coverUrl?: string; wordCount: number;
+    }>;
+    if (!Array.isArray(summaries)) throw new Error('Invalid Content source summary');
+    const { rows: personal } = await this.database.query(`
+      SELECT f.id, f.name, COUNT(DISTINCT sw.word_id)::integer AS "wordCount"
+      FROM public.vocabularyfolders f
+      LEFT JOIN public.usersavedwords sw ON sw.folder_id = f.id AND sw.user_id = $1
+      WHERE f.user_id = $1
+      GROUP BY f.id, f.name
+      ORDER BY f.name
+      LIMIT 500
+    `, [userId]);
     return {
-      systemCollections: system.map(
-        (c) =>
-          ({
-            id: String(c._id),
-            name: c.name,
-            thumbnail: c.coverUrl,
-            wordCount: count('SYSTEM', c._id),
-            type: MiniGameSourceType.SYSTEM }) satisfies VocabularySource,
-      ),
-      userCollections: personal.map(
-        (c) =>
-          ({
-            id: String(c._id),
-            name: c.name,
-            wordCount: count('USER', c._id),
-            type: MiniGameSourceType.USER }) satisfies VocabularySource,
-      ) };
+      systemCollections: summaries.map(c => ({
+        id: String(c.id), name: c.name, thumbnail: c.coverUrl,
+        wordCount: Number(c.wordCount), type: MiniGameSourceType.SYSTEM,
+      } satisfies VocabularySource)),
+      userCollections: personal.map(c => ({
+        id: String(c.id), name: c.name,
+        wordCount: Number(c.wordCount), type: MiniGameSourceType.USER,
+      } satisfies VocabularySource)),
+    };
   }
   async pool(
     userId: string,

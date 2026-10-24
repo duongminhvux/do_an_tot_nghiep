@@ -3,6 +3,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { InjectPgConnection, type PgConnection } from '../postgres/compat.js';
 import { OWNED_TABLES, serviceRole } from '../postgres/ownership.js';
 import { Public } from '../modules/auth/decorators/public.decorator.js';
+import { MiniGameSourceSummaryController } from './minigame-source-summary.controller.js';
 
 /** Transitional read API for existing document-shaped queries. No SQL or writes accepted. */
 @Controller('_internal/read-models')
@@ -32,5 +33,5 @@ export class ReadModelsController {
   }
 }
 
-@Module({ controllers: [ReadModelsController] })
+@Module({ controllers: [ReadModelsController, MiniGameSourceSummaryController] })
 export class ReadModelsModule {}
