@@ -55,6 +55,7 @@ export function UserDetailPanel({
   const [copied, setCopied] = useState(false);
   const [note, setNote] = useState(user.notes || '');
   const [noteSaved, setNoteSaved] = useState(false);
+  const [noteError, setNoteError] = useState(false);
   const [isSavingNote, setIsSavingNote] = useState(false);
 
   React.useEffect(() => {
@@ -81,13 +82,15 @@ export function UserDetailPanel({
   const handleSaveNote = async () => {
     try {
       setIsSavingNote(true);
+      setNoteError(false);
+      setNoteSaved(false);
       if (onSaveNotes) {
         await onSaveNotes(note);
       }
       setNoteSaved(true);
       setTimeout(() => setNoteSaved(false), 2500);
     } catch (e) {
-      console.error('Failed to save note', e);
+      setNoteError(true);
     } finally {
       setIsSavingNote(false);
     }
@@ -412,14 +415,16 @@ export function UserDetailPanel({
                 placeholder={t('detail.notes.placeholder', 'Thêm ghi chú...')}
                 className="w-full text-xs p-3 rounded border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none transition-all placeholder:text-slate-400"
               />
+              {noteError && <p role="alert" className="text-xs text-red-600">{t('detail.notes.error')}</p>}
               <div className="flex justify-end">
                 <Button
                   type="button"
                   size="sm"
+                  disabled={isSavingNote}
                   onClick={handleSaveNote}
                   className="bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold px-4 cursor-pointer shadow-xs"
                 >
-                  {noteSaved ? t('detail.notes.saved', 'Đã lưu') : t('detail.notes.save', 'Lưu')}
+                  {isSavingNote ? t('detail.notes.saving') : noteSaved ? t('detail.notes.saved', 'Đã lưu') : t('detail.notes.save', 'Lưu')}
                 </Button>
               </div>
             </div>

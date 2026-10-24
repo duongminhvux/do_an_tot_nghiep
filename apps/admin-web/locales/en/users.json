@@ -127,7 +127,9 @@
       "title": "Notes",
       "placeholder": "Add notes...",
       "save": "Save",
-      "saved": "Saved"
+      "saved": "Saved",
+      "error": "Could not save the note. Please try again.",
+      "saving": "Saving..."
     },
     "courses_title": "Enrolled Courses",
     "courses_count": "courses",
@@ -170,7 +172,7 @@
       "study_time_sub": "Equivalent to ~{{minutes}} mins"
     },
     "activity_log": {
-      "heading": "Account Interaction Log",
+      "heading": "User Activity History",
       "empty": "No logs recorded"
     },
     "security": {
@@ -197,5 +199,11 @@
       "delete_desc": "Delete all learning data and personal details from the system",
       "delete_btn": "Delete Account"
     }
+  },
+  "messages": {
+    "create_failed": "Could not create the user. Check the details and try again.",
+    "update_failed": "Could not update the user. Please try again.",
+    "ban_failed": "Could not change the account status. Please try again.",
+    "delete_failed": "Could not delete the account. Please try again."
   }
 }

@@ -1,3 +1,4 @@
+import { formatVietnamDate, formatVietnamTime, formatVietnamLastActive, formatRelativeTime } from './admin-user-time.js';
 import { PgId } from '../../postgres/compat.js';
 import { BadRequestException, Injectable, Logger, Optional } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto.js';
@@ -17,101 +18,6 @@ import { LessonWord } from '../vocabulary/lessons/lesson-word.schema.js';
 import { Word } from '../vocabulary/words/word.schema.js';
 import { Collection } from '../vocabulary/collections/collection.schema.js';
 import { UserDailyActivity } from '../learning/progress/schemas/user-daily-activity.schema.js';
-
-function formatVietnamDate(dateInput: Date | string | null | undefined): string {
-  if (!dateInput) return '';
-  const date = new Date(dateInput);
-  if (isNaN(date.getTime())) return '';
-
-  return new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Asia/Ho_Chi_Minh',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric' }).format(date); // DD/MM/YYYY
-}
-
-function formatVietnamTime(dateInput: Date | string | null | undefined): string {
-  if (!dateInput) return '';
-  const date = new Date(dateInput);
-  if (isNaN(date.getTime())) return '';
-
-  return new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Asia/Ho_Chi_Minh',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false }).format(date); // HH:mm
-}
-
-function formatVietnamLastActive(dateInput: Date | string | null | undefined, isBanned?: boolean): string {
-  if (isBanned) return 'Không hoạt động';
-  if (!dateInput) return 'Chưa có hoạt động';
-  const date = new Date(dateInput);
-  if (isNaN(date.getTime())) return 'Chưa có hoạt động';
-
-  const vnFormatter = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Asia/Ho_Chi_Minh',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false });
-
-  const parts = vnFormatter.formatToParts(date);
-  const getPart = (type: string) => parts.find((p) => p.type === type)?.value || '';
-
-  const day = getPart('day');
-  const month = getPart('month');
-  const year = getPart('year');
-  const hour = getPart('hour');
-  const minute = getPart('minute');
-
-  const nowVNParts = vnFormatter.formatToParts(new Date());
-  const getNowPart = (type: string) => nowVNParts.find((p) => p.type === type)?.value || '';
-  const nowDay = getNowPart('day');
-  const nowMonth = getNowPart('month');
-  const nowYear = getNowPart('year');
-
-  const formattedTime = `${hour}:${minute}`;
-
-  // Check if today in VN (UTC+7)
-  if (day === nowDay && month === nowMonth && year === nowYear) {
-    return `Hôm nay, ${formattedTime}`;
-  }
-
-  // Check if yesterday in VN (UTC+7)
-  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const yParts = vnFormatter.formatToParts(yesterday);
-  const getYPart = (type: string) => yParts.find((p) => p.type === type)?.value || '';
-  if (day === getYPart('day') && month === getYPart('month') && year === getYPart('year')) {
-    return `Hôm qua, ${formattedTime}`;
-  }
-
-  return `${day}/${month}/${year} ${formattedTime}`;
-}
-
-function formatRelativeTime(dateInput: Date | string | null | undefined): string {
-  if (!dateInput) return '';
-  const date = new Date(dateInput);
-  if (isNaN(date.getTime())) return '';
-
-  const now = Date.now();
-  const diffMs = now - date.getTime();
-  if (diffMs < 0) return 'Vừa xong';
-
-  const diffMinutes = Math.floor(diffMs / (60 * 1000));
-  const diffHours = Math.floor(diffMs / (60 * 60 * 1000));
-  const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
-  const diffMonths = Math.floor(diffDays / 30);
-  const diffYears = Math.floor(diffDays / 365);
-
-  if (diffYears > 0) return `${diffYears} năm trước`;
-  if (diffMonths > 0) return `${diffMonths} tháng trước`;
-  if (diffDays > 0) return `${diffDays} ngày trước`;
-  if (diffHours > 0) return `${diffHours} giờ trước`;
-  if (diffMinutes > 0) return `${diffMinutes} phút trước`;
-  return 'Vừa xong';
-}
 
 import { makePgModel } from '../../postgres/compat.js';
 import { DomainOutboxService } from '../../common/events/domain-outbox.service.js';
@@ -298,8 +204,8 @@ export class UsersService {
         ? new Date(user.lastActive)
         : (user.updatedAt ? new Date(user.updatedAt) : createdDate);
       const formattedCreated = formatVietnamDate(createdDate);
-      const formattedLastActive = formatVietnamLastActive(lastActiveDate, user.isBanned);
-      const registrationAgo = formatRelativeTime(createdDate);
+      const formattedLastActive = formatVietnamLastActive(lastActiveDate, user.isBanned, this.i18n);
+      const registrationAgo = formatRelativeTime(createdDate, this.i18n);
 
       const globalIndex = skip + index + 1;
       const customId = `U${String(globalIndex).padStart(3, '0')}`;
@@ -314,7 +220,7 @@ export class UsersService {
         createdAt: formattedCreated,
         registrationAgo,
         lastActive: formattedLastActive,
-        lastActiveDetails: user.isBanned ? 'bị khóa' : 'đăng nhập',
+        lastActiveDetails: this.i18n.t(user.isBanned ? 'user.STATUS_BANNED' : 'user.LAST_ACTIVITY'),
         phone: user.phone || '',
         wordsLearned: wordCountMap.get(String(user._id)) || 0,
         streakDays: 0,
@@ -373,8 +279,8 @@ export class UsersService {
       ? new Date(user.lastActive)
       : (user.updatedAt ? new Date(user.updatedAt) : createdDate);
     const formattedCreated = formatVietnamDate(createdDate);
-    const formattedLastActive = formatVietnamLastActive(lastActiveDate, user.isBanned);
-    const registrationAgo = formatRelativeTime(createdDate);
+    const formattedLastActive = formatVietnamLastActive(lastActiveDate, user.isBanned, this.i18n);
+    const registrationAgo = formatRelativeTime(createdDate, this.i18n);
 
     // 1. Query real count of learned words
     const wordsLearned = await this.userLessonWordModel.countDocuments({
@@ -508,7 +414,7 @@ export class UsersService {
       recentActivities.push({
         id: 'act-login',
         title: 'Đăng nhập hệ thống',
-        time: formatVietnamLastActive(user.lastActive),
+        time: formatVietnamLastActive(user.lastActive, false, this.i18n),
         type: 'login',
         timestamp: new Date(user.lastActive).getTime() });
     }
@@ -535,7 +441,7 @@ export class UsersService {
         recentActivities.push({
           id: `act-lp-${lp._id}`,
           title: displayActivityTitle,
-          time: formatVietnamLastActive(time),
+          time: formatVietnamLastActive(time, false, this.i18n),
           type: 'lesson',
           timestamp: new Date(time).getTime() });
       }
@@ -565,7 +471,7 @@ export class UsersService {
           recentActivities.push({
             id: `act-word-${rw._id}`,
             title: `Học từ mới: ${w.word}`,
-            time: formatVietnamLastActive(time),
+            time: formatVietnamLastActive(time, false, this.i18n),
             type: 'word',
             timestamp: new Date(time).getTime() });
         }
@@ -576,7 +482,7 @@ export class UsersService {
       recentActivities.push({
         id: 'act-profile',
         title: 'Cập nhật thông tin cá nhân',
-        time: formatVietnamLastActive(user.profileUpdatedAt),
+        time: formatVietnamLastActive(user.profileUpdatedAt, false, this.i18n),
         type: 'profile',
         timestamp: new Date(user.profileUpdatedAt).getTime() });
     }
@@ -584,7 +490,7 @@ export class UsersService {
     recentActivities.push({
       id: 'act-registered',
       title: 'Tài khoản được tạo',
-      time: formatVietnamLastActive(createdDate),
+      time: formatVietnamLastActive(createdDate, false, this.i18n),
       type: 'profile',
       timestamp: createdDate.getTime() });
 
@@ -615,7 +521,7 @@ export class UsersService {
       createdAt: formattedCreated,
       registrationAgo,
       lastActive: formattedLastActive,
-      lastActiveDetails: user.isBanned ? 'bị khóa' : 'đăng nhập',
+      lastActiveDetails: this.i18n.t(user.isBanned ? 'user.STATUS_BANNED' : 'user.LAST_ACTIVITY'),
       phone: user.phone || '',
       notes: user.notes || '',
       wordsLearned,
@@ -1027,7 +933,7 @@ export class UsersService {
         id: `act-lp-${lp._id}`,
         type: 'LESSON',
         title,
-        time: formatVietnamLastActive(time),
+        time: formatVietnamLastActive(time, false, this.i18n),
         createdAt: time });
     }
 
@@ -1045,7 +951,7 @@ export class UsersService {
         id: `act-sess-${s._id}`,
         type: s.type || 'LESSON',
         title,
-        time: formatVietnamLastActive(s.startedAt),
+        time: formatVietnamLastActive(s.startedAt, false, this.i18n),
         createdAt: s.startedAt });
     }
 

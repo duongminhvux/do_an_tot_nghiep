@@ -32,7 +32,7 @@ export default function UserDetailPage() {
 
   // Fetch user details from database
   const { data: user, isLoading, isError } = useQuery({
-    queryKey: ['admin-user', userId],
+    queryKey: ['admin-user', userId, locale],
     queryFn: () => userService.getById(userId),
     enabled: !!userId,
   });

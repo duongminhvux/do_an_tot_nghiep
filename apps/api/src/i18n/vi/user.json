@@ -18,5 +18,6 @@
   "ACCOUNT_CREATED_EVENT": "Tài khoản được tạo",
   "LEARN_WORD_EVENT": "Học từ mới: {word}",
   "STATUS_BANNED": "Bị khóa",
-  "STATUS_ACTIVE": "Hoạt động"
+  "STATUS_ACTIVE": "Hoạt động",
+  "LAST_ACTIVITY": "Hoạt động được ghi nhận gần nhất"
 }
