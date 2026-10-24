@@ -301,6 +301,12 @@ async function readRows(table: string, pool: PoolLike): Promise<any[]> {
   if (!role || !owner || owner === role) {
     return (await pool.query(`SELECT * FROM public.${safeName(table)}`)).rows;
   }
+  // Identity user data is never loaded wholesale into Arena/Learning: only
+  // the dedicated, event-maintained public display projection is accessible.
+  if (table === 'users' && ['arena','learning','notification'].includes(role)) {
+    return (await pool.query(`SELECT id,username,avatar_url,is_deleted,is_banned,payload,
+      created_at,updated_at FROM public.identity_profiles`)).rows;
+  }
   const token = process.env.INTERNAL_SERVICE_TOKEN;
   if (!token || token.length < 24) throw new Error('Internal read authentication not configured');
   const response = await fetch(`${serviceUrl(owner)}/api/_internal/read-models/${table}`, {
@@ -311,6 +317,74 @@ async function readRows(table: string, pool: PoolLike): Promise<any[]> {
   const rows = body?.data ?? body;
   if (!Array.isArray(rows)) throw new Error(`Invalid read model response for ${owner}.${table}`);
   return rows;
+}
+
+/** Push safe, common document filters into PostgreSQL. Unsupported operators
+ * retain the legacy adapter behavior until their owner repositories are migrated.
+ * All user values are bound parameters; identifiers are introspected columns. */
+function simpleWhere(filter: any, columns: Map<string,string>): {sql:string; values:any[]} | null {
+  const values:any[]=[];
+  const bind=(value:any)=>{values.push(value instanceof PgId?String(value):value);return `$${values.length}`;};
+  const column=(key:string):string|null=>{
+    const name=key==='_id'?'id':snake(key);
+    return columns.has(name)?safeName(name):null;
+  };
+  const entry=(key:string, value:any):string|null=>{
+    const col=column(key);
+    if(!col)return null;
+    if(value instanceof RegExp) {
+      if(/[^i]/.test(value.flags))return null;
+      return `${col} ${value.ignoreCase?'~*':'~'} ${bind(value.source)}`;
+    }
+    if(value===null)return `${col} IS NULL`;
+    if(value && typeof value==='object' && !(value instanceof Date) && !(value instanceof PgId)) {
+      if(Array.isArray(value))return null;
+      const conditions:string[]=[];
+      for(const [op,target] of Object.entries(value)) {
+        if(op==='$options')continue;
+        if(op==='$exists'){conditions.push(`${col} IS ${target?'NOT ':''}NULL`);continue;}
+        if(op==='$regex'){
+          const opts=String((value as any).$options||'');
+          if(/[^i]/.test(opts))return null;
+          conditions.push(`${col} ${opts.includes('i')?'~*':'~'} ${bind(target)}`);continue;
+        }
+        if(op==='$ne'){conditions.push(`${col} IS DISTINCT FROM ${bind(target)}`);continue;}
+        if(op==='$eq'){conditions.push(`${col} IS NOT DISTINCT FROM ${bind(target)}`);continue;}
+        if(op==='$in'||op==='$nin'){
+          if(!Array.isArray(target))return null;
+          const vs=(target as any[]).map(String);
+          conditions.push(`${col}::text ${op==='$in'?'= ANY':'<> ALL'}(${bind(vs)}::text[])`);
+          continue;
+        }
+        if(['$gt','$gte','$lt','$lte'].includes(op)){
+          const symbol:{[key:string]:string}={'$gt':'>','$gte':'>=','$lt':'<','$lte':'<='};
+          conditions.push(`${col} ${symbol[op]} ${bind(target)}`);continue;
+        }
+        return null;
+      }
+      return conditions.length?conditions.map(c=>`(${c})`).join(' AND '):null;
+    }
+    return `${col} = ${bind(value)}`;
+  };
+  const recurse=(part:any):string|null=>{
+    if(!part || typeof part!=='object' || Array.isArray(part))return null;
+    const conditions:string[]=[];
+    for(const [key,value] of Object.entries(part)){
+      if(key==='$or'||key==='$and'){
+        if(!Array.isArray(value)||!value.length)return null;
+        const expressions=(value as any[]).map(recurse);
+        if(expressions.some(x=>x==null))return null;
+        conditions.push('('+expressions.join(key==='$or'?' OR ':' AND ')+')');
+      }else{
+        const condition=entry(key,value);
+        if(condition==null)return null;
+        conditions.push('('+condition+')');
+      }
+    }
+    return conditions.length?conditions.join(' AND '):'TRUE';
+  };
+  const sql=recurse(filter||{});
+  return sql==null?null:{sql,values};
 }
 
 function assertOwnedWrite(table: string) {
@@ -368,7 +442,17 @@ export function makePgModel<T=any>(name:string,pool:pg.Pool):PgModel<T> {
     return data;
   }
   async function all(){return (await readRows(table,pool)).map(hydrate);}
-  async function selected(filter?:any){return (await all()).filter(x=>matches(x,filter));}
+  async function selected(filter?:any){
+    const owner=tableOwner(table),role=serviceRole();
+    if(!owner||!role||owner===role){
+      const where=simpleWhere(filter,await fields());
+      if(where){
+        const result=await pool.query(`SELECT * FROM public.${safeName(table)} WHERE ${where.sql}`,where.values);
+        return result.rows.map(hydrate).filter((x:any)=>matches(x,filter));
+      }
+    }
+    return (await all()).filter(x=>matches(x,filter));
+  }
   async function save(value:any){const doc=plain(value);const id=String(doc._id||doc.id||randomUUID());if(!PgId.isValid(id))throw new Error(`Expected UUID for ${name}.id, got ${id}`);
     assertOwnedWrite(table);
     doc._id=id;delete doc.id;delete doc.createdAt;delete doc.updatedAt;
@@ -440,9 +524,23 @@ export function makePgModel<T=any>(name:string,pool:pg.Pool):PgModel<T> {
     static findOneAndRemove(filter:any){return PgDynamicModel.findOneAndDelete(filter);}
     static deleteOne(filter:any){return new PgQuery(async()=>({deletedCount:(await erase(filter,true)).length}),PgDynamicModel);}
     static deleteMany(filter:any){return new PgQuery(async()=>({deletedCount:(await erase(filter,false)).length}),PgDynamicModel);}
-    static countDocuments(filter:any={}){return new PgQuery(async()=>(await selected(filter)).length,PgDynamicModel);}
+    static countDocuments(filter:any={}){return new PgQuery(async()=>{
+      const owner=tableOwner(table),role=serviceRole();
+      if(!owner||!role||owner===role){
+        const where=simpleWhere(filter,await fields());
+        if(where){const result=await pool.query(`SELECT COUNT(*)::integer AS n FROM public.${safeName(table)} WHERE ${where.sql}`,where.values);
+          return result.rows[0].n as number;}
+      }
+      return (await selected(filter)).length;
+    },PgDynamicModel);}
     static estimatedDocumentCount(){return PgDynamicModel.countDocuments({});}
     static exists(filter:any){return new PgQuery(async()=>{
+      const owner=tableOwner(table),role=serviceRole();
+      if(!owner||!role||owner===role){
+        const where=simpleWhere(filter,await fields());
+        if(where){const result=await pool.query(`SELECT id FROM public.${safeName(table)} WHERE ${where.sql} LIMIT 1`,where.values);
+          return result.rows[0]?{_id:new PgId(result.rows[0].id)}:null;}
+      }
       const found=(await selected(filter))[0];return found?{_id:found._id}:null;
     },PgDynamicModel);}
     static async create(data:any){return Array.isArray(data)?Promise.all(data.map(x=>save(x))):save(data)}

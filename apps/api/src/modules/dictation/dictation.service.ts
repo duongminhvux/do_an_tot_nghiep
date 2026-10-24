@@ -1,4 +1,5 @@
-import { PgId } from '../../postgres/compat.js';
+import { PgId, makePgModel } from '../../postgres/compat.js';
+import { DomainOutboxService } from '../../common/events/domain-outbox.service.js';
 import { randomUUID } from 'node:crypto';
 import {
   BadRequestException,
@@ -71,6 +72,7 @@ export class DictationService {
     private readonly mediaStorage: MediaStorageService,
     private readonly configService: ConfigService,
     @Optional() @Inject(LearningActivityClient) private readonly learningActivity?: LearningActivityWriter,
+    @Optional() @Inject(DomainOutboxService) private readonly domainOutbox?: DomainOutboxService,
   ) {
     this.asrStartPaddingMs = this.readNonNegativeInt('DICTATION_SEGMENT_START_PADDING_MS', 100);
     this.asrEndPaddingMs = this.readNonNegativeInt('DICTATION_SEGMENT_END_PADDING_MS', 150);
@@ -1089,27 +1091,29 @@ export class DictationService {
     const wasCompleted = Boolean(progress.completed);
     progress.completed = handledSegments.size >= lesson.sentenceCount;
     progress.lastPracticedAt = new Date();
-    const saved = await progress.save();
-    if (!wasCompleted && saved.completed && this.learningActivity) {
-      const firstTry = (saved.segmentProgress || []).filter((s: {firstTryCorrect?: boolean}) => s.firstTryCorrect).length;
-      await this.learningActivity.record({
-        userId: saved.userId,
-        module: 'DICTATION',
-        type: 'DICTATION_LESSON',
-        sourceKey: `dictation:${saved._id}`,
-        xp: dictationLessonXp(firstTry),
-        occurredAt: saved.lastPracticedAt,
-        title: lesson.title,
-        refId: String(lesson._id),
-        link: `/dictation/${lesson.slug}`,
-        correct: saved.completedSegments?.length ?? 0,
-        total: lesson.sentenceCount,
-        durationSec: lesson.totalDurationMs
-          ? Math.round(lesson.totalDurationMs / 1000)
-          : undefined,
-        metadata: { firstTryCorrect: firstTry, revealed: saved.revealedSegments?.length ?? 0 } });
+    if (!wasCompleted && progress.completed) {
+      if (!this.domainOutbox) throw new Error('Transactional outbox not configured');
+      return this.domainOutbox.withTransaction(async (session) => {
+        // Persist the completed progress and durable Learning event together.
+        const model = makePgModel<DictationProgress>(DictationProgress.name, session.client as any);
+        const saved = await model.create(progress.toObject());
+        const firstTry = (saved.segmentProgress || []).filter((s: {firstTryCorrect?: boolean}) => s.firstTryCorrect).length;
+        await this.domainOutbox!.enqueue('learning.activity.recorded.v1', String(saved.userId), {
+          userId: String(saved.userId),
+          module: 'DICTATION',type: 'DICTATION_LESSON',
+          sourceKey: `dictation:${saved._id}`,
+          xp: dictationLessonXp(firstTry),
+          occurredAt: saved.lastPracticedAt,
+          title: lesson.title,refId: String(lesson._id),link: `/dictation/${lesson.slug}`,
+          correct: saved.completedSegments?.length ?? 0,total: lesson.sentenceCount,
+          durationSec: lesson.totalDurationMs ? Math.round(lesson.totalDurationMs / 1000) : undefined,
+          metadata: {firstTryCorrect:firstTry,revealed:saved.revealedSegments?.length??0},
+          sourceService: 'content',
+        },session);
+        return saved;
+      });
     }
-    return saved;
+    return progress.save();
   }
 
   async revealSegment(userId: string, lessonId: string, segmentIndex: number) {

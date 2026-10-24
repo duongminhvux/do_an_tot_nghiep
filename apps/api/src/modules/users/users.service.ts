@@ -113,6 +113,7 @@ function formatRelativeTime(dateInput: Date | string | null | undefined): string
   return 'Vừa xong';
 }
 
+import { makePgModel } from '../../postgres/compat.js';
 import { DomainOutboxService } from '../../common/events/domain-outbox.service.js';
 
 @Injectable()
@@ -148,16 +149,19 @@ export class UsersService {
   }
 
   async create(data: CreateUserDto) {
-    const created = await this.userModel.create({ ...data });
-    try {
-      await this.domainOutbox?.enqueue('identity.user.created.v1', String(created._id), {
-        userId: String(created._id) });
-    } catch (error) {
-      // User was already saved; failing registration here could encourage a
-      // duplicate request. Reconciliation is required until transactions are enabled.
-      this.logger.warn('Could not publish user-created outbox event', error);
-    }
-    return created;
+    if (!this.domainOutbox) throw new Error('Transactional outbox not configured');
+    return this.domainOutbox.withTransaction(async (session) => {
+      const model = makePgModel<User>(User.name, session.client as any);
+      const created = await model.create({ ...data });
+      await this.domainOutbox!.enqueue('identity.user.created.v1', String(created._id), {
+        userId: String(created._id),
+        username: created.username ?? null,
+        avatarUrl: created.avatarUrl ?? null,
+        isBanned: created.isBanned ?? false,
+        sourceVersion: new Date(created.updatedAt).getTime(),
+      }, session);
+      return created;
+    });
   }
 
   async findByEmail(email: string): Promise<UserDocument | null> {
@@ -177,18 +181,23 @@ export class UsersService {
   }
 
   async update(id: string, data: UpdateQuery<User>): Promise<UserDocument | null> {
-    return await this.userModel.findByIdAndUpdate(id, data, { returnDocument: 'after' });
+    if (!this.domainOutbox) throw new Error('Transactional outbox not configured');
+    return this.domainOutbox.withTransaction(async (session) => {
+      const model = makePgModel<User>(User.name, session.client as any);
+      const updated = await model.findByIdAndUpdate(id, data, { returnDocument: 'after' });
+      if (updated) await this.domainOutbox!.enqueue('identity.user.updated.v1', String(updated._id), {
+        userId: String(updated._id),username:updated.username ?? null,
+        avatarUrl:updated.avatarUrl ?? null,isBanned:updated.isBanned ?? false,
+        sourceVersion: new Date(updated.updatedAt).getTime(),
+      }, session);
+      return updated;
+    });
   }
 
   async updateProfile(id: string, updateProfileDto: UpdateProfileDto) {
-    const updatedUser = await this.userModel.findByIdAndUpdate(
-      id,
-      {
-        $set: {
-          ...updateProfileDto,
-          profileUpdatedAt: new Date() } },
-      { returnDocument: 'after', select: '-password -code -codeExpiresAt -__v' }
-    );
+    const updatedUser = await this.update(id, {
+      $set: {...updateProfileDto, profileUpdatedAt: new Date()},
+    });
 
     if (!updatedUser) {
       throw new BadRequestException(await this.i18n.t('auth.USER_NOT_FOUND'));

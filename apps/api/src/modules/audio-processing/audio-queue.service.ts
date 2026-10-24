@@ -57,7 +57,7 @@ export class AudioQueueService {
         body:JSON.stringify({jobId:id,name}),signal:AbortSignal.timeout(10000)});
       if(!response.ok) throw new Error(`RabbitMQ publish rejected: ${response.status}`);
     } catch(error) {
-      await this.jobs().updateOne({id},{$set:{state:'failed',
+      await this.jobs().updateOne({id},{$set:{
         failedReason:`Publisher state uncertain: ${String(error)}`}});
       throw error;
     }
@@ -75,38 +75,82 @@ export class AudioQueueService {
     }
   }
 
-  /** Called from the authenticated worker endpoint. RabbitMQ ACK comes only
-   * after durable completion. PostgreSQL lease allows retry after worker death.
-   */
-  async executeQueuedJob(jobId:string) {
-    const jobs=this.jobs(), now=new Date(), lockOwner=randomUUID();
-    const claimed=await jobs.findOneAndUpdate({id:jobId,$or:[
-      {state:{$in:['waiting','failed']}},
-      {state:'active',leaseUntil:{$lt:now}},
-    ]},{$set:{state:'active',lockOwner,leaseUntil:new Date(now.getTime()+180000),
-      startedAt:now.toISOString(),failedReason:''}} ,{returnDocument:'after'});
-    if(!claimed) {
-      const existing=await jobs.findOne({id:jobId});
-      if(!existing) throw new Error(`Unknown audio job: ${jobId}`);
-      if(existing.state==='completed') return existing.result;
-      throw new Error(`Job ${jobId} busy or terminal; cannot claim`);
+  /** Atomic SQL claim: unlike document filtering, PostgreSQL serializes competing
+   * workers at the row and returns the actual fencing generation. */
+  private async claimJob(jobId: string, owner: string): Promise<{job: StoredAudioJob; generation: number} | null> {
+    const result = await this.connection.query(`
+      UPDATE public.audio_jobs
+         SET state = 'active', lease_owner = $2::uuid,
+             lease_until = now() + interval '3 minutes',
+             lease_generation = lease_generation + 1,
+             run_attempts = run_attempts + 1,
+             payload = payload || jsonb_build_object('state','active','lockOwner',$2::text,
+                'startedAt',now()::text,'failedReason','')
+       WHERE id = $1::uuid
+         AND ((state IN ('waiting','failed') AND next_attempt_at <= now())
+           OR (state = 'active' AND lease_until < now()))
+         AND run_attempts < max_attempts
+      RETURNING payload, lease_generation`, [jobId, owner]);
+    if (!result.rows.length) return null;
+    return {job: result.rows[0].payload as StoredAudioJob,
+      generation: Number(result.rows[0].lease_generation)};
+  }
+
+  private async updateLease(jobId: string, owner: string, generation: number,
+    updateSql: string, params: unknown[] = []): Promise<boolean> {
+    const result = await this.connection.query(`
+      UPDATE public.audio_jobs SET ${updateSql}
+       WHERE id=$1::uuid AND state='active' AND lease_owner=$2::uuid
+         AND lease_generation=$3 AND lease_until>now()
+      RETURNING id`, [jobId, owner, generation, ...params]);
+    return result.rows.length === 1;
+  }
+
+  /** Called by the authenticated audio worker. The owner UUID and the
+   * monotonically increasing lease_generation fence late/stale workers. */
+  async executeQueuedJob(jobId: string) {
+    if (!/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(jobId)) throw new Error('Invalid audio job ID');
+    const owner = randomUUID();
+    const lease = await this.claimJob(jobId, owner);
+    if (!lease) {
+      const existing = await this.jobs().findOne({id:jobId});
+      if (!existing) throw new Error(`Unknown audio job: ${jobId}`);
+      if (existing.state === 'completed') return existing.result;
+      throw new Error(`Job ${jobId} busy, delayed or exhausted retries`);
     }
-    const timer=setInterval(()=>{void jobs.updateOne({id:jobId,lockOwner},
-      {$set:{leaseUntil:new Date(Date.now()+180000)}}).catch(error=>console.error('Audio job heartbeat failed',error));},60000);
+    const {job, generation} = lease;
+    let lostLease = false;
+    const timer = setInterval(() => {void this.updateLease(jobId, owner, generation,
+      "lease_until=now()+interval '3 minutes'"
+    ).then(ok => { if(!ok) lostLease=true; }).catch(error => {
+      lostLease=true; console.error('Audio lease heartbeat failed', error);
+    });}, 60_000);
     timer.unref();
     try {
-      const progress=async(value:unknown)=>{await jobs.updateOne({id:jobId,lockOwner},{$set:{progress:value}});};
-      const result=await this.runJob(claimed as unknown as StoredAudioJob,progress);
-      const updated=await jobs.updateOne({id:jobId,lockOwner},{$set:{state:'completed',result,
-        finishedAt:new Date().toISOString()},$unset:{lockOwner:'',leaseUntil:''}});
-      if(!updated.matchedCount) throw new Error('Audio job ownership lost before completion');
+      const progress = async (value: unknown) => {
+        if(lostLease || !await this.updateLease(jobId, owner, generation,
+          "payload=payload||jsonb_build_object('progress',$4::jsonb)",
+          [JSON.stringify(value ?? null)])) {
+          lostLease=true; throw new Error('Audio lease lost while reporting progress');
+        }
+      };
+      const result = await this.runJob(job, progress);
+      if(lostLease || !await this.updateLease(jobId, owner, generation,
+        `state='completed', lease_owner=NULL, lease_until=NULL,
+         payload=(payload || jsonb_build_object('state','completed','result',$4::jsonb,
+           'finishedAt',now()::text)) - 'lockOwner' - 'leaseUntil'`,
+        [JSON.stringify(result ?? null)])) throw new Error('Audio job lease lost before completion');
       return result;
-    }catch(error) {
-      await jobs.updateOne({id:jobId,lockOwner},{$set:{state:'failed',
-        failedReason:error instanceof Error?error.message:String(error),finishedAt:new Date().toISOString()},
-        $unset:{lockOwner:'',leaseUntil:''}});
+    } catch(error) {
+      // A worker that lost its lease must never overwrite the new owner's state.
+      await this.updateLease(jobId, owner, generation,
+        `state='failed', lease_owner=NULL, lease_until=NULL,
+         next_attempt_at=now()+interval '10 seconds',
+         payload=(payload || jsonb_build_object('state','failed','failedReason',$4::text,
+           'finishedAt',now()::text)) - 'lockOwner' - 'leaseUntil'`,
+        [error instanceof Error ? error.message : String(error)]);
       throw error;
-    }finally {clearInterval(timer);}
+    } finally {clearInterval(timer);}
   }
 
   enqueueVocabularySingle(id:string,accent:'us'|'uk',voiceId?:string) {

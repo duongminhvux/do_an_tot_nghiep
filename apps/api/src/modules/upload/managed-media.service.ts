@@ -18,9 +18,32 @@ export class ManagedMediaService {
     const ext=filename.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,12);
     return ext && ext!==filename.toLowerCase() ? `.${ext}` : '';
   }
+  private detectedExtension(data: Buffer, group: 'audio' | 'image'): string {
+    const ascii = (start: number, end: number) => data.toString('ascii', start, end);
+    let extension = '';
+    if(data.length >= 12 && data.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a','hex'))) extension='.png';
+    else if(data.length >= 3 && data.subarray(0,3).equals(Buffer.from('ffd8ff','hex'))) extension='.jpg';
+    else if(ascii(0,6)==='GIF87a'||ascii(0,6)==='GIF89a') extension='.gif';
+    else if(ascii(0,4)==='RIFF' && ascii(8,12)==='WEBP') extension='.webp';
+    else if(ascii(0,4)==='RIFF' && ascii(8,12)==='WAVE') extension='.wav';
+    else if(ascii(0,4)==='fLaC') extension='.flac';
+    else if(ascii(0,4)==='OggS') extension='.ogg';
+    else if(ascii(0,3)==='ID3' || (data[0]===0xff && (data[1]&0xe0)===0xe0)) extension='.mp3';
+    else if(data.subarray(0,4).equals(Buffer.from('1a45dfa3','hex'))) extension='.webm';
+    else if(ascii(4,8)==='ftyp') extension='.m4a';
+    const images = new Set(['.png','.jpg','.gif','.webp']);
+    const audios = new Set(['.wav','.flac','.ogg','.mp3','.webm','.m4a']);
+    if (!(group==='image' ? images : audios).has(extension)) {
+      throw new BadRequestException('Unsupported or invalid media file contents');
+    }
+    return extension;
+  }
+
   async uploadFile(file:Express.Multer.File,folder='uploads'):Promise<{url:string;public_id:string}> {
     if(!file?.buffer?.length) throw new BadRequestException('Empty upload');
-    const key=`uploads/${this.safePath(folder)}/${randomUUID()}${this.safeExtension(file.originalname||'')}`;
+    const kind: 'audio'|'image' = folder==='audio' ? 'audio' : 'image';
+    const ext=this.detectedExtension(file.buffer,kind);
+    const key=`uploads/${this.safePath(folder)}/${randomUUID()}${ext}`;
     const saved=await this.media.saveBuffer(key,file.buffer);
     return {url:saved.url,public_id:`s3:${saved.storageKey}`};
   }

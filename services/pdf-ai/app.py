@@ -161,7 +161,17 @@ def get_job(job_id: str, exam_id: str):
             QUEUE_BACKEND == 'rabbitmq' or job is None
         ):
             job = saved
-        if not job or job["examId"] != exam_id:
+        # Only completed/failed snapshots survive local process restarts. A running
+        # job has no live executor after restart; returning a stale `running` state
+        # indefinitely would mislead callers. The RabbitMQ worker, by contrast,
+        # persists live queued/running state across API process restarts.
+        from_disk_only = job is not None and job_id not in jobs
+        terminal = job is not None and job.get('state') in ('completed', 'failed')
+        expired = (terminal and job.get('finishedAt', 0) < time.time() - TTL)
+        stale_local_job = (
+            from_disk_only and QUEUE_BACKEND != 'rabbitmq' and not terminal
+        )
+        if not job or job["examId"] != exam_id or expired or stale_local_job:
             raise HTTPException(404, "Không tìm thấy lượt xử lý. Dịch vụ có thể đã khởi động lại; hãy tải PDF lại.")
         response = copy.deepcopy(job)
         if response.get('state') == 'completed' and response.get('result', {}).get('listeningScript'):

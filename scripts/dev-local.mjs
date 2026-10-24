@@ -1,5 +1,5 @@
 /** All app processes on host, ONLY supporting infra/AI remain Dockerized. */
-import {spawn} from 'node:child_process';
+import {spawn,spawnSync} from 'node:child_process';
 import {resolve} from 'node:path';
 import {existsSync} from 'node:fs';
 const root=resolve(import.meta.dirname,'..');
@@ -10,6 +10,13 @@ const roles=[['identity',5001],['content',5002],['assessment',5003],['arena',500
 const selected=(process.argv.slice(2).join(',')||'all').split(',').map(x=>x.trim());
 const isAll=selected.includes('all');
 const runners=[];
+if (isAll || roles.some(([role]) => selected.includes(role))) {
+  const migration=spawnSync(process.execPath,['scripts/migrate.mjs','--all'],{
+    cwd:root,env:{...process.env,PGHOST:'127.0.0.1',PGPORT:'5432'},stdio:'inherit'
+  });
+  if(migration.status!==0)throw new Error('PostgreSQL migrations failed; refusing to start local backends');
+}
+
 function start(name,args,env){
  const child=spawn(name,args,{cwd:root,env:{...process.env,...env},stdio:'inherit',shell:process.platform==='win32'});
  child.on('exit',(code)=>{console.log('[dev-local] process exit',name,args.join(' '),code)});runners.push(child);

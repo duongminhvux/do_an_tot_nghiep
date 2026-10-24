@@ -1,43 +1,37 @@
-import { Global, Injectable, Logger, Module } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Global, Injectable, Module } from '@nestjs/common';
+import { DomainOutboxService } from '../events/domain-outbox.service.js';
+import { serviceRole } from '../../postgres/ownership.js';
 import type {
   LearningActivityWriter,
-  RecordActivityInput } from '../../modules/learning-activity/learning-activity.service.js';
+  RecordActivityInput,
+} from '../../modules/learning-activity/learning-activity.service.js';
 
 /**
- * Cross-service recorder. Only the Learning process writes learning_db;
- * all other business roles call its token-protected internal endpoint.
- * Failures are visible in logs and do not roll back a completed exam/game.
- * This is best-effort, not a durable outbox; see audit report.
+ * Durable cross-owner learning credit delivery.
+ * Enqueuing commits to the current owner's PostgreSQL outbox. The owner relay
+ * publishes to RabbitMQ and the Learning consumer writes its credit ledger
+ * transactionally with the inbox. Never silently drop XP during an outage.
  */
 @Injectable()
 export class LearningActivityClient implements LearningActivityWriter {
-  private readonly logger = new Logger(LearningActivityClient.name);
-  constructor(private readonly config: ConfigService) {}
+  constructor(private readonly outbox: DomainOutboxService) {}
 
   async record(input: RecordActivityInput): Promise<boolean> {
-    const token = this.config.get<string>('INTERNAL_SERVICE_TOKEN') || '';
-    if (token.length < 24) {
-      this.logger.warn('XP event not delivered: INTERNAL_SERVICE_TOKEN is missing');
-      return false;
+    const owner = serviceRole();
+    if (!owner) throw new Error('SERVICE_ROLE is required to record a learning credit');
+    if (owner === 'learning') throw new Error('Use LearningActivityService directly inside learning-service');
+    const userId = String(input.userId);
+    if (!userId || !input.sourceKey || !Number.isFinite(input.xp)) {
+      throw new Error('Invalid learning credit');
     }
-    const base = (this.config.get<string>('LEARNING_INTERNAL_URL') ||
-      'http://learning-service:5000').replace(/\/$/, '');
-    try {
-      const response = await fetch(`${base}/api/_internal/learning/activity`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-internal-token': token },
-        body: JSON.stringify({ ...input, userId: String(input.userId) }),
-        signal: AbortSignal.timeout(5000) });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const json = (await response.json()) as {
-        data?: { created?: boolean }; created?: boolean;
-      };
-      return Boolean(json?.data?.created ?? json?.created);
-    } catch (error) {
-      this.logger.warn(`XP event not delivered (${input.sourceKey}): ${String(error)}`);
-      return false;
-    }
+    await this.outbox.enqueue('learning.activity.recorded.v1', userId, {
+      ...input,
+      userId,
+      sourceService: owner,
+      occurredAt: input.occurredAt?.toISOString() ?? new Date().toISOString(),
+    });
+    // true means DURABLY QUEUED, not that another service already processed it.
+    return true;
   }
 }
 

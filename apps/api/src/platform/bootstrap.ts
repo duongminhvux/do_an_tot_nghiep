@@ -14,6 +14,7 @@ import { MediaStorageService } from '../common/media/media-storage.service.js';
 import { TransformInterceptor } from '../common/interceptors/transform.interceptor.js';
 import { HttpExceptionFilter } from '../common/filters/http-exception.filter.js';
 import { getConnectionToken,type PgConnection } from '../postgres/compat.js';
+import { assertSchemaReady } from '../postgres/migrations.js';
 
 export async function bootstrapService(role:OwnedService,modules:Type<unknown>[]){
   const app=await NestFactory.create<NestExpressApplication>(PlatformModule.forService(role,modules));
@@ -43,6 +44,9 @@ export async function bootstrapService(role:OwnedService,modules:Type<unknown>[]
     app.use('/media',async(req:any,res:any,next:any)=>{
       if(!['GET','HEAD'].includes(req.method))return next();
       let key:string;try{key=media.normalizeStorageKey(decodeURIComponent(req.path).replace(/^\//,''));}catch{res.status(400).end();return;}
+      // Source recordings and private objects must never be served by a public
+      // predictable /media URL. Internal workers fetch them from S3 directly.
+      if (/^(?:asr-jobs|private)\//.test(key)) return res.status(403).end();
       try{const response=await media.streamFromObject(key,req.headers.range);
         if(response.status===404)return res.status(404).end();
         if(!response.ok)return res.status(502).end('Media unavailable');
@@ -66,6 +70,7 @@ export async function bootstrapService(role:OwnedService,modules:Type<unknown>[]
   const conn=app.get<PgConnection>(getConnectionToken());
   const r=await conn.query('SELECT current_database() AS database_name, current_user AS owner');
   if(r.rows[0]?.database_name!==DATABASE_NAMES[role])throw new Error(`DB ownership violation for ${role}: ${r.rows[0]?.database_name}`);
+  await assertSchemaReady(conn.pool,role);
   await app.listen(port,'0.0.0.0');
   console.log(`[service] ${role} ready on ${port} postgres=${r.rows[0].database_name}`);
   return app;

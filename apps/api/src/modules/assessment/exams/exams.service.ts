@@ -10,6 +10,7 @@ import { type Model } from '../../../postgres/compat.js';
 import { I18nContext, I18nService } from 'nestjs-i18n';
 import { Exam, ExamDocument } from './schemas/exam.schema.js';
 import { CreateExamDto } from './dto/create-exam.dto.js';
+import { makePgModel } from '../../../postgres/compat.js';
 import { DomainOutboxService } from '../../../common/events/domain-outbox.service.js';
 import { UpdateExamDto } from './dto/update-exam.dto.js';
 import { QueryExamDto } from './dto/query-exam.dto.js';
@@ -152,19 +153,17 @@ export class ExamsService {
       groupId,
       groupOrder: groupId ? await nextGroupOrder(this.examModel, groupId) : 0 });
 
-    const saved = await createdExam.save();
-    try {
-      await this.domainOutbox?.enqueue(
-        'assessment.exam.created.v1',
-        String(saved._id),
-        {
-          examId: String(saved._id),
-          type: saved.type },
-      );
-    } catch (error) {
-      // No transaction yet; avoid falsely reporting that the saved exam failed.
-      console.warn('Exam event outbox unavailable', error);
-    }
+    if (!this.domainOutbox) throw new Error('Transactional outbox not configured');
+    const saved = await this.domainOutbox.withTransaction(async (session) => {
+      // The document constructed above is NOT bound to this transaction.
+      // Rebind the model to the pg client before writing to guarantee atomicity.
+      const model = makePgModel<Exam>(Exam.name, session.client as any);
+      const created = await model.create(createdExam.toObject());
+      await this.domainOutbox!.enqueue('assessment.exam.created.v1', String(created._id), {
+        examId: String(created._id), type: created.type,
+      }, session);
+      return created;
+    });
 
     const ranks = await this.normalizeOrders(
       String(saved._id),

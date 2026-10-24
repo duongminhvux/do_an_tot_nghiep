@@ -1,4 +1,5 @@
-import { PgId } from '../../postgres/compat.js';
+import { PgId, InjectPgConnection, type PgConnection } from '../../postgres/compat.js';
+import { randomUUID } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectPgModel } from '../../postgres/compat.js';
 import { Model } from '../../postgres/compat.js';
@@ -65,32 +66,49 @@ export class LearningActivityService {
   constructor(
     @InjectPgModel(LearningActivity.name)
     private readonly activities: Model<LearningActivity>,
+    @InjectPgConnection() private readonly connection: PgConnection,
   ) {}
 
-  /**
-   * Records a completed activity once per (user, sourceKey). Best effort: a
-   * failure is logged and never breaks the learning flow that triggered it.
+  /** Exactly-once learning credit effect using one PostgreSQL transaction.
+   * This is a learning-owned operation. External owners publish outbox events;
+   * the Learning consumer applies the same activity + ledger invariant.
    */
   async record(input: RecordActivityInput): Promise<boolean> {
+    if (!input.sourceKey || input.sourceKey.length > 250 ||
+        !Number.isFinite(input.xp) || input.xp < 0) {
+      throw new Error('Invalid learning credit');
+    }
+    const client = await this.connection.pool.connect();
+    const userId = String(input.userId);
+    const activityId = randomUUID();
+    const xp = Math.max(0, Math.round(input.xp));
+    const occurredAt = input.occurredAt ?? new Date();
+    const payload = { ...input, userId, occurredAt: occurredAt.toISOString(), xp };
     try {
-      const { userId, sourceKey, ...fields } = input;
-      const result = await this.activities
-        .updateOne(
-          { userId: new PgId(String(userId)), sourceKey },
-          {
-            $setOnInsert: {
-              ...fields,
-              xp: Math.max(0, Math.round(fields.xp)),
-              occurredAt: fields.occurredAt ?? new Date() } },
-          { upsert: true },
-        )
-        .exec();
-      return result.upsertedCount > 0;
+      await client.query('BEGIN');
+      const inserted = await client.query<{id:string}>(`INSERT INTO public.learning_activities
+        (id,user_id,module,type,source_key,xp,occurred_at,title,ref_id,link,
+         correct,total,score,duration_sec,metadata,payload)
+        VALUES($1,$2::uuid,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15::jsonb,$16::jsonb)
+        ON CONFLICT (user_id,source_key) DO NOTHING RETURNING id`,
+        [activityId,userId,input.module,input.type,input.sourceKey,xp,occurredAt,
+         input.title ?? null,input.refId ?? null,input.link ?? null,
+         input.correct ?? null,input.total ?? null,input.score ?? null,
+         input.durationSec ?? null,JSON.stringify(input.metadata ?? {}),JSON.stringify(payload)]);
+      if (inserted.rows.length) {
+        await client.query(`INSERT INTO public.learning_credit_ledger
+          (id,user_id,source_key,event_id,source_service,xp,activity_id,occurred_at)
+          VALUES($1,$2::uuid,$3,$4,'learning',$5,$6,$7)`,
+          [randomUUID(),userId,input.sourceKey,randomUUID(),xp,activityId,occurredAt]);
+      }
+      await client.query('COMMIT');
+      return inserted.rows.length > 0;
     } catch (error) {
-      this.logger.warn(
-        `Could not record ${input.sourceKey}: ${(error as Error).message}`,
-      );
-      return false;
+      await client.query('ROLLBACK');
+      this.logger.error(`Learning credit failed for ${input.sourceKey}`, (error as Error).stack);
+      throw error;
+    } finally {
+      client.release();
     }
   }
 

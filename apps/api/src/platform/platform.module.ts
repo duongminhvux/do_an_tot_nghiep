@@ -1,13 +1,15 @@
-import { Controller, DynamicModule, Get, Module, Type } from '@nestjs/common';
+import { Controller, DynamicModule, Get, Module, Type, Optional, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { PgModelsModule } from '../postgres/compat.js';
+import { PgModelsModule, InjectPgConnection, type PgConnection } from '../postgres/compat.js';
 import { I18nModule, HeaderResolver, AcceptLanguageResolver } from 'nestjs-i18n';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { RedisModule } from '../common/redis/redis.module.js';
+import { RedisService } from '../common/redis/redis.service.js';
 import { NotificationClientModule } from '../common/clients/notification-client.js';
 import { LearningActivityClientModule } from '../common/clients/learning-activity-client.js';
 import { MediaStorageModule } from '../common/media/media-storage.module.js';
+import { MediaStorageService } from '../common/media/media-storage.service.js';
 import { DomainEventsModule } from '../common/events/domain-events.module.js';
 import { JwtModule } from '@nestjs/jwt';
 import { Public } from '../modules/auth/decorators/public.decorator.js';
@@ -24,8 +26,37 @@ export function rootDotenvPath() {
 }
 @Controller('health')
 class HealthController {
+  constructor(@InjectPgConnection() private readonly connection: PgConnection,
+    private readonly media: MediaStorageService,
+    @Optional() private readonly redis?: RedisService) {}
+
+  // Liveness is process-only; it must not restart a healthy process because
+  // PostgreSQL or RabbitMQ temporarily stopped.
   @Public() @Get()
   status(){return {status:'ok',service:process.env.SERVICE_ROLE,backend:'postgresql'};}
+
+  @Public() @Get('live')
+  live(){return this.status();}
+
+  @Public() @Get('ready')
+  async ready(){
+    const service=process.env.SERVICE_ROLE;
+    try {
+      await this.connection.query('SELECT 1');
+      if(service==='arena') {
+        if (!this.redis) throw new Error('Redis dependency not provided');
+        await this.redis.getClient().ping();
+      }
+      if(service==='media-jobs' && !await this.media.objectStoreReady()) {
+        throw new Error('S3/media bridge unavailable');
+      }
+      return {status:'ready',service,dependencies:{postgres:'ok',
+        ...(service==='arena'?{redis:'ok'}:{}),
+        ...(service==='media-jobs'?{objectStorage:'ok'}:{})}};
+    }catch{
+      throw new ServiceUnavailableException('Required service dependency unavailable');
+    }
+  }
 }
 @Module({})
 export class PlatformModule {

@@ -107,6 +107,33 @@ services:
       timeout: 5s
       retries: 20
       start_period: 30s
+  schema-migrate:
+    image: vocalearn-clean-api:local
+    pull_policy: never
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      provenance: false
+      sbom: false
+    command: ["node", "scripts/migrate.mjs", "--all"]
+    restart: "no"
+    environment:
+      NODE_ENV: production
+      PGHOST: postgres
+      PGPORT: "5432"
+      PG_IDENTITY_PASSWORD: ${PG_IDENTITY_PASSWORD:?Set service PG password}
+      PG_CONTENT_PASSWORD: ${PG_CONTENT_PASSWORD:?Set service PG password}
+      PG_ASSESSMENT_PASSWORD: ${PG_ASSESSMENT_PASSWORD:?Set service PG password}
+      PG_ARENA_PASSWORD: ${PG_ARENA_PASSWORD:?Set service PG password}
+      PG_LEARNING_PASSWORD: ${PG_LEARNING_PASSWORD:?Set service PG password}
+      PG_MEDIA_PASSWORD: ${PG_MEDIA_PASSWORD:?Set service PG password}
+      PG_AI_IMPORT_PASSWORD: ${PG_AI_IMPORT_PASSWORD:?Set service PG password}
+      PG_NOTIFICATION_PASSWORD: ${PG_NOTIFICATION_PASSWORD:?Set service PG password}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+    - toeic-network
   admin-seed:
     image: vocalearn-clean-api:local
     pull_policy: never
@@ -119,7 +146,7 @@ services:
       DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-admin@gmail.com}
       DEFAULT_ADMIN_USERNAME: ${DEFAULT_ADMIN_USERNAME:-admin}
       DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-}
-      ADMIN_SEED_ENABLED: ${ADMIN_SEED_ENABLED:-true}
+      ADMIN_SEED_ENABLED: ${ADMIN_SEED_ENABLED:-false}
       ADMIN_SEED_ALLOW_WEAK_PASSWORD: ${ADMIN_SEED_ALLOW_WEAK_PASSWORD:-false}
       PGHOST: postgres
       PGPORT: '5432'
@@ -127,6 +154,8 @@ services:
       PGUSER: vl_identity
       PGPASSWORD: ${PG_IDENTITY_PASSWORD:?Set service PG password}
     depends_on:
+      schema-migrate:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
     networks:
@@ -197,6 +226,8 @@ services:
     volumes:
     - ./storage:/app/storage:ro
     depends_on:
+      schema-migrate:
+        condition: service_completed_successfully
       admin-seed:
         condition: service_completed_successfully
       rabbitmq:
@@ -212,7 +243,7 @@ services:
       - CMD
       - node
       - -e
-      - fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      - fetch('http://127.0.0.1:5000/api/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
       interval: 15s
       timeout: 5s
       start_period: 60s
@@ -280,6 +311,8 @@ services:
     volumes:
     - ./storage:/app/storage
     depends_on:
+      schema-migrate:
+        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
       redis:
@@ -293,7 +326,7 @@ services:
       - CMD
       - node
       - -e
-      - fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      - fetch('http://127.0.0.1:5000/api/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
       interval: 15s
       timeout: 5s
       start_period: 60s
@@ -361,6 +394,8 @@ services:
     volumes:
     - ./storage:/app/storage:ro
     depends_on:
+      schema-migrate:
+        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
       redis:
@@ -374,7 +409,7 @@ services:
       - CMD
       - node
       - -e
-      - fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      - fetch('http://127.0.0.1:5000/api/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
       interval: 15s
       timeout: 5s
       start_period: 60s
@@ -442,6 +477,8 @@ services:
     volumes:
     - ./storage:/app/storage:ro
     depends_on:
+      schema-migrate:
+        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
       redis:
@@ -455,7 +492,7 @@ services:
       - CMD
       - node
       - -e
-      - fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      - fetch('http://127.0.0.1:5000/api/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
       interval: 15s
       timeout: 5s
       start_period: 60s
@@ -523,6 +560,8 @@ services:
     volumes:
     - ./storage:/app/storage:ro
     depends_on:
+      schema-migrate:
+        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
       redis:
@@ -536,7 +575,7 @@ services:
       - CMD
       - node
       - -e
-      - fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      - fetch('http://127.0.0.1:5000/api/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
       interval: 15s
       timeout: 5s
       start_period: 60s
@@ -604,6 +643,8 @@ services:
     volumes:
     - ./storage:/app/storage
     depends_on:
+      schema-migrate:
+        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
       redis:
@@ -617,7 +658,7 @@ services:
       - CMD
       - node
       - -e
-      - fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      - fetch('http://127.0.0.1:5000/api/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
       interval: 15s
       timeout: 5s
       start_period: 60s
@@ -685,6 +726,8 @@ services:
     volumes:
     - ./storage:/app/storage
     depends_on:
+      schema-migrate:
+        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
       redis:
@@ -698,7 +741,7 @@ services:
       - CMD
       - node
       - -e
-      - fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      - fetch('http://127.0.0.1:5000/api/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
       interval: 15s
       timeout: 5s
       start_period: 60s
@@ -766,6 +809,8 @@ services:
     volumes:
     - ./storage:/app/storage:ro
     depends_on:
+      schema-migrate:
+        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
       redis:
@@ -779,7 +824,7 @@ services:
       - CMD
       - node
       - -e
-      - fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      - fetch('http://127.0.0.1:5000/api/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
       interval: 15s
       timeout: 5s
       start_period: 60s
@@ -866,6 +911,12 @@ services:
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:?Set S3_ACCESS_KEY}
       S3_SECRET_KEY: ${S3_SECRET_KEY:?Set S3_SECRET_KEY}
       MEDIA_INTERNAL_TOKEN: ${MEDIA_INTERNAL_TOKEN:?Set MEDIA_INTERNAL_TOKEN}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8010/health', timeout=4)"]
+      interval: 15s
+      timeout: 6s
+      retries: 8
+      start_period: 45s
     depends_on:
       objectstore:
         condition: service_healthy
@@ -957,6 +1008,8 @@ services:
     volumes:
     - ./storage:/app/storage
     depends_on:
+      schema-migrate:
+        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
       postgres:
@@ -991,6 +1044,8 @@ services:
       PGUSER: vl_media
       PGPASSWORD: ${PG_MEDIA_PASSWORD:?Set service PG password}
     depends_on:
+      schema-migrate:
+        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
       audio-worker:
@@ -1021,6 +1076,8 @@ services:
       PGUSER: vl_media
       PGPASSWORD: ${PG_MEDIA_PASSWORD:?Set service PG password}
     depends_on:
+      schema-migrate:
+        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
       objectstore:
@@ -1053,6 +1110,8 @@ services:
       PGUSER: vl_media
       PGPASSWORD: ${PG_MEDIA_PASSWORD:?Set service PG password}
     depends_on:
+      schema-migrate:
+        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
       asr-service:
@@ -1128,11 +1187,16 @@ services:
       OLLAMA_URL: http://ollama:11434
       OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b}
       PDF_AI_ASSET_DIR: /app/assets
+      PDF_AI_PUBLIC_BASE_URL: ${PDF_AI_PUBLIC_BASE_URL:-/media/pdf-ai}
+      MEDIA_BRIDGE_URL: http://media-bridge:8010
+      MEDIA_INTERNAL_TOKEN: ${MEDIA_INTERNAL_TOKEN:?Set MEDIA_INTERNAL_TOKEN}
       PDF_AI_LEARNING_DIR: /app/learning
     volumes:
     - ./storage/pdf-ai:/app/assets
     - ./.local/pdf-ai-learning:/app/learning
     depends_on:
+      media-bridge:
+        condition: service_healthy
       rabbitmq:
         condition: service_healthy
       ollama:
@@ -1151,11 +1215,16 @@ services:
       OLLAMA_URL: http://ollama:11434
       OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b}
       PDF_AI_ASSET_DIR: /app/assets
+      PDF_AI_PUBLIC_BASE_URL: ${PDF_AI_PUBLIC_BASE_URL:-/media/pdf-ai}
+      MEDIA_BRIDGE_URL: http://media-bridge:8010
+      MEDIA_INTERNAL_TOKEN: ${MEDIA_INTERNAL_TOKEN:?Set MEDIA_INTERNAL_TOKEN}
       PDF_AI_LEARNING_DIR: /app/learning
     volumes:
     - ./storage/pdf-ai:/app/assets
     - ./.local/pdf-ai-learning:/app/learning
     depends_on:
+      media-bridge:
+        condition: service_healthy
       rabbitmq:
         condition: service_healthy
       ollama:
@@ -1182,6 +1251,28 @@ services:
       PGUSER: vl_identity
       PGPASSWORD: ${PG_IDENTITY_PASSWORD:?Set service PG password}
     depends_on:
+      schema-migrate:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+    - toeic-network
+  outbox-content:
+    image: vocalearn-clean-domain-events:local
+    pull_policy: never
+    restart: unless-stopped
+    environment:
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:?Set RABBITMQ_USER}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}@rabbitmq:5672/%2F
+      PGHOST: postgres
+      PGPORT: '5432'
+      PGDATABASE: content_db
+      PGUSER: vl_content
+      PGPASSWORD: ${PG_CONTENT_PASSWORD:?Set service PG password}
+    depends_on:
+      schema-migrate:
+        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
       postgres:
@@ -1200,6 +1291,8 @@ services:
       PGUSER: vl_assessment
       PGPASSWORD: ${PG_ASSESSMENT_PASSWORD:?Set service PG password}
     depends_on:
+      schema-migrate:
+        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
       postgres:
@@ -1218,6 +1311,8 @@ services:
       PGUSER: vl_arena
       PGPASSWORD: ${PG_ARENA_PASSWORD:?Set service PG password}
     depends_on:
+      schema-migrate:
+        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
       postgres:
@@ -1240,6 +1335,32 @@ services:
       PGUSER: vl_learning
       PGPASSWORD: ${PG_LEARNING_PASSWORD:?Set service PG password}
     depends_on:
+      schema-migrate:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+    - toeic-network
+  domain-consumer-arena:
+    image: vocalearn-clean-domain-events:local
+    pull_policy: never
+    command:
+    - python
+    - consumer.py
+    restart: unless-stopped
+    environment:
+      CONSUMER_NAME: arena
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:?Set RABBITMQ_USER}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}@rabbitmq:5672/%2F
+      PGHOST: postgres
+      PGPORT: '5432'
+      PGDATABASE: arena_db
+      PGUSER: vl_arena
+      PGPASSWORD: ${PG_ARENA_PASSWORD:?Set service PG password}
+    depends_on:
+      schema-migrate:
+        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
       postgres:
@@ -1262,6 +1383,8 @@ services:
       PGUSER: vl_notification
       PGPASSWORD: ${PG_NOTIFICATION_PASSWORD:?Set service PG password}
     depends_on:
+      schema-migrate:
+        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
       postgres:

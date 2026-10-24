@@ -184,6 +184,8 @@ def analyze_bundle(files: dict[str, bytes], test_number: int, job_id: str, progr
     warnings = list(dict.fromkeys(w for r in results for w in r["warnings"] if not w.startswith("Đây là bản nhận diện AI:")))
     warnings.insert(0, "Part 6–7 dùng ảnh cắt từ PDF cho bài đọc/email chung; từng câu hỏi và các lựa chọn bên dưới vẫn là chữ để chỉnh sửa. Hãy đối chiếu câu hỏi và lựa chọn với PDF nguồn trước khi lưu; 200 đáp án được lấy từ đúng bảng Test đã chọn.")
     warnings.insert(0, "Đã nhập script Listening tiếng Anh từ PDF. Kiểm tra câu hỏi, lựa chọn và lời thoại trước khi lưu. PDF script không tự tạo audio; có thể dùng nội dung này để tạo TTS hoặc bổ sung audio sau." if script else "Bốn PDF không chứa audio hoặc transcript Listening. Part 1–2 có thể chỉ có ảnh/phiếu chọn; các trường còn thiếu được đánh dấu để bổ sung, không tự tạo lời thoại.")
+    from media_assets import publish_pdf_images
+    publish_pdf_images(job_id)
     progress(100, 100, "Đã ghép đề Listening + Reading và 200 đáp án")
     return {"parts": parts, "warnings": warnings, "total": sum(len(p["questions"]) for p in parts),
             "pages": len(lc_pages) + len(rc_pages) + (len(script['pages']) if script else 0), "model": results[0]["model"], "testNumber": test_number,

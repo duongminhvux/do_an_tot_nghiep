@@ -22,11 +22,13 @@ export class ReadModelsController {
       || ['admins', 'pdf_ai_correction_events'].includes(table)) throw new BadRequestException('Unknown read model');
     const result = await this.connection.query(`SELECT * FROM public."${table}"`);
     if (table !== 'users') return result.rows;
-    return result.rows.map(row => {
-      const { password_hash, code, code_expires_at, ...safe } = row;
-      const { password, passwordHash, code: payloadCode, codeExpiresAt, refreshToken, ...payload } = safe.payload || {};
-      return { ...safe, payload };
-    });
+    // Legacy compatibility: do not export credential/private columns under
+    // any token. Consumers needing more must use an owner-specific DTO API.
+    return result.rows.map(row => ({
+      id:row.id,username:row.username,avatar_url:row.avatar_url,
+      is_deleted:row.is_deleted,is_banned:row.is_banned,
+      payload:{username:row.username,avatarUrl:row.avatar_url},
+    }));
   }
 }
 

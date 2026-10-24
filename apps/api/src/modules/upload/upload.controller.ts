@@ -38,7 +38,7 @@ export class UploadController {
     }
 
     const result=await this.mediaUploadService.uploadFile(file, this.isAudio(file)?'audio':'image');
-    return {message:'File uploaded to MinIO',data:result};
+    return {message:'Media uploaded to S3-compatible object storage',data:result};
   }
 
   @Post('delete')

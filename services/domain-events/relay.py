@@ -29,7 +29,8 @@ def send_one(conn,ch):
             if event is None:return False
             msg={'eventId':str(event['event_id']),'type':event['event_type'],
                 'aggregateType':event['aggregate_type'],'aggregateId':str(event['aggregate_id']) if event['aggregate_id'] else '',
-                'payload':event['payload'],'occurredAt':event['created_at'].isoformat()}
+                'payload':event['payload'],'occurredAt':event['created_at'].isoformat(),
+                'source':os.environ['PGDATABASE'].removesuffix('_db')}
             body=json.dumps(msg,ensure_ascii=False).encode('utf-8')
             ch.basic_publish(exchange=EXCHANGE,routing_key=event['event_type'],body=body,mandatory=True,
                 properties=pika.BasicProperties(delivery_mode=2,content_type='application/json',message_id=msg['eventId']))

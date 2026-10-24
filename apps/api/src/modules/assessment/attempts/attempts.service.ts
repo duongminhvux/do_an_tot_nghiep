@@ -1,4 +1,5 @@
-import { PgId } from '../../../postgres/compat.js';
+import { PgId, makePgModel } from '../../../postgres/compat.js';
+import { DomainOutboxService } from '../../../common/events/domain-outbox.service.js';
 import {
   BadRequestException,
   ConflictException,
@@ -115,6 +116,7 @@ export class AttemptsService {
     @InjectPgModel(Passage.name) private readonly passages: Model<Passage>,
     @Optional()
     @Inject(LearningActivityClient) private readonly learningActivity?: LearningActivityWriter,
+    @Optional() @Inject(DomainOutboxService) private readonly domainOutbox?: DomainOutboxService,
   ) {}
 
   async availableParts(idOrSlug: string) {
@@ -702,49 +704,39 @@ export class AttemptsService {
   }
 
   private async grade(attempt: Attempt & { _id: PgId }) {
-    // Grade inside one database update: concurrent saves either precede this update
-    // and are counted, or fail their IN_PROGRESS condition after it.
-    const result = await this.attempts
-      .updateOne(
+    // The graded state AND the XP delivery event must commit atomically.
+    // The compat update pipeline uses row locks on a caller-owned pg client;
+    // publish to RabbitMQ happens later via the PostgreSQL outbox relay.
+    if (!this.domainOutbox) throw new Error('Transactional outbox is required for TOEIC grading');
+    await this.domainOutbox.withTransaction(async (session) => {
+      const model = makePgModel<Attempt>(Attempt.name, session.client as any);
+      const result = await model.updateOne(
         { _id: attempt._id, status: ToeicAttemptStatus.IN_PROGRESS },
-        buildAttemptResultPipeline(
-          attempt.questionSnapshot,
-          attempt.selectedParts,
-        ),
+        buildAttemptResultPipeline(attempt.questionSnapshot, attempt.selectedParts),
         { updatePipeline: true },
-      )
-      .exec();
-    // Only the request that actually graded the attempt records it.
-    if (result.modifiedCount) await this.recordCompletion(attempt._id);
-  }
-
-  private async recordCompletion(id: PgId) {
-    if (!this.learningActivity) return;
-    const graded = await this.attempts
-      .findById(id)
-      .select(
-        'userId status examSnapshot mode selectedParts correctAnswers totalQuestions durationSpent submittedAt listeningResult readingResult',
-      )
-      .lean()
-      .exec();
-    if (!graded) return;
-    const correct = graded.correctAnswers ?? 0;
-    const score = this.summary(graded).score;
-    await this.learningActivity.record({
-      userId: graded.userId,
-      module: 'TOEIC',
-      type: 'TOEIC_ATTEMPT',
-      sourceKey: `toeic:${id}`,
-      xp: toeicAttemptXp(correct),
-      occurredAt: graded.submittedAt,
-      title: graded.examSnapshot?.name,
-      refId: String(id),
-      link: `/toeic/attempts/${id}/result`,
-      correct,
-      total: graded.totalQuestions,
-      score,
-      durationSec: graded.durationSpent,
-      metadata: { mode: graded.mode, selectedParts: graded.selectedParts } });
+      ).exec();
+      if (!result.modifiedCount) return;
+      const graded = await model.findById(attempt._id).lean().exec();
+      if (!graded) throw new Error('Graded attempt disappeared within transaction');
+      const correct = graded.correctAnswers ?? 0;
+      await this.domainOutbox!.enqueue('learning.activity.recorded.v1', String(graded.userId), {
+        userId: String(graded.userId),
+        module: 'TOEIC',
+        type: 'TOEIC_ATTEMPT',
+        sourceKey: `toeic:${attempt._id}`,
+        xp: toeicAttemptXp(correct),
+        occurredAt: graded.submittedAt ?? new Date(),
+        title: graded.examSnapshot?.name,
+        refId: String(attempt._id),
+        link: `/toeic/attempts/${attempt._id}/result`,
+        correct,
+        total: graded.totalQuestions,
+        score: this.summary(graded).score,
+        durationSec: graded.durationSpent,
+        metadata: { mode: graded.mode, selectedParts: graded.selectedParts },
+        sourceService: 'assessment',
+      }, session);
+    });
   }
 
   async findOne(userId: string, id: string) {

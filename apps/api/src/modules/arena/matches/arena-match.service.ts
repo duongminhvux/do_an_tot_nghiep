@@ -1,4 +1,5 @@
-import { PgId } from '../../../postgres/compat.js';
+import { PgId, makePgModel } from '../../../postgres/compat.js';
+import { DomainOutboxService } from '../../../common/events/domain-outbox.service.js';
 import { ArenaSettingsService } from '../admin/arena-settings.service.js';
 import { arenaMatchXp } from '@repo/shared-types/learning-xp';
 import { LearningActivityClient } from '../../../common/clients/learning-activity-client.js';
@@ -70,6 +71,7 @@ export class ArenaMatchService {
     private readonly friendRooms: Model<FriendRoom>,
     @Optional() private readonly settings?: ArenaSettingsService,
     @Optional() @Inject(LearningActivityClient) private readonly learningActivity?: LearningActivityWriter,
+    @Optional() @Inject(DomainOutboxService) private readonly domainOutbox?: DomainOutboxService,
   ) {}
 
   /** Tạo một match 1v1 dùng chung cho rank, friend và room. */
@@ -356,14 +358,20 @@ export class ArenaMatchService {
               ratingChange: 0 },
       won: player === winningPlayer }));
 
+    if (!this.domainOutbox) throw new Error('Transactional outbox not configured');
+    const finished = await this.domainOutbox.withTransaction(async (session) => {
+      const model = makePgModel<ArenaMatch>(ArenaMatch.name, session.client as any);
+      const txProfiles=makePgModel<ArenaProfile>(ArenaProfile.name,session.client as any);
+      const txPlayers=makePgModel<ArenaMatchPlayer>(ArenaMatchPlayer.name,session.client as any);
+      const txHistory=makePgModel<ArenaRatingHistory>(ArenaRatingHistory.name,session.client as any);
     for (const result of results) {
       if (match.type === ArenaMatchType.RANK) {
-        const profile = await this.arenaProfileModel.findOne({
+        const profile = await txProfiles.findOne({
           userId: result.player.userId });
         const currentStreak = result.won
           ? (profile?.currentWinStreak ?? 0) + 1
           : 0;
-        await this.arenaProfileModel.updateOne(
+        await txProfiles.updateOne(
           { userId: result.player.userId },
           {
             $set: {
@@ -380,7 +388,7 @@ export class ArenaMatchService {
               rankedDraws: isDraw ? 1 : 0 } },
         );
       }
-      await this.arenaMatchPlayerModel.updateOne(
+      await txPlayers.updateOne(
         { _id: result.player._id },
         {
           $set: {
@@ -390,7 +398,7 @@ export class ArenaMatchService {
             finishedAt: now } },
       );
       if (match.type === ArenaMatchType.RANK) {
-        await this.arenaRatingHistoryModel.updateOne(
+        await txHistory.updateOne(
           { matchId: uuid, userId: result.player.userId },
           {
             $setOnInsert: {
@@ -404,44 +412,26 @@ export class ArenaMatchService {
       }
     }
 
-    const finished = await this.arenaMatchModel.findOneAndUpdate(
-      { _id: uuid, status: ArenaMatchStatus.FINISHING },
-      {
-        $set: {
-          status: ArenaMatchStatus.FINISHED,
-          finishedAt: now,
-          isDraw,
-          winnerId: winningPlayer?.userId ?? null } },
-      { returnDocument: 'after' },
-    );
-    if (finished && this.learningActivity)
-      for (const result of results)
-        await this.learningActivity.record({
-          userId: result.player.userId,
-          module: 'ARENA',
-          type: 'ARENA_MATCH',
-          sourceKey: `arena:${matchId}`,
-          xp: arenaMatchXp(result.won),
-          occurredAt: now,
-          refId: matchId,
-          link: '/arena',
-          correct: result.player.correctAnswers,
-          total:
-            (result.player.correctAnswers ?? 0) +
-            (result.player.wrongAnswers ?? 0) +
-            (result.player.unanswered ?? 0),
-          score: result.player.score,
-          durationSec: match.startedAt
-            ? Math.max(
-                0,
-                Math.round((now.getTime() - match.startedAt.getTime()) / 1000),
-              )
-            : undefined,
-          metadata: {
-            matchType: match.type,
-            won: result.won,
-            isDraw,
-            ratingChange: result.rating.ratingChange } });
+      const saved = await model.findOneAndUpdate(
+        { _id: uuid, status: ArenaMatchStatus.FINISHING },
+        { $set: {status: ArenaMatchStatus.FINISHED,finishedAt: now,
+          isDraw,winnerId: winningPlayer?.userId ?? null} },
+        { returnDocument: 'after' },
+      );
+      if (saved) for (const result of results) {
+        await this.domainOutbox!.enqueue('learning.activity.recorded.v1', String(result.player.userId), {
+          userId:String(result.player.userId),module:'ARENA',type:'ARENA_MATCH',
+          sourceKey:`arena:${matchId}`,xp:arenaMatchXp(result.won),occurredAt:now,
+          refId:matchId,link:'/arena',correct:result.player.correctAnswers,
+          total:(result.player.correctAnswers??0)+(result.player.wrongAnswers??0)+
+            (result.player.unanswered??0),score:result.player.score,
+          durationSec:match.startedAt?Math.max(0,Math.round((now.getTime()-match.startedAt.getTime())/1000)):undefined,
+          metadata:{matchType:match.type,won:result.won,isDraw,ratingChange:result.rating.ratingChange},
+          sourceService:'arena',
+        },session);
+      }
+      return saved;
+    });
     if (
       finished &&
       (match.type === ArenaMatchType.FRIEND ||

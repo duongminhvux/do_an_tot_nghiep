@@ -101,6 +101,14 @@ export class MediaStorageService {
       signal: AbortSignal.timeout(60_000) });
   }
 
+  async objectStoreReady(): Promise<boolean> {
+    if (this.backend !== 's3') return true;
+    try {
+      const response = await fetch(`${this.bridgeUrl}/health`, { signal: AbortSignal.timeout(3000) });
+      return response.ok;
+    } catch { return false; }
+  }
+
   useObjectStorage(): boolean { return this.backend === 's3'; }
 
   async saveBuffer(storageKey: string, buffer: Buffer): Promise<{ storageKey: string; url: string }> {
