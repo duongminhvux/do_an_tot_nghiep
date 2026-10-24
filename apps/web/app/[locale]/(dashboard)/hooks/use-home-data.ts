@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useSiteSettings } from "@/providers/site-settings-provider";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -23,10 +24,7 @@ export function useHomeData() {
   const { locale = "vi" } = useParams<{ locale: string }>();
   const { t } = useTranslation("home");
   const { user } = useAppSelector((state) => state.auth);
-  const timezone = useMemo(
-    () => Intl.DateTimeFormat().resolvedOptions().timeZone,
-    [],
-  );
+  const { timezone } = useSiteSettings();
 
   const home = useQuery({
     queryKey: ["learning-home", timezone],
@@ -78,12 +76,13 @@ export function useHomeData() {
   const formattedToday = useMemo(
     () =>
       new Intl.DateTimeFormat(locale === "vi" ? "vi-VN" : "en-US", {
+        timeZone: timezone,
         weekday: "long",
         day: "numeric",
         month: "long",
         year: "numeric",
       }).format(new Date()),
-    [locale],
+    [locale, timezone],
   );
 
   const userName =

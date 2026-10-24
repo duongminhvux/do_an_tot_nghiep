@@ -1,5 +1,6 @@
 'use client';
 
+import { useSiteSettings } from "@/providers/site-settings-provider";
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -49,8 +50,9 @@ export function UserActivityLogs({
   limit = 20,
   compact = false,
 }: UserActivityLogsProps) {
+  const { timezone } = useSiteSettings();
   const { t, i18n } = useTranslation(['activityLog', 'users']);
-  const currentLang = i18n.language || 'vi';
+  const currentLang = (i18n.resolvedLanguage || i18n.language || 'vi').toLowerCase().startsWith('en') ? 'en' : 'vi';
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -68,6 +70,7 @@ export function UserActivityLogs({
   const {
     data: logsData,
     isLoading,
+    isError,
     isRefetching,
     refetch,
   } = useQuery({
@@ -84,6 +87,7 @@ export function UserActivityLogs({
     ],
     queryFn: () =>
       activityLogService.getAll({
+        includeLearning: Boolean(userId),
         userId: userId || undefined,
         userEmail: !userId && userEmail ? userEmail : undefined,
         page,
@@ -104,7 +108,9 @@ export function UserActivityLogs({
   const formatDate = (dateStr: string) => {
     try {
       const d = new Date(dateStr);
+      if (Number.isNaN(d.getTime())) return '—';
       return d.toLocaleString(currentLang === 'vi' ? 'vi-VN' : 'en-US', {
+        timeZone: timezone,
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
@@ -256,7 +262,7 @@ export function UserActivityLogs({
               <RefreshCw
                 className={`w-3.5 h-3.5 mr-1.5 ${isRefetching ? 'animate-spin text-blue-600' : 'text-slate-500'}`}
               />
-              <span>{currentLang === 'vi' ? 'Làm mới' : 'Refresh'}</span>
+              <span>{t('activityLog:feed.refresh')}</span>
             </Button>
           </div>
         </div>
@@ -267,8 +273,13 @@ export function UserActivityLogs({
         <div className="p-8 border border-slate-200 rounded bg-white text-center space-y-2">
           <RefreshCw className="w-6 h-6 animate-spin text-blue-600 mx-auto" />
           <p className="text-xs text-slate-500 font-medium">
-            {currentLang === 'vi' ? 'Đang tải lịch sử hoạt động...' : 'Loading activity logs...'}
+            {t('activityLog:feed.loading')}
           </p>
+        </div>
+      ) : isError ? (
+        <div role="alert" className="rounded border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <p>{t('activityLog:feed.error')}</p>
+          <Button type="button" variant="outline" onClick={() => void refetch()}>{t('activityLog:feed.refresh')}</Button>
         </div>
       ) : logs.length === 0 ? (
         <div className="py-10 text-center border border-dashed border-slate-200 rounded bg-white space-y-2">
@@ -277,9 +288,7 @@ export function UserActivityLogs({
             {t('activityLog:filters.no_logs', 'Không tìm thấy nhật ký hoạt động nào.')}
           </p>
           <p className="text-[11px] text-slate-400">
-            {currentLang === 'vi'
-              ? 'Người dùng chưa có hoạt động nào được ghi nhận trong tiêu chí đã chọn.'
-              : 'No activities have been recorded for this user under the selected criteria.'}
+            {t('activityLog:feed.empty')}
           </p>
         </div>
       ) : (
@@ -329,6 +338,14 @@ export function UserActivityLogs({
                         </p>
                       )}
 
+                      <div className="flex flex-wrap gap-2 text-[11px] text-slate-500">
+                        {item.source && <span>{t(item.source === 'LEARNING' ? 'activityLog:feed.source_learning' : 'activityLog:feed.source_interaction')}</span>}
+                        {typeof item.metadata?.score === 'number' && <span>{t('activityLog:feed.score', { score: item.metadata.score })}</span>}
+                        {typeof item.metadata?.xp === 'number' && <span>{t('activityLog:feed.xp', { xp: item.metadata.xp })}</span>}
+                        {typeof item.metadata?.correct === 'number' && typeof item.metadata?.total === 'number' && <span>{t('activityLog:feed.accuracy', { correct: item.metadata.correct, total: item.metadata.total })}</span>}
+                        {item.action === 'ARENA_MATCH' && (item.metadata?.isDraw === true || typeof item.metadata?.won === 'boolean') && <span>{t(item.metadata?.isDraw ? 'activityLog:feed.draw' : item.metadata?.won ? 'activityLog:feed.win' : 'activityLog:feed.loss')}</span>}
+                        {typeof item.metadata?.gameType === 'string' && <span>{t(`activityLog:feed.gameTypes.${item.metadata.gameType}`, { defaultValue: item.metadata.gameType })}</span>}
+                      </div>
                       {/* Metadata badges: Duration, IP, User-Agent */}
                       <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-400">
                         {item.durationMs && item.durationMs > 0 ? (
@@ -373,9 +390,7 @@ export function UserActivityLogs({
             <div className="flex items-center justify-between p-3 border-t border-slate-100 bg-slate-50/50 text-xs text-slate-600">
               <div>
                 <span>
-                  {currentLang === 'vi' ? 'Tổng số:' : 'Total:'}{' '}
-                  <strong className="font-semibold text-slate-900">{total}</strong>{' '}
-                  {currentLang === 'vi' ? 'hoạt động' : 'activities'}
+                  {t('activityLog:feed.total', { count: total })}
                 </span>
               </div>
 
@@ -384,6 +399,7 @@ export function UserActivityLogs({
                   type="button"
                   variant="outline"
                   size="sm"
+                  aria-label={t('activityLog:feed.previous')}
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page <= 1}
                   className="h-7 w-7 p-0 rounded border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 cursor-pointer"
@@ -399,6 +415,7 @@ export function UserActivityLogs({
                   type="button"
                   variant="outline"
                   size="sm"
+                  aria-label={t('activityLog:feed.next')}
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page >= totalPages}
                   className="h-7 w-7 p-0 rounded border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 cursor-pointer"

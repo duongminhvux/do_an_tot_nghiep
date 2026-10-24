@@ -33,7 +33,8 @@
     "dictation_lessons": "Bài nghe",
     "dictation_structure": "Chủ đề & Phần",
     "exam_groups": "Nhóm đề thi",
-    "exams": "Đề thi"
+    "exams": "Đề thi",
+    "systemSettings": "Cấu hình hệ thống"
   },
   "nav.dashboard": "Bảng điều khiển",
   "nav.vocabulary": "Từ vựng",

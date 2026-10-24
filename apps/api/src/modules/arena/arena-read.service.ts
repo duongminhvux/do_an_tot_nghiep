@@ -1,5 +1,5 @@
 import { PgId } from '../../postgres/compat.js';
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectPgModel } from '../../postgres/compat.js';
 import { type Model, type PipelineStage } from '../../postgres/compat.js';
 import {
@@ -52,6 +52,16 @@ export class ArenaReadService {
     private readonly profiles: Model<ArenaProfile>,
     @InjectPgModel(User.name) private readonly users: Model<User>,
   ) {}
+
+  async getMatchAudio(userId: string, matchId: string) {
+    const playerId = this.userId(userId);
+    const id = this.userId(matchId);
+    const member = await this.players.findOne({ userId: playerId, matchId: id }).lean();
+    if (!member) throw new NotFoundException('ARENA_MATCH_NOT_FOUND');
+    const match = await this.matches.findById(id).lean();
+    if (!match) throw new NotFoundException('ARENA_MATCH_NOT_FOUND');
+    return match.audioSettings ?? {};
+  }
 
   /** Kiểm tra và chuyển user ID từ request sang PgId an toàn. */
   private userId(value: string) {

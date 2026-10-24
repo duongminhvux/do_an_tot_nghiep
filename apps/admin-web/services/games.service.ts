@@ -1,5 +1,12 @@
+export type GameAudioSettings = {
+  audioEnabled?: boolean;
+  backgroundMusicUrl?: string;
+  correctSoundUrl?: string;
+  wrongSoundUrl?: string;
+  loseSoundUrl?: string;
+};
 import apiClient from "@/lib/axios";
-export type TypingRushSettings = {
+export type TypingRushSettings = GameAudioSettings & {
   minWordCount: number;
   lives: number;
   maxLives: number;
@@ -12,7 +19,7 @@ export type MeaningTypingSettings = Omit<
   TypingRushSettings,
   "meaningDurationSeconds"
 > & { hintPercent: number };
-export type WordShooterSettings = {
+export type WordShooterSettings = GameAudioSettings & {
   minWordCount: number;
   wordsPerRound: number;
   roundDurationSeconds: number;

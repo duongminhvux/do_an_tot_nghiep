@@ -35,6 +35,7 @@ export function CreateUserDialog({
 }: CreateUserDialogProps) {
   const { t } = useTranslation('users');
   const [loading, setLoading] = useState(false);
+  const [failed, setFailed] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -47,6 +48,7 @@ export function CreateUserDialog({
 
     try {
       setLoading(true);
+      setFailed(false);
       await onSubmit({
         name: name.trim(),
         email: email.trim(),
@@ -62,14 +64,14 @@ export function CreateUserDialog({
       setStatus('active');
       onOpenChange(false);
     } catch (err) {
-      console.error(err);
+      setFailed(true);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(value) => { setFailed(false); onOpenChange(value); }}>
       <DialogContent className="sm:max-w-[480px] rounded">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
@@ -162,11 +164,12 @@ export function CreateUserDialog({
             </div>
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          {failed && <p role="alert" className="text-xs text-red-600">{t("messages.create_failed")}</p>}
+        <DialogFooter className="gap-2 sm:gap-0">
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={() => { setFailed(false); onOpenChange(false); }}
               disabled={loading}
               className="h-9 text-sm"
             >

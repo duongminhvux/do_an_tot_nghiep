@@ -1,3 +1,4 @@
+import type { GameAudioSettings } from "../shared/audio-settings";
 export type Difficulty = "EASY" | "NORMAL" | "HARD";
 export type SourceType = "SYSTEM" | "USER";
 export type WordSource = {
@@ -8,7 +9,7 @@ export type WordSource = {
   type: SourceType;
 };
 export type Sources = {
-  settings: {
+  settings: GameAudioSettings & {
     minWordCount: number;
     lives: number;
     maxLives: number;
@@ -28,7 +29,7 @@ export type StartRequest = {
 export type GameSession = {
   gameType: "MEANING_TYPING";
   difficulty: Difficulty;
-  config: {
+  config: GameAudioSettings & {
     lives: number;
     maxLives: number;
     initialFallSpeed: number;

@@ -1,3 +1,4 @@
+import type { GameAudioSettings } from "../shared/audio-settings";
 export type {
   GameStats,
   SourceType,
@@ -6,7 +7,7 @@ export type {
   ScoreRecord,
 } from "../typing-rush/types";
 import type { WordSource } from "../typing-rush/types";
-export type WordShooterSettings = {
+export type WordShooterSettings = GameAudioSettings & {
   minWordCount: number;
   wordsPerRound: number;
   roundDurationSeconds: number;

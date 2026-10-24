@@ -1,4 +1,5 @@
 "use client";
+import { GameAudioToggle } from "../shared/game-audio-toggle";
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
@@ -88,6 +89,9 @@ export function TypingRushPage() {
               {t("title")}
             </h1>
             <p className="truncate text-xs text-slate-500">{t("subtitle")}</p>
+          </div>
+          <div className="ml-auto">
+            <GameAudioToggle enabled={session.data.config.audioEnabled !== false} />
           </div>
         </header>
         {error && <ErrorState message={error} className="shrink-0 py-2" />}

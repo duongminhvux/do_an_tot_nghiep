@@ -1,5 +1,6 @@
 export const ARENA_DEFAULTS = {
   maintenance: false,
+  audio: { audioEnabled: true, backgroundMusicUrl: '', correctSoundUrl: '', wrongSoundUrl: '', loseSoundUrl: '' },
   ranked: {
     enabled: true,
     defaultRating: 1000,

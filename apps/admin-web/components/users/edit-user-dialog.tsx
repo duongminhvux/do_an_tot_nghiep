@@ -37,6 +37,7 @@ export function EditUserDialog({
 }: EditUserDialogProps) {
   const { t } = useTranslation('users');
   const [loading, setLoading] = useState(false);
+  const [failed, setFailed] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -57,6 +58,7 @@ export function EditUserDialog({
 
     try {
       setLoading(true);
+      setFailed(false);
       await onSubmit(user.id, {
         name: name.trim(),
         email: email.trim(),
@@ -65,7 +67,7 @@ export function EditUserDialog({
       });
       onOpenChange(false);
     } catch (err) {
-      console.error(err);
+      setFailed(true);
     } finally {
       setLoading(false);
     }
@@ -74,7 +76,7 @@ export function EditUserDialog({
   if (!user) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(value) => { setFailed(false); onOpenChange(value); }}>
       <DialogContent className="sm:max-w-[480px] rounded">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
@@ -152,11 +154,12 @@ export function EditUserDialog({
             </div>
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          {failed && <p role="alert" className="text-xs text-red-600">{t("messages.update_failed")}</p>}
+        <DialogFooter className="gap-2 sm:gap-0">
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={() => { setFailed(false); onOpenChange(false); }}
               disabled={loading}
               className="h-9 text-sm"
             >

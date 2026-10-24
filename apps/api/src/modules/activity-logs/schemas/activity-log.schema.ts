@@ -33,8 +33,10 @@ export class ActivityLog {
     index: true })
   category!: ActivityCategory;
 
-  @PgField({ type: String, required: true })
+  @PgField({ type: String, default: '' })
   description!: string;
+  @PgField() descriptionKey?: string;
+  @PgField({ type: Object }) descriptionArgs?: Record<string, unknown>;
 
   @PgField({ type: PgSchemaDefinition.Types.Mixed, default: {} })
   metadata?: Record<string, any>;

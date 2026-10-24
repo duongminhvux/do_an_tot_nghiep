@@ -1,4 +1,5 @@
 "use client";
+import { GameAudioToggle } from "@/features/minigames/shared/game-audio-toggle";
 
 import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft, Delete, Send, Sparkles, Trophy } from "lucide-react";
@@ -36,7 +37,11 @@ export function WordGuessMatch({
   vi,
   leave,
   backToRoom,
+  onAudioAnswer,
+  audioEnabled,
 }: {
+  audioEnabled: boolean;
+  onAudioAnswer: (correct: boolean) => void;
   matchId: string;
   userId: string;
   room: FriendSnapshot;
@@ -116,12 +121,14 @@ export function WordGuessMatch({
     setBusy(true);
     setNotice("");
     try {
-      apply(
-        await friendlyRequest<GuessState>("word-guess:submit", {
-          matchId,
-          word,
-        }),
-      );
+      const updated = await friendlyRequest<GuessState>("word-guess:submit", {
+        matchId,
+        word,
+      });
+      const latest = updated.attempts.at(-1);
+      if (latest && updated.attempts.length > attempts.length)
+        onAudioAnswer(latest.feedback.every((tile) => tile === "correct"));
+      apply(updated);
       setWord("");
     } catch (error) {
       const reason = error instanceof Error ? error.message : "Request failed";
@@ -158,6 +165,7 @@ export function WordGuessMatch({
     <main className="min-h-[calc(100dvh-3.5rem)] bg-background px-3 py-6 text-slate-800 sm:px-6">
       <div className="mx-auto max-w-5xl">
         <header className="mb-6 flex items-center justify-between gap-3">
+          <GameAudioToggle enabled={audioEnabled} />
           <Button
             variant="outline"
             onClick={() => (finished ? void leave() : setExitOpen(true))}

@@ -28,6 +28,9 @@ export type ActivityCategory =
 export type ActivityStatus = 'SUCCESS' | 'FAILED' | 'INFO' | 'WARNING';
 
 export interface ActivityLogItem {
+  source?: 'LEARNING' | 'INTERACTION';
+  descriptionKey?: string;
+  descriptionArgs?: Record<string, unknown>;
   _id: string;
   userId?: string;
   userEmail?: string;
@@ -57,6 +60,7 @@ export interface ActivityLogsResponse {
 }
 
 export interface QueryActivityLogsParams {
+  includeLearning?: boolean;
   page?: number;
   limit?: number;
   search?: string;

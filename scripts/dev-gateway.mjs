@@ -9,7 +9,7 @@ const routes=[
 [/^\/api\/(?:exams|admin\/exams|exam-groups|admin\/exam-groups|admin\/questions|attempts|admin\/attempts)(?:\/|$)/,'assessment'],
 [/^\/api\/(?:arena|admin\/arena)(?:\/|$)/,'arena'],
 [/^\/api\/(?:learning|learning-activity|progress|reviews|sessions|admin\/dashboard|minigames|admin\/minigames|admin\/games)(?:\/|$)/,'learning'],
-[/^\/api\/(?:admin\/audio|admin\/asr|admin\/infrastructure|tts|asr)(?:\/|$)/,'media-jobs'],
+[/^\/api\/(?:site-settings|admin\/site-settings|admin\/audio|admin\/asr|admin\/infrastructure|tts|asr)(?:\/|$)/,'media-jobs'],
 [/^\/api\/(?:activity-logs|admin\/activity-logs)(?:\/|$)/,'notification'],
 ];
 const defaultPorts={'identity':5001,'content':5002,'assessment':5003,'arena':5004,'learning':5005,

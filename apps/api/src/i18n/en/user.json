@@ -18,5 +18,6 @@
   "ACCOUNT_CREATED_EVENT": "Account created",
   "LEARN_WORD_EVENT": "Learned new word: {word}",
   "STATUS_BANNED": "Banned",
-  "STATUS_ACTIVE": "Active"
+  "STATUS_ACTIVE": "Active",
+  "LAST_ACTIVITY": "Last recorded activity"
 }

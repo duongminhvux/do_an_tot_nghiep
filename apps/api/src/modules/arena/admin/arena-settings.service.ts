@@ -26,7 +26,7 @@ export class ArenaSettingsService implements OnModuleInit {
     const row = await this.model.findOne({ key: 'global' }).lean();
     return {
       revision: row?.revision ?? 0,
-      config: row?.config ?? structuredClone(ARENA_DEFAULTS) };
+      config: { ...structuredClone(ARENA_DEFAULTS), ...row?.config, audio: { ...ARENA_DEFAULTS.audio, ...row?.config?.audio } } };
   }
   async current() {
     return (await this.read()).config;
@@ -44,10 +44,12 @@ export class ArenaSettingsService implements OnModuleInit {
     return config;
   }
   async update(dto: UpdateArenaSettingsDto) {
+    const before = await this.read();
+    const config = { ...dto.config, audio: { ...before.config.audio, ...dto.config.audio } };
     const row = await this.model
       .findOneAndUpdate(
         { key: 'global', revision: dto.revision },
-        { $set: { config: dto.config }, $inc: { revision: 1 } },
+        { $set: { config }, $inc: { revision: 1 } },
         { returnDocument: 'after', runValidators: true },
       )
       .lean();

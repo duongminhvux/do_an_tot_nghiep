@@ -31,7 +31,7 @@ export function TypingRushGame({
   starting: boolean;
 }) {
   const { t } = useTranslation("minigames");
-  const { state, countdown, submit, pause, resume, resize } =
+  const { state, countdown, submit, pause, resume, resize, playWrong } =
     useTypingRush(session);
   const [progress, setProgress] = useState<TypingProgress>({ answer: "" });
   const progressRef = useRef<TypingProgress>({ answer: "" });
@@ -99,10 +99,18 @@ export function TypingRushGame({
         finishTyping(
           advanceTypingProgress(remaining, { answer: "" }, character),
         );
-      } else finishTyping(next);
+      } else {
+        if (next.answer.length <= current.answer.length) playWrong();
+        finishTyping(next);
+      }
     },
     onReset: () => updateProgress({ answer: "" }),
-    onConfirm: () => finishTyping(progressRef.current, true),
+    onConfirm: () => {
+      const current = progressRef.current;
+      if (current.answer && !completedTypingTarget(state.words, current, true))
+        playWrong();
+      finishTyping(current, true);
+    },
     onCycle: (direction) =>
       updateProgress(
         cycleTypingTarget(state.words, progressRef.current, direction),

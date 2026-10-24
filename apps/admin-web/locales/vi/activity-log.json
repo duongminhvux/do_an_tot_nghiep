@@ -8,7 +8,8 @@
     "search_placeholder": "Tìm kiếm theo email, tên hoặc nội dung...",
     "start_date": "Từ ngày",
     "end_date": "Đến ngày",
-    "reset": "Đặt lại bộ lọc"
+    "reset": "Đặt lại bộ lọc",
+    "no_logs": "Không tìm thấy hoạt động phù hợp."
   },
   "columns": {
     "user": "Người dùng",
@@ -35,7 +36,14 @@
     "DICTATION_SUBMIT": "Nộp bài chép chính tả",
     "TOEIC_START": "Bắt đầu làm đề TOEIC",
     "TOEIC_SUBMIT": "Nộp bài thi TOEIC",
-    "CUSTOM": "Hoạt động tùy chỉnh"
+    "CUSTOM": "Hoạt động tùy chỉnh",
+    "WORD_LEARNED": "Học từ mới",
+    "WORD_REVIEWED": "Ôn tập từ vựng",
+    "VOCAB_SESSION": "Hoàn thành phiên học từ vựng",
+    "DICTATION_LESSON": "Hoàn thành bài nghe chép chính tả",
+    "TOEIC_ATTEMPT": "Hoàn thành bài thi TOEIC",
+    "ARENA_MATCH": "Kết thúc trận Đấu trường",
+    "MINIGAME_PLAY": "Chơi trò chơi"
   },
   "categories": {
     "AUTH": "Xác thực & Tài khoản",
@@ -43,7 +51,9 @@
     "VOCABULARY": "Học từ vựng",
     "DICTATION": "Nghe chép chính tả",
     "ASSESSMENT": "Luyện thi TOEIC",
-    "GENERAL": "Chung"
+    "GENERAL": "Chung",
+    "ARENA": "Đấu trường từ vựng",
+    "MINIGAME": "Trò chơi"
   },
   "status": {
     "SUCCESS": "Thành công",
@@ -59,5 +69,27 @@
     "category_distribution": "Phân bố theo phân hệ",
     "activity_timeline": "Biểu đồ tần suất hoạt động",
     "most_active_users": "Người dùng tích cực nhất"
+  },
+  "feed": {
+    "refresh": "Làm mới",
+    "loading": "Đang tải lịch sử hoạt động...",
+    "empty": "Chưa có hoạt động được ghi nhận theo bộ lọc đã chọn.",
+    "error": "Không tải được lịch sử hoạt động. Vui lòng thử lại.",
+    "total": "Tổng số: {{count}} hoạt động",
+    "previous": "Trang trước",
+    "next": "Trang tiếp",
+    "source_learning": "Kết quả học tập",
+    "source_interaction": "Tương tác hệ thống",
+    "score": "Điểm: {{score}}",
+    "xp": "{{xp}} XP",
+    "accuracy": "Đúng: {{correct}}/{{total}}",
+    "win": "Thắng",
+    "loss": "Thua",
+    "draw": "Hòa",
+    "gameTypes": {
+      "WORD_SHOOTER": "Bắn từ vựng",
+      "TYPING_RUSH": "Luyện gõ từ vựng",
+      "MEANING_TYPING": "Gõ từ theo nghĩa"
+    }
   }
 }

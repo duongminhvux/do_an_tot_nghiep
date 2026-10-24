@@ -91,5 +91,17 @@
   "roundDurationSeconds": "Round duration (seconds)",
   "roundDurationSecondsHint": "Between 3 and 120 seconds. A correct shot resets this timer.",
   "wrongShotPenaltySeconds": "Wrong-shot penalty (seconds)",
-  "wrongShotPenaltySecondsHint": "Between 1 and 60 seconds, less than the round duration. Running out of time ends the game."
+  "wrongShotPenaltySecondsHint": "Between 1 and 60 seconds, less than the round duration. Running out of time ends the game.",
+  "audioTitle": "Game audio",
+  "audioHint": "Upload audio up to 50 MB, or paste an http(s) URL or /audio/ path. Leave blank to disable that sound. Applies to new games.",
+  "backgroundMusicUrl": "Background music",
+  "correctSoundUrl": "Correct answer sound",
+  "wrongSoundUrl": "Wrong answer sound",
+  "loseSoundUrl": "Game over sound",
+  "audioUpload": "Upload audio",
+  "audioUploadError": "Could not upload audio. Choose an audio file up to 50 MB and try again.",
+  "audioRemove": "Remove audio",
+  "audioPreviewError": "Cannot play this audio. Check the URL or choose another file.",
+  "audioEnabled": "Enable audio for players",
+  "audioEnabledHint": "Disable all audio in new games while keeping configured files. Players can also mute audio themselves when this is enabled."
 }

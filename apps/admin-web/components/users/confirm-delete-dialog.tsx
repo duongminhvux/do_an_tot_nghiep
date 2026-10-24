@@ -29,23 +29,25 @@ export function ConfirmDeleteDialog({
 }: ConfirmDeleteDialogProps) {
   const { t } = useTranslation('users');
   const [loading, setLoading] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   if (!user) return null;
 
   const handleConfirm = async () => {
     try {
       setLoading(true);
+      setFailed(false);
       await onConfirm(user.id);
       onOpenChange(false);
     } catch (err) {
-      console.error(err);
+      setFailed(true);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(value) => { setFailed(false); onOpenChange(value); }}>
       <DialogContent className="sm:max-w-[420px] rounded">
         <DialogHeader>
           <div className="flex items-center gap-2.5">
@@ -67,11 +69,12 @@ export function ConfirmDeleteDialog({
           </div>
         </DialogHeader>
 
+        {failed && <p role="alert" className="text-xs text-red-600">{t("messages.delete_failed")}</p>}
         <DialogFooter className="gap-2 sm:gap-0 mt-4">
           <Button
             type="button"
             variant="outline"
-            onClick={() => onOpenChange(false)}
+            onClick={() => { setFailed(false); onOpenChange(false); }}
             disabled={loading}
             className="h-9 text-sm"
           >

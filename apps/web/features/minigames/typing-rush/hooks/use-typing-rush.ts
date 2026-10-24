@@ -1,10 +1,12 @@
 "use client";
+import { useGameAudio } from "../../shared/use-game-audio";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { TypingRushEngine } from "../engine/typing-rush-engine";
 import type { GameSession } from "../types";
 export function useTypingRush(session: GameSession) {
   const engine = useMemo(() => new TypingRushEngine(session), [session]);
   const [state, setState] = useState(() => engine.snapshot());
+  const playWrong = useGameAudio(session.config, state);
   const [countdown, setCountdown] = useState<number | null>(null);
   const sync = useCallback(() => setState(engine.snapshot()), [engine]);
   const pause = useCallback(() => {
@@ -63,7 +65,9 @@ export function useTypingRush(session: GameSession) {
     };
   }, [engine, pause, resume, countdown]);
   const submit = (answer: string, targetId?: string) => {
+    const running = engine.snapshot().status === "RUNNING";
     const hit = engine.submit(answer, targetId);
+    if (running && answer.trim() && !hit) playWrong();
     sync();
     return hit;
   };
@@ -74,5 +78,5 @@ export function useTypingRush(session: GameSession) {
     },
     [engine, sync],
   );
-  return { state, countdown, pause, resume, submit, resize };
+  return { state, countdown, pause, resume, submit, resize, playWrong };
 }

@@ -52,6 +52,11 @@ export class MiniGameController {
       gameType: MiniGameType.TYPING_RUSH,
       difficulty: dto.difficulty,
       config: {
+        audioEnabled: settings.audioEnabled,
+        backgroundMusicUrl: settings.backgroundMusicUrl,
+        correctSoundUrl: settings.correctSoundUrl,
+        wrongSoundUrl: settings.wrongSoundUrl,
+        loseSoundUrl: settings.loseSoundUrl,
         lives: settings.lives,
         maxLives: settings.maxLives,
         initialFallSpeed: settings.initialFallSpeed,

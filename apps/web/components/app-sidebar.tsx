@@ -1,4 +1,6 @@
 'use client';
+import { SiteLogo } from "@/components/site-logo";
+import { useSiteSettings } from "@/providers/site-settings-provider";
 
 import React, { useState } from 'react';
 import Link from 'next/link';
@@ -45,6 +47,7 @@ import { authService } from '@/services';
 import { cn } from '@/lib/utils';
 
 export function AppSidebar() {
+  const siteSettings = useSiteSettings();
   const router = useRouter();
   const pathname = usePathname();
   const params = useParams();
@@ -103,12 +106,12 @@ export function AppSidebar() {
       <SidebarHeader className="border-b border-slate-100 px-3.5 h-16 flex items-center justify-between">
         <div className="flex items-center gap-3 min-w-0 w-full">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm">
-            <BookOpen className="h-5 w-5" />
+            <SiteLogo compact fallback={<BookOpen className="h-5 w-5" />} />
           </div>
           <div className="flex flex-col overflow-hidden group-data-[collapsible=icon]:hidden">
             <div className="flex items-center gap-1.5">
               <span className="font-bold text-base tracking-tight text-slate-900 truncate">
-                {t('brand', 'Daily English')}
+                <SiteLogo fallback={siteSettings.siteName} />
               </span>
               <span className="text-[11px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 shrink-0">
                 {t('student', 'Học viên')}

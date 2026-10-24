@@ -1,5 +1,12 @@
+export type GameAudioSettings = {
+  audioEnabled?: boolean;
+  backgroundMusicUrl?: string;
+  correctSoundUrl?: string;
+  wrongSoundUrl?: string;
+  loseSoundUrl?: string;
+};
 import { MiniGameType } from './minigame.types.js';
-export type TypingRushSettings = {
+export type TypingRushSettings = GameAudioSettings & {
   minWordCount: number;
   lives: number;
   maxLives: number;
@@ -8,7 +15,7 @@ export type TypingRushSettings = {
   heartEveryWords: number;
   meaningDurationSeconds: number;
 };
-export type MeaningTypingSettings = {
+export type MeaningTypingSettings = GameAudioSettings & {
   minWordCount: number;
   lives: number;
   maxLives: number;
@@ -18,6 +25,11 @@ export type MeaningTypingSettings = {
   hintPercent: number;
 };
 export const TYPING_RUSH_DEFAULT_SETTINGS: TypingRushSettings = {
+  audioEnabled: true,
+  backgroundMusicUrl: '',
+  correctSoundUrl: '',
+  wrongSoundUrl: '',
+  loseSoundUrl: '',
   minWordCount: 10,
   lives: 3,
   maxLives: 3,
@@ -26,6 +38,11 @@ export const TYPING_RUSH_DEFAULT_SETTINGS: TypingRushSettings = {
   heartEveryWords: 20,
   meaningDurationSeconds: 3 };
 export const MEANING_TYPING_DEFAULT_SETTINGS: MeaningTypingSettings = {
+  audioEnabled: true,
+  backgroundMusicUrl: '',
+  correctSoundUrl: '',
+  wrongSoundUrl: '',
+  loseSoundUrl: '',
   minWordCount: 10,
   lives: 3,
   maxLives: 3,
@@ -33,13 +50,18 @@ export const MEANING_TYPING_DEFAULT_SETTINGS: MeaningTypingSettings = {
   spawnInterval: 1900,
   heartEveryWords: 20,
   hintPercent: 35 };
-export type WordShooterSettings = {
+export type WordShooterSettings = GameAudioSettings & {
   minWordCount: number;
   wordsPerRound: number;
   roundDurationSeconds: number;
   wrongShotPenaltySeconds: number;
 };
 export const WORD_SHOOTER_DEFAULT_SETTINGS: WordShooterSettings = {
+  audioEnabled: true,
+  backgroundMusicUrl: '',
+  correctSoundUrl: '',
+  wrongSoundUrl: '',
+  loseSoundUrl: '',
   minWordCount: 10,
   wordsPerRound: 6,
   roundDurationSeconds: 12,

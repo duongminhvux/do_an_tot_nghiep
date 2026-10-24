@@ -1,4 +1,6 @@
 'use client';
+import { SiteLogo } from "@/components/site-logo";
+import { useSiteSettings } from "@/providers/site-settings-provider";
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
@@ -17,6 +19,7 @@ function AdminLoginForm() {
   const locale = (params?.locale as string) || 'vi';
   const dispatch = useAppDispatch();
   const { t } = useTranslation('auth');
+  const siteSettings = useSiteSettings();
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -82,8 +85,9 @@ function AdminLoginForm() {
       {/* Header */}
       <div className="text-center">
         <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-blue-600 text-white shadow-md shadow-blue-500/25 mb-3">
-          <Shield className="w-6 h-6" />
+          <SiteLogo compact fallback={<Shield className="w-6 h-6" />} />
         </div>
+        <p className="mb-1 text-sm font-semibold text-slate-600">{siteSettings.siteName}</p>
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">
           {t('login.title')}
         </h1>

@@ -1,4 +1,6 @@
 "use client";
+import { SiteLogo } from "@/components/site-logo";
+import { useSiteSettings } from "@/providers/site-settings-provider";
 
 import React from "react";
 import Link from "next/link";
@@ -64,6 +66,7 @@ const subMenuClass =
   "h-8 gap-2 rounded-md px-2 text-xs font-medium text-slate-600 transition-colors hover:bg-blue-50 hover:text-blue-600 data-[active=true]:bg-blue-50 data-[active=true]:font-semibold data-[active=true]:text-blue-600 [&>svg]:size-3.5 [&>svg]:shrink-0";
 
 export function AppSidebar() {
+  const siteSettings = useSiteSettings();
   const router = useRouter();
   const pathname = usePathname();
   const params = useParams();
@@ -157,9 +160,13 @@ export function AppSidebar() {
           label: t("nav.curriculum"),
           href: `/${locale}/vocabulary/groups`,
           icon: Layers,
-          active:
-            active(`/${locale}/vocabulary/groups`) ||
-            active(`/${locale}/vocabulary/collections`),
+          active: active(`/${locale}/vocabulary/groups`),
+        },
+        {
+          label: t("nav.collections"),
+          href: `/${locale}/vocabulary/collections`,
+          icon: FolderTree,
+          active: active(`/${locale}/vocabulary/collections`),
         },
         {
           label: t("nav.dictionary"),
@@ -211,6 +218,12 @@ export function AppSidebar() {
         },
       ],
     },
+    {
+      label: t("nav.systemSettings"),
+      href: `/${locale}/settings`,
+      icon: Settings,
+      active: active(`/${locale}/settings`),
+    },
   ];
 
   return (
@@ -219,12 +232,12 @@ export function AppSidebar() {
       <SidebarHeader className="border-b border-slate-100 px-2 h-14 flex items-center justify-between">
         <div className="flex items-center gap-2.5 min-w-0 w-full">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm shadow-blue-500/20">
-            <Shield className="h-4.5 w-4.5" />
+            <SiteLogo compact fallback={<Shield className="h-4.5 w-4.5" />} />
           </div>
           <div className="flex flex-col overflow-hidden group-data-[collapsible=icon]:hidden">
             <div className="flex items-center gap-1.5">
               <span className="font-bold text-sm tracking-tight text-slate-900 truncate">
-                {t("brand")}
+                <SiteLogo fallback={siteSettings.siteName} />
               </span>
               <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 shrink-0">
                 {t("admin")}

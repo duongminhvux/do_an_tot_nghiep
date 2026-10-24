@@ -127,7 +127,9 @@
       "title": "Ghi chú",
       "placeholder": "Thêm ghi chú...",
       "save": "Lưu",
-      "saved": "Đã lưu"
+      "saved": "Đã lưu",
+      "error": "Không lưu được ghi chú. Vui lòng thử lại.",
+      "saving": "Đang lưu..."
     },
     "courses_title": "Khóa học đang tham gia",
     "courses_count": "khóa",
@@ -170,7 +172,7 @@
       "study_time_sub": "Tương đương ~{{minutes}} phút"
     },
     "activity_log": {
-      "heading": "Nhật ký tương tác tài khoản",
+      "heading": "Lịch sử hoạt động người dùng",
       "empty": "Không có nhật ký"
     },
     "security": {
@@ -197,5 +199,11 @@
       "delete_desc": "Xóa toàn bộ dữ liệu học tập và thông tin cá nhân khỏi hệ thống",
       "delete_btn": "Xóa tài khoản"
     }
+  },
+  "messages": {
+    "create_failed": "Không tạo được người dùng. Kiểm tra thông tin và thử lại.",
+    "update_failed": "Không cập nhật được người dùng. Vui lòng thử lại.",
+    "ban_failed": "Không thay đổi được trạng thái tài khoản. Vui lòng thử lại.",
+    "delete_failed": "Không xóa được tài khoản. Vui lòng thử lại."
   }
 }

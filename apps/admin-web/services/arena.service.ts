@@ -1,3 +1,4 @@
+import type { GameAudioSettings } from "./games.service";
 import apiClient from "@/lib/axios";
 export interface ArenaUser {
   _id: string;
@@ -122,6 +123,7 @@ export interface PlayerDetail {
   ratingHistory: Paged<ArenaRating>;
 }
 export interface ArenaConfig {
+  audio?: GameAudioSettings;
   maintenance: boolean;
   ranked: {
     enabled: boolean;

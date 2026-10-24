@@ -260,18 +260,35 @@ export default function WordsPage() {
     }
   };
 
-  // Helper to extract first English definition
-  const getEnglishMeaning = (item: WordListItem) => {
-    if (!item.parts || item.parts.length === 0) return '—';
-    const defs: string[] = [];
+  // Helper to build structured meanings for display
+  const getMeaningSummary = (item: WordListItem) => {
+    if (!item.parts || item.parts.length === 0) return null;
+    const result: { pos: string; translations: string[]; definition?: string }[] = [];
     for (const part of item.parts) {
+      const translations = new Set<string>();
+      let definition: string | undefined;
       for (const m of part.meanings || []) {
-        if (m.definition?.trim()) {
-          defs.push(m.definition.trim());
-        }
+        (m.translation || []).forEach((s) => {
+          if (s?.trim()) translations.add(s.trim());
+        });
+        if (!definition && m.definition?.trim()) definition = m.definition.trim();
+      }
+      if (translations.size > 0 || definition) {
+        result.push({ pos: part.partOfSpeech || '—', translations: [...translations], definition });
       }
     }
-    return defs.length > 0 ? defs.join('; ') : '—';
+    return result.length > 0 ? result : null;
+  };
+
+  const getAudioStatus = (item: WordListItem, accent: 'us' | 'uk') =>
+    item.audioMeta?.[accent]?.status || (item.audio?.[accent] ? 'READY' : 'NONE');
+
+  const AUDIO_STATUS_DOT: Record<string, string> = {
+    READY: 'bg-emerald-500',
+    PROCESSING: 'bg-blue-500 animate-pulse',
+    STALE: 'bg-amber-500',
+    FAILED: 'bg-rose-500',
+    NONE: 'bg-slate-300',
   };
 
   return (
@@ -534,10 +551,8 @@ export default function WordsPage() {
                     className="w-4 h-4 text-blue-600 rounded-sm border-slate-300 focus:ring-blue-500 cursor-pointer"
                   />
                 </th>
-                <th className="py-4 px-4 min-w-[140px]">{t('th_word')}</th>
-                <th className="py-4 px-4 min-w-[200px]">{t('th_phonetic')}</th>
-                <th className="py-4 px-4 min-w-[170px]">Audio</th>
-                <th className="py-4 px-4 min-w-[260px]">{t('th_meanings')}</th>
+                <th className="py-4 px-4 min-w-[220px]">{t('th_word_phonetic')}</th>
+                <th className="py-4 px-4 min-w-[340px]">{t('th_meanings')}</th>
                 <th className="py-4 px-4 min-w-[100px] text-center">{t('th_level')}</th>
                 <th className="py-4 px-4 min-w-[120px] text-center">{t('th_status')}</th>
                 <th className="py-4 px-4 min-w-[130px] text-right">{t('th_actions')}</th>
@@ -547,7 +562,7 @@ export default function WordsPage() {
             <tbody className="divide-y divide-slate-100 text-sm">
               {isLoading ? (
                 <tr>
-                  <td colSpan={8} className="py-20 text-center text-slate-400">
+                  <td colSpan={6} className="py-20 text-center text-slate-400">
                     <div className="flex flex-col items-center justify-center gap-3">
                       <Loader2 className="w-7 h-7 animate-spin text-blue-600" />
                       <span className="text-sm">{t('loading_words')}</span>
@@ -556,7 +571,7 @@ export default function WordsPage() {
                 </tr>
               ) : wordList.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-16 text-center text-slate-400">
+                  <td colSpan={6} className="py-16 text-center text-slate-400">
                     <p className="text-base font-medium text-slate-600">
                       {t('no_words_found')}
                     </p>
@@ -586,76 +601,79 @@ export default function WordsPage() {
                         />
                       </td>
 
-                      {/* Word */}
-                      <td className="py-4 px-4 font-bold text-slate-900 tracking-tight text-base">
-                        {item.word}
-                      </td>
-
-                      {/* Phonetic (US / UK) */}
-                      <td className="py-4 px-4">
-                        <div className="space-y-1 text-xs">
-                          {item.ipa?.us ? (
-                            <div className="flex items-center gap-1.5 text-slate-600">
-                              <button
-                                type="button"
-                                onClick={() => playAudio(item.audio?.us)}
-                                disabled={!item.audio?.us}
-                                title={item.audio?.us ? t('play_us') : t('no_audio')}
-                                className="text-blue-500 hover:text-blue-700 disabled:opacity-30 disabled:hover:text-blue-500 transition-colors cursor-pointer disabled:cursor-not-allowed"
-                              >
-                                <Volume2 className="w-3.5 h-3.5" />
-                              </button>
-                              <span className="font-mono text-slate-700">{item.ipa.us}</span>
-                              <span className="text-slate-400 text-[11px]">(US)</span>
-                            </div>
-                          ) : null}
-
-                          {item.ipa?.uk ? (
-                            <div className="flex items-center gap-1.5 text-slate-600">
-                              <button
-                                type="button"
-                                onClick={() => playAudio(item.audio?.uk)}
-                                disabled={!item.audio?.uk}
-                                title={item.audio?.uk ? t('play_uk') : t('no_audio')}
-                                className="text-blue-500 hover:text-blue-700 disabled:opacity-30 disabled:hover:text-blue-500 transition-colors cursor-pointer disabled:cursor-not-allowed"
-                              >
-                                <Volume2 className="w-3.5 h-3.5" />
-                              </button>
-                              <span className="font-mono text-slate-700">{item.ipa.uk}</span>
-                              <span className="text-slate-400 text-[11px]">(UK)</span>
-                            </div>
-                          ) : null}
-
-                          {!item.ipa?.us && !item.ipa?.uk && (
+                      {/* Word + Phonetic (US / UK) + audio status */}
+                      <td className="py-3.5 px-4">
+                        <div className="text-base font-bold tracking-tight text-slate-900">{item.word}</div>
+                        <div className="mt-1 space-y-0.5 text-xs">
+                          {(['us', 'uk'] as const).map((accent) => {
+                            const ipa = item.ipa?.[accent];
+                            const audioUrl = item.audio?.[accent];
+                            if (!ipa && !audioUrl) return null;
+                            const status = getAudioStatus(item, accent);
+                            return (
+                              <div key={accent} className="flex items-center gap-1.5 text-slate-600">
+                                <button
+                                  type="button"
+                                  onClick={() => playAudio(audioUrl)}
+                                  disabled={!audioUrl}
+                                  title={audioUrl ? t(accent === 'us' ? 'play_us' : 'play_uk') : t('no_audio')}
+                                  className="text-blue-500 hover:text-blue-700 disabled:opacity-30 disabled:hover:text-blue-500 transition-colors cursor-pointer disabled:cursor-not-allowed"
+                                >
+                                  <Volume2 className="w-3.5 h-3.5" />
+                                </button>
+                                <span className="w-6 text-[10px] font-semibold uppercase text-slate-400">{accent}</span>
+                                <span className="font-mono text-slate-700">{ipa || '—'}</span>
+                                <span
+                                  className={`h-1.5 w-1.5 shrink-0 rounded-full ${AUDIO_STATUS_DOT[status] || AUDIO_STATUS_DOT.NONE}`}
+                                  title={t('audio_status_tooltip', { accent: accent.toUpperCase(), status })}
+                                />
+                              </div>
+                            );
+                          })}
+                          {!item.ipa?.us && !item.ipa?.uk && !item.audio?.us && !item.audio?.uk && (
                             <span className="text-slate-400">—</span>
                           )}
                         </div>
                       </td>
 
-                      <td className="py-4 px-4">
-                        <div className="space-y-1.5">
-                          {(['us', 'uk'] as const).map((accent) => {
-                            const meta = item.audioMeta?.[accent];
-                            const status = meta?.status || (item.audio?.[accent] ? 'READY' : 'NONE');
-                            return (
-                              <div key={accent} className="flex items-center gap-2 text-xs">
-                                <button type="button" disabled={!item.audio?.[accent]} onClick={() => playAudio(item.audio?.[accent])} className="text-blue-600 disabled:text-slate-300"><Volume2 className="h-3.5 w-3.5" /></button>
-                                <span className="w-5 font-semibold uppercase text-slate-500">{accent}</span>
-                                <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${status === 'READY' ? 'bg-emerald-100 text-emerald-700' : status === 'STALE' ? 'bg-amber-100 text-amber-700' : status === 'FAILED' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-500'}`}>{status}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </td>
-
-                      {/* Meanings (EN) */}
-                      <td className="py-4 px-4 max-w-sm">
-                        <p
-                          className="text-slate-600 text-sm line-clamp-2 leading-relaxed"
-                          title={getEnglishMeaning(item)}
-                        >
-                          {getEnglishMeaning(item)}
-                        </p>
+                      {/* Meanings: VI translation first, EN definition below */}
+                      <td className="py-3.5 px-4">
+                        {(() => {
+                          const summary = getMeaningSummary(item);
+                          if (!summary) return <span className="text-slate-400">—</span>;
+                          return (
+                            <div className="w-[360px] max-w-[360px] space-y-1.5">
+                              {summary.slice(0, 3).map((entry, idx) => {
+                                const primary = entry.translations.length > 0
+                                  ? entry.translations.join(', ')
+                                  : entry.definition;
+                                const secondary = entry.translations.length > 0 ? entry.definition : undefined;
+                                return (
+                                  <div key={idx} className="flex min-w-0 items-start gap-1.5 leading-snug">
+                                    <span className="mt-0.5 w-12 shrink-0 truncate rounded bg-blue-50 px-1.5 py-0.5 text-center text-[10px] font-bold uppercase text-blue-600">
+                                      {entry.pos}
+                                    </span>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="truncate text-sm text-slate-700" title={primary}>
+                                        {primary}
+                                      </p>
+                                      {secondary && (
+                                        <p className="truncate text-xs italic text-slate-400" title={secondary}>
+                                          {secondary}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                              {summary.length > 3 && (
+                                <span className="text-[11px] text-slate-400">
+                                  {t('more_pos', { n: summary.length - 3 })}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       {/* Level */}
