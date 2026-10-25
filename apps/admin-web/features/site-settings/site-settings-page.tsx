@@ -19,6 +19,7 @@ import {
 import type { SiteSettings } from "@repo/shared-types/site-settings";
 import { siteSettingsService } from "@/services/site-settings.service";
 import { uploadService } from "@/services/upload.service";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 const control =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100";
 const button =
@@ -156,20 +157,22 @@ function SettingsForm({ initial }: { initial: SiteSettings }) {
                 onChange={(event) => setTimezoneSearch(event.target.value)}
                 disabled={!timezoneQuery.data}
               />
-              <select
-                id="site-timezone"
-                className={control}
-                required
-                aria-label={t("timezone")}
+              <Select
                 value={settings.timezone}
-                disabled={!timezoneQuery.data}
-                onChange={(event) => change({ timezone: event.target.value })}
+                onValueChange={(timezone) => change({ timezone })}
+                disabled={!timezoneQuery.data || timezoneQuery.isPending}
               >
-                {!timezoneQuery.data && <option value={settings.timezone}>{settings.timezone}</option>}
-                {zones.map((zone) => (
-                  <option key={zone.value} value={zone.value}>{zone.label}</option>
-                ))}
-              </select>
+                <SelectTrigger id="site-timezone" aria-label={t("timezone")} className="w-full">
+                  <SelectValue placeholder={t("timezoneLoading")} />
+                </SelectTrigger>
+                <SelectContent className="max-h-72">
+                  {zones.map((zone) => (
+                    <SelectItem key={zone.value} value={zone.value}>
+                      {zone.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {timezoneQuery.isPending && <span role="status" className="block text-xs text-slate-500">{t("timezoneLoading")}</span>}
               {timezoneQuery.isError && (
                 <span role="alert" className="block text-xs text-red-600">

@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, OnModuleInit } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectPgModel } from '../../../postgres/compat.js';
 import { WsException } from '@nestjs/websockets';
 import type { Model } from '../../../postgres/compat.js';
@@ -26,7 +26,7 @@ export class ArenaSettingsService implements OnModuleInit {
     const row = await this.model.findOne({ key: 'global' }).lean();
     return {
       revision: row?.revision ?? 0,
-      config: { ...structuredClone(ARENA_DEFAULTS), ...row?.config, audio: { ...ARENA_DEFAULTS.audio, ...row?.config?.audio } } };
+      config: { ...structuredClone(ARENA_DEFAULTS), ...row?.config, hints: { ...ARENA_DEFAULTS.hints, ...row?.config?.hints }, rankedConnection: { ...ARENA_DEFAULTS.rankedConnection, ...row?.config?.rankedConnection }, audio: { ...ARENA_DEFAULTS.audio, ...row?.config?.audio } } };
   }
   async current() {
     return (await this.read()).config;
@@ -45,7 +45,11 @@ export class ArenaSettingsService implements OnModuleInit {
   }
   async update(dto: UpdateArenaSettingsDto) {
     const before = await this.read();
-    const config = { ...dto.config, audio: { ...before.config.audio, ...dto.config.audio } };
+    const config = { ...dto.config, hints: { ...before.config.hints, ...dto.config.hints }, rankedConnection: { ...before.config.rankedConnection, ...dto.config.rankedConnection }, audio: { ...before.config.audio, ...dto.config.audio } };
+    if (config.hints.maxPercent > 0 && config.hints.startAfterSeconds >= config.ranked.timePerQuestion)
+      throw new BadRequestException('Hints must start before the ranked question deadline');
+    if (config.rankedConnection.maxTotalPauseSeconds < config.rankedConnection.disconnectTimeoutSeconds)
+      throw new BadRequestException('Pause budget must cover at least one disconnect timeout');
     const row = await this.model
       .findOneAndUpdate(
         { key: 'global', revision: dto.revision },

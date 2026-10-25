@@ -14,7 +14,7 @@ vi.mock('./schemas/arena-rating-history.schema.js', () => ({
   ArenaRatingHistory: class {} }));
 vi.mock('../users/schema/user.schema.js', () => ({ User: class {} }));
 
-const userId = '507f1f77bcf86cd799439011';
+const userId = '507f1f77-bcf8-4cd7-9943-901100000001';
 function fixture() {
   const aggregate = vi.fn().mockResolvedValue([]);
   const players = { collection: { name: 'players' }, aggregate };

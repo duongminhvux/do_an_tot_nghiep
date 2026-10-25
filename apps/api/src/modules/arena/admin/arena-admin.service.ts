@@ -193,6 +193,8 @@ export class ArenaAdminService {
           $in: [
             ArenaMatchStatus.COUNTDOWN,
             ArenaMatchStatus.PLAYING,
+            ArenaMatchStatus.PAUSED,
+            ArenaMatchStatus.RESUMING,
             ArenaMatchStatus.FINISHING,
           ] } }),
       this.rooms.countDocuments({ status: FriendRoomStatus.WAITING }),

@@ -25,6 +25,8 @@ export enum ArenaMatchStatus {
   WAITING = 'WAITING',
   COUNTDOWN = 'COUNTDOWN',
   PLAYING = 'PLAYING',
+  PAUSED = 'PAUSED',
+  RESUMING = 'RESUMING',
   FINISHING = 'FINISHING',
   FINISHED = 'FINISHED',
   CANCELLED = 'CANCELLED' }
@@ -33,7 +35,9 @@ export enum ArenaMatchFinishReason {
   TURN_TIMEOUT = 'TURN_TIMEOUT',
   NORMAL = 'NORMAL',
   PLAYER_LEFT = 'PLAYER_LEFT',
-  DISCONNECT_TIMEOUT = 'DISCONNECT_TIMEOUT' }
+  DISCONNECT_TIMEOUT = 'DISCONNECT_TIMEOUT',
+  DISCONNECT_FORFEIT = 'DISCONNECT_FORFEIT',
+  BOTH_DISCONNECTED = 'BOTH_DISCONNECTED' }
 
 export enum ArenaQuestionMode {
   MIXED = 'MIXED',
@@ -48,10 +52,14 @@ export enum ArenaQuestionMode {
 export class ArenaMatch {
   @PgField({ type: Object, default: null, immutable: true })
   runtimePolicy?: {
+    hints?: import('../admin/arena-settings.defaults.js').ArenaConfiguration['hints'];
+    rankedConnection?: import('../admin/arena-settings.defaults.js').ArenaConfiguration['rankedConnection'];
     kFactor?: number;
     readyTimeout?: number;
     reconnectGrace?: number;
   } | null;
+  @PgField({ type: Object, default: null })
+  rankedState?: import('../matches/arena-ranked-connection.service.js').RankedConnectionState | null;
   @PgField({ type: String, enum: Object.values(ArenaFriendMode), default: null })
   friendMode?: ArenaFriendMode | null;
 

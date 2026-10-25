@@ -90,7 +90,29 @@ export class GroupSettingsDto {
   @IsInt() @Min(60) @Max(86400) roomIdleTimeout: number;
   @IsInt() @Min(5) @Max(120) reconnectGrace: number;
 }
+export class RankedConnectionSettingsDto {
+  @IsBoolean() rankedPauseEnabled: boolean;
+  @IsInt() @Min(0) @Max(15) reloadGraceSeconds: number;
+  @IsInt() @Min(10) @Max(300) disconnectTimeoutSeconds: number;
+  @IsInt() @Min(0) @Max(10) resumeCountdownSeconds: number;
+  @IsInt() @Min(10) @Max(900) maxTotalPauseSeconds: number;
+  @IsInt() @Min(1) @Max(10) maxPauseCount: number;
+  // Online AFK challenges are a separate, opt-in phase of the plan.
+  @IsIn([false]) idleDetectionEnabled: boolean;
+  @IsInt() @Min(30) @Max(900) idleTimeoutSeconds: number;
+  @IsInt() @Min(10) @Max(60) idleChallengeTimeoutSeconds: number;
+  @IsIn(['CANCEL_NO_RATING']) bothDisconnectedPolicy: 'CANCEL_NO_RATING';
+}
+export class ArenaHintsSettingsDto {
+  @IsInt() @Min(0) @Max(119) startAfterSeconds: number;
+  @IsInt() @Min(1) @Max(60) intervalSeconds: number;
+  @IsInt() @Min(0) @Max(100) maxPercent: number;
+}
 export class ArenaConfigDto {
+  @IsOptional() @ValidateNested() @Type(() => ArenaHintsSettingsDto)
+  hints?: ArenaHintsSettingsDto;
+  @IsOptional() @ValidateNested() @Type(() => RankedConnectionSettingsDto)
+  rankedConnection?: RankedConnectionSettingsDto;
   @IsOptional()
   @ValidateNested()
   @Type(() => GameAudioSettingsDto)

@@ -387,7 +387,14 @@ export function MatchesTable({
         {
           key: "status",
           title: t("status"),
-          render: (m) => <Badge value={m.status} />,
+          render: (m) => <div className="space-y-1"><Badge value={m.status} />
+            {Object.entries(m.rankedState?.members ?? {}).filter(([,p]) => p.disconnectedAt !== null).map(([userId,p]) => (
+              <div key={userId} className="text-xs text-amber-700">
+                <UserLink user={m.players.find(player => player.userId === userId)?.user} id={userId} />
+                {p.deadlineAt && <span className="ml-1">{date(new Date(p.deadlineAt).toISOString())}</span>}
+              </div>
+            ))}
+          </div>,
         },
         {
           key: "reason",
@@ -426,6 +433,8 @@ export const matchFilters: FilterField[] = [
       "WAITING",
       "COUNTDOWN",
       "PLAYING",
+      "PAUSED",
+      "RESUMING",
       "FINISHING",
       "FINISHED",
       "CANCELLED",

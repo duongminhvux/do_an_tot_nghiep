@@ -5,6 +5,7 @@ import { arenaMatchXp } from '@repo/shared-types/learning-xp';
 import { LearningActivityClient } from '../../../common/clients/learning-activity-client.js';
 import type { LearningActivityWriter } from '../../learning-activity/learning-activity.service.js';
 import { ARENA_DEFAULTS } from '../admin/arena-settings.defaults.js';
+import { ArenaMatchTransactions } from './arena-match-transactions.js';
 import {
   FriendRoom,
   FriendRoomStatus,
@@ -72,6 +73,7 @@ export class ArenaMatchService {
     @Optional() private readonly settings?: ArenaSettingsService,
     @Optional() @Inject(LearningActivityClient) private readonly learningActivity?: LearningActivityWriter,
     @Optional() @Inject(DomainOutboxService) private readonly domainOutbox?: DomainOutboxService,
+    @Optional() private readonly transactions?: ArenaMatchTransactions,
   ) {}
 
   /** Tạo một match 1v1 dùng chung cho rank, friend và room. */
@@ -181,6 +183,8 @@ export class ArenaMatchService {
       ? await this.settings.requireEnabled(type)
       : ARENA_DEFAULTS;
     const runtimePolicy = {
+      hints: structuredClone(config.hints ?? ARENA_DEFAULTS.hints),
+      ...(type === ArenaMatchType.RANK ? { rankedConnection: structuredClone(config.rankedConnection ?? ARENA_DEFAULTS.rankedConnection) } : {}),
       kFactor: config.ranked.kFactor,
       readyTimeout: config.ranked.readyTimeout,
       reconnectGrace:
@@ -262,11 +266,15 @@ export class ArenaMatchService {
     winnerUserId?: string,
     expectedTurnCount?: number,
   ) {
+    if (this.transactions) return this.transactions.run(matchId, () => this.finishLocked(matchId, finishReason, winnerUserId, expectedTurnCount));
+    return this.finishLocked(matchId, finishReason, winnerUserId, expectedTurnCount);
+  }
+  private async finishLocked(matchId: string, finishReason: ArenaMatchFinishReason, winnerUserId?: string, expectedTurnCount?: number) {
     const uuid = new PgId(matchId);
     const match = await this.arenaMatchModel.findOneAndUpdate(
       {
         _id: uuid,
-        status: ArenaMatchStatus.PLAYING,
+        status: { $in: [ArenaMatchStatus.PLAYING, ArenaMatchStatus.PAUSED, ArenaMatchStatus.RESUMING] },
         ...(expectedTurnCount !== undefined
           ? {
               turnCount: expectedTurnCount,
@@ -475,6 +483,8 @@ export class ArenaMatchService {
           ArenaMatchStatus.WAITING,
           ArenaMatchStatus.COUNTDOWN,
           ArenaMatchStatus.PLAYING,
+          ArenaMatchStatus.PAUSED,
+          ArenaMatchStatus.RESUMING,
           ArenaMatchStatus.FINISHING,
         ] } });
   }
@@ -509,6 +519,8 @@ export class ArenaMatchService {
 
   /** Khôi phục player sau khi socket mới xác thực và vào lại trận. */
   async markReconnected(matchId: string, userId: string) {
+    const current = await this.arenaMatchModel.findById(matchId);
+    if (current?.type === ArenaMatchType.RANK) return;
     const player = await this.arenaMatchPlayerModel.findOne({
       matchId: new PgId(matchId),
       userId: new PgId(userId),
@@ -593,7 +605,7 @@ export class ArenaMatchService {
       const match = await this.arenaMatchModel.findOne({
         _id: player.matchId,
         status: { $in: [ArenaMatchStatus.PLAYING, ArenaMatchStatus.WAITING] } });
-      if (!match || match.type === ArenaMatchType.ROOM) continue;
+      if (!match || match.type === ArenaMatchType.ROOM || match.type === ArenaMatchType.RANK) continue;
       if (
         player.disconnectedAt &&
         player.disconnectedAt.getTime() +
@@ -757,6 +769,10 @@ export class ArenaMatchService {
 
   /** Đánh dấu người chơi sẵn sàng và bắt đầu trận khi đủ hai người. */
   async markReady(matchId: string, userId: string): Promise<ArenaStartResult> {
+    if (this.transactions) return this.transactions.run(matchId, () => this.markReadyLocked(matchId, userId));
+    return this.markReadyLocked(matchId, userId);
+  }
+  private async markReadyLocked(matchId: string, userId: string): Promise<ArenaStartResult> {
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(matchId) || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId))
       throw new WsException('Invalid match or player ID');
     const matchPgId = new PgId(matchId);

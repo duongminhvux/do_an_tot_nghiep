@@ -18,7 +18,8 @@ import { ConnectionAuthenticated } from '../../auth/decorators/connection-authen
 import { ArenaMatchmakingService } from '../matchmaking/arena-matchmaking.service.js';
 import { ArenaPresenceService } from '../presence/arena-presence.service.js';
 import { ArenaMatchService } from '../matches/arena-match.service.js';
-import { Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Logger, OnModuleInit, OnModuleDestroy, Optional } from '@nestjs/common';
+import { ArenaRankedConnectionService } from '../matches/arena-ranked-connection.service.js';
 import { ArenaRoundService } from '../question/arena-round.service.js';
 import { ArenaMatchFinishReason } from '../schemas/arena-match.schema.js';
 import {
@@ -54,6 +55,7 @@ export class ArenaGateway
     private readonly identityVerifier: IdentityTokenVerifier,
     private readonly arenaRoundService: ArenaRoundService,
     private readonly friendRooms: ArenaFriendRoomService,
+    @Optional() private readonly ranked?: ArenaRankedConnectionService,
   ) {
     console.log('[ArenaGateway] initialized');
   }
@@ -80,23 +82,37 @@ export class ArenaGateway
     if (this.ticking || !this.server) return;
     this.ticking = true;
     try {
-      for (const event of await this.friendRooms.tick())
-        await this.deliverFriendly(event);
-      for (const event of await this.friendly.tick())
-        await this.deliverFriendly(event);
-      for (const matchId of await this.arenaMatchService.processLifecycle()) {
-        const event = await this.arenaRoundService.finishedEvent(matchId);
-        this.server.to(`match:${matchId}`).emit(event.event, event.data);
+      // Isolate game modes: failure in friendly processing must not freeze ranked.
+      try {
+        for (const event of await this.friendRooms.tick())
+          await this.deliverFriendly(event);
+      } catch (error) {
+        this.logger.error('Friend room clock failed', error instanceof Error ? error.stack : String(error));
       }
-      for (const batch of await this.arenaRoundService.tick()) {
-        for (const item of batch.events)
-          this.server.to(`match:${batch.matchId}`).emit(item.event, item.data);
+      try {
+        for (const event of await this.friendly.tick())
+          await this.deliverFriendly(event);
+      } catch (error) {
+        this.logger.error('Friendly clock failed', error instanceof Error ? error.stack : String(error));
       }
-    } catch (error) {
-      this.logger.error(
-        'Arena clock failed',
-        error instanceof Error ? error.stack : String(error),
-      );
+      try {
+        for (const matchId of await this.arenaMatchService.processLifecycle()) {
+          const event = await this.arenaRoundService.finishedEvent(matchId);
+          this.server.to(`match:${matchId}`).emit(event.event, event.data);
+        }
+      } catch (error) {
+        this.logger.error('Match lifecycle clock failed', error instanceof Error ? error.stack : String(error));
+      }
+      try {
+        for (const batch of await this.ranked?.tick() ?? [])
+          for (const item of batch.events) this.server.to(`match:${batch.matchId}`).emit(item.event, item.data);
+        for (const batch of await this.arenaRoundService.tick()) {
+          for (const item of batch.events)
+            this.server.to(`match:${batch.matchId}`).emit(item.event, item.data);
+        }
+      } catch (error) {
+        this.logger.error('Ranked clock failed', error instanceof Error ? error.stack : String(error));
+      }
     } finally {
       this.ticking = false;
     }
@@ -147,6 +163,14 @@ export class ArenaGateway
       await client.join('arena:presence');
       if (!client.connected) return;
       client.emit('arena:authenticated');
+      const activeMatch = await this.arenaMatchService.findActiveMatchForUser(userId);
+      if (activeMatch?.type === ArenaMatchType.RANK && this.ranked) {
+        const matchId = String(activeMatch._id);
+        await client.join(`match:${matchId}`);
+        client.data.activeMatchId = matchId;
+        await this.ranked.restore(matchId, userId);
+        await this.syncRanked(matchId, client);
+      }
       this.server.to('arena:presence').emit('arena:presence-changed', {
         userId,
         online: true });
@@ -177,25 +201,20 @@ export class ArenaGateway
     }
 
     const result = await this.presenceService.disconnect(userId, client.id);
+    const rankedMatch = await this.arenaMatchService.findActiveMatchForUser(userId);
+    if (rankedMatch?.type === ArenaMatchType.RANK && this.ranked)
+      await this.ranked.disconnected(String(rankedMatch._id), userId);
     if (!result.online) {
       this.server.to('arena:presence').emit('arena:presence-changed', {
         userId,
         online: false });
     }
 
-    const active = await this.arenaMatchService.findActiveMatchForUser(userId);
-    if (
-      active?.type === ArenaMatchType.RANK &&
-      active.status === ArenaMatchStatus.PLAYING &&
-      (client.data.activeMatchId === String(active._id) || !result.online)
-    )
-      await this.leaveMatch(userId, String(active._id));
-
     if (!result.online) {
       await this.friendRooms.connection(userId, false);
       await this.matchmakingService.leaveQueue(userId);
-      await this.arenaMatchService.markDisconnected(userId);
       const match = await this.arenaMatchService.findActiveMatchForUser(userId);
+      if (match?.type !== ArenaMatchType.RANK) await this.arenaMatchService.markDisconnected(userId);
       if (
         match?.type === ArenaMatchType.FRIEND ||
         match?.type === ArenaMatchType.ROOM
@@ -223,6 +242,26 @@ export class ArenaGateway
             ? error.message
             : 'Unable to join ranked queue' };
     }
+  }
+  private async syncRanked(matchId: string, client: Socket) {
+    if (!this.ranked) return;
+    this.server.to(`match:${matchId}`).emit('arena:match-sync', await this.ranked.snapshot(matchId));
+    client.emit('arena:match-sync', await this.ranked.snapshot(matchId, this.getUserId(client)));
+  }
+  @SubscribeMessage('arena:match-synced')
+  async rankedSynced(@ConnectedSocket() client: Socket, @MessageBody() payload: { matchId: string; version: number }) {
+    await this.arenaRoundService.assertMember(payload.matchId, this.getUserId(client));
+    if (!Number.isInteger(payload.version) || payload.version < 0) throw new WsException('Invalid match version');
+    await this.ranked?.acknowledge(payload.matchId, this.getUserId(client), payload.version);
+    return { success: true };
+  }
+  @SubscribeMessage('ranked:detach')
+  async rankedDetach(@ConnectedSocket() client: Socket, @MessageBody() payload: { matchId: string }) {
+    await this.arenaRoundService.assertMember(payload.matchId, this.getUserId(client));
+    if (client.data.activeMatchId === payload.matchId) delete client.data.activeMatchId;
+    await client.leave(`match:${payload.matchId}`);
+    await this.ranked?.disconnected(payload.matchId, this.getUserId(client));
+    return { success: true };
   }
 
   private async joinRanked(client: Socket) {
@@ -338,6 +377,12 @@ export class ArenaGateway
     await client.join(`match:${payload.matchId}`);
     client.data.activeMatchId = payload.matchId;
     await this.arenaMatchService.markReconnected(payload.matchId, userId);
+    if (active?.type === ArenaMatchType.RANK && this.ranked) {
+      await this.ranked.restore(payload.matchId, userId);
+      await this.syncRanked(payload.matchId, client);
+      const snapshot = await this.ranked.snapshot(payload.matchId, userId);
+      if (snapshot.status === 'PAUSED' || snapshot.status === 'RESUMING') return { success: true, status: snapshot.status };
+    }
     const existing = await this.arenaRoundService.snapshot(payload.matchId);
     // Client reload giữa trận sẽ nhận lại event hiện tại thay vì ready lại.
     if (existing.length) {
@@ -425,7 +470,7 @@ export class ArenaGateway
         this.server.to(`match:${matchId}`).emit(event.event, event.data);
       return { success: true };
     }
-    if (match.status !== ArenaMatchStatus.PLAYING) return { success: true };
+    if (![ArenaMatchStatus.PLAYING, ArenaMatchStatus.PAUSED, ArenaMatchStatus.RESUMING].includes(match.status)) return { success: true };
     const opponentUserId = await this.arenaMatchService.getOpponentUserId(
       matchId,
       userId,

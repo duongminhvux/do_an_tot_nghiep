@@ -1,5 +1,9 @@
 import { ARENA_DEFAULTS } from '../admin/arena-settings.defaults.js';
 import { PgId } from '../../../postgres/compat.js';
+vi.mock('../../../postgres/compat.js', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../../../postgres/compat.js')>();
+  return { ...original, makePgModel: (name: string, client: any) => client.models[name] };
+});
 vi.mock('../question/arena-question.service.js', () => ({
   ArenaQuestionService: class {} }));
 vi.mock('../rating/arena-rating.service.js', () => ({
@@ -30,7 +34,7 @@ vi.mock('../schemas/arena-profile.schema.js', () => ({
 vi.mock('../schemas/arena-rating-history.schema.js', () => ({
   ArenaRatingHistory: class {} }));
 
-function fixture(learningActivity?: { record: ReturnType<typeof vi.fn> }) {
+function fixture() {
   const match = {
     _id: new PgId(),
     type: 'FRIEND',
@@ -74,6 +78,12 @@ function fixture(learningActivity?: { record: ReturnType<typeof vi.fn> }) {
       playerA: { ratingAfter: 1010, ratingChange: 10 },
       playerB: { ratingAfter: 990, ratingChange: -10 } })) };
   const friendRooms = { updateOne: vi.fn(), findOne: vi.fn(async () => null) };
+  const outbox = {
+    withTransaction: vi.fn(async (work: any) => work({ client: { models: {
+      ArenaMatch: matches, ArenaMatchPlayer: playerModel, ArenaProfile: profiles, ArenaRatingHistory: history,
+    } } })),
+    enqueue: vi.fn(async () => 'event-id'),
+  };
   const deps = [
     {},
     matches,
@@ -84,7 +94,8 @@ function fixture(learningActivity?: { record: ReturnType<typeof vi.fn> }) {
     rating,
     friendRooms,
     undefined,
-    learningActivity,
+    undefined,
+    outbox,
   ] as unknown as ConstructorParameters<typeof ArenaMatchService>;
   return {
     service: new ArenaMatchService(...deps),
@@ -95,17 +106,22 @@ function fixture(learningActivity?: { record: ReturnType<typeof vi.fn> }) {
     playerModel,
     profiles,
     history,
+    outbox,
     rating };
 }
 
 describe('Learning activity', () => {
-  it('records one activity per player with win XP for the winner only', async () => {
-    const record = vi.fn(async () => true);
-    const f = fixture({ record });
+  it('enqueues one activity per player in the result transaction with win XP for the winner only', async () => {
+    const f = fixture();
     f.match.friendMode = 'CLASSIC';
     await f.service.finishMatch(String(f.match._id));
-    expect(record).toHaveBeenCalledTimes(2);
-    const calls = record.mock.calls.map(([input]: any) => input);
+    expect(f.outbox.withTransaction).toHaveBeenCalledTimes(1);
+    expect(f.outbox.enqueue).toHaveBeenCalledTimes(2);
+    const calls = f.outbox.enqueue.mock.calls.map((call: any) => {
+      expect(call[0]).toBe('learning.activity.recorded.v1');
+      expect(call[3].client).toBeDefined();
+      return call[2];
+    });
     expect(calls.map((c) => String(c.userId))).toEqual(
       f.players.map((p) => String(p.userId)),
     );
