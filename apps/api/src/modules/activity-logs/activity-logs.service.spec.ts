@@ -105,7 +105,7 @@ function model(rows: any[]) {
     create: vi.fn(async (row) => row),
   };
 }
-function fixture() {
+function fixture(userSnapshot: Record<string, unknown> | null = { _id: userId, email: 'learner@example.com' }) {
   const auditRows: any[] = [
     {
       _id: 'audit-a',
@@ -166,7 +166,7 @@ function fixture() {
   const users = {
     findById: vi.fn(() => ({
       select: () => ({
-        lean: async () => ({ _id: userId, email: 'learner@example.com' }),
+        lean: async () => userSnapshot,
       }),
     })),
   };
@@ -204,6 +204,25 @@ describe('admin user activity history', () => {
     ).toBe(false);
     expect(result.items[0]?.action).toBe('MINIGAME_PLAY');
     expect(result.items[0]?.metadata?.score).toBe(0);
+  });
+  it.each([undefined, null, '', '   ', 123])(
+    'handles a public profile with unavailable email (%s) without leaking other users',
+    async (email) => {
+      const f = fixture({ _id: userId, username: 'Public display profile', email });
+      f.auditRows.push({ ...f.auditRows[0], _id: 'email-less-other', userId: otherId, userEmail: undefined });
+      const result = await f.query({ page: 1, limit: 5, lang: 'vi' });
+      expect(result.total).toBe(LEARNING_ACTIVITY_TYPES.length + 1);
+      expect(result.items).toHaveLength(5);
+      expect(result.items.every((item) => String(item.userId) === userId)).toBe(true);
+      expect(f.audit.find.mock.calls[0][0].userId.toString()).toBe(userId);
+      const all = await f.query();
+      expect(all.items.some((item) => item._id === 'audit-a')).toBe(true);
+      expect(all.items.some((item) => item._id === 'audit-email' || String(item._id).includes('other'))).toBe(false);
+    },
+  );
+  it('still rejects a nonexistent public profile', async () => {
+    const f = fixture(null);
+    await expect(f.query()).rejects.toThrow();
   });
   it('paginates the combined history beyond the old source cutoffs', async () => {
     const f = fixture();
@@ -274,6 +293,28 @@ describe('admin user activity history', () => {
     expect(en.items.find((row) => row._id === 'custom')?.description).toBe(
       'Original custom message',
     );
+  });
+  it('localizes dashboard log titles and messages in both languages without changing stored data', async () => {
+    const f = fixture();
+    const row = {
+      ...f.auditRows[0],
+      action: 'TOEIC_START',
+      description: '',
+      descriptionKey: 'activity-log.messages.TOEIC_START_WITH_TITLE',
+      descriptionArgs: { title: 'Practice 1' },
+    };
+    for (const lang of ['vi', 'en']) {
+      const result = await f.service.localizeLog(row, lang);
+      expect(result.actionLabel).toBe(dictionaries[lang].actions.TOEIC_START);
+      expect(result.description).toBe(
+        dictionaries[lang].messages.TOEIC_START_WITH_TITLE.replace('{title}', 'Practice 1'),
+      );
+      expect(result._id).toBe(row._id);
+    }
+    const failed = await f.service.localizeLog({ ...row, descriptionKey: undefined, status: 'FAILED' }, 'en');
+    expect(failed.description).toBe('Start TOEIC Exam failed');
+    expect(row.description).toBe('');
+    expect(row.descriptionArgs).toEqual({ title: 'Practice 1' });
   });
   it('stores configurable message keys and arguments without destroying original text', async () => {
     const f = fixture();

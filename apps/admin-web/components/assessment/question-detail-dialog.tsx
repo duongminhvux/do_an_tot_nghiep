@@ -131,7 +131,7 @@ export function QuestionDetailDialog({
 
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto rounded border border-slate-200 p-5 bg-white shadow-xl">
+        <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto rounded border border-slate-200 p-5 bg-white shadow-xl">
           <div className="space-y-4">
             <DialogHeader>
               <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -406,7 +406,7 @@ export function QuestionDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto rounded border border-slate-200 p-5 bg-white shadow-lg">
+      <DialogContent className="max-w-xl max-h-[90dvh] overflow-y-auto rounded border border-slate-200 p-5 bg-white shadow-lg">
         <div className="space-y-4">
           <DialogHeader>
             <div className="flex items-center gap-2 mb-1">

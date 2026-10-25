@@ -6,7 +6,7 @@
   "siteDescription": "Website description",
   "descriptionHint": "Used in page information and search results, up to 300 characters.",
   "timezone": "Default time zone",
-  "timezoneHint": "Used for home statistics, TOEIC daily statistics and timestamps in admin activity history.",
+  "timezoneHint": "Choose a time zone by location. UTC offsets reflect the current date and may change with daylight saving time. Used for statistics and activity history.",
   "branding": "Logos and icons",
   "imageHint": "Images up to 5 MB. Upload a file or paste an http(s) URL or a path starting with /.",
   "logoUrl": "Full logo",
@@ -29,5 +29,9 @@
   "uploadError": "Could not upload the image. Choose an image up to 5 MB and try again.",
   "invalidTimezone": "Invalid time zone. Choose a time zone from the list.",
   "applyHint": "The learner website and admin share these settings. Reload to receive new settings immediately; blank images use the default icon.",
-  "previewError": "Could not display the image. Check the URL or choose another file."
+  "previewError": "Could not display the image. Check the URL or choose another file.",
+  "timezoneSearch": "Search by city, time zone name or UTC...",
+  "timezoneLoading": "Loading time zones...",
+  "timezoneLoadError": "Could not load time zones.",
+  "timezoneNoMatches": "No other matching time zones. The current time zone is retained."
 }

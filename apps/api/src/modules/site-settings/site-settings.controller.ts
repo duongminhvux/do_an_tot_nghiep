@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Put } from '@nestjs/common';
+import { Body, Controller, Get, Put, Query } from '@nestjs/common';
 import { Public } from '../auth/decorators/public.decorator.js';
 import { AdminController } from '../auth/decorators/admin-controller.decorator.js';
 import { SiteSettingsService } from './site-settings.service.js';
@@ -16,6 +16,9 @@ export class AdminSiteSettingsController {
   constructor(private readonly settings: SiteSettingsService) {}
   @Get() read() {
     return this.settings.read();
+  }
+  @Get('timezones') timezones(@Query('lang') lang?: string) {
+    return this.settings.timezones(lang);
   }
   @Put() save(@Body() input: UpdateSiteSettingsDto) {
     return this.settings.save(input);

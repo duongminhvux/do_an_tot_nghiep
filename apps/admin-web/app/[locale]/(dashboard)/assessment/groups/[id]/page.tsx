@@ -122,7 +122,7 @@ export default function ExamGroupDetailPage() {
 
   if (isGroupLoading) {
     return (
-      <div className="min-h-screen bg-slate-50/50 p-6 md:p-8 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50/50 p-4 sm:p-6 md:p-8 flex items-center justify-center">
         <div className="flex flex-col items-center gap-2 text-slate-400">
           <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
           <p className="text-xs">
@@ -135,7 +135,7 @@ export default function ExamGroupDetailPage() {
 
   if (isGroupError || !group) {
     return (
-      <div className="min-h-screen bg-slate-50/50 p-6 md:p-8">
+      <div className="min-h-screen bg-slate-50/50 p-4 sm:p-6 md:p-8">
         <div className="max-w-md mx-auto bg-white rounded border border-red-200 p-8 text-center space-y-4 shadow-sm">
           <div className="w-12 h-12 rounded bg-red-50 text-red-600 flex items-center justify-center mx-auto">
             <AlertTriangle className="h-6 w-6" />
@@ -161,7 +161,7 @@ export default function ExamGroupDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/50 p-6 md:p-8 space-y-6 w-full">
+    <div className="min-h-screen bg-slate-50/50 p-4 sm:p-6 md:p-8 space-y-6 w-full">
       {/* Back button */}
       <div>
         <Link

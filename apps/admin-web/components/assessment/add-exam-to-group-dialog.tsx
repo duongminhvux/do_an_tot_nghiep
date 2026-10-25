@@ -99,7 +99,7 @@ export function AddExamToGroupDialog({
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl bg-white p-6 rounded shadow-xl border border-slate-200 flex flex-col max-h-[85vh]">
+      <DialogContent className="max-w-xl bg-white p-6 rounded shadow-xl border border-slate-200 flex flex-col max-h-[85dvh]">
         <DialogHeader className="space-y-1.5 pb-3 border-b border-slate-100 shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">

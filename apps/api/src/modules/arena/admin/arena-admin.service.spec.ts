@@ -1,7 +1,8 @@
 import 'reflect-metadata';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { PgId, runAggregation } from '../../../postgres/compat.js';
 import { ArenaAdminService } from './arena-admin.service.js';
-import { ArenaAdminQuery, ArenaDashboardQuery, ArenaRoomQuery } from './arena-admin.dto.js';
+import { ArenaAdminQuery, ArenaDashboardQuery, ArenaRoomQuery, ArenaPlayerQuery } from './arena-admin.dto.js';
 
 vi.mock('../gateways/arena.gateway.js', () => ({ ArenaGateway: class {} }));
 vi.mock('../friendly/arena-friend-room.service.js', () => ({ ArenaFriendRoomService: class {} }));
@@ -75,5 +76,57 @@ describe('Arena admin timestamps', () => {
   ])('handles room timestamp %s with status %s', async (updatedAt, status, stale) => {
     const service = fixture({}, { updatedAt, status });
     expect((await service.roomList(new ArenaRoomQuery())).items[0].stale).toBe(stale);
+  });
+});
+
+describe('Arena admin player identities', () => {
+  afterEach(() => vi.unstubAllEnvs());
+  function playersFixture() {
+    vi.stubEnv('SERVICE_ROLE', 'arena');
+    const userId = '00000000-0000-4000-8000-000000000002';
+    const missingId = '00000000-0000-4000-8000-000000000003';
+    const profile = (id: string, rating: number) => ({
+      _id: new PgId(id), userId: new PgId(id), rating,
+      rankedMatches: 4, rankedWins: 3, rankedLosses: 1, rankedDraws: 0,
+      currentWinStreak: 2, bestWinStreak: 3, updatedAt: new Date(),
+    });
+    const publicUser = {
+      id: userId, username: 'Arena Player', avatar_url: '/avatar.png',
+      is_banned: false, is_deleted: false,
+      payload: { username: 'Arena Player', password: 'must-not-leak', phone: 'must-not-leak' },
+    };
+    const pool = { query: vi.fn(async (sql: string) => ({
+      rows: sql.includes('identity_profiles') ? [publicUser] : [],
+    })) };
+    const service = fixture({});
+    Object.assign(service as unknown as Record<string, unknown>, {
+      users: { collection: { name: 'users' } },
+      participants: { collection: { name: 'arenamatchplayers' } },
+      profiles: { aggregate: (pipeline: unknown[]) => runAggregation(pipeline,
+        [profile(userId, 1500), profile(missingId, 1000)], pool as never) },
+    });
+    return { service, userId };
+  }
+  it('returns a nested display user rather than literal dotted fields', async () => {
+    const { service, userId } = playersFixture();
+    const result = await service.playerList(new ArenaPlayerQuery());
+    const row = JSON.parse(JSON.stringify(result.items[0]));
+    expect(row.userId).toBe(userId);
+    expect(row.user).toEqual({ _id: userId, username: 'Arena Player', avatarUrl: '/avatar.png', isBanned: false, isDeleted: false });
+    expect(Object.hasOwn(row, 'user.username')).toBe(false);
+    expect(JSON.stringify(row)).not.toContain('must-not-leak');
+    expect(result.items[1].user).toBeNull();
+  });
+  it('keeps searching by player name working before pagination', async () => {
+    const { service } = playersFixture();
+    const result = await service.playerList(Object.assign(new ArenaPlayerQuery(), { search: 'arena player', limit: 1 }));
+    expect(result.total).toBe(1);
+    expect(result.items[0].user.username).toBe('Arena Player');
+  });
+  it('keeps the user object on subsequent pages without a matching profile', async () => {
+    const { service } = playersFixture();
+    const result = await service.playerList(Object.assign(new ArenaPlayerQuery(), { page: 2, limit: 1 }));
+    expect(result.total).toBe(2);
+    expect(result.items[0].user).toBeNull();
   });
 });

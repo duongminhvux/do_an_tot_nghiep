@@ -26,7 +26,7 @@ export function DeleteConfirmModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-      <div className="bg-white rounded-[6px] border border-slate-200 shadow-none p-5 max-w-sm w-full space-y-4">
+      <div className="bg-white rounded-[6px] border border-slate-200 shadow-none p-5 max-h-[calc(100dvh-2rem)] overflow-y-auto max-w-sm w-full space-y-4">
         <div className="flex items-start gap-3.5">
           <div className="w-10 h-10 rounded-[6px] bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center shrink-0 mt-0.5">
             <Trash2 className="w-5 h-5" />

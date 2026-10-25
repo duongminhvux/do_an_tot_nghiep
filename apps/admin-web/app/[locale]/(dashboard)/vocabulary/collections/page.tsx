@@ -341,7 +341,7 @@ export default function CollectionsPage() {
           </div>
 
           {/* Collections List Content */}
-          <div className="space-y-2 max-h-[calc(100vh-240px)] overflow-y-auto pr-1 p-0.5">
+          <div className="space-y-2 max-h-[calc(100dvh-240px)] overflow-y-auto pr-1 p-0.5">
             {isLoadingCols ? (
               <div className="py-16 flex flex-col items-center justify-center text-slate-400 gap-2">
                 <Loader2 className="w-6 h-6 animate-spin text-blue-600" />

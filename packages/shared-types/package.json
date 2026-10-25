@@ -9,7 +9,8 @@
     "./assessment-import": "./src/assessment-import.mjs",
     "./toeic-score": "./src/toeic-score.mjs",
     "./learning-xp": "./src/learning-xp.mjs",
-    "./site-settings": "./src/site-settings.mjs"
+    "./site-settings": "./src/site-settings.mjs",
+    "./active-time": "./src/active-time.mjs"
   },
   "scripts": {
     "check-types": "tsc --noEmit"

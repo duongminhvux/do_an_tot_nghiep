@@ -103,7 +103,7 @@ export function CreateLessonDialog({
         onOpenChange(v);
       }}
     >
-      <DialogContent className="max-w-md w-full p-6 rounded-[6px] border border-slate-200 shadow-none bg-white">
+      <DialogContent className="max-w-md w-[calc(100vw-2rem)] p-6 rounded-[6px] border border-slate-200 shadow-none bg-white">
         <DialogHeader className="space-y-1">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-[6px] bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">

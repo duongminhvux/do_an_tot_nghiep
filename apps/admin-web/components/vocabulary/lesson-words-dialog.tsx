@@ -324,7 +324,7 @@ export function LessonWordsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl w-full p-5 sm:p-8 rounded-[6px] border border-slate-200 shadow-none bg-white max-h-[92vh] flex flex-col">
+      <DialogContent className="max-w-6xl w-[calc(100vw-2rem)] p-5 sm:p-8 rounded-[6px] border border-slate-200 shadow-none bg-white max-h-[92dvh] flex flex-col">
         {/* ======================================================== */}
         {/* 1. HEADER */}
         {/* ======================================================== */}

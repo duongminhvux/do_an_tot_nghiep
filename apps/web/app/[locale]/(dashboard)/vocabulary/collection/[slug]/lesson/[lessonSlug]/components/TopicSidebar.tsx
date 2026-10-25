@@ -58,7 +58,7 @@ export function TopicSidebar({
         </span>
       </div>
 
-      <div className="space-y-2 max-h-[calc(100vh-320px)] overflow-y-auto pr-1">
+      <div className="space-y-2 max-h-[calc(100dvh-320px)] overflow-y-auto pr-1">
         {sections.length > 0 ? (
           sections.map((sec, idx) => {
             const isActive = selectedSectionId === sec._id;

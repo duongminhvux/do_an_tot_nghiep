@@ -201,3 +201,26 @@
   position: absolute;
   z-index: 2;
 }
+
+/* Keep long user content and embedded passages inside their page column. */
+.tiptap-content {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-wrap: anywhere;
+}
+
+@layer base {
+  input, textarea, select { min-width: 0; }
+  button, a, select { touch-action: manipulation; }
+}
+
+/* Prevent focus zoom on iOS without disabling user zoom. */
+@media (max-width: 639px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  textarea, select { font-size: 16px; }
+}
+
+@media (pointer: coarse) {
+  [data-sidebar="menu-button"] { min-height: 2.75rem; }
+  [data-sidebar="menu-sub-button"] { min-height: 2.5rem; }
+}

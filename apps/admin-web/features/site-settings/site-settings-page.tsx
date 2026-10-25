@@ -14,7 +14,7 @@ import {
   Link2,
   X,
   Trash2,
-  Sparkles,
+  AppWindow,
 } from "lucide-react";
 import type { SiteSettings } from "@repo/shared-types/site-settings";
 import { siteSettingsService } from "@/services/site-settings.service";
@@ -65,7 +65,13 @@ export function SiteSettingsPage() {
   );
 }
 function SettingsForm({ initial }: { initial: SiteSettings }) {
-  const { t } = useTranslation("siteSettings");
+  const { t, i18n } = useTranslation("siteSettings");
+  const language = (i18n.resolvedLanguage || i18n.language || 'vi').startsWith('en') ? 'en' : 'vi';
+  const [timezoneSearch, setTimezoneSearch] = useState("");
+  const timezoneQuery = useQuery({
+    queryKey: ["site-settings-timezones", language],
+    queryFn: () => siteSettingsService.timezones(language),
+  });
   const client = useQueryClient();
   const router = useRouter();
   const [settings, setSettings] = useState({ ...initial });
@@ -75,16 +81,13 @@ function SettingsForm({ initial }: { initial: SiteSettings }) {
   const [previewErrors, setPreviewErrors] = useState<Record<string, string>>(
     {},
   );
-  const zones = useMemo(
-    () => [
-      ...new Set([
-        "Asia/Ho_Chi_Minh",
-        "UTC",
-        ...Intl.supportedValuesOf("timeZone"),
-      ]),
-    ],
-    [],
-  );
+  const zones = useMemo(() => {
+    const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\u0111/g, 'd').replaceAll('_', ' ');
+    const search = normalize(timezoneSearch.trim());
+    return (timezoneQuery.data ?? []).filter((zone) =>
+      zone.value === settings.timezone || normalize(`${zone.label} ${zone.value}`).includes(search),
+    );
+  }, [timezoneQuery.data, timezoneSearch, settings.timezone]);
   const change = (patch: Partial<SiteSettings>) => {
     setSettings((current) => ({ ...current, ...patch }));
     setSaved(false);
@@ -131,8 +134,8 @@ function SettingsForm({ initial }: { initial: SiteSettings }) {
               <p className="text-xs text-slate-500">Cấu hình tên hệ thống, mô tả giới thiệu và múi giờ hiển thị</p>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <label className="block space-y-2 text-sm font-medium text-slate-700">
+          <div className="gap-5">
+            <label className="block min-w-0 space-y-2 text-sm font-medium text-slate-700">
               <span>{t("siteName")}</span>
               <input
                 className={control}
@@ -142,25 +145,46 @@ function SettingsForm({ initial }: { initial: SiteSettings }) {
                 onChange={(event) => change({ siteName: event.target.value })}
               />
             </label>
-            <label className="block space-y-2 text-sm font-medium text-slate-700">
-              <span>{t("timezone")}</span>
+            <div className="block min-w-0 space-y-2 text-sm font-medium text-slate-700">
+              <label htmlFor="site-timezone">{t("timezone")}</label>
               <input
+                type="search"
+                className={control}
+                aria-label={t("timezoneSearch")}
+                placeholder={t("timezoneSearch")}
+                value={timezoneSearch}
+                onChange={(event) => setTimezoneSearch(event.target.value)}
+                disabled={!timezoneQuery.data}
+              />
+              <select
+                id="site-timezone"
                 className={control}
                 required
-                list="site-timezones"
+                aria-label={t("timezone")}
                 value={settings.timezone}
+                disabled={!timezoneQuery.data}
                 onChange={(event) => change({ timezone: event.target.value })}
-              />
-              <datalist id="site-timezones">
+              >
+                {!timezoneQuery.data && <option value={settings.timezone}>{settings.timezone}</option>}
                 {zones.map((zone) => (
-                  <option key={zone} value={zone} />
+                  <option key={zone.value} value={zone.value}>{zone.label}</option>
                 ))}
-              </datalist>
+              </select>
+              {timezoneQuery.isPending && <span role="status" className="block text-xs text-slate-500">{t("timezoneLoading")}</span>}
+              {timezoneQuery.isError && (
+                <span role="alert" className="block text-xs text-red-600">
+                  {t("timezoneLoadError")}{' '}
+                  <button type="button" className="underline" onClick={() => void timezoneQuery.refetch()}>{t("retry")}</button>
+                </span>
+              )}
+              {timezoneQuery.data && !zones.some((zone) => zone.value !== settings.timezone) && timezoneSearch && (
+                <span role="status" className="block text-xs text-slate-500">{t("timezoneNoMatches")}</span>
+              )}
               <span className="block text-xs font-normal text-slate-500">
                 {t("timezoneHint")}
               </span>
-            </label>
-            <label className="block space-y-2 text-sm font-medium text-slate-700 md:col-span-2">
+            </div>
+            <label className="block min-w-0 space-y-2 text-sm font-medium text-slate-700 md:col-span-2">
               <span>{t("siteDescription")}</span>
               <textarea
                 className={control}
@@ -187,7 +211,7 @@ function SettingsForm({ initial }: { initial: SiteSettings }) {
               <p className="text-xs text-slate-500">{t("imageHint")}</p>
             </div>
           </div>
-          <div className="grid gap-5 grid-cols-1 md:grid-cols-3">
+          <div className="grid gap-5 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
             {images.map((key) => (
               <BrandingImageCard
                 key={key}
@@ -303,7 +327,7 @@ function BrandingImageCard({
       recommended: "Khuyên dùng: Ảnh ngang, nền trong suốt PNG/SVG",
     },
     iconUrl: {
-      icon: Sparkles,
+      icon: AppWindow,
       iconColor: "text-indigo-600 bg-indigo-50 border-indigo-200",
       placeholder: "https://.../icon.png hoặc /images/icon.png",
       recommended: "Khuyên dùng: Ảnh vuông 64x64 hoặc 128x128 PNG",
@@ -330,7 +354,7 @@ function BrandingImageCard({
     <div className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-4.5 shadow-xs transition-colors hover:border-slate-300">
       <div>
         {/* Header */}
-        <div className="flex items-start justify-between gap-2 mb-3">
+        <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
           <div className="flex items-center gap-2.5">
             <div
               className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border shadow-2xs ${meta.iconColor}`}

@@ -82,7 +82,8 @@
     "game_list": "Game list",
     "game_list_title": "Game list",
     "game_list_desc": "Choose a game to practice vocabulary and improve your ranking.",
-    "arena_desc": "Compete and practice vocabulary with your friends."
+    "arena_desc": "Compete and practice vocabulary with your friends.",
+    "toeic_result": "Test result"
   },
   "group_arena": {
     "title": "Group Lobby",

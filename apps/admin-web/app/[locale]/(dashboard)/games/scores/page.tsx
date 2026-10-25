@@ -58,7 +58,7 @@ export default function GameScoresPage() {
           <input aria-label={t("maxScore")} type="number" min="0" className={inputClass + " w-32"} placeholder={t("maxScore")} value={maxScore} onChange={(e) => setMaxScore(e.target.value)} />
         </div>
         {scores.isPending ? <p className="p-8 text-center text-slate-500">{t("loading")}</p> : scores.isError ? <p className="p-8 text-center text-red-600">{t("error")}</p> : (
-          <div className="overflow-x-auto">
+          <div className="min-w-0 max-w-full overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="text-xs text-slate-500"><tr><th className="px-4 py-3">{t("player")}</th><th className="px-4 py-3">{t("game")}</th><th className="px-4 py-3">{t("score")}</th><th className="px-4 py-3">{t("playedAt")}</th></tr></thead>
               <tbody className="divide-y divide-slate-100">

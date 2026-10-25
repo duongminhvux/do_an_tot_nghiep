@@ -35,7 +35,7 @@ export function TypingRushSetup({
     source.name.toLowerCase().includes(search.toLowerCase().trim()),
   );
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
       <Panel title={t("choose_sources")} description={t("sources_help")}>
         <Tabs<SourceType>
           aria-label={t("source_category")}
@@ -56,7 +56,7 @@ export function TypingRushSetup({
             className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
           />
         </div>
-        <div className="mt-4 grid max-h-80 gap-2 overflow-y-auto sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        <div className="mt-4 grid max-h-80 gap-2 overflow-y-auto sm:grid-cols-2 2xl:grid-cols-3">
           {shown.map((source) => (
             <label
               key={key(source)}

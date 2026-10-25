@@ -187,9 +187,9 @@ export function UserActivityLogs({
       {/* Filter toolbar */}
       {!compact && (
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 bg-slate-50/70 border border-slate-200 rounded">
-          <div className="flex flex-wrap items-center gap-2.5 flex-1">
+          <div className="flex min-w-0 flex-wrap items-center gap-2.5 flex-1">
             {/* Search input */}
-            <div className="relative min-w-[200px] flex-1 max-w-sm">
+            <div className="relative w-full min-w-0 flex-1 sm:min-w-[200px] sm:max-w-sm">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <Input
                 type="text"

@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import {
   Sidebar,
+  useSidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
@@ -69,6 +70,8 @@ export function AppSidebar() {
   const siteSettings = useSiteSettings();
   const router = useRouter();
   const pathname = usePathname();
+  const { setOpenMobile } = useSidebar();
+  React.useEffect(() => { setOpenMobile(false); }, [pathname, setOpenMobile]);
   const params = useParams();
   const locale = (params?.locale as string) || "vi";
   const dispatch = useAppDispatch();
@@ -231,7 +234,7 @@ export function AppSidebar() {
       {/* Brand Header - perfectly aligned with menu items */}
       <SidebarHeader className="border-b border-slate-100 px-2 h-14 flex items-center justify-between">
         <div className="flex items-center gap-2.5 min-w-0 w-full">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm shadow-blue-500/20">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg  text-white shadow-sm shadow-blue-500/20">
             <SiteLogo compact fallback={<Shield className="h-4.5 w-4.5" />} />
           </div>
           <div className="flex flex-col overflow-hidden group-data-[collapsible=icon]:hidden">

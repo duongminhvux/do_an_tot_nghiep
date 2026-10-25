@@ -294,7 +294,7 @@ export function EditPassageDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto rounded border border-slate-200 p-5 bg-white shadow-xl">
+      <DialogContent className="max-w-4xl max-h-[92dvh] overflow-y-auto rounded border border-slate-200 p-5 bg-white shadow-xl">
         <form
           onSubmit={(e) => {
             e.preventDefault();

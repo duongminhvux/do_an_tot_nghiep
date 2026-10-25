@@ -292,7 +292,7 @@ export default function WordsPage() {
   };
 
   return (
-    <div className="p-6 md:p-8 w-full mx-auto space-y-6">
+    <div className="p-4 sm:p-6 md:p-8 w-full mx-auto space-y-6">
       {/* PAGE HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -539,7 +539,7 @@ export default function WordsPage() {
 
       {/* TABLE CONTAINER */}
       <div className="bg-white rounded-[6px] border border-slate-200 overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="min-w-0 max-w-full overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/70 text-xs font-semibold text-slate-500 uppercase tracking-wider select-none">

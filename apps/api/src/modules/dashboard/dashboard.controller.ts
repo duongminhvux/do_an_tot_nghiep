@@ -7,7 +7,7 @@ export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
   @Get('overview')
-  getOverview(@Query('days') days?: string) {
-    return this.dashboardService.getOverview(Number(days) || 7);
+  getOverview(@Query('days') days?: string, @Query('lang') lang?: string) {
+    return this.dashboardService.getOverview(Number(days) || 7, lang);
   }
 }

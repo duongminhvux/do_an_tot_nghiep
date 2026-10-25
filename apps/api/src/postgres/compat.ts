@@ -61,6 +61,29 @@ export const PgSchemaFactory = { createForClass(ctor: Function) {
   registeredTypes.set(ctor.name,ctor); return new PgSchemaDefinition(ctor.name);
 }};
 
+// JSONB round trips turn Date values into strings. Restore schema-declared
+// dates (including nested room members) before services use Date methods.
+function restoreDocumentDates(value: Record<string, any>, fields: Record<string, any>): Record<string, any> {
+  const result = { ...value };
+  for (const [field, options] of Object.entries(fields)) {
+    const current = result[field];
+    if (options?.type === Date && current != null && !(current instanceof Date)) {
+      const date = new Date(current);
+      if (Number.isFinite(date.getTime())) result[field] = date;
+    } else if (Array.isArray(options?.type) && options.type[0] instanceof PgSchemaDefinition && Array.isArray(current)) {
+      const nested = metadata(options.type[0].className).fields;
+      result[field] = current.map((item) => item && typeof item === 'object' ? restoreDocumentDates(item, nested) : item);
+    }
+  }
+  for (const field of ['createdAt', 'updatedAt']) {
+    if (result[field] != null && !(result[field] instanceof Date)) {
+      const date = new Date(result[field]);
+      if (Number.isFinite(date.getTime())) result[field] = date;
+    }
+  }
+  return result;
+}
+
 const MODEL_TABLE_OVERRIDES: Record<string,string> = {
   LearningActivity:'learning_activities', SavedWord:'usersavedwords',
   GeneratedAudio:'media_assets', GameDefinition:'gamedefinitions', AudioJob:'audio_jobs', AsrJob:'asr_jobs', SystemSetting:'system_settings',
@@ -443,7 +466,7 @@ export function makePgModel<T=any>(name:string,pool:pg.Pool):PgModel<T> {
     }
   }
   function hydrate(row:any):any{
-    const data= {...row.payload};
+    let data= {...row.payload};
     for(const [k,v] of Object.entries(row)) {
       if(k==='payload')continue;
       const key=k==='id'?'_id':k==='password_hash'?'password':camel(k);
@@ -455,6 +478,7 @@ export function makePgModel<T=any>(name:string,pool:pg.Pool):PgModel<T> {
     for(const [k,option] of Object.entries(defined)) if(data[k]===undefined && option && (option as any).default!==undefined) {
       const def=(option as any).default;data[k]=typeof def==='function'?def():JSON.parse(JSON.stringify(def));
     }
+    data = restoreDocumentDates(data, defined);
     Object.defineProperties(data,{toObject:{enumerable:false,value:()=>plain(data)},save:{enumerable:false,value:()=>save(data)},
       validate:{enumerable:false,value:()=>validateDoc(data)},
       populate:{enumerable:false,value:async(opt:any)=>{await (PgDynamicModel as any).populate(data,opt);return data;}}});
@@ -562,8 +586,8 @@ export function makePgModel<T=any>(name:string,pool:pg.Pool):PgModel<T> {
       }
       const found=(await selected(filter))[0];return found?{_id:found._id}:null;
     },PgDynamicModel);}
-    static async create(data:any){return Array.isArray(data)?Promise.all(data.map(x=>save(x))):save(data)}
-    static async insertMany(values:any[]){return Promise.all(values.map(x=>save(x)))}
+    static async create(data:any){return Array.isArray(data)?Promise.all(data.map(x=>save(new PgDynamicModel(x)))):save(new PgDynamicModel(data))}
+    static async insertMany(values:any[]){return Promise.all(values.map(x=>save(new PgDynamicModel(x))))}
     static async bulkWrite(ops:any[]){for(const op of ops){if(op.updateOne)await PgDynamicModel.updateOne(op.updateOne.filter,op.updateOne.update,op.updateOne);
       if(op.insertOne)await PgDynamicModel.create(op.insertOne.document);
       if(op.deleteOne)await PgDynamicModel.deleteOne(op.deleteOne.filter);

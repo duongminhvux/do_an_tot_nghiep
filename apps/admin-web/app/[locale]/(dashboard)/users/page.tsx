@@ -302,7 +302,7 @@ export default function UsersPage() {
           {/* Left search & filters */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 flex-wrap">
             {/* Search Input */}
-            <div className="relative flex-1 min-w-[240px]">
+            <div className="relative w-full min-w-0 flex-1 sm:min-w-[240px]">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <Input
                 placeholder={t(
@@ -366,7 +366,7 @@ export default function UsersPage() {
         </div>
 
         {/* 4. Table */}
-        <div className="overflow-x-auto rounded border border-slate-200">
+        <div className="min-w-0 max-w-full overflow-x-auto rounded border border-slate-200">
           <table className="w-full text-left border-collapse min-w-[900px]">
             <thead>
               <tr className="border-b border-slate-200/80 bg-slate-50/70 text-[11px] font-bold uppercase tracking-wider text-slate-500">

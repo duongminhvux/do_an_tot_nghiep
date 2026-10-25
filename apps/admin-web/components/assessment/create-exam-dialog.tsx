@@ -117,7 +117,7 @@ export function CreateExamDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden bg-white border border-slate-200 rounded shadow-lg">
+      <DialogContent className="sm:max-w-[500px] p-0 overflow-x-hidden overflow-y-auto bg-white border border-slate-200 rounded shadow-lg">
         <DialogHeader className="p-4 bg-slate-50 border-b border-slate-200">
           <DialogTitle className="text-sm font-bold text-slate-900">
             {t('createDialog.title')}

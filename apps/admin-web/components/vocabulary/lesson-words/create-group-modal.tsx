@@ -31,7 +31,7 @@ export function CreateGroupModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-      <div className="bg-white rounded-[6px] border border-slate-200 shadow-none p-5 max-w-sm w-full space-y-4">
+      <div className="bg-white rounded-[6px] border border-slate-200 shadow-none p-5 max-h-[calc(100dvh-2rem)] overflow-y-auto max-w-sm w-full space-y-4">
         <div className="flex items-center justify-between pb-2 border-b border-slate-100">
           <h4 className="font-bold text-sm text-slate-900">
             {t('create_group_modal_title', 'Tạo nhóm từ vựng')}

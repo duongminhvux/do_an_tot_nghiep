@@ -244,7 +244,7 @@ export function EditQuestionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto rounded border border-slate-200 bg-white p-0 shadow-lg">
+      <DialogContent className="max-w-xl max-h-[90dvh] overflow-y-auto rounded border border-slate-200 bg-white p-0 shadow-lg">
         <DialogHeader className="p-4 bg-slate-50 border-b border-slate-200">
           <div className="flex items-center gap-2">
             <span className={`px-2 py-0.5 rounded text-[11px] ${getPartColor(part)}`}>

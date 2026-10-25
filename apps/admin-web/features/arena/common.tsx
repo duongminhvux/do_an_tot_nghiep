@@ -157,7 +157,7 @@ export function DataTable<T>({
 }) {
   const { t } = useArenaUI();
   return (
-    <div className="overflow-x-auto">
+    <div className="min-w-0 max-w-full overflow-x-auto">
       <table className="w-full text-left text-sm">
         <thead className="border-b border-slate-100 bg-slate-50/70 text-xs text-slate-500">
           <tr>

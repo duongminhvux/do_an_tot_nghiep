@@ -82,7 +82,8 @@
     "game_list": "Danh sách trò chơi",
     "game_list_title": "Danh sách trò chơi",
     "game_list_desc": "Chọn một trò chơi để luyện tập từ vựng và cải thiện thứ hạng của bạn.",
-    "arena_desc": "Thi đấu và luyện tập từ vựng cùng bạn bè."
+    "arena_desc": "Thi đấu và luyện tập từ vựng cùng bạn bè.",
+    "toeic_result": "Kết quả bài thi"
   },
   "group_arena": {
     "title": "Phòng chơi nhóm",

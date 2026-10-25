@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import {
   Sidebar,
+  useSidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
@@ -50,6 +51,8 @@ export function AppSidebar() {
   const siteSettings = useSiteSettings();
   const router = useRouter();
   const pathname = usePathname();
+  const { setOpenMobile } = useSidebar();
+  React.useEffect(() => { setOpenMobile(false); }, [pathname, setOpenMobile]);
   const params = useParams();
   const locale = (params?.locale as string) || 'vi';
   const dispatch = useAppDispatch();
@@ -105,7 +108,7 @@ export function AppSidebar() {
       {/* Brand Header */}
       <SidebarHeader className="border-b border-slate-100 px-3.5 h-16 flex items-center justify-between">
         <div className="flex items-center gap-3 min-w-0 w-full">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white shadow-sm">
             <SiteLogo compact fallback={<BookOpen className="h-5 w-5" />} />
           </div>
           <div className="flex flex-col overflow-hidden group-data-[collapsible=icon]:hidden">

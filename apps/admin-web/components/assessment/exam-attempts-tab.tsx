@@ -40,7 +40,7 @@ export function ExamAttemptsTab() {
           {t("detailPage.attemptsError")}
         </div>
       ) : rows.length ? (
-        <div className="overflow-x-auto">
+        <div className="min-w-0 max-w-full overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="border-b border-slate-200 text-slate-500">
               <tr>

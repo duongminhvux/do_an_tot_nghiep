@@ -17,7 +17,7 @@ export default function StudentHomePage() {
       <DashboardHeader {...data} />
       {home.isError && (
         <ErrorBanner
-          message={t("errors.activity")}
+          message={t("home:errors.activity")}
           onRetry={() => void home.refetch()}
         />
       )}

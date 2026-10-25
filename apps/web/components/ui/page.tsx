@@ -15,7 +15,7 @@ import { AlertCircle, ArrowLeft, ChevronRight, Inbox, Loader2 } from "lucide-rea
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
-export const surface = "rounded-xl border border-slate-200 bg-white shadow-sm";
+export const surface = "min-w-0 rounded-xl border border-slate-200 bg-white shadow-sm";
 
 const widths = {
   narrow: "max-w-4xl",
@@ -32,8 +32,8 @@ export function PageShell({
   className?: string;
 }) {
   return (
-    <div className="min-h-full w-full bg-background px-4 py-6 sm:px-6 lg:px-8">
-      <div className={cn("mx-auto w-full space-y-6", widths[width], className)}>
+    <div className="min-h-full min-w-0 w-full bg-background px-3 py-4 sm:py-6 sm:px-6 lg:px-8">
+      <div className={cn("mx-auto min-w-0 w-full space-y-6", widths[width], className)}>
         {children}
       </div>
     </div>
@@ -107,7 +107,7 @@ export function PageHeader({
             {description && <p className="mt-1.5 max-w-3xl text-sm text-slate-500">{description}</p>}
           </div>
         </div>
-        {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+        {actions && <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">{actions}</div>}
       </div>
     </header>
   );
@@ -142,7 +142,7 @@ export function Panel({
   bodyClassName?: string;
 }) {
   return (
-    <section className={cn(surface, "p-5 sm:p-6", className)}>
+    <section className={cn(surface, "p-4 sm:p-6", className)}>
       {(title || action) && (
         <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
           <div>

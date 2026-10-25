@@ -1,3 +1,5 @@
+import { store } from '@/redux/store';
+import type { ActiveTimePulse } from '@repo/shared-types/active-time';
 import apiClient from "@/lib/axios";
 import { ApiResponse } from "@/services/types";
 
@@ -57,6 +59,20 @@ export interface RecentActivity {
 }
 
 export const learningActivityService = {
+  reportActiveTime: async (pulse: ActiveTimePulse, keepalive = false) => {
+    if (keepalive) {
+      const token = store.getState().auth.accessToken;
+      if (!token) return;
+      // An authenticated keepalive flush on hide/unload; no public user-ID beacon.
+      await fetch(`${apiClient.defaults.baseURL}/learning-activity/active-time`, {
+        method: "POST", keepalive: true, credentials: "include",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(pulse),
+      });
+      return;
+    }
+    await apiClient.post('/learning-activity/active-time', pulse, { timeout: 10_000 });
+  },
   getHome: async (timezone: string) => {
     const res = await apiClient.get<ApiResponse<LearningHome>>(
       "/learning-activity/home",

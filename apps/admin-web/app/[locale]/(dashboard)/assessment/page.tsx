@@ -267,7 +267,7 @@ export default function AssessmentPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/50 p-6 md:p-8 space-y-6">
+    <div className="min-h-screen bg-slate-50/50 p-4 sm:p-6 md:p-8 space-y-6">
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -350,7 +350,7 @@ export default function AssessmentPage() {
       {/* Filter Toolbar Row */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         {/* Search input */}
-        <div className="relative flex-1 min-w-[260px]">
+        <div className="relative w-full min-w-0 flex-1 sm:min-w-[260px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input
             type="text"
@@ -477,7 +477,7 @@ export default function AssessmentPage() {
             </button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="min-w-0 max-w-full overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/50 text-[11px] font-bold text-slate-500">

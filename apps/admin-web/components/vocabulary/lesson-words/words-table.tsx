@@ -236,7 +236,7 @@ export function WordsTable({
           </div>
         ) : (
           /* Bảng từ vựng chuẩn */
-          <div className="overflow-x-auto">
+          <div className="min-w-0 max-w-full overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/40 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">

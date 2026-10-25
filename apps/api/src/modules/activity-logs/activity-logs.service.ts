@@ -60,6 +60,17 @@ export class ActivityLogsService {
     }
   }
 
+  async localizeLog<T extends Pick<ActivityLog, 'action' | 'category' | 'status' | 'description' | 'descriptionKey' | 'descriptionArgs' | 'metadata'>>(item: T, customLang?: string) {
+    const lang = this.getLang(customLang);
+    const [actionLabel, categoryLabel, statusLabel, description] = await Promise.all([
+      this.translateAction(item.action, lang),
+      this.translateCategory(item.category, lang),
+      this.translateStatus(item.status, lang),
+      this.translateDescription(item, lang),
+    ]);
+    return { ...item, actionLabel, categoryLabel, statusLabel, description };
+  }
+
   private async translateDescription(item: { action: string; status: string; description: string; descriptionKey?: string; descriptionArgs?: Record<string, unknown>; metadata?: Record<string, any> }, lang: string) {
     const known = [...Object.values(ActivityAction), ...LEARNING_ACTIVITY_TYPES].includes(item.action as never);
     const explicit = item.descriptionKey && /^activity-log\.messages\.[A-Z0-9_]+$/.test(item.descriptionKey) ? item.descriptionKey : undefined;
@@ -218,12 +229,17 @@ export class ActivityLogsService {
     if (query.includeLearning === 'true' && query.userId) {
       const user = await this.userModel.findById(query.userId).select('email').lean();
       if (!user) throw new BadRequestException(await this.i18n.translate('activity-log.errors.INVALID_USER', { lang }));
-      delete filter.userId;
-      const email = user.email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      filter.$and = [{ $or: [
-        { userId: new PgId(query.userId) },
-        { $and: [{ $or: [{ userId: null }, { userId: { $exists: false } }] }, { userEmail: { $regex: `^${email}$`, $options: 'i' } }] },
-      ] }];
+      // Public Identity projections intentionally omit email. Keep ID scoping when
+      // it is unavailable instead of crashing or broadening the history query.
+      const userEmail = typeof user.email === 'string' ? user.email.trim() : '';
+      if (userEmail) {
+        delete filter.userId;
+        const email = userEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        filter.$and = [{ $or: [
+          { userId: new PgId(query.userId) },
+          { $and: [{ $or: [{ userId: null }, { userId: { $exists: false } }] }, { userEmail: { $regex: `^${email}$`, $options: 'i' } }] },
+        ] }];
+      }
     }
     const matchedActions: string[] = [];
     if (query.search?.trim()) {

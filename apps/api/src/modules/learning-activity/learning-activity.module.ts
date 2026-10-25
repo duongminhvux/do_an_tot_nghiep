@@ -1,3 +1,4 @@
+import { ActiveTimeService } from './active-time.service.js';
 import { Global, Module } from '@nestjs/common';
 import { PgModelsModule } from '../../postgres/compat.js';
 import {
@@ -16,6 +17,6 @@ import { InternalLearningActivityController } from './internal-learning-activity
     ]),
   ],
   controllers: [LearningActivityController, InternalLearningActivityController],
-  providers: [LearningActivityService],
+  providers: [LearningActivityService, ActiveTimeService],
   exports: [LearningActivityService] })
 export class LearningActivityModule {}

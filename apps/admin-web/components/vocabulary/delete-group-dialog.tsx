@@ -45,7 +45,7 @@ export function DeleteGroupDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[420px] p-0 overflow-hidden bg-white border border-slate-200 rounded-[6px] shadow-none">
+      <DialogContent className="sm:max-w-[420px] p-0 overflow-x-hidden overflow-y-auto bg-white border border-slate-200 rounded-[6px] shadow-none">
         <DialogHeader className="p-4 bg-rose-50 border-b border-rose-200">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-[6px] bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">

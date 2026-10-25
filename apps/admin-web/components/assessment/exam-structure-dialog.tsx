@@ -35,7 +35,7 @@ export function ExamStructureDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col p-0 overflow-hidden bg-white sm:rounded-2xl border border-slate-200/80 shadow-2xl">
+      <DialogContent className="max-w-3xl max-h-[85dvh] flex flex-col p-0 overflow-x-hidden overflow-y-auto bg-white sm:rounded-2xl border border-slate-200/80 shadow-2xl">
         {/* Header */}
         <div className="p-6 border-b border-slate-100 bg-slate-50/60">
           <div className="flex items-start gap-4">

@@ -81,18 +81,18 @@ export default function DashboardLayout({
         <RoomClosedNotice />
         <SidebarProvider>
           <AppSidebar />
-          <SidebarInset className="bg-background min-h-screen flex flex-col">
+          <SidebarInset className="bg-background min-h-dvh flex flex-col">
             {/* Top Bar with Sidebar Trigger - Sticky Fixed to top */}
             <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-slate-200 bg-white/95 px-4 sm:px-6 backdrop-blur-md shadow-xs">
               <SidebarTrigger className="-ml-1 text-slate-600 hover:text-slate-900 cursor-pointer" />
               <Separator orientation="vertical" className="mr-2 h-4" />
-              <span className="text-sm font-semibold text-slate-700">
+              <span className="min-w-0 truncate text-sm font-semibold text-slate-700">
                 {getPageTitle()}
               </span>
             </header>
 
             {/* Page Content */}
-            <div className="flex-1 w-full">
+            <div className="min-w-0 flex-1 w-full">
               {children}
             </div>
           </SidebarInset>

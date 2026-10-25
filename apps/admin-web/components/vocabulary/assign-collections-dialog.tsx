@@ -125,7 +125,7 @@ export function AssignCollectionsDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[620px] p-0 overflow-hidden bg-white border border-slate-200 rounded-[6px] shadow-none">
+      <DialogContent className="sm:max-w-[620px] p-0 overflow-x-hidden overflow-y-auto bg-white border border-slate-200 rounded-[6px] shadow-none">
         <DialogHeader className="p-4 bg-slate-50 border-b border-slate-200">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-[6px] bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">

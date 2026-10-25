@@ -48,7 +48,7 @@ export function SrsRatingBar({
   return (
     <div
       style={{ left: leftOffset }}
-      className="fixed bottom-0 right-0 z-40 w-auto select-none border-t border-slate-200 bg-white/95 px-3 py-2 shadow-[0_-4px_16px_rgba(15,23,42,0.06)] backdrop-blur-md transition-[left] duration-200 ease-linear animate-in slide-in-from-bottom sm:px-6 sm:py-2.5"
+      className="fixed bottom-0 right-0 z-40 w-auto select-none border-t border-slate-200 bg-white/95 px-3 py-2 shadow-[0_-4px_16px_rgba(15,23,42,0.06)] backdrop-blur-md transition-[left] duration-200 ease-linear animate-in slide-in-from-bottom sm:px-6 sm:py-2.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:pb-[max(0.625rem,env(safe-area-inset-bottom))]"
     >
       <div className="max-w-xl mx-auto space-y-2">
         {/* 4 Compact SRS Action Buttons */}

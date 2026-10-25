@@ -135,7 +135,7 @@ export default function CreateDictationPage() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50/50 p-6 md:p-8">
+    <div className="min-h-screen bg-slate-50/50 p-4 sm:p-6 md:p-8">
       <div className="mx-auto max-w-6xl space-y-6">
         <div className="flex items-center gap-3">
           <Link href={`/${locale}/dictation`} className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-slate-900">

@@ -1,4 +1,5 @@
 import apiClient from '@/lib/axios';
+import type { ActivityLogItem } from '@/types/activity-log';
 import type { ApiResponse } from '@/types/common';
 
 export interface DashboardOverview {
@@ -17,14 +18,14 @@ export interface DashboardOverview {
   examTypes: { type: string; count: number }[];
   popularExams: { id: string; name: string; attempts: number }[];
   newUsers: { id: string; name: string; email: string; createdAt: string }[];
-  recentActivity: any[];
+  recentActivity: ActivityLogItem[];
 }
 
 export const dashboardService = {
-  getOverview: async (days: number): Promise<DashboardOverview> => {
+  getOverview: async (days: number, lang: string): Promise<DashboardOverview> => {
     const response = await apiClient.get<ApiResponse<DashboardOverview>>(
       '/admin/dashboard/overview',
-      { params: { days } },
+      { params: { days, lang } },
     );
     return response.data.data;
   },

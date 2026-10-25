@@ -49,6 +49,9 @@ export function SiteSettingsProvider({
     );
     if (icons.length)
       icons.forEach((icon) => {
+        // The configured image can use a different format or size than the previous icon.
+        icon.removeAttribute("type");
+        icon.removeAttribute("sizes");
         icon.href = url;
       });
     else {
