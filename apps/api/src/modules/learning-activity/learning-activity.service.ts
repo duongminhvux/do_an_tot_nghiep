@@ -1,4 +1,5 @@
 import { ActiveTimeService } from './active-time.service.js';
+import type { LearningOutcome } from '@repo/shared-types/mistakes';
 import { PgId, InjectPgConnection, type PgConnection } from '../../postgres/compat.js';
 import { randomUUID } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
@@ -34,6 +35,7 @@ export interface RecordActivityInput {
   score?: number;
   durationSec?: number;
   metadata?: Record<string, unknown>;
+  outcomes?: LearningOutcome[];
 }
 
 export interface LearningActivityWriter {
@@ -85,7 +87,8 @@ export class LearningActivityService {
     const activityId = randomUUID();
     const xp = Math.max(0, Math.round(input.xp));
     const occurredAt = input.occurredAt ?? new Date();
-    const payload = { ...input, userId, occurredAt: occurredAt.toISOString(), xp };
+    const { outcomes, ...activityInput } = input;
+    const payload = { ...activityInput, userId, occurredAt: occurredAt.toISOString(), xp };
     try {
       await client.query('BEGIN');
       const inserted = await client.query<{id:string}>(`INSERT INTO public.learning_activities
@@ -102,6 +105,10 @@ export class LearningActivityService {
           (id,user_id,source_key,event_id,source_service,xp,activity_id,occurred_at)
           VALUES($1,$2::uuid,$3,$4,'learning',$5,$6,$7)`,
           [randomUUID(),userId,input.sourceKey,randomUUID(),xp,activityId,occurredAt]);
+      }
+      if (outcomes?.length) {
+        await client.query('SELECT public.record_learning_outcomes($1,$2,$3,$4::jsonb)',
+          [userId,input.sourceKey,occurredAt,JSON.stringify(outcomes)]);
       }
       await client.query('COMMIT');
       return inserted.rows.length > 0;

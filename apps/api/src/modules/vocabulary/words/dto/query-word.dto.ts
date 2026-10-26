@@ -1,7 +1,8 @@
 import { IsBoolean, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 
-export class QueryWordDto {
+import {PublicationFilterDto} from '../../../publication/publication.dto.js';
+export class QueryWordDto extends PublicationFilterDto {
   @IsString()
   @IsOptional()
   search?: string;

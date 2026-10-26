@@ -69,8 +69,9 @@ export class LessonsService {
     return createdLesson.save();
   }
 
-  async findAllLessons(collectionId?: string): Promise<any[]> {
+  async findAllLessons(collectionId?: string,publicationStatus?:string): Promise<any[]> {
     const filter: Record<string, any> = { isDeleted: { $ne: true } };
+    if(publicationStatus)filter.publicationStatus=publicationStatus;
     if (collectionId) {
       filter.collectionId = new PgId(collectionId);
     }

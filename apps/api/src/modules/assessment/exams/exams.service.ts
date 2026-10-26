@@ -178,6 +178,7 @@ export class ExamsService {
   ): Promise<{ data: Exam[]; total: number; page: number; limit: number }> {
     const { search, q, type, isActive, groupId, page = 1, limit = 10 } = query;
     const filter: Record<string, any> = { isDeleted: { $ne: true } };
+    if(query.publicationStatus)filter.publicationStatus=query.publicationStatus;
 
     const searchTerm = q || search;
     if (searchTerm) {

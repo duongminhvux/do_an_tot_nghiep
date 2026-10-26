@@ -12,6 +12,7 @@ import { sessionPool } from './session.js';
 import { randomInt, randomUUID } from 'node:crypto';
 import { Injectable, Inject, Module, Global, type DynamicModule } from '@nestjs/common';
 import { serviceRole, serviceUrl, tableOwner } from './ownership.js';
+import {publicationScope,PUBLICATION_TABLES,visiblePublicationRows} from '../modules/publication/publication-scope.js';
 
 export class PgId extends String {
   constructor(value?: any) {
@@ -371,7 +372,8 @@ type PoolLike = Pick<pg.Pool,'query'>;
 async function readRows(table: string, pool: PoolLike): Promise<any[]> {
   const role = serviceRole(), owner = tableOwner(table);
   if (!role || !owner || owner === role) {
-    return (await pool.query(`SELECT * FROM public.${safeName(table)}`)).rows;
+    const gate=publicationScope.getStore() && PUBLICATION_TABLES.has(table) ? " WHERE publication_status='PUBLISHED' AND is_deleted IS NOT TRUE" : '';
+    return visiblePublicationRows(table,(await pool.query(`SELECT * FROM public.${safeName(table)}${gate}`)).rows);
   }
   // Identity user data is never loaded wholesale into Arena/Learning: only
   // the dedicated, event-maintained public display projection is accessible.
@@ -388,7 +390,7 @@ async function readRows(table: string, pool: PoolLike): Promise<any[]> {
   const body = await response.json() as any;
   const rows = body?.data ?? body;
   if (!Array.isArray(rows)) throw new Error(`Invalid read model response for ${owner}.${table}`);
-  return rows;
+  return visiblePublicationRows(table,rows);
 }
 
 /** Push safe, common document filters into PostgreSQL. Unsupported operators
@@ -506,6 +508,7 @@ export function makePgModel<T=any>(name:string,pool:pg.Pool):PgModel<T> {
     for(const [k,v] of Object.entries(row)) {
       if(k==='payload')continue;
       const key=k==='id'?'_id':k==='password_hash'?'password':camel(k);
+      if(['publication_status','publication_revision','publication_validation','published_by','published_at'].includes(k) || (table==='dictationlessons' && k==='status')) {data[key]=v;continue;}
       if(v!==null&&v!==undefined&&(data[key]===undefined || k==='id'))data[key]=v;
     }
     if(!data._id)data._id=row.id;
@@ -522,6 +525,7 @@ export function makePgModel<T=any>(name:string,pool:pg.Pool):PgModel<T> {
   }
   async function all(){return (await readRows(table,pool)).map(hydrate);}
   async function selected(filter?:any){
+    if(publicationScope.getStore() && PUBLICATION_TABLES.has(table)) filter={$and:[filter||{},{publicationStatus:'PUBLISHED',isDeleted:{$ne:true},isActive:{$ne:false}}]};
     const owner=tableOwner(table),role=serviceRole();
     if(!owner||!role||owner===role){
       const where=simpleWhere(filter,await fields());

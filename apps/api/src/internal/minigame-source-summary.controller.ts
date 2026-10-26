@@ -27,10 +27,10 @@ export class MiniGameSourceSummaryController {
         )::integer AS "wordCount"
       FROM public.collections c
       LEFT JOIN public.lessons l ON l.collection_id = c.id
-        AND l.is_active IS TRUE AND l.is_deleted IS NOT TRUE
+        AND l.publication_status='PUBLISHED' AND l.is_active IS TRUE AND l.is_deleted IS NOT TRUE
       LEFT JOIN public.lessonwords lw ON lw.lesson_id = l.id
       LEFT JOIN public.words w ON w.id = lw.word_id
-        AND w.is_active IS TRUE AND w.is_deleted IS NOT TRUE
+        AND w.publication_status='PUBLISHED' AND w.is_active IS TRUE AND w.is_deleted IS NOT TRUE
       WHERE c.is_active IS TRUE AND c.is_deleted IS NOT TRUE
       GROUP BY c.id, c.name, c.cover_url, c."order"
       ORDER BY c."order" ASC NULLS LAST, c.name ASC

@@ -1,5 +1,5 @@
 import { PgId } from '../../../postgres/compat.js';
-import { Injectable } from '@nestjs/common';
+import { Injectable,NotFoundException } from '@nestjs/common';
 import { InjectPgModel } from '../../../postgres/compat.js';
 import { type Model } from '../../../postgres/compat.js';
 import {
@@ -57,6 +57,7 @@ export class ProgressService {
    * Lấy tiến độ học chi tiết của 1 Lesson bao gồm thống kê từ đã thuộc, cần ôn, chưa học và theo từng Section
    */
   async getLessonProgress(userId: string, lessonId: string) {
+    if(!await this.lessonModel.exists({_id:lessonId,publicationStatus:'PUBLISHED',isActive:{$ne:false},isDeleted:{$ne:true}}))throw new NotFoundException('Published lesson not found');
     const userObjId = new PgId(userId);
     const lessonObjId = new PgId(lessonId);
 

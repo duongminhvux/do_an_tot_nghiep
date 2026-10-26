@@ -9,6 +9,7 @@ export type AttemptDocument = PgDocument<Attempt>;
 
 @PgEntity({ timestamps: true, minimize: false })
 export class Attempt {
+  @PgField() examPublicationRevision?:number;
   @PgField({
     type: PgId,
     ref: 'User',

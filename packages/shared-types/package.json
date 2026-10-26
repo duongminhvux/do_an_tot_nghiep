@@ -5,6 +5,9 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
+    "./publication": "./src/publication.mjs",
+    "./mistakes": "./src/mistakes.mjs",
+    "./recommendations": "./src/recommendations.mjs",
     ".": "./src/index.ts",
     "./assessment-import": "./src/assessment-import.mjs",
     "./toeic-score": "./src/toeic-score.mjs",

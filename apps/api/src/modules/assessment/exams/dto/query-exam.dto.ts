@@ -9,7 +9,8 @@ import {
 import { Transform, Type } from 'class-transformer';
 import { ExamType } from './create-exam.dto.js';
 
-export class QueryExamDto {
+import {PublicationFilterDto} from '../../../publication/publication.dto.js';
+export class QueryExamDto extends PublicationFilterDto {
   @IsOptional()
   @IsIn(['name', 'totalQuestions', 'durationMinutes', 'order', 'isActive'])
   sortBy?: 'name' | 'totalQuestions' | 'durationMinutes' | 'order' | 'isActive';

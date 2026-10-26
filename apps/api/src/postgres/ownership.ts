@@ -4,7 +4,7 @@ export const OWNED_TABLES: Record<string, readonly string[]> = {
   content: ['collections', 'dictationlessons', 'dictationprogresses', 'dictationsections', 'dictationsegments', 'dictationtopics', 'lessons', 'lessonwords', 'sections', 'vocabularygroups', 'words', 'youtubelessons'],
   assessment: ['attemptanswers', 'attempts', 'examgroups', 'exams', 'passagegroups', 'passages', 'questions', 'pdf_ai_correction_events'],
   arena: ['arenainvitations', 'arenamatches', 'arenamatchplayers', 'arenamatchquestions', 'arenaplayeranswers', 'arenaprofiles', 'arenaratinghistories', 'arenarooms', 'arenasettings', 'friendrooms'],
-  learning: ['user_active_time_state', 'user_active_time_slices', 'gamedefinitions', 'learning_activities', 'learningsessions', 'learningsessionwords', 'minigameresults', 'userdailyactivities', 'userlessonprogresses', 'userlessonwords', 'usersavedwords', 'userwordreviews', 'vocabularyfolders'],
+  learning: ['learning_mistakes', 'learning_item_outcomes', 'user_active_time_state', 'user_active_time_slices', 'gamedefinitions', 'learning_activities', 'learningsessions', 'learningsessionwords', 'minigameresults', 'userdailyactivities', 'userlessonprogresses', 'userlessonwords', 'usersavedwords', 'userwordreviews', 'vocabularyfolders'],
   'media-jobs': ['asr_jobs', 'audio_jobs', 'media_assets', 'system_settings'],
   'ai-import': ['pdf_ai_correction_events'],
   notification: ['activitylogs', 'notifications'],

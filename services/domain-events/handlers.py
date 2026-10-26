@@ -65,6 +65,8 @@ def apply_event(cur, consumer, event):
             occurred = occurred.replace(tzinfo=timezone.utc)
         activity_id = str(uuid4())
         document = {**payload,'userId':user_id,'occurredAt':occurred.isoformat(),'xp':xp}
+        # Item-level outcomes belong in the private notebook projection only.
+        document.pop('outcomes', None)
         cur.execute('''INSERT INTO public.learning_activities
             (id,user_id,module,type,source_key,xp,occurred_at,title,ref_id,link,correct,total,score,duration_sec,metadata,payload)
             VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb,%s::jsonb)
@@ -79,5 +81,13 @@ def apply_event(cur, consumer, event):
                 (id,user_id,source_key,event_id,source_service,xp,activity_id,occurred_at)
                 VALUES(%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT(user_id,source_key) DO NOTHING''',
                 (str(uuid4()),user_id,source_key,event_id,payload.get('sourceService') or event.get('source') or 'domain-event',xp,activity_id,occurred))
+        outcomes = payload.get('outcomes')
+        if outcomes is not None:
+            if not isinstance(outcomes, list) or len(outcomes) > 1000:
+                raise ValueError('Invalid learning outcomes')
+            # SQL constraints validate each outcome; logical source keys protect
+            # against duplicate delivery even with a different event UUID.
+            cur.execute('SELECT public.record_learning_outcomes(%s,%s,%s,%s::jsonb)',
+                        (user_id, source_key, occurred, json.dumps(outcomes)))
         return 'learning-credit' if inserted else 'already-credited'
     return None

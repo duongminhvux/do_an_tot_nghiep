@@ -74,6 +74,7 @@ export class WordsService {
       sortBy = 'createdAt',
       sortOrder = 'desc' } = query;
     const filter: Record<string, any> = {};
+    if(query.publicationStatus)filter.publicationStatus=query.publicationStatus;
 
     if (typeof isDeleted === 'boolean') {
       filter.isDeleted = isDeleted;
@@ -107,7 +108,7 @@ export class WordsService {
     const [data, total] = await Promise.all([
       this.wordModel
         .find(filter)
-        .select('word ipa audio audioMeta parts.partOfSpeech parts.meanings.definition parts.meanings.translation level isActive createdAt')
+        .select('word ipa audio audioMeta parts.partOfSpeech parts.meanings.definition parts.meanings.translation level isActive createdAt publicationStatus publicationRevision publicationValidation')
         .sort(sortObj)
         .skip(skip)
         .limit(limit)

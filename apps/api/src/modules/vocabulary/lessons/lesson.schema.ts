@@ -7,6 +7,9 @@ export type LessonDocument = PgDocument<Lesson>;
 
 @PgEntity({ timestamps: true })
 export class Lesson {
+  @PgField({default:'DRAFT'}) publicationStatus: string;
+  @PgField({default:1}) publicationRevision: number;
+  @PgField({type:Object}) publicationValidation?: Record<string,unknown>;
   @PgField({ type: PgId, ref: Collection.name, required: true, index: true })
   collectionId!: PgId;
 

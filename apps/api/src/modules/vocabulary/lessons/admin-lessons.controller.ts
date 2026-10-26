@@ -14,6 +14,7 @@ import { AddWordsToLessonDto } from './dto/add-words-to-lesson.dto.js';
 import { CreateSectionDto } from './dto/create-section.dto.js';
 import { UpdateSectionDto } from './dto/update-section.dto.js';
 import { UpdateLessonWordDto } from './dto/update-lesson-word.dto.js';
+import {LessonPublicationQueryDto} from '../../publication/publication.dto.js';
 
 @AdminController('lessons')
 export class AdminLessonsController {
@@ -25,8 +26,8 @@ export class AdminLessonsController {
   }
 
   @Get()
-  findAllLessons(@Query('collectionId') collectionId?: string) {
-    return this.lessonsService.findAllLessons(collectionId);
+  findAllLessons(@Query() query:LessonPublicationQueryDto) {
+    return this.lessonsService.findAllLessons(query.collectionId,query.publicationStatus);
   }
 
   @Get(':id')

@@ -1,3 +1,6 @@
+import {UseGuards} from '@nestjs/common';
+import {RolesGuard} from '../../auth/guards/roles.guard.js';
+import {Roles} from '../../auth/decorators/roles.decorator.js';
 import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { LessonsService } from './lessons.service.js';
 import { CreateLessonDto } from './dto/create-lesson.dto.js';
@@ -5,9 +8,11 @@ import { UpdateLessonDto } from './dto/update-lesson.dto.js';
 import { AddWordsToLessonDto } from './dto/add-words-to-lesson.dto.js';
 
 @Controller('lessons')
+@UseGuards(RolesGuard)
 export class LessonsController {
   constructor(private readonly lessonsService: LessonsService) {}
 
+  @Roles('ADMIN')
   @Post()
   createLesson(@Body() createLessonDto: CreateLessonDto) {
     return this.lessonsService.createLesson(createLessonDto);
@@ -31,11 +36,13 @@ export class LessonsController {
     return this.lessonsService.findOneLesson(id);
   }
 
+  @Roles('ADMIN')
   @Patch(':id')
   updateLesson(@Param('id') id: string, @Body() updateLessonDto: UpdateLessonDto) {
     return this.lessonsService.updateLesson(id, updateLessonDto);
   }
 
+  @Roles('ADMIN')
   @Delete(':id')
   removeLesson(@Param('id') id: string) {
     return this.lessonsService.removeLesson(id);
@@ -48,6 +55,7 @@ export class LessonsController {
   }
 
   // Lesson Words Management
+  @Roles('ADMIN')
   @Post(':id/words')
   addWordsToLesson(
     @Param('id') id: string,
@@ -68,6 +76,7 @@ export class LessonsController {
     return this.lessonsService.getWordsInLesson(id, sectionId);
   }
 
+  @Roles('ADMIN')
   @Delete(':id/words/:wordId')
   removeWordFromLesson(
     @Param('id') id: string,

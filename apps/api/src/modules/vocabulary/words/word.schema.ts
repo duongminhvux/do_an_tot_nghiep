@@ -104,6 +104,9 @@ export const WordPartSchema = PgSchemaFactory.createForClass(WordPart);
 @PgEntity({
   timestamps: true })
 export class Word {
+  @PgField({default:'DRAFT'}) publicationStatus: string;
+  @PgField({default:1}) publicationRevision: number;
+  @PgField({type:Object}) publicationValidation?: Record<string,unknown>;
   @PgField({
     required: true,
     trim: true,

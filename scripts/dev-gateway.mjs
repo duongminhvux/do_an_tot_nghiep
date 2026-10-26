@@ -8,7 +8,7 @@ const routes=[
 [/^\/api\/(?:words|admin\/words|collections|admin\/collections|lessons|admin\/lessons|vocabulary-groups|admin\/vocabulary-groups|dictation|admin\/dictation|upload)(?:\/|$)/,'content'],
 [/^\/api\/(?:exams|admin\/exams|exam-groups|admin\/exam-groups|admin\/questions|attempts|admin\/attempts)(?:\/|$)/,'assessment'],
 [/^\/api\/(?:arena|admin\/arena)(?:\/|$)/,'arena'],
-[/^\/api\/(?:learning|learning-activity|progress|reviews|sessions|admin\/dashboard|minigames|admin\/minigames|admin\/games)(?:\/|$)/,'learning'],
+[/^\/api\/(?:learning|learning-activity|progress|reviews|sessions|admin\/learning|admin\/dashboard|minigames|admin\/minigames|admin\/games)(?:\/|$)/,'learning'],
 [/^\/api\/(?:site-settings|admin\/site-settings|admin\/audio|admin\/asr|admin\/infrastructure|tts|asr)(?:\/|$)/,'media-jobs'],
 [/^\/api\/(?:activity-logs|admin\/activity-logs)(?:\/|$)/,'notification'],
 ];
