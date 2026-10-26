@@ -159,6 +159,11 @@ export function AppSidebar() {
 
               {/* 2. TOEIC (Collapsible Level 1 with 3 sub-pages: Đề thi, Lịch sử làm bài, Thống kê) */}
               <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname.startsWith(`/${locale}/learning/mistakes`)} tooltip={t('mistakes.title')} className="h-10 rounded-lg px-3 text-sm font-medium">
+                  <Link href={`/${locale}/learning/mistakes`}><Bookmark className="h-5 w-5 shrink-0" /><span>{t('mistakes.title')}</span></Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
                 <div>
                   <button
                     type="button"

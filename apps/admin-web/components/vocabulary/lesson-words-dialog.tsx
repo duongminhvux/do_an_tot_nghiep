@@ -1,4 +1,5 @@
 'use client';
+import {PublicationBar} from '@/components/publication/publication-controls';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -361,6 +362,7 @@ export function LessonWordsDialog({
             </div>
           </div>
         </DialogHeader>
+        {lesson && <PublicationBar kind="lessons" id={lesson._id} version={lessonWords.length} />}
 
         {/* Global Error Alert */}
         {errorMessage && (

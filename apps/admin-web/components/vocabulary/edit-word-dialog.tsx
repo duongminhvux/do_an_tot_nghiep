@@ -1,4 +1,5 @@
 'use client';
+import {PublicationBar} from '@/components/publication/publication-controls';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -208,6 +209,7 @@ export function EditWordDialog({ wordId, open, onOpenChange }: Props) {
           <div className="flex h-56 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-blue-600" /></div>
         ) : (
           <form className="p-6 space-y-6" onSubmit={(e) => { e.preventDefault(); setError(''); updateMutation.mutate(); }}>
+            {wordId && <PublicationBar kind="words" id={wordId} version={detail?.updatedAt} dirty={audioBusy!==null || updateMutation.isPending || word!==(detail?.word||'') || level!==(detail?.level||'A1') || usIpa!==(detail?.ipa?.us||'') || ukIpa!==(detail?.ipa?.uk||'') || imageUrl!==(detail?.image||'') || isActive!==(detail?.isActive!==false) || variations!==(detail?.variations||[]).join(', ') || relatedWords!==(detail?.relatedWords||[]).join(', ') || JSON.stringify(meanings.map(item=>({...item,id:undefined})))!==JSON.stringify(toDrafts(detail).map(item=>({...item,id:undefined})))} />}
             {error && <div className="rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
 
             <section className="grid grid-cols-1 md:grid-cols-[1fr_140px] gap-4">

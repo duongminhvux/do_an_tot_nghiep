@@ -1,4 +1,5 @@
 'use client';
+import {PublicationBar} from '@/components/publication/publication-controls';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
@@ -423,6 +424,7 @@ export default function ExamDetailPage() {
       </div>
 
       {/* 2. Exam Banner Card */}
+      <PublicationBar kind="exams" id={examId} version={examResponse} />
       <ExamBanner
         exam={exam}
         locale={locale}

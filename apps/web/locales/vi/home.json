@@ -108,5 +108,22 @@
   "time": {
     "hours_minutes": "{{h}} giờ {{m}} phút",
     "minutes": "{{m}} phút"
+  },
+  "recommendations": {
+    "title": "Hôm nay nên học gì?",
+    "subtitle": "Dựa trên hoạt động học gần đây của bạn · Gợi ý theo quy tắc",
+    "filters": "Lọc theo kỹ năng",
+    "all": "Tất cả",
+    "listening": "Nghe",
+    "reading": "Đọc",
+    "vocabulary": "Từ vựng",
+    "minutes": "{{count}} phút",
+    "start": "Bắt đầu",
+    "loading": "Đang tải gợi ý",
+    "error": "Chưa tải được gợi ý học tập.",
+    "retry": "Thử lại",
+    "partial": "Một số nguồn đang tạm thời không khả dụng. Gợi ý hiện dựa trên các nguồn còn lại.",
+    "disabled": "Gợi ý học tập đang tắt. Bạn vẫn có thể học tại các module hiện có.",
+    "emptyFilter": "Chưa có gợi ý cho bộ lọc này. Hãy chọn Tất cả."
   }
 }

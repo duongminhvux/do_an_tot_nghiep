@@ -1,4 +1,5 @@
 'use client';
+import {PublicationBadge,PublicationFilter} from '@/components/publication/publication-controls';
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import Link from 'next/link';
@@ -62,6 +63,7 @@ export default function AssessmentPage() {
   const initialLimit = Number(searchParams?.get('limit')) || 8;
 
   // Filter states
+  const [publicationFilter,setPublicationFilter]=useState('');
   const [searchTerm, setSearchTerm] = useState(initialQ);
   const [statusFilter, setStatusFilter] = useState<'ALL' | ExamStatus>('ALL');
   const [groupFilter, setGroupFilter] = useState<string>('ALL');
@@ -135,9 +137,10 @@ export default function AssessmentPage() {
 
   // Fetch paginated exams with debounced q param
   const { data: response, isLoading, isFetching } = useQuery({
-    queryKey: ['admin-exams', debouncedQ, statusFilter, groupFilter, currentPage, pageSize, sortBy, sortOrder],
+    queryKey: ['admin-exams', publicationFilter, debouncedQ, statusFilter, groupFilter, currentPage, pageSize, sortBy, sortOrder],
     queryFn: async () => {
       const res = await examService.getAll({
+        publicationStatus: (publicationFilter||undefined) as 'DRAFT'|'IN_REVIEW'|'PUBLISHED'|undefined,
         q: debouncedQ.trim() || undefined,
         search: debouncedQ.trim() || undefined,
         isActive: statusFilter === 'ALL' ? undefined : statusFilter === 'ACTIVE',
@@ -347,6 +350,7 @@ export default function AssessmentPage() {
         </div>
       </div>
 
+      <PublicationFilter value={publicationFilter} onChange={value=>{setPublicationFilter(value);setCurrentPage(1);}} />
       {/* Filter Toolbar Row */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         {/* Search input */}
@@ -531,7 +535,7 @@ export default function AssessmentPage() {
                               className="font-bold text-slate-900 text-xs sm:text-sm hover:text-blue-600 transition-colors truncate block"
                             >
                               {exam.name}
-                            </Link>
+                            </Link><PublicationBadge item={exam} />
                             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                               {(exam.group?.name || (exam as any).groupId?.name) && (
                                 <Link

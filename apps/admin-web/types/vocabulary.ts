@@ -1,3 +1,4 @@
+import type {PublicationInfo,PublicationStatus} from '@repo/shared-types/publication';
 // ==========================
 // VOCABULARY GROUPS
 // ==========================
@@ -107,7 +108,7 @@ export interface UpdateCollectionDto {
 // ==========================
 // LESSONS
 // ==========================
-export interface LessonItem {
+export interface LessonItem extends Partial<PublicationInfo> {
   _id: string;
   title: string;
   slug?: string;
@@ -238,7 +239,7 @@ export interface WordPartListItem {
   meanings: WordMeaningListItem[];
 }
 
-export interface WordListItem {
+export interface WordListItem extends Partial<PublicationInfo> {
   _id: string;
   word: string;
   level: string;
@@ -274,7 +275,7 @@ export interface WordPartDetail {
   meanings: WordMeaningDetail[];
 }
 
-export interface WordDetail {
+export interface WordDetail extends Partial<PublicationInfo> {
   _id: string;
   word: string;
   level: string;
@@ -304,6 +305,7 @@ export interface WordItem {
 }
 
 export interface QueryWordDto {
+  publicationStatus?:PublicationStatus;
   search?: string;
   page?: number;
   limit?: number;

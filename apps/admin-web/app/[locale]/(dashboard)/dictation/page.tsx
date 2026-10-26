@@ -1,4 +1,5 @@
 'use client';
+import {PublicationBadge,PublicationFilter} from '@/components/publication/publication-controls';
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
@@ -37,6 +38,7 @@ export default function AdminDictationPage() {
   const params = useParams();
   const locale = (params?.locale as string) || 'vi';
   const queryClient = useQueryClient();
+  const [publicationFilter,setPublicationFilter]=useState('');
   const [search, setSearch] = useState('');
 
   const { data, isLoading } = useQuery({
@@ -47,11 +49,12 @@ export default function AdminDictationPage() {
   const lessons = unwrap<DictationLesson[]>(data) || [];
   const filtered = useMemo(() => {
     const keyword = search.trim().toLowerCase();
-    if (!keyword) return lessons;
-    return lessons.filter((lesson) =>
+    const visible=lessons.filter(lesson=>!publicationFilter||lesson.publicationStatus===publicationFilter);
+    if (!keyword) return visible;
+    return visible.filter((lesson) =>
       `${lesson.title} ${lesson.topic} ${lesson.level}`.toLowerCase().includes(keyword),
     );
-  }, [lessons, search]);
+  }, [lessons, search,publicationFilter]);
 
   const removeMutation = useMutation({
     mutationFn: (id: string) => dictationService.remove(id),
@@ -129,6 +132,7 @@ export default function AdminDictationPage() {
               className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
             />
           </div>
+          <PublicationFilter value={publicationFilter} onChange={setPublicationFilter} />
           <p className="text-xs text-slate-400">{filtered.length} bài</p>
         </div>
 
@@ -179,11 +183,11 @@ export default function AdminDictationPage() {
                     <td className="px-4 py-4">
                       <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${statusStyle[lesson.status]}`}>
                         {lesson.status}
-                      </span>
+                      </span><PublicationBadge item={lesson} />
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex items-center justify-end gap-2">
-                        {lesson.status === 'READY' && (
+                        {lesson.status === 'READY' && lesson.publicationStatus==='IN_REVIEW' && !lesson.publicationValidation?.issues.some(issue=>issue.severity==='error') && (
                           <button
                             onClick={() => publishMutation.mutate({ id: lesson._id, publish: true })}
                             className="rounded-lg border border-emerald-200 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"

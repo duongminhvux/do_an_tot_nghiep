@@ -101,6 +101,22 @@ export function AppSidebar() {
       active: pathname === `/${locale}`,
     },
     {
+      label: t('recommendations.learningManagement'),
+      icon: BookOpen,
+      active: active(`/${locale}/learning`),
+      children: [{
+        label: t('mistakes.adminTitle'),
+        href: `/${locale}/learning/mistakes`,
+        icon: ClipboardCheck,
+        active: active(`/${locale}/learning/mistakes`),
+      }, {
+        label: t('recommendations.title'),
+        href: `/${locale}/learning/recommendations`,
+        icon: Settings,
+        active: active(`/${locale}/learning/recommendations`),
+      }],
+    },
+    {
       label: t("nav.games"),
       href: `/${locale}/games`,
       icon: Gamepad2,
