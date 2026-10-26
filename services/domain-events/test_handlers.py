@@ -1,4 +1,5 @@
 import sys
+import json
 import unittest
 from pathlib import Path
 from uuid import uuid4
@@ -32,5 +33,31 @@ class HandlerTests(unittest.TestCase):
             {'userId':str(uuid4()),'username':'demo','passwordHash':'SENSITIVE'}})
         self.assertEqual(len(cursor.statements),1)
         self.assertNotIn('SENSITIVE',repr(cursor.statements[0]))
+
+    def test_notebook_projection_runs_for_duplicate_credit_with_stable_source_key(self):
+        user = str(uuid4())
+        item = str(uuid4())
+        payload = {'userId': user, 'module': 'TOEIC', 'type': 'TOEIC_ATTEMPT',
+                   'sourceKey': 'toeic:stable-attempt', 'xp': 15,
+                   'outcomes': [{'sourceType': 'TOEIC', 'sourceItemId': item,
+                                 'sourceRefId': str(uuid4()), 'title': 'Part 2',
+                                 'samples': 1, 'wrongCount': 1}]}
+        for receipt in [str(uuid4()), str(uuid4())]:
+            cursor = FakeCursor(result=False)
+            self.assertEqual(apply_event(cursor, 'learning', {
+                'eventId': receipt, 'type': 'learning.activity.recorded.v1',
+                'payload': payload}), 'already-credited')
+            self.assertIn('record_learning_outcomes', cursor.statements[-1][0])
+            self.assertEqual(cursor.statements[-1][1][0:2], (user, payload['sourceKey']))
+            self.assertNotIn('outcomes', json.loads(cursor.statements[0][1][-1]))
+
+    def test_notebook_payload_is_bounded(self):
+        for outcomes in [{}, [None] * 1001]:
+            with self.assertRaises(ValueError):
+                apply_event(FakeCursor(), 'learning', {
+                    'eventId': str(uuid4()), 'type': 'learning.activity.recorded.v1',
+                    'payload': {'userId': str(uuid4()), 'module': 'TOEIC',
+                                'type': 'TOEIC_ATTEMPT', 'sourceKey': 'test',
+                                'xp': 0, 'outcomes': outcomes}})
 
 if __name__=='__main__':unittest.main()
