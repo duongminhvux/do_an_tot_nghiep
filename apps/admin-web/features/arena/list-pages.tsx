@@ -80,7 +80,7 @@ export function ArenaDashboardPage() {
             </div>
           </div>
           <Panel title={t("daily")}>
-            <div className="overflow-x-auto">
+            <div className="min-w-0 max-w-full overflow-x-auto">
               <div
                 className="flex h-48 min-w-full items-end gap-2"
                 style={{ minWidth: days * 26 }}

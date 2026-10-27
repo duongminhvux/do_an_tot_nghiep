@@ -193,6 +193,8 @@ export class ArenaAdminService {
           $in: [
             ArenaMatchStatus.COUNTDOWN,
             ArenaMatchStatus.PLAYING,
+            ArenaMatchStatus.PAUSED,
+            ArenaMatchStatus.RESUMING,
             ArenaMatchStatus.FINISHING,
           ] } }),
       this.rooms.countDocuments({ status: FriendRoomStatus.WAITING }),
@@ -268,7 +270,7 @@ export class ArenaAdminService {
           localField: 'userId',
           foreignField: '_id',
           as: 'user' } },
-      { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+      { $set: { user: { $ifNull: [{ $arrayElemAt: ['$user', 0] }, null] } } },
       {
         $lookup: {
           from: this.participants.collection.name,
@@ -326,12 +328,20 @@ export class ArenaAdminService {
           bestWinStreak: 1,
           winRate: 1,
           lastActivity: 1,
-          'user._id': 1,
-          'user.username': 1,
-          'user.email': 1,
-          'user.avatarUrl': 1,
-          'user.isBanned': 1,
-          'user.isDeleted': 1 } },
+          user: {
+            $cond: [
+              '$user._id',
+              {
+                _id: '$user._id',
+                username: '$user.username',
+                email: '$user.email',
+                avatarUrl: '$user.avatarUrl',
+                isBanned: '$user.isBanned',
+                isDeleted: '$user.isDeleted',
+              },
+              null,
+            ],
+          } } },
       {
         $facet: {
           items: [

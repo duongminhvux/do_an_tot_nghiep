@@ -36,6 +36,9 @@ export class ArenaPresenceService {
   async isOnline(userId: string) {
     return (await this.getSocketIds(userId)).length > 0;
   }
+  async isInMatch(userId: string, matchId: string) {
+    return (await this.sockets()).some(socket => socket.data.userId === userId && socket.data.activeMatchId === matchId);
+  }
 
   async getSocketIds(userId: string) {
     return (await this.sockets())

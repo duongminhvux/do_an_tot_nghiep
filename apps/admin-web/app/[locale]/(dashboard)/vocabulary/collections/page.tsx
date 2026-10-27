@@ -1,4 +1,5 @@
 'use client';
+import {PublicationBadge,PublicationFilter} from '@/components/publication/publication-controls';
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -57,6 +58,7 @@ export default function CollectionsPage() {
   const [debouncedSearchCol, setDebouncedSearchCol] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(urlCollectionId);
   const [activeTab, setActiveTab] = useState<'lessons' | 'info'>('lessons');
+  const [publicationFilter,setPublicationFilter]=useState('');
   const [searchLesson, setSearchLesson] = useState('');
 
   // Drag and Drop states for Lessons
@@ -166,14 +168,15 @@ export default function CollectionsPage() {
 
   // Filter lessons by search query
   const filteredLessons = useMemo(() => {
-    if (!searchLesson.trim()) return lessons;
+    const visible=lessons.filter(lesson=>!publicationFilter||lesson.publicationStatus===publicationFilter);
+    if (!searchLesson.trim()) return visible;
     const q = searchLesson.toLowerCase();
-    return lessons.filter(
+    return visible.filter(
       (l) =>
         l.title.toLowerCase().includes(q) ||
         (l.description && l.description.toLowerCase().includes(q)),
     );
-  }, [lessons, searchLesson]);
+  }, [lessons, searchLesson,publicationFilter]);
 
   // Toggle Collection Active Mutation
   const toggleColActiveMutation = useMutation({
@@ -341,7 +344,7 @@ export default function CollectionsPage() {
           </div>
 
           {/* Collections List Content */}
-          <div className="space-y-2 max-h-[calc(100vh-240px)] overflow-y-auto pr-1 p-0.5">
+          <div className="space-y-2 max-h-[calc(100dvh-240px)] overflow-y-auto pr-1 p-0.5">
             {isLoadingCols ? (
               <div className="py-16 flex flex-col items-center justify-center text-slate-400 gap-2">
                 <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
@@ -661,6 +664,7 @@ export default function CollectionsPage() {
                         />
                       </div>
 
+                      <PublicationFilter value={publicationFilter} onChange={setPublicationFilter} />
                       <button
                         type="button"
                         onClick={() => setCreateLessonOpen(true)}
@@ -767,7 +771,7 @@ export default function CollectionsPage() {
                                   <div className="flex items-center gap-2 flex-wrap">
                                     <span className="text-sm font-bold text-slate-900">
                                       {l.title}
-                                    </span>
+                                    </span><PublicationBadge item={l} />
                                     {l.slug && (
                                       <span className="font-mono text-[11px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded-[4px] border border-slate-200">
                                         /{l.slug}

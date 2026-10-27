@@ -45,6 +45,8 @@ import { ArenaQuestionService } from './question/arena-question.service.js';
 import { ArenaRoundService } from './question/arena-round.service.js';
 import { Word, WordSchema } from '../vocabulary/words/word.schema.js';
 import { ArenaRatingService } from './rating/arena-rating.service.js';
+import { ArenaMatchTransactions } from './matches/arena-match-transactions.js';
+import { ArenaRankedConnectionService } from './matches/arena-ranked-connection.service.js';
 
 @Module({
   imports: [
@@ -65,6 +67,8 @@ import { ArenaRatingService } from './rating/arena-rating.service.js';
     ]),
   ],
   providers: [
+    ArenaMatchTransactions,
+    ArenaRankedConnectionService,
     ArenaSettingsService,
     ArenaAdminService,
     ArenaFriendRoomService,

@@ -5,11 +5,15 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
+    "./publication": "./src/publication.mjs",
+    "./mistakes": "./src/mistakes.mjs",
+    "./recommendations": "./src/recommendations.mjs",
     ".": "./src/index.ts",
     "./assessment-import": "./src/assessment-import.mjs",
     "./toeic-score": "./src/toeic-score.mjs",
     "./learning-xp": "./src/learning-xp.mjs",
-    "./site-settings": "./src/site-settings.mjs"
+    "./site-settings": "./src/site-settings.mjs",
+    "./active-time": "./src/active-time.mjs"
   },
   "scripts": {
     "check-types": "tsc --noEmit"

@@ -194,7 +194,7 @@ export function EditCollectionDialog({
         else onOpenChange(true);
       }}
     >
-      <DialogContent className="max-w-xl w-full p-6 rounded-[6px] border border-slate-200 shadow-none bg-white max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-xl w-[calc(100vw-2rem)] p-6 rounded-[6px] border border-slate-200 shadow-none bg-white max-h-[90dvh] overflow-y-auto">
         <DialogHeader className="space-y-1">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-[6px] bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">

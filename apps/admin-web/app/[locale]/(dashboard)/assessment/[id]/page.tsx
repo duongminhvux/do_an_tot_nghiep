@@ -1,4 +1,5 @@
 'use client';
+import {PublicationBar} from '@/components/publication/publication-controls';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
@@ -394,7 +395,7 @@ export default function ExamDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/50 p-6 md:p-8 space-y-6 w-full">
+    <div className="min-h-screen bg-slate-50/50 p-4 sm:p-6 md:p-8 space-y-6 w-full">
       {/* 1. Breadcrumbs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-500">
         <div className="flex items-center gap-1.5 flex-wrap">
@@ -423,6 +424,7 @@ export default function ExamDetailPage() {
       </div>
 
       {/* 2. Exam Banner Card */}
+      <PublicationBar kind="exams" id={examId} version={examResponse} />
       <ExamBanner
         exam={exam}
         locale={locale}

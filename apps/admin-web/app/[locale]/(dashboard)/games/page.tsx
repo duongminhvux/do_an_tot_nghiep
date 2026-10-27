@@ -186,7 +186,7 @@ export default function GamesAdminPage() {
             </button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="min-w-0 max-w-full overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="text-xs text-slate-500">
                 <tr>
@@ -344,7 +344,7 @@ export default function GamesAdminPage() {
           }
         }}
       >
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>{t("edit")}</DialogTitle>
             <DialogDescription>{t("englishHint")}</DialogDescription>

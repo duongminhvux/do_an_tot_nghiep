@@ -65,7 +65,7 @@ export function RecentActivityCard({
   loading,
   formatMinutes,
 }: RecentActivityCardProps) {
-  const { t } = useTranslation('dashboard');
+  const { t } = useTranslation(['dashboard', 'activityLog']);
 
   return (
     <div className="flex h-full flex-col rounded border border-blue-100/80 bg-white p-3.5 shadow-[0_5px_18px_-14px_rgba(37,99,235,0.45)]">
@@ -115,12 +115,17 @@ export function RecentActivityCard({
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm leading-snug text-slate-700">
-                    {t(`recent.${item.template}`, {
-                      user: item.userName,
-                      target: item.target,
-                      score: item.score,
+                    <span className="font-semibold">{item.userName}</span>
+                    {' \u00b7 '}
+                    {t(`activityLog:actions.${item.action}`, {
+                      defaultValue: item.actionLabel || t('activityLog:actions.CUSTOM'),
                     })}
                   </p>
+                  {item.description && (
+                    <p className="mt-0.5 text-xs leading-snug text-slate-600">
+                      {item.description}
+                    </p>
+                  )}
                   <p className="mt-0.5 text-xs text-slate-400">
                     {formatMinutes(item.minutesAgo)}
                   </p>

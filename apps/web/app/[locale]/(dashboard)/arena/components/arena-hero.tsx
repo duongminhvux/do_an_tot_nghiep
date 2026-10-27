@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { ArenaIllustration } from './arena-illustration';
 
 import type { ArenaController } from "../hooks/use-arena-controller";
 
@@ -33,16 +33,12 @@ export function ArenaHero({ text }: Props) {
         </p>
       </div>
       <div className="absolute inset-y-0 right-0 hidden w-[46%] @min-[700px]/arena:block">
-        <Image
-          src="/images/arena/arena-hero.png"
-          alt={text(
+        <ArenaIllustration
+          label={text(
             "Hai người chơi thách đấu từ vựng",
             "Two students competing in a vocabulary challenge",
           )}
-          fill
-          priority
-          sizes="(min-width: 1024px) 520px, 45vw"
-          className="object-cover object-top mix-blend-multiply"
+          className="h-full w-full object-cover object-top mix-blend-multiply"
         />
         <div className="absolute inset-y-0 left-0 w-14 bg-gradient-to-r from-white to-transparent" />
       </div>

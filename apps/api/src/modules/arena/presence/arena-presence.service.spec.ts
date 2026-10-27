@@ -15,6 +15,14 @@ function fixture() {
 }
 
 describe('Arena live presence', () => {
+  it('only counts tabs currently attached to the same match as match presence', async () => {
+    const f=fixture();
+    Object.assign(f.sockets[0].data,{activeMatchId:'match-a'});
+    expect(await f.service.isInMatch('a','match-a')).toBe(true);
+    f.sockets.shift();
+    expect(await f.service.isOnline('a')).toBe(true);
+    expect(await f.service.isInMatch('a','match-a')).toBe(false);
+  });
   it('counts users once across multiple tabs and excludes unauthenticated sockets', async () => {
     const f = fixture();
     expect(await f.service.overview()).toEqual({ onlineCount: 2 });

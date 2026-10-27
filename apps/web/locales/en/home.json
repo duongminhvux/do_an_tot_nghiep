@@ -108,5 +108,22 @@
   "time": {
     "hours_minutes": "{{h}}h {{m}}m",
     "minutes": "{{m}} min"
+  },
+  "recommendations": {
+    "title": "What should I study today?",
+    "subtitle": "Based on your recent activity ? Rule-based suggestions",
+    "filters": "Filter by skill",
+    "all": "All",
+    "listening": "Listening",
+    "reading": "Reading",
+    "vocabulary": "Vocabulary",
+    "minutes": "{{count}} min",
+    "start": "Start",
+    "loading": "Loading suggestions",
+    "error": "Could not load study suggestions.",
+    "retry": "Retry",
+    "partial": "Some sources are temporarily unavailable. Suggestions use the remaining sources.",
+    "disabled": "Study suggestions are disabled. You can still study in the existing modules.",
+    "emptyFilter": "No suggestions for this filter. Try All."
   }
 }

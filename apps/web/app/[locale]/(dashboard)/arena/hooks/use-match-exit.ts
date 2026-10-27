@@ -10,6 +10,7 @@ export function useMatchExit(
   active: boolean,
   preserveDestinations: string[] = [],
   reconnectOnRefresh = false,
+  ranked = false,
 ) {
   const pathname = usePathname();
   const state = useRef({ matchId, active, preserveDestinations });
@@ -49,8 +50,9 @@ export function useMatchExit(
           destination !== initialDestination &&
           !match.preserveDestinations.includes(destination)
         )
-          leave();
+          if (ranked) arenaSocket.emit('ranked:detach', { matchId: match.matchId });
+          else leave();
       });
     };
-  }, [matchId, pathname, reconnectOnRefresh]);
+  }, [matchId, pathname, reconnectOnRefresh, ranked]);
 }

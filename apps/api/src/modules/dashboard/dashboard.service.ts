@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service.js';
 import { InjectPgModel } from '../../postgres/compat.js';
 import type { Model } from '../../postgres/compat.js';
 import { User, UserDocument } from '../users/schema/user.schema.js';
@@ -21,9 +22,10 @@ export class DashboardService {
     @InjectPgModel(Attempt.name) private readonly attemptModel: Model<AttemptDocument>,
     @InjectPgModel(ActivityLog.name)
     private readonly activityLogModel: Model<ActivityLogDocument>,
+    private readonly activityLogsService: ActivityLogsService,
   ) {}
 
-  async getOverview(inputDays: number) {
+  async getOverview(inputDays: number, lang?: string) {
     const days = Math.max(7, Math.min(90, inputDays));
     const now = new Date();
     const start = new Date(now);
@@ -137,6 +139,6 @@ export class DashboardService {
           email: item.email,
           createdAt: item.createdAt };
       }),
-      recentActivity };
+      recentActivity: await Promise.all(recentActivity.map((item) => this.activityLogsService.localizeLog(item, lang))) };
   }
 }

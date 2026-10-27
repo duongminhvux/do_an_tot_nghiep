@@ -59,7 +59,7 @@ export function GameSettingsDialog({
         if (!open) onClose();
       }}
     >
-      <DialogContent className="max-h-[92vh] overflow-y-auto w-[96vw] max-w-5xl p-6 sm:p-7">
+      <DialogContent className="max-h-[92dvh] overflow-y-auto w-[96vw] max-w-5xl p-6 sm:p-7">
         <DialogHeader className="border-b border-slate-100 pb-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm shadow-blue-500/20">

@@ -1,4 +1,6 @@
 import { PgId } from '../../../postgres/compat.js';
+import { vocabularyOutcomes } from '@repo/shared-types/mistakes';
+import { mistakeSource } from '../mistakes/mistake-source-client.js';
 import {
   BadRequestException,
   Injectable,
@@ -67,7 +69,7 @@ export class SessionsService {
    * Khởi tạo phiên học mới (khi user tương tác hoặc khi bắt đầu)
    */
   async create(userId: string, createSessionDto: CreateSessionDto) {
-    const lesson = await this.lessonModel.findById(createSessionDto.lessonId);
+    const lesson = await this.lessonModel.findOne({_id:createSessionDto.lessonId,publicationStatus:'PUBLISHED',isActive:{$ne:false},isDeleted:{$ne:true}});
     if (!lesson) {
       throw new NotFoundException(
         await this.i18n.t('learning.LESSON_NOT_FOUND'),
@@ -111,6 +113,8 @@ export class SessionsService {
    * Tự động khởi tạo Session nếu client chưa có sessionId
    */
   async recordAction(userId: string, dto: RecordActionDto) {
+    const availableWord=await mistakeSource<Record<string,string>>('content','vocabulary-titles',{wordIds:[dto.wordId]});
+    if(!availableWord[dto.wordId])throw new NotFoundException('Published vocabulary word not found');
     const userObjId = new PgId(userId);
     const wordObjId = new PgId(dto.wordId);
     const now = dto.answeredAt ? new Date(dto.answeredAt) : new Date();
@@ -132,7 +136,7 @@ export class SessionsService {
           await this.i18n.t('learning.LESSON_ID_REQUIRED'),
         );
       }
-      const lesson = await this.lessonModel.findById(dto.lessonId);
+      const lesson = await this.lessonModel.findOne({_id:dto.lessonId,publicationStatus:'PUBLISHED',isActive:{$ne:false},isDeleted:{$ne:true}});
       if (!lesson) {
         throw new NotFoundException(
           await this.i18n.t('learning.LESSON_NOT_FOUND'),
@@ -384,6 +388,9 @@ export class SessionsService {
             .lean()
             .exec()
         : null;
+      const actions = await this.sessionWordModel.find({ sessionId: session._id }).select('wordId isCorrect rating').lean().exec();
+      const wordIds = [...new Set(actions.map(action => String(action.wordId)))];
+      const titles = wordIds.length ? await mistakeSource<Record<string,string>>('content', 'vocabulary-titles', { wordIds }) : {};
       await this.learningActivity.record({
         userId: session.userId,
         module: 'VOCABULARY',
@@ -397,7 +404,8 @@ export class SessionsService {
         correct: session.completedWords,
         total: session.totalWords,
         durationSec: durationSeconds,
-        metadata: { sessionType: session.type } });
+        metadata: { sessionType: session.type },
+        outcomes: vocabularyOutcomes(String(session._id), actions, titles) });
     }
 
     void this.activityLogsService.log({

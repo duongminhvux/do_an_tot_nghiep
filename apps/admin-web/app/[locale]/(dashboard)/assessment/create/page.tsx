@@ -189,7 +189,7 @@ export default function CreateExamPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/50 p-6 md:p-8 space-y-6 w-full">
+    <div className="min-h-screen bg-slate-50/50 p-4 sm:p-6 md:p-8 space-y-6 w-full">
       {/* Page Header */}
       <div>
         <h1 className="text-2xl font-bold text-slate-900 tracking-tight">

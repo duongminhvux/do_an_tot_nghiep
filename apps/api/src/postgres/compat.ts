@@ -8,9 +8,11 @@
  * no silent fallback to an absent SQL table, and no unsupported aggregation.
  */
 import pg from 'pg';
-import { randomUUID } from 'node:crypto';
+import { sessionPool } from './session.js';
+import { randomInt, randomUUID } from 'node:crypto';
 import { Injectable, Inject, Module, Global, type DynamicModule } from '@nestjs/common';
 import { serviceRole, serviceUrl, tableOwner } from './ownership.js';
+import {publicationScope,PUBLICATION_TABLES,visiblePublicationRows} from '../modules/publication/publication-scope.js';
 
 export class PgId extends String {
   constructor(value?: any) {
@@ -61,6 +63,29 @@ export const PgSchemaFactory = { createForClass(ctor: Function) {
   registeredTypes.set(ctor.name,ctor); return new PgSchemaDefinition(ctor.name);
 }};
 
+// JSONB round trips turn Date values into strings. Restore schema-declared
+// dates (including nested room members) before services use Date methods.
+function restoreDocumentDates(value: Record<string, any>, fields: Record<string, any>): Record<string, any> {
+  const result = { ...value };
+  for (const [field, options] of Object.entries(fields)) {
+    const current = result[field];
+    if ((options?.type === Date || options?.type?.name === 'Date') && current != null && !(current instanceof Date)) {
+      const date = new Date(current);
+      if (Number.isFinite(date.getTime())) result[field] = date;
+    } else if (Array.isArray(options?.type) && options.type[0] instanceof PgSchemaDefinition && Array.isArray(current)) {
+      const nested = metadata(options.type[0].className).fields;
+      result[field] = current.map((item) => item && typeof item === 'object' ? restoreDocumentDates(item, nested) : item);
+    }
+  }
+  for (const field of ['createdAt', 'updatedAt']) {
+    if (result[field] != null && !(result[field] instanceof Date)) {
+      const date = new Date(result[field]);
+      if (Number.isFinite(date.getTime())) result[field] = date;
+    }
+  }
+  return result;
+}
+
 const MODEL_TABLE_OVERRIDES: Record<string,string> = {
   LearningActivity:'learning_activities', SavedWord:'usersavedwords',
   GeneratedAudio:'media_assets', GameDefinition:'gamedefinitions', AudioJob:'audio_jobs', AsrJob:'asr_jobs', SystemSetting:'system_settings',
@@ -109,6 +134,8 @@ function project(value:any, tree:true|ProjectionTree):any {
   return Object.fromEntries(Object.entries(tree).filter(([key])=>value[key]!==undefined).map(([key,sub])=>[key,project(value[key],sub)]));
 }
 function eq(a:any,b:any):boolean {
+  // A document null filter also matches an absent optional field (SQL NULL).
+  if (a==null&&b==null) return true;
   if (a===undefined||b===undefined) return a===b;
   if (a instanceof Date||b instanceof Date) return new Date(a).getTime()===new Date(b).getTime();
   if (typeof a==='object' && a!==null && typeof b==='object' && b!==null) return JSON.stringify(normalize(a))===JSON.stringify(normalize(b));
@@ -127,16 +154,17 @@ export function matches(doc:any, filter:any, variables:Record<string,any>={}):bo
     if (key==='$nor') return !(expect as any[]).some(x=>matches(doc,x,variables));
     if (key==='$expr') return Boolean(evaluate(expect,doc,variables));
     const value = getValue(doc,key);
+    const equalValue=(expected:any)=>Array.isArray(value)&&!Array.isArray(expected)?value.some(item=>eq(item,expected)):eq(value,expected);
     if(expect instanceof RegExp) return expect.test(String(value??''));
     if(expect && typeof expect==='object' && !Array.isArray(expect) && !(expect instanceof Date) && !(expect instanceof PgId)) {
       const e=expect as Record<string,any>, keys=Object.keys(e);
       if(keys.some(k=>k.startsWith('$'))) return keys.every(op=>{
         const v=e[op];
         switch(op){
-          case '$eq':return eq(value,v);
-          case '$ne':return !eq(value,v);
+          case '$eq':return equalValue(v);
+          case '$ne':return !equalValue(v);
           case '$in':return (v as any[]).some(x=>Array.isArray(value)?value.some(y=>eq(x,y)):eq(value,x));
-          case '$nin':return !(v as any[]).some(x=>eq(value,x));
+          case '$nin':return !(v as any[]).some(equalValue);
           case '$gt':return value!=null&&cmp(value,v)>0;
           case '$gte':return value!=null&&cmp(value,v)>=0;
           case '$lt':return value!=null&&cmp(value,v)<0;
@@ -176,6 +204,19 @@ function evaluate(v:any,doc:any,variables:Record<string,any>={}):any {
       case '$lt':return cmp(ev(a[0]),ev(a[1]))<0;
       case '$in':return (ev(a[1])||[]).some((x:any)=>eq(x,ev(a[0])));
       case '$ifNull':return ev(a[0])??ev(a[1]);
+      case '$trim':return String(ev(a.input) ?? '').trim();
+      case '$filter':{
+        const input=ev(a.input);
+        if(input==null)return null;
+        if(!Array.isArray(input))throw new Error('$filter input must be an array');
+        return input.filter(item=>evaluate(a.cond,doc,{...variables,[a.as||'this']:item}));
+      }
+      case '$concatArrays':{
+        const arrays=a.map(ev);
+        if(arrays.some((value:any)=>value==null))return null;
+        if(arrays.some((value:any)=>!Array.isArray(value)))throw new Error('$concatArrays inputs must be arrays');
+        return arrays.flat();
+      }
       case '$add':return a.reduce((s:any,x:any)=>s+Number(ev(x)||0),0);
       case '$subtract':{
         const number=(value:any)=>value instanceof Date?value.getTime():typeof value==='string'&&/^\d{4}-\d\d-\d\dT/.test(value)?new Date(value).getTime():Number(value||0);
@@ -206,7 +247,7 @@ function evaluate(v:any,doc:any,variables:Record<string,any>={}):any {
   }
   return Object.fromEntries(Object.entries(v).map(([k,val])=>[k,ev(val)]));
 }
-function applyUpdate(doc:any, update:any, isInsert=false):any {
+function applyUpdate(doc:any, update:any, isInsert=false, filter:any={}):any {
   if(Array.isArray(update)) {
     let current=doc;
     const variables={NOW:new Date(),REMOVE:REMOVE_VALUE};
@@ -214,7 +255,7 @@ function applyUpdate(doc:any, update:any, isInsert=false):any {
       if(Object.keys(stage).length!==1||!stage.$set)throw new Error('Only $set update pipeline stages are supported');
       const values=evaluate(stage.$set,current,variables),set:any={},unset:any={};
       for(const [key,value] of Object.entries(values))if(value===REMOVE_VALUE)unset[key]='';else set[key]=value;
-      current=applyUpdate(current,{$set:set,$unset:unset},isInsert);
+      current=applyUpdate(current,{$set:set,$unset:unset},isInsert,filter);
     }
     return current;
   }
@@ -222,7 +263,19 @@ function applyUpdate(doc:any, update:any, isInsert=false):any {
   if(!operators) return {...next,...normalize(update)};
   function set(key:string,value:any){const parts=key.split('.');let obj=next;for(const p of parts.slice(0,-1))obj=obj[p]??={};obj[parts.at(-1)!]=normalize(value);}
   for(const [op,fields] of Object.entries(update||{})) {
-    for(const [key,value] of Object.entries(fields as Record<string,any>)) {
+    for(const [path,value] of Object.entries(fields as Record<string,any>)) {
+      // Resolve array positions against the same member filter used to select the row.
+      let paths=[path];
+      if(path.includes('.$.')||path.includes('.$[].')){
+        const [arrayPath,position,...tail]=path.split(/\.(\$\[\]|\$)\./);
+        const items=getValue(next,arrayPath);
+        if(!Array.isArray(items))throw new Error(`Positional update requires array ${arrayPath}`);
+        const memberFilter=Object.fromEntries(Object.entries(filter).filter(([key])=>key.startsWith(arrayPath+'.')).map(([key,v])=>[key.slice(arrayPath.length+1),v]));
+        const index=position==='$'?items.findIndex(item=>matches(item,memberFilter)):-1;
+        if(position==='$'&&(!Object.keys(memberFilter).length||index<0))throw new Error(`No matching member for ${path}`);
+        paths=(position==='$'?[index]:items.map((_,i)=>i)).map(i=>`${arrayPath}.${i}.${tail.join('.')}`);
+      }
+      for(const key of paths){
       switch(op){
         case '$set':set(key,value);break;
         case '$setOnInsert':if(isInsert)set(key,value);break;
@@ -236,6 +289,7 @@ function applyUpdate(doc:any, update:any, isInsert=false):any {
         case '$min':set(key,cmp(getValue(next,key),value)>0?value:getValue(next,key));break;
         case '$max':set(key,cmp(getValue(next,key),value)<0?value:getValue(next,key));break;
         default:throw new Error(`Unsupported SQL repository update operator ${op}`);
+      }
       }
     }
   }
@@ -318,7 +372,8 @@ type PoolLike = Pick<pg.Pool,'query'>;
 async function readRows(table: string, pool: PoolLike): Promise<any[]> {
   const role = serviceRole(), owner = tableOwner(table);
   if (!role || !owner || owner === role) {
-    return (await pool.query(`SELECT * FROM public.${safeName(table)}`)).rows;
+    const gate=publicationScope.getStore() && PUBLICATION_TABLES.has(table) ? " WHERE publication_status='PUBLISHED' AND is_deleted IS NOT TRUE" : '';
+    return visiblePublicationRows(table,(await pool.query(`SELECT * FROM public.${safeName(table)}${gate}`)).rows);
   }
   // Identity user data is never loaded wholesale into Arena/Learning: only
   // the dedicated, event-maintained public display projection is accessible.
@@ -335,7 +390,7 @@ async function readRows(table: string, pool: PoolLike): Promise<any[]> {
   const body = await response.json() as any;
   const rows = body?.data ?? body;
   if (!Array.isArray(rows)) throw new Error(`Invalid read model response for ${owner}.${table}`);
-  return rows;
+  return visiblePublicationRows(table,rows);
 }
 
 /** Push safe, common document filters into PostgreSQL. Unsupported operators
@@ -351,6 +406,9 @@ function simpleWhere(filter: any, columns: Map<string,string>): {sql:string; val
   const entry=(key:string, value:any):string|null=>{
     const col=column(key);
     if(!col)return null;
+    // JSON/array fields use document membership semantics, not scalar SQL equality.
+    // In particular, binding a UUID directly against JSONB is invalid JSON.
+    if(['json','jsonb','ARRAY'].includes(columns.get(key==='_id'?'id':snake(key))||''))return null;
     if(value instanceof RegExp) {
       if(/[^i]/.test(value.flags))return null;
       return `${col} ${value.ignoreCase?'~*':'~'} ${bind(value.source)}`;
@@ -371,8 +429,10 @@ function simpleWhere(filter: any, columns: Map<string,string>): {sql:string; val
         if(op==='$eq'){conditions.push(`${col} IS NOT DISTINCT FROM ${bind(target)}`);continue;}
         if(op==='$in'||op==='$nin'){
           if(!Array.isArray(target))return null;
-          const vs=(target as any[]).map(String);
-          conditions.push(`${col}::text ${op==='$in'?'= ANY':'<> ALL'}(${bind(vs)}::text[])`);
+          const hasNull=target.some(item=>item==null),vs=target.filter(item=>item!=null).map(String);
+          const comparison=`${col}::text ${op==='$in'?'= ANY':'<> ALL'}(${bind(vs)}::text[])`;
+          conditions.push(op==='$in'?(hasNull?`(${col} IS NULL OR ${comparison})`:comparison)
+            :hasNull?`(${col} IS NOT NULL AND ${comparison})`:`(${col} IS NULL OR ${comparison})`);
           continue;
         }
         if(['$gt','$gte','$lt','$lte'].includes(op)){
@@ -412,6 +472,7 @@ function assertOwnedWrite(table: string) {
 }
 
 export function makePgModel<T=any>(name:string,pool:pg.Pool):PgModel<T> {
+  pool=sessionPool(pool);
   const table=sqlTable(name), meta=metadata(name), defined=meta.fields;
   // PostgreSQL's JSON/JSONB columns accept JSON text, not bare enum/string values.
   // Keep the real column types (not just names) so writes are encoded correctly.
@@ -443,10 +504,11 @@ export function makePgModel<T=any>(name:string,pool:pg.Pool):PgModel<T> {
     }
   }
   function hydrate(row:any):any{
-    const data= {...row.payload};
+    let data= {...row.payload};
     for(const [k,v] of Object.entries(row)) {
       if(k==='payload')continue;
       const key=k==='id'?'_id':k==='password_hash'?'password':camel(k);
+      if(['publication_status','publication_revision','publication_validation','published_by','published_at'].includes(k) || (table==='dictationlessons' && k==='status')) {data[key]=v;continue;}
       if(v!==null&&v!==undefined&&(data[key]===undefined || k==='id'))data[key]=v;
     }
     if(!data._id)data._id=row.id;
@@ -455,6 +517,7 @@ export function makePgModel<T=any>(name:string,pool:pg.Pool):PgModel<T> {
     for(const [k,option] of Object.entries(defined)) if(data[k]===undefined && option && (option as any).default!==undefined) {
       const def=(option as any).default;data[k]=typeof def==='function'?def():JSON.parse(JSON.stringify(def));
     }
+    data = restoreDocumentDates(data, defined);
     Object.defineProperties(data,{toObject:{enumerable:false,value:()=>plain(data)},save:{enumerable:false,value:()=>save(data)},
       validate:{enumerable:false,value:()=>validateDoc(data)},
       populate:{enumerable:false,value:async(opt:any)=>{await (PgDynamicModel as any).populate(data,opt);return data;}}});
@@ -462,6 +525,7 @@ export function makePgModel<T=any>(name:string,pool:pg.Pool):PgModel<T> {
   }
   async function all(){return (await readRows(table,pool)).map(hydrate);}
   async function selected(filter?:any){
+    if(publicationScope.getStore() && PUBLICATION_TABLES.has(table)) filter={$and:[filter||{},{publicationStatus:'PUBLISHED',isDeleted:{$ne:true},isActive:{$ne:false}}]};
     const owner=tableOwner(table),role=serviceRole();
     if(!owner||!role||owner===role){
       const where=simpleWhere(filter,await fields());
@@ -489,7 +553,7 @@ export function makePgModel<T=any>(name:string,pool:pg.Pool):PgModel<T> {
   async function hooks(op:string,filter:any,updates:any){for(const h of (meta.hooks[op]??[]))await h.call({getUpdate:()=>updates,getFilter:()=>filter});}
   async function update(filter:any,updates:any,opts:any={},one:boolean){
     assertOwnedWrite(table);
-    const lockRows=Array.isArray(updates)||table==='attempts';
+    const lockRows=Array.isArray(updates)||['attempts','friendrooms','arenamatches','arenamatchplayers','arenamatchquestions'].includes(table);
     // Serialize answer saves/submission against the latest row, on one PostgreSQL connection.
     if(lockRows&&typeof pool.connect==='function'&&typeof (pool as any).release!=='function'){
       const client=await pool.connect();
@@ -509,7 +573,7 @@ export function makePgModel<T=any>(name:string,pool:pg.Pool):PgModel<T> {
         if(!locked.rows[0])continue;
         row=hydrate(locked.rows[0]);if(!matches(row,filter))continue;
       }
-      const changed=applyUpdate(row,updates);first=await save(changed);matchedCount++;
+      const changed=applyUpdate(row,updates,false,filter);first=await save(changed);matchedCount++;
     }
     if(!targets.length&&opts.upsert){const seed=Object.fromEntries(Object.entries(filter||{}).filter(([k,v])=>!k.startsWith('$')&&!(typeof v==='object'&&!Array.isArray(v)&&!(v instanceof Date)&&!(v instanceof PgId))));first=await save(applyUpdate(seed,updates,true));}
     return {first,modifiedCount:matchedCount,matchedCount,upsertedCount:!targets.length&&first?1:0};
@@ -562,8 +626,8 @@ export function makePgModel<T=any>(name:string,pool:pg.Pool):PgModel<T> {
       }
       const found=(await selected(filter))[0];return found?{_id:found._id}:null;
     },PgDynamicModel);}
-    static async create(data:any){return Array.isArray(data)?Promise.all(data.map(x=>save(x))):save(data)}
-    static async insertMany(values:any[]){return Promise.all(values.map(x=>save(x)))}
+    static async create(data:any){return Array.isArray(data)?Promise.all(data.map(x=>save(new PgDynamicModel(x)))):save(new PgDynamicModel(data))}
+    static async insertMany(values:any[]){return Promise.all(values.map(x=>save(new PgDynamicModel(x))))}
     static async bulkWrite(ops:any[]){for(const op of ops){if(op.updateOne)await PgDynamicModel.updateOne(op.updateOne.filter,op.updateOne.update,op.updateOne);
       if(op.insertOne)await PgDynamicModel.create(op.insertOne.document);
       if(op.deleteOne)await PgDynamicModel.deleteOne(op.deleteOne.filter);
@@ -593,6 +657,13 @@ export async function runAggregation(pipeline: any[], initial: any[], pool?: pg.
       case '$sort':data.sort((a,b)=>{for(const [k,dir] of Object.entries(body)){const c=cmp(getValue(a,k),getValue(b,k));if(c)return c*(Number(dir)<0?-1:1)}return 0});break;
       case '$skip':data=data.slice(body);break;
       case '$limit':data=data.slice(0,body);break;
+      case '$sample':{
+        if(!Number.isInteger(body.size)||body.size<0)throw new Error('$sample size must be a nonnegative integer');
+        // Partial Fisher-Yates: each document is selected at most once.
+        const count=Math.min(body.size,data.length);
+        for(let i=0;i<count;i++){const j=randomInt(i,data.length);[data[i],data[j]]=[data[j],data[i]];}
+        data=data.slice(0,count);break;
+      }
       case '$count':data=data.length?[{[body]:data.length}]:[];break;
       case '$project':{
         const fields=Object.entries(body),exclusion=fields.every(([,v])=>v===0||v===false);
@@ -604,7 +675,19 @@ export async function runAggregation(pipeline: any[], initial: any[], pool?: pg.
         });break;
       }
       case '$addFields':case '$set':data=data.map(row=>({...row,...evaluate(body,row,variables)}));break;
-      case '$unwind':{const path=typeof body==='string'?body:body.path;const key=path.replace(/^\$/,'');data=data.flatMap(row=>{const vals=getValue(row,key);return Array.isArray(vals)&&vals.length?vals.map(x=>({...row,[key]:x})):((body.preserveNullAndEmptyArrays)?[row]:[])});break;}
+      case '$unwind':{
+        const path=typeof body==='string'?body:body.path,key=path.replace(/^\$/,'');
+        data=data.flatMap(row=>{
+          const vals=getValue(row,key);
+          if(!Array.isArray(vals))return vals!=null||body.preserveNullAndEmptyArrays?[row]:[];
+          if(!vals.length)return body.preserveNullAndEmptyArrays?[row]:[];
+          return vals.map(value=>{
+            const copy={...row},parts=key.split('.');let parent=copy;
+            for(const part of parts.slice(0,-1)){parent[part]={...parent[part]};parent=parent[part];}
+            parent[parts.at(-1)!]=value;return copy;
+          });
+        });break;
+      }
       case '$group':{const groups=new Map<string,any>(),averages=new Map<string,{sum:number,count:number}>();for(const row of data){const id=evaluate(body._id,row,variables), key=JSON.stringify(normalize(id));let g=groups.get(key);if(!g){g={_id:id};groups.set(key,g)}
         for(const [field,acc] of Object.entries(body))if(field!=='_id'){const [agg,expr]=Object.entries(acc as any)[0] as [string,any];const value=evaluate(expr,row,variables);
           if(agg==='$sum')g[field]=(g[field]||0)+Number(value??0);else if(agg==='$push')(g[field]??=[]).push(value);

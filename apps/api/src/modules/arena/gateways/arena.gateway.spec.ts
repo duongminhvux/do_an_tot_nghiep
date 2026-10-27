@@ -1,5 +1,6 @@
 import { ArenaGateway } from './arena.gateway.js';
 import type { Socket } from 'socket.io';
+vi.mock('../matches/arena-ranked-connection.service.js', () => ({ ArenaRankedConnectionService: class {} }));
 vi.mock('../../auth/auth.service.js', () => ({ AuthService: class {} }));
 vi.mock('../matchmaking/arena-matchmaking.service.js', () => ({
   ArenaMatchmakingService: class {} }));
@@ -62,7 +63,7 @@ function fixture(type = 'RANK', online = false) {
     disconnect: vi.fn().mockResolvedValue({ online }),
     connect: vi.fn().mockResolvedValue({ online: true }),
     isOnline: vi.fn().mockResolvedValue(online) };
-  const auth = { verifyToken: vi.fn().mockResolvedValue({ _id: 'user-id' }) };
+  const auth = { verifyToken: vi.fn().mockResolvedValue({ _id: 'user-id', role: 'USER' }) };
   const matchmaking = { leaveQueue: vi.fn() };
   const rooms = {
     connection: vi.fn(),
@@ -70,6 +71,7 @@ function fixture(type = 'RANK', online = false) {
     active: vi.fn().mockResolvedValue(null),
     snapshot: vi.fn(),
     join: vi.fn() };
+  const ranked = { disconnected: vi.fn(), restore: vi.fn(), snapshot: vi.fn(async () => ({ matchId: 'match-id', version: 0, status: 'PLAYING' })), acknowledge: vi.fn() };
   const deps = [
     friendly,
     matchmaking,
@@ -78,6 +80,7 @@ function fixture(type = 'RANK', online = false) {
     auth,
     rounds,
     rooms,
+    ranked,
   ] as unknown as ConstructorParameters<typeof ArenaGateway>;
   const gateway = new ArenaGateway(...deps);
   const emit = vi.fn();
@@ -90,7 +93,7 @@ function fixture(type = 'RANK', online = false) {
     disconnect: vi.fn(),
     join: vi.fn(),
     data: { userId: 'user-id', activeMatchId: 'match-id' } } as unknown as Socket;
-  return { gateway, matches, friendly, rounds, rooms, presence, auth, emit, client };
+  return { gateway, matches, friendly, rounds, rooms, presence, auth, emit, client, ranked };
 }
 
 describe('Arena leaving an active match', () => {
@@ -107,10 +110,11 @@ describe('Arena leaving an active match', () => {
     expect(f.emit).toHaveBeenCalledWith('match:finished', {
       winnerId: 'opponent-id' });
   });
-  it('disconnecting the match socket forfeits even if another account tab is still online', async () => {
+  it('disconnecting a match socket never directly forfeits and delegates presence/grace checks', async () => {
     const f = fixture('RANK', true);
     await f.gateway.handleDisconnect(f.client);
-    expect(f.matches.finishRankedMatch).toHaveBeenCalledOnce();
+    expect(f.matches.finishRankedMatch).not.toHaveBeenCalled();
+    expect(f.ranked.disconnected).toHaveBeenCalledWith('match-id','user-id');
   });
   it('disconnecting an unrelated tab does not forfeit the match tab', async () => {
     const f = fixture('RANK', true);

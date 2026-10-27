@@ -78,13 +78,14 @@ export function XpHeatmap({
 
   return (
     <Panel
+      className="min-w-0"
       title={t("activity_map.title")}
       description={t("activity_map.active_days", {
         count: home.heatmap.length,
       })}
     >
-      <div className="overflow-x-auto">
-        <div className="inline-flex gap-1.5">
+      <div className="min-w-0 p-1">
+        <div className="grid w-full max-w-80 grid-cols-[auto_repeat(13,minmax(0,1fr))] gap-1 sm:gap-1.5">
           <div className="grid grid-rows-7 gap-1.5 pr-1 text-[11px] text-slate-400">
             {weekdayLabels.map((d) => (
               <span key={d} className="flex h-4 items-center">
@@ -93,7 +94,7 @@ export function XpHeatmap({
             ))}
           </div>
           {weeks.map((week, w) => (
-            <div key={w} className="grid grid-rows-7 gap-1.5">
+            <div key={w} className="grid min-w-0 grid-rows-7 gap-1.5">
               {week.map(({ date, future, day }) => (
                 <button
                   key={date}
@@ -103,7 +104,7 @@ export function XpHeatmap({
                   onMouseEnter={() => setHovered(date)}
                   onFocus={() => setHovered(date)}
                   onMouseLeave={() => setHovered(null)}
-                  className={`h-4 w-4 rounded-[3px] transition ${
+                  className={`h-4 w-full max-w-4 rounded-[3px] transition ${
                     future
                       ? "bg-transparent"
                       : `${LEVELS[level(day?.xp ?? 0, home.today.goalXp)]} hover:ring-2 hover:ring-slate-400`

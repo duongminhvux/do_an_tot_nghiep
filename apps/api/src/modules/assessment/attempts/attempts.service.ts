@@ -1,4 +1,5 @@
 import { PgId, makePgModel } from '../../../postgres/compat.js';
+import { toeicOutcomes } from '@repo/shared-types/mistakes';
 import { DomainOutboxService } from '../../../common/events/domain-outbox.service.js';
 import {
   BadRequestException,
@@ -125,7 +126,7 @@ export class AttemptsService {
         ...(PgId.isValid(idOrSlug)
           ? { _id: idOrSlug }
           : { slug: idOrSlug }),
-        type: 'TOEIC',
+        type: 'TOEIC',publicationStatus:'PUBLISHED',
         isDeleted: { $ne: true },
         isActive: { $ne: false } })
       .lean()
@@ -243,6 +244,7 @@ export class AttemptsService {
     const exam = await this.exams
       .findOne({
         _id: this.uuid(dto.examId),
+        publicationStatus:'PUBLISHED',
         type: 'TOEIC',
         isDeleted: { $ne: true },
         isActive: { $ne: false } })
@@ -310,7 +312,9 @@ export class AttemptsService {
           )
         : undefined;
     const startedAt = new Date();
-    const attempt = await this.attempts.create({
+    let attempt;
+    try { attempt = await this.attempts.create({
+      examPublicationRevision:exam.publicationRevision,
       userId: this.uuid(userId),
       examId: exam._id,
       examSnapshot: { _id: String(exam._id), name: exam.name, slug: exam.slug },
@@ -324,6 +328,10 @@ export class AttemptsService {
         ? new Date(startedAt.getTime() + timeLimitSeconds * 1000)
         : undefined,
       totalQuestions: questions.length });
+    } catch(error) {
+      if((error as Error).message?.includes('Exam publication changed'))throw new ConflictException('Exam content changed; choose a published exam and try again');
+      throw error;
+    }
     return { _id: String(attempt._id) };
   }
 
@@ -735,6 +743,7 @@ export class AttemptsService {
         durationSec: graded.durationSpent,
         metadata: { mode: graded.mode, selectedParts: graded.selectedParts },
         sourceService: 'assessment',
+        outcomes: toeicOutcomes({ ...graded, questionSnapshot: attempt.questionSnapshot }),
       }, session);
     });
   }

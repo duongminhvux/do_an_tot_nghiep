@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { mistakesService } from '@/services/mistakes.service';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { CheckCheck } from 'lucide-react';
@@ -42,6 +43,7 @@ export default function SrsReviewPage() {
   const { t, i18n } = useTranslation('vocabulary');
   const params = useParams();
   const router = useRouter();
+  const mistakeId = useSearchParams().get('mistakeId');
   const queryClient = useQueryClient();
   const locale = (params?.locale as string) || 'vi';
 
@@ -52,9 +54,9 @@ export default function SrsReviewPage() {
   }, [locale, i18n]);
 
   // 1. Fetch due reviews from Backend
-  const { data: dueRes, isLoading: isDueLoading, refetch } = useQuery({
-    queryKey: ['due-reviews'],
-    queryFn: () => learningService.getDueReviews(50),
+  const { data: dueRes, isLoading: isDueLoading, isError: isDueError, refetch } = useQuery({
+    queryKey: ['due-reviews', mistakeId],
+    queryFn: () => mistakeId ? mistakesService.reviewWord(mistakeId) : learningService.getDueReviews(50),
   });
 
   // 2. Fetch saved words IDs for bookmark status
@@ -711,6 +713,8 @@ export default function SrsReviewPage() {
           <div className={cn(surface, 'h-[440px] w-full sm:h-[470px]')}>
             <LoadingState label={t('loading_cards')} className="h-full" />
           </div>
+        ) : isDueError ? (
+          <div role="alert" className={cn(surface,'space-y-4 p-8 text-center')}><p>{t('common:mistakes.error')}</p><Button onClick={() => void refetch()}>{t('common:mistakes.retry')}</Button></div>
         ) : wordsList.length === 0 ? (
           /* Empty Due Reviews State */
           <div className={cn(surface, 'flex h-[440px] w-full flex-col items-center justify-center space-y-4 p-6 text-center sm:h-[470px] sm:p-8')}>

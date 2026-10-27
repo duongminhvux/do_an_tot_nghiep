@@ -69,7 +69,7 @@ export function WordDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto p-0 gap-0 rounded-[6px] border border-slate-200 shadow-none bg-white">
+      <DialogContent className="max-w-2xl max-h-[85dvh] overflow-y-auto p-0 gap-0 rounded-[6px] border border-slate-200 shadow-none bg-white">
         {/* HEADER */}
         <div className="p-6 border-b border-slate-100 bg-slate-50/50">
           <DialogHeader className="space-y-3 text-left">

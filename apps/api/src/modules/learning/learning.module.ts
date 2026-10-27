@@ -1,4 +1,8 @@
 import { Module } from '@nestjs/common';
+import { MistakesController, AdminMistakesController } from './mistakes/mistakes.controller.js';
+import { MistakesService } from './mistakes/mistakes.service.js';
+import { RecommendationsController } from './recommendations/recommendations.controller.js';
+import { RecommendationsService } from './recommendations/recommendations.service.js';
 import { PgModelsModule } from '../../postgres/compat.js';
 import { ProgressController } from './progress/progress.controller.js';
 import { ProgressService } from './progress/progress.service.js';
@@ -56,11 +60,15 @@ import { LearningActivityModule } from '../learning-activity/learning-activity.m
     LearningActivityModule,
   ],
   controllers: [
+    MistakesController, AdminMistakesController,
+    RecommendationsController,
     ProgressController,
     ReviewsController,
     SessionsController,
   ],
   providers: [
+    MistakesService,
+    RecommendationsService,
     ProgressService,
     ReviewsService,
     SessionsService,

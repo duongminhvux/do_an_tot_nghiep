@@ -621,7 +621,7 @@ function HubDialog({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className={cn('w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl', size)}>
+      <div className={cn('flex max-h-[calc(100dvh-2rem)] w-full min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl', size)}>
         <div className="flex items-center justify-between gap-3 border-b border-slate-100 p-5">
           <div className="flex min-w-0 items-center gap-3">
             <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', tones[tone])}>
@@ -636,7 +636,7 @@ function HubDialog({
             <X />
           </Button>
         </div>
-        <div className="max-h-[70vh] overflow-y-auto p-5">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5">{children}</div>
         <div className="flex justify-end border-t border-slate-100 bg-slate-50 p-4">
           <Button type="button" onClick={onClose}>
             {footerLabel}

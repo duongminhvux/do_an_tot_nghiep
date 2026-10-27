@@ -151,6 +151,41 @@ describe('website system settings', () => {
       DEFAULT_SITE_SETTINGS.timezone,
     );
   });
+  it('lists server-supported zones with readable localized labels and preserves saved aliases', async () => {
+    const service = new SiteSettingsService({
+      query: async () => ({ rows: [{ payload: { settings: { timezone: 'US/Pacific' } } }] }),
+    } as never);
+    const en = await service.timezones('en');
+    const vi = await service.timezones('vi');
+    expect(new Set(en.map((zone) => zone.value)).size).toBe(en.length);
+    expect(en.length).toBeGreaterThan(100);
+    expect(en.find((zone) => zone.value === 'UTC')).toMatchObject({ offsetMinutes: 0 });
+    const hcm = en.find((zone) => zone.value === 'Asia/Ho_Chi_Minh')!;
+    expect(hcm.offsetMinutes).toBe(420);
+    expect(hcm.label).toContain('UTC+07:00');
+    expect(hcm.label).toContain('Ho Chi Minh');
+    expect(vi.find((zone) => zone.value === hcm.value)!.label).not.toBe(hcm.label);
+    expect(en.some((zone) => zone.value === 'US/Pacific')).toBe(true);
+    for (const [index, zone] of en.entries()) {
+      expect(() => new Intl.DateTimeFormat('en', { timeZone: zone.value })).not.toThrow();
+      if (index) expect(zone.offsetMinutes).toBeGreaterThanOrEqual(en[index - 1].offsetMinutes);
+    }
+  });
+  it('calculates current UTC offsets including fractional zones and daylight saving time', async () => {
+    vi.useFakeTimers();
+    try {
+      const service = new SiteSettingsService({ query: async () => ({ rows: [] }) } as never);
+      vi.setSystemTime(new Date('2026-01-15T12:00:00Z'));
+      const winter = await service.timezones('en');
+      vi.setSystemTime(new Date('2026-07-15T12:00:00Z'));
+      const summer = await service.timezones('en');
+      expect(winter.find((zone) => zone.value === 'America/New_York')!.offsetMinutes).toBe(-300);
+      expect(summer.find((zone) => zone.value === 'America/New_York')!.offsetMinutes).toBe(-240);
+      expect(winter.find((zone) => zone.value === 'Asia/Katmandu' || zone.value === 'Asia/Kathmandu')!.label).toContain('UTC+05:45');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
   it('allows anonymous reads while restricting writes to admin', () => {
     expect(
       Reflect.getMetadata(

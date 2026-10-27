@@ -1033,7 +1033,7 @@ export default function CreateQuestionPage() {
         }
       />
     )}
-    <div aria-busy={isSubmitting} className={`min-h-screen bg-slate-50/50 p-6 md:p-8 space-y-6 w-full ${isSubmitting ? 'pointer-events-none select-none' : ''}`}>
+    <div aria-busy={isSubmitting} className={`min-h-screen bg-slate-50/50 p-4 sm:p-6 md:p-8 space-y-6 w-full ${isSubmitting ? 'pointer-events-none select-none' : ''}`}>
       {/* 1. Breadcrumbs */}
       <div className="flex items-center gap-1.5 text-xs text-slate-500 flex-wrap">
         <Link href={`/${locale}/assessment`} className="hover:text-blue-600 transition-colors flex items-center gap-1">
@@ -1100,9 +1100,9 @@ export default function CreateQuestionPage() {
       )}
 
       {/* 3. Unified Master Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
         {/* Left Column (8 cols): Forms */}
-        <div className="lg:col-span-8 space-y-5">
+        <div className="xl:col-span-8 space-y-5">
           {/* Card 1: Chọn Part & Cấu hình cơ bản */}
           <div className="bg-white border rounded border-slate-200 p-5 shadow-xs space-y-4">
             <h2 className="text-base font-bold text-slate-900">
@@ -2168,7 +2168,7 @@ export default function CreateQuestionPage() {
         </div>
 
         {/* Right Column (4 cols sticky): Live Preview & Guide */}
-        <div className="lg:col-span-4 space-y-5 sticky top-20">
+        <div className="xl:col-span-4 space-y-5 xl:sticky xl:top-20">
           {/* Card Guide */}
           <div className="bg-white border rounded border-slate-200 p-5 shadow-xs space-y-3">
             <div className="flex items-center gap-2 text-slate-900 font-bold text-sm">

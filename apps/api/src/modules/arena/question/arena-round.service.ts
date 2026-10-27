@@ -1,5 +1,7 @@
 import { PgId } from '../../../postgres/compat.js';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { ArenaMatchTransactions } from '../matches/arena-match-transactions.js';
+import { ARENA_DEFAULTS } from '../admin/arena-settings.defaults.js';
 import { InjectPgModel } from '../../../postgres/compat.js';
 import { WsException } from '@nestjs/websockets';
 import { type Model } from '../../../postgres/compat.js';
@@ -35,6 +37,7 @@ export class ArenaRoundService {
     private readonly answers: Model<ArenaPlayerAnswer>,
     private readonly arenaScoreService: ArenaScoringService,
     private readonly matchService: ArenaMatchService,
+    @Optional() private readonly transactions?: ArenaMatchTransactions,
   ) {}
 
   /** Kiểm tra chuỗi ID hợp lệ trước khi chuyển sang PgId của PostgreSQL. */
@@ -65,6 +68,14 @@ export class ArenaRoundService {
     userId: string;
     answer: string;
   }) {
+    const work = async () => {
+      const result = await this.submitLocked(payload);
+      return { ...result, events: await this.versionEvents(payload.matchId, result.events) };
+    };
+    if (this.transactions) return this.transactions.run(payload.matchId, work);
+    return work();
+  }
+  private async submitLocked(payload: { matchId: string; questionId: string; userId: string; answer: string }) {
     const { matchId, questionId, userId, answer } = payload;
 
     // Giới hạn độ dài đáp án để tránh dữ liệu bất thường từ client.
@@ -80,6 +91,7 @@ export class ArenaRoundService {
         _id: this.id(questionId),
         matchId: matchPgId }),
     ]);
+    if (match && this.pauseDue(match, Date.now())) throw new WsException('Match is paused, waiting for reconnect');
 
     // Người chơi phải còn ở trạng thái PLAYING mới được trả lời.
     if (!player || player.status !== 'PLAYING')
@@ -309,6 +321,15 @@ export class ArenaRoundService {
     if (!applied) return [];
 
     const updated = await this.players.find({ matchId: question.matchId });
+    const earnedByUser = new Map<string, number>();
+    for (const member of updated) {
+      const answer = await this.answers.findOne({
+        matchId: question.matchId,
+        matchQuestionId: question._id,
+        userId: member.userId,
+      });
+      earnedByUser.set(String(member.userId), answer?.earnedScore ?? 0);
+    }
     return [
       {
         event: 'match:question-resolved',
@@ -321,7 +342,8 @@ export class ArenaRoundService {
           players: updated.map((member) => ({
             userId: String(member.userId),
             score: member.score,
-            streak: member.currentStreak })),
+            streak: member.currentStreak,
+            earnedScore: earnedByUser.get(String(member.userId)) ?? 0 })),
           explanation: question.explanation,
           example: question.example,
           translation: question.translation,
@@ -386,6 +408,15 @@ export class ArenaRoundService {
       !events.some((e) => e.event === 'match:question-resolved')
     ) {
       const players = await this.players.find({ matchId: match._id });
+      const earnedByUser = new Map<string, number>();
+      for (const player of players) {
+        const answer = await this.answers.findOne({
+          matchId: match._id,
+          matchQuestionId: question._id,
+          userId: player.userId,
+        });
+        earnedByUser.set(String(player.userId), answer?.earnedScore ?? 0);
+      }
       events.push({
         event: 'match:question-resolved',
         data: {
@@ -401,7 +432,8 @@ export class ArenaRoundService {
           players: players.map((p) => ({
             userId: String(p.userId),
             score: p.score,
-            streak: p.currentStreak })) } });
+            streak: p.currentStreak,
+            earnedScore: earnedByUser.get(String(p.userId)) ?? 0 })) } });
     }
     return events;
   }
@@ -410,11 +442,32 @@ export class ArenaRoundService {
    * Tiến trình một vòng chơi: phát câu hỏi, tạo hint, resolve timeout,
    * chuyển sang câu tiếp theo hoặc đóng trận khi đã hết câu.
    */
-  private async advance(matchId: string): Promise<ArenaRoundEvent[]> {
+  async advanceTo(matchId: string, at = Date.now()): Promise<ArenaRoundEvent[]> {
+    return this.advance(matchId, at);
+  }
+  private async advance(matchId: string, at = Date.now()): Promise<ArenaRoundEvent[]> {
+    const work = async () => this.versionEvents(matchId, await this.advanceLocked(matchId, at));
+    if (this.transactions) return this.transactions.run(matchId, work);
+    return work();
+  }
+  private async versionEvents(matchId: string, events: ArenaRoundEvent[]) {
+    if (!events.length) return events;
+    const match = await this.matches.findById(this.id(matchId));
+    if (match?.type !== ArenaMatchType.RANK) return events;
+    return events.map(event => ({ ...event, data: { ...event.data, version: match.rankedState?.version ?? 0 } }));
+  }
+  private pauseDue(match: ArenaMatch, at: number) {
+    if (match.type !== ArenaMatchType.RANK || !match.rankedState) return false;
+    const rules = { ...ARENA_DEFAULTS.rankedConnection, ...match.runtimePolicy?.rankedConnection };
+    return rules.rankedPauseEnabled && Object.values(match.rankedState.members).some(member =>
+      member.disconnectedAt !== null && at > member.disconnectedAt+rules.reloadGraceSeconds*1000);
+  }
+  private async advanceLocked(matchId: string, at: number): Promise<ArenaRoundEvent[]> {
     const match = await this.matches.findById(this.id(matchId));
 
     // Chỉ trận đang PLAYING mới được phép tiến hành vòng chơi.
     if (!match || match.status !== ArenaMatchStatus.PLAYING) return [];
+    if (this.pauseDue(match, at)) return [];
 
     let question = await this.questions.findOne({
       matchId: match._id,
@@ -428,14 +481,14 @@ export class ArenaRoundService {
       question =
         (await this.questions.findOneAndUpdate(
           { _id: question._id, startedAt: null },
-          { $set: { startedAt: new Date() } },
+          { $set: { startedAt: new Date(at) } },
           { returnDocument: 'after' },
         )) ?? (await this.questions.findById(question._id));
 
       // Nếu vẫn chưa có thời điểm bắt đầu thì chờ lần tick tiếp theo.
       if (!question?.startedAt) return [];
     }
-    const now = Date.now();
+    const now = at;
 
     // Khi hết thời gian, đóng câu hỏi với winnerId null để biểu thị timeout/hòa câu.
     if (
@@ -445,7 +498,7 @@ export class ArenaRoundService {
       question =
         (await this.questions.findOneAndUpdate(
           { _id: question._id, resolvedAt: null },
-          { $set: { resolvedAt: new Date(), winnerId: null } },
+          { $set: { resolvedAt: new Date(question.startedAt.getTime() + match.secondsPerQuestion * 1000), winnerId: null } },
           { returnDocument: 'after' },
         )) ?? (await this.questions.findById(question._id));
 
@@ -488,6 +541,7 @@ export class ArenaRoundService {
             question.correctAnswer,
             now - question.startedAt!.getTime(),
             match.secondsPerQuestion * 1000,
+            match.runtimePolicy?.hints,
           ) } });
       return events;
     }
@@ -509,7 +563,7 @@ export class ArenaRoundService {
       );
 
       // Chỉ request cập nhật thành công mới được phép mở câu tiếp theo.
-      if (moved.modifiedCount) events.push(...(await this.advance(matchId)));
+      if (moved.modifiedCount) events.push(...(await this.advance(matchId, at)));
     } else {
       // Giao việc tính Elo và cập nhật profile cho một service có khóa FINISHING.
       const finished = await this.matchService.finishRankedMatch(matchId);
@@ -528,7 +582,7 @@ export class ArenaRoundService {
       this.matches.findById(this.id(matchId)),
       this.players.find({ matchId: this.id(matchId) }),
     ]);
-    if (match?.status === ArenaMatchStatus.CANCELLED)
+    if (match?.status === ArenaMatchStatus.CANCELLED && match.type !== ArenaMatchType.RANK)
       return {
         event: 'friend:cancelled',
         data: { matchId, message: match.cancelReason } };
@@ -541,7 +595,9 @@ export class ArenaRoundService {
       data: {
         matchId,
         winnerId: match?.winnerId ? String(match.winnerId) : null,
-        isDraw: match?.isDraw ?? true,
+        isDraw: match?.status === ArenaMatchStatus.CANCELLED || (match?.isDraw ?? true),
+        cancelled: match?.status === ArenaMatchStatus.CANCELLED,
+        version: match?.rankedState?.version ?? 0,
         finishReason: match?.finishReason ?? 'NORMAL',
         mode: match?.friendMode,
         turnCount: match?.turnCount ?? 0,

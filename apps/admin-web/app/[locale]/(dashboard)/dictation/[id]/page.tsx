@@ -1,4 +1,5 @@
 'use client';
+import {PublicationBar} from '@/components/publication/publication-controls';
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -7,13 +8,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
   AudioLines,
-  CheckCircle2,
   FileAudio,
   Loader2,
   Play,
   RefreshCw,
   Save,
-  Send,
   Upload,
 } from 'lucide-react';
 import { dictationService } from '@/services/dictation.service';
@@ -173,15 +172,6 @@ export default function DictationDetailPage() {
     onError: (error: any) => setMessage(error?.response?.data?.message || error?.message || 'Không thể lưu segment.'),
   });
 
-  const publishMutation = useMutation({
-    mutationFn: () => lesson?.status === 'PUBLISHED' ? dictationService.unpublish(id) : dictationService.publish(id),
-    onSuccess: () => {
-      setMessage(lesson?.status === 'PUBLISHED' ? 'Đã unpublish bài.' : 'Đã publish bài.');
-      refresh();
-    },
-    onError: (error: any) => setMessage(error?.response?.data?.message || error?.message || 'Không thể đổi trạng thái publish.'),
-  });
-
   const updateDraft = (index: number, patch: Partial<DictationSegmentEditPayload>) => {
     setSegmentDrafts((current) => current.map((item, i) => i === index ? { ...item, ...patch } : item));
   };
@@ -207,10 +197,10 @@ export default function DictationDetailPage() {
     return <div className="flex min-h-[60vh] items-center justify-center text-slate-500"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Đang tải bài Dictation...</div>;
   }
 
-  const busy = saveMutation.isPending || processMutation.isPending || publishMutation.isPending || saveSegmentsMutation.isPending;
+  const busy = saveMutation.isPending || processMutation.isPending || saveSegmentsMutation.isPending;
 
   return (
-    <div className="min-h-screen bg-slate-50/50 p-6 md:p-8">
+    <div className="min-h-screen bg-slate-50/50 p-4 sm:p-6 md:p-8">
       <div className="mx-auto max-w-7xl space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
@@ -227,10 +217,10 @@ export default function DictationDetailPage() {
           <div className="flex flex-wrap gap-2">
             <button onClick={() => saveMutation.mutate()} disabled={busy || !title.trim() || !topicId || !sectionId || (effectiveAudioSource === 'TTS' && !sourceText.trim())} className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">{saveMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Lưu thông tin</button>
             {effectiveAudioSource === 'TTS' && <button onClick={() => processMutation.mutate()} disabled={busy || !topicId || !sectionId || !sourceText.trim()} className="inline-flex h-9 items-center gap-2 rounded-lg border border-blue-200 bg-white px-3 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-50">{processMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />} Regenerate Kokoro</button>}
-            {(lesson.status === 'READY' || lesson.status === 'PUBLISHED') && <button onClick={() => publishMutation.mutate()} disabled={busy} className="inline-flex h-9 items-center gap-2 rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50">{lesson.status === 'PUBLISHED' ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Send className="h-3.5 w-3.5" />}{lesson.status === 'PUBLISHED' ? 'Unpublish' : 'Publish'}</button>}
           </div>
         </div>
 
+        <PublicationBar kind="dictation" id={id} version={lesson.updatedAt} dirty={busy || title!==lesson.title || description!==(lesson.description||'') || sourceText!==(lesson.sourceText||'') || level!==lesson.level || language!==(lesson.language||'en-US') || speed!==(lesson.speed??1) || pauseAfterMs!==(lesson.pauseAfterMs??300) || voice1!==(lesson.voiceIds?.[0]||'af_heart') || voice2!==(lesson.voiceIds?.[1]||'') || topicId!==(lesson.topicId||'') || sectionId!==(lesson.sectionId||'') || Boolean(replacementFile) || JSON.stringify(segmentDrafts)!==JSON.stringify((lesson.segments||[]).map(segment=>({order:segment.order,text:segment.text,startMs:segment.startMs??0,endMs:segment.endMs??Math.max(segment.durationMs||0,1),speaker:segment.speaker||''})))} />
         {message && <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">{message}</div>}
         {lesson.processingError && <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{lesson.processingError}</div>}
 

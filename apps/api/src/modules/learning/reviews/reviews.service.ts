@@ -1,5 +1,7 @@
-import { PgId } from '../../../postgres/compat.js';
-import { Injectable } from '@nestjs/common';
+import { PgId, makePgModel } from '../../../postgres/compat.js';
+import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { DomainOutboxService } from '../../../common/events/domain-outbox.service.js';
+import { mistakeSource } from '../mistakes/mistake-source-client.js';
 import { InjectPgModel } from '../../../postgres/compat.js';
 import { type Model } from '../../../postgres/compat.js';
 import {
@@ -14,6 +16,7 @@ export class ReviewsService {
     private reviewModel: Model<UserWordReviewDocument>,
     @InjectPgModel(Word.name)
     private wordModel: Model<WordDocument>,
+    @Inject(DomainOutboxService) private readonly outbox: DomainOutboxService,
   ) {}
 
   /**
@@ -178,7 +181,18 @@ export class ReviewsService {
       );
     }
 
-    return review.save();
+    const titles = await mistakeSource<Record<string,string>>('content','vocabulary-titles',{ wordIds:[wordId] });
+    if(!titles[wordId])throw new NotFoundException('Published vocabulary word not found');
+    return this.outbox.withTransaction(async session => {
+      const model = makePgModel<UserWordReview>(UserWordReview.name,session.client as any);
+      const saved = await model.create(review!.toObject());
+      await session.client!.query('SELECT public.record_learning_outcomes($1,$2,$3,$4::jsonb)',[
+        userId,`vocab-review:${saved._id}:${saved.reviewCount}`,now,
+        JSON.stringify([{ sourceType:'VOCABULARY',sourceItemId:wordId,sourceRefId:String(saved._id),
+          title:titles[wordId] || wordId,samples:1,wrongCount:isAgain ? 1:0 }]),
+      ]);
+      return saved;
+    });
   }
 
   /**

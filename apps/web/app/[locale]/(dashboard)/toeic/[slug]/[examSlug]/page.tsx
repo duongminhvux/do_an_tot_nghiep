@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { FileQuestion, Clock, Users, AlertCircle } from 'lucide-react';
@@ -51,10 +51,13 @@ type Mode = ExamMode;
 export default function ToeicExamDetailPage() {
   const params    = useParams();
   const router    = useRouter();
+  const searchParams = useSearchParams();
+  const practicePart = Number(searchParams.get('practicePart'));
   const { t }     = useTranslation('toeic');
   const locale    = (params?.locale   as string) || 'vi';
   const groupSlug = (params?.slug     as string) || '';
   const examSlug  = (params?.examSlug as string) || '';
+  const selectionKey = `${examSlug}:${practicePart}`;
 
   const { user } = useAppSelector((state) => state.auth);
 
@@ -92,11 +95,13 @@ export default function ToeicExamDetailPage() {
   const parts       = rawParts;
 
   React.useEffect(() => {
-    if (parts.length > 0 && initialised !== examSlug) {
-      setSelected(new Set(parts.map((p) => p._id)));
-      setInitialised(examSlug);
+    if (parts.length > 0 && initialised !== selectionKey) {
+      const recommended = parts.find(p => p.part === practicePart);
+      setSelected(new Set((recommended ? [recommended] : parts).map((p) => p._id)));
+      setMode(recommended ? 'PRACTICE' : 'TEST');
+      setInitialised(selectionKey);
     }
-  }, [parts, initialised, examSlug]);
+  }, [parts, initialised, selectionKey, practicePart]);
 
   const groupName         = group?.name || groupSlug;
   const listeningParts    = parts.filter((p) => p.section === 'LISTENING');

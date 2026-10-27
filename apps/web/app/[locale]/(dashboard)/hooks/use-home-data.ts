@@ -28,6 +28,8 @@ export function useHomeData() {
 
   const home = useQuery({
     queryKey: ["learning-home", timezone],
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
     queryFn: () => learningActivityService.getHome(timezone),
     staleTime: STALE,
   });

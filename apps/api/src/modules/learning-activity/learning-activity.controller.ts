@@ -1,10 +1,13 @@
-import { Controller, Get, Query, Req } from '@nestjs/common';
+import { ACTIVE_TIME_MAX_SLICE_MS } from '@repo/shared-types/active-time';
+import { ActiveTimeService } from './active-time.service.js';
+import { Body, Controller, Get, Post, Query, Req } from '@nestjs/common';
 import { Type } from 'class-transformer';
 import {
   IsDate,
   IsInt,
   IsOptional,
   IsTimeZone,
+  IsUUID,
   Max,
   Min } from 'class-validator';
 import { LearningActivityService } from './learning-activity.service.js';
@@ -20,9 +23,19 @@ class RecentQueryDto {
   @IsOptional() @Type(() => Date) @IsDate() before?: Date;
 }
 
+export class ActiveTimePulseDto {
+  @IsUUID() requestId!: string;
+  @IsInt() @Min(0) @Max(ACTIVE_TIME_MAX_SLICE_MS) activeMs!: number;
+}
+
 @Controller('learning-activity')
 export class LearningActivityController {
-  constructor(private readonly activities: LearningActivityService) {}
+  constructor(private readonly activities: LearningActivityService, private readonly activeTime: ActiveTimeService) {}
+
+  @Post('active-time')
+  recordActiveTime(@Req() req: UserRequest, @Body() pulse: ActiveTimePulseDto) {
+    return this.activeTime.record(String(req.user._id), pulse);
+  }
 
   @Get('home')
   home(@Req() req: UserRequest, @Query() query: HomeQueryDto) {

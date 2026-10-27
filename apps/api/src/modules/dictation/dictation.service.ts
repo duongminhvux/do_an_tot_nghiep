@@ -1,4 +1,6 @@
 import { PgId, makePgModel } from '../../postgres/compat.js';
+import { dictationOutcomes } from '@repo/shared-types/mistakes';
+import {PublicationService} from '../publication/publication.service.js';
 import { DomainOutboxService } from '../../common/events/domain-outbox.service.js';
 import { randomUUID } from 'node:crypto';
 import {
@@ -73,6 +75,7 @@ export class DictationService {
     private readonly configService: ConfigService,
     @Optional() @Inject(LearningActivityClient) private readonly learningActivity?: LearningActivityWriter,
     @Optional() @Inject(DomainOutboxService) private readonly domainOutbox?: DomainOutboxService,
+    @Optional() @Inject(PublicationService) private readonly publication?: PublicationService,
   ) {
     this.asrStartPaddingMs = this.readNonNegativeInt('DICTATION_SEGMENT_START_PADDING_MS', 100);
     this.asrEndPaddingMs = this.readNonNegativeInt('DICTATION_SEGMENT_END_PADDING_MS', 150);
@@ -546,6 +549,7 @@ export class DictationService {
     if (query.level) filter.level = query.level;
     if (query.topic) filter.topic = query.topic;
     if (query.status) filter.status = query.status;
+    if (query.publicationStatus) filter.publicationStatus = query.publicationStatus;
 
     return this.lessonModel.find(filter).sort({ createdAt: -1 }).lean().exec();
   }
@@ -606,29 +610,16 @@ export class DictationService {
     return this.lessonModel.findByIdAndUpdate(id, update, { returnDocument: 'after' }).lean();
   }
 
-  async publish(id: string) {
-    const lesson = await this.lessonModel.findOne({ _id: id, isDeleted: { $ne: true } });
-    if (!lesson) throw new NotFoundException('Dictation lesson not found.');
-    if (lesson.status === DictationStatus.PUBLISHED) return lesson;
-    if (lesson.status !== DictationStatus.READY || !lesson.fullAudioUrl || lesson.sentenceCount <= 0) {
-      throw new ConflictException('Process dictation audio after the latest content changes before publishing this lesson.');
-    }
-    const segmentCount = await this.segmentModel.countDocuments({ lessonId: lesson._id });
-    if (segmentCount !== lesson.sentenceCount) {
-      throw new ConflictException('Segment metadata is incomplete. Reprocess audio before publishing.');
-    }
-
-    lesson.status = DictationStatus.PUBLISHED;
-    lesson.publishedAt = new Date();
-    lesson.processingError = '';
-    return lesson.save();
+  async publish(id: string,actorId?:string) {
+    if(!this.publication)throw new ConflictException('Publication workflow is not configured');
+    await this.publication.publish('dictation',id,actorId??'');
+    return this.getAdmin(id);
   }
 
-  async unpublish(id: string) {
-    const lesson = await this.lessonModel.findOne({ _id: id, isDeleted: { $ne: true } });
-    if (!lesson) throw new NotFoundException('Dictation lesson not found.');
-    lesson.status = lesson.fullAudioUrl ? DictationStatus.READY : DictationStatus.DRAFT;
-    return lesson.save();
+  async unpublish(id: string,actorId?:string) {
+    if(!this.publication)throw new ConflictException('Publication workflow is not configured');
+    await this.publication.unpublish('dictation',id,actorId??'');
+    return this.getAdmin(id);
   }
 
   /**
@@ -1081,23 +1072,23 @@ export class DictationService {
     return this.saveLessonProgress(progress, lesson);
   }
 
-  // Saves after a sentence is answered/revealed; the moment a lesson becomes
-  // completed it is recorded as a learning activity (a reset starts over).
+  // Credit is keyed by progress ID; completed retries refresh cumulative F02
+  // outcomes under the same key without awarding completion XP twice.
   private async saveLessonProgress(
     progress: DictationProgressDocument,
     lesson: DictationLessonDocument,
   ) {
     const handledSegments = new Set([...(progress.completedSegments || []), ...(progress.revealedSegments || [])]);
-    const wasCompleted = Boolean(progress.completed);
     progress.completed = handledSegments.size >= lesson.sentenceCount;
     progress.lastPracticedAt = new Date();
-    if (!wasCompleted && progress.completed) {
+    if (progress.completed) {
       if (!this.domainOutbox) throw new Error('Transactional outbox not configured');
       return this.domainOutbox.withTransaction(async (session) => {
         // Persist the completed progress and durable Learning event together.
         const model = makePgModel<DictationProgress>(DictationProgress.name, session.client as any);
         const saved = await model.create(progress.toObject());
         const firstTry = (saved.segmentProgress || []).filter((s: {firstTryCorrect?: boolean}) => s.firstTryCorrect).length;
+        const outcomeSegments = await this.segmentModel.find({ lessonId: lesson._id }).select('_id order text').lean().exec();
         await this.domainOutbox!.enqueue('learning.activity.recorded.v1', String(saved.userId), {
           userId: String(saved.userId),
           module: 'DICTATION',type: 'DICTATION_LESSON',
@@ -1109,6 +1100,7 @@ export class DictationService {
           durationSec: lesson.totalDurationMs ? Math.round(lesson.totalDurationMs / 1000) : undefined,
           metadata: {firstTryCorrect:firstTry,revealed:saved.revealedSegments?.length??0},
           sourceService: 'content',
+          outcomes: dictationOutcomes(saved, outcomeSegments),
         },session);
         return saved;
       });

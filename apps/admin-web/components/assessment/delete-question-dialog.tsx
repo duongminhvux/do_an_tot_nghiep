@@ -33,7 +33,7 @@ export function DeleteQuestionDialog({
 
   return (
     <Dialog open={open} onOpenChange={(val) => !isDeleting && onOpenChange(val)}>
-      <DialogContent className="sm:max-w-[440px] p-0 overflow-hidden bg-white border border-slate-200 rounded shadow-lg">
+      <DialogContent className="sm:max-w-[440px] p-0 overflow-x-hidden overflow-y-auto bg-white border border-slate-200 rounded shadow-lg">
         <DialogHeader className="p-4 bg-red-50/70 border-b border-red-100">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0">

@@ -21,6 +21,7 @@ export interface ArenaParticipant {
   isReady: boolean;
 }
 export interface ArenaMatch {
+  rankedState?: { resumeAt: number | null; members: Record<string, { disconnectedAt: number | null; deadlineAt: number | null }> };
   _id: string;
   type: string;
   friendMode?: string;
@@ -123,6 +124,13 @@ export interface PlayerDetail {
   ratingHistory: Paged<ArenaRating>;
 }
 export interface ArenaConfig {
+  hints: { startAfterSeconds: number; intervalSeconds: number; maxPercent: number };
+  rankedConnection: {
+    rankedPauseEnabled: boolean; reloadGraceSeconds: number; disconnectTimeoutSeconds: number;
+    resumeCountdownSeconds: number; maxTotalPauseSeconds: number; maxPauseCount: number;
+    idleDetectionEnabled: boolean; idleTimeoutSeconds: number; idleChallengeTimeoutSeconds: number;
+    bothDisconnectedPolicy: 'CANCEL_NO_RATING';
+  };
   audio?: GameAudioSettings;
   maintenance: boolean;
   ranked: {

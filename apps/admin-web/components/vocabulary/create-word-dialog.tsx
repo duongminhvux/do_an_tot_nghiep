@@ -140,7 +140,7 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl w-full max-h-[92vh] overflow-y-auto p-0 rounded-lg border border-slate-200 bg-white">
+      <DialogContent className="max-w-3xl w-[calc(100vw-2rem)] max-h-[92dvh] overflow-y-auto p-0 rounded-lg border border-slate-200 bg-white">
         <div className="sticky top-0 z-10 bg-white border-b border-slate-200 px-6 py-4">
           <DialogTitle className="text-xl font-bold text-slate-900">Tạo từ vựng</DialogTitle>
           <p className="mt-1 text-sm text-slate-500">Nhập thông tin cốt lõi trước. Các trường nâng cao có thể bổ sung sau.</p>
@@ -184,10 +184,10 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: Props) {
             {meanings.map((meaning, index) => (
               <div key={meaning.id} className="rounded-lg border border-slate-200 bg-slate-50/40 p-4 space-y-3">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className="flex h-6 w-6 items-center justify-center rounded bg-blue-600 text-xs font-bold text-white">{index + 1}</span>
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-blue-600 text-xs font-bold text-white">{index + 1}</span>
                     <Select value={meaning.partOfSpeech} onValueChange={(value) => updateMeaning(meaning.id, { partOfSpeech: value })}>
-                      <SelectTrigger className="w-[170px] bg-white"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="w-full min-w-0 bg-white sm:w-[170px]"><SelectValue /></SelectTrigger>
                       <SelectContent>{POS.map((item) => <SelectItem key={item} value={item}>{item.replace('_', ' ')}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
@@ -234,7 +234,7 @@ export function CreateWordDialog({ open, onOpenChange, onSuccess }: Props) {
             </section>
           )}
 
-          <div className="sticky bottom-0 -mx-6 -mb-6 flex justify-end gap-3 border-t border-slate-200 bg-white px-6 py-4">
+          <div className="sticky bottom-0 -mx-6 -mb-6 flex flex-wrap justify-end gap-3 border-t border-slate-200 bg-white px-6 py-4">
             <button type="button" onClick={() => onOpenChange(false)} className="rounded-md border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700">Hủy</button>
             <button type="submit" disabled={mutation.isPending} className="inline-flex min-w-[130px] items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
               {mutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />} Tạo từ

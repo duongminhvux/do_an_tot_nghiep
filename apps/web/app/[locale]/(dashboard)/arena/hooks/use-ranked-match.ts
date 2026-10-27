@@ -8,6 +8,7 @@ import { arenaService } from "@/services/arena.service";
 import type { RankedPlayer } from "./use-arena-controller";
 
 type Question = {
+  version?: number;
   matchId: string;
   questionId: string;
   questionIndex: number;
@@ -42,10 +43,13 @@ type AnswerResult = {
   type?: string;
 };
 type ScoreUpdate = {
+  version?: number;
   matchId: string;
   players: { userId: string; score: number }[];
 };
 type Finished = {
+  version?: number;
+  cancelled?: boolean;
   matchId: string;
   finishReason?: string;
   turnCount?: number;
@@ -62,6 +66,16 @@ type Finished = {
     ratingAfter?: number;
     ratingChange?: number;
   }[];
+};
+type RankedSync = {
+  matchId: string; version: number; status: 'WAITING' | 'COUNTDOWN' | 'PLAYING' | 'PAUSED' | 'RESUMING' | 'FINISHED' | 'CANCELLED';
+  serverNow: number; remainingMs: number; resumeAt: number | null;
+  disconnected: { userId: string; deadlineAt: number | null }[];
+  question: Question | null;
+  players: { userId: string; score: number; streak: number }[];
+  submitted?: { answer?: string; attempts?: number; earnedScore?: number } | null;
+  resolved: { questionId: string; winnerId: string | null; timedOut: boolean; correctAnswer: string; explanation?: string; example?: string; translation?: string; type?: string } | null;
+  history?: { questionId: string; order: number; correct: boolean }[];
 };
 type Ack = {
   success?: boolean;
@@ -91,7 +105,7 @@ export function useRankedMatch(
   const { playAnswer: playAudioAnswer, audioEnabled } = useArenaAudio(matchId, currentUserId);
   const queryClient = useQueryClient();
   const [matchStatus, setMatchStatus] = useState<
-    "WAITING" | "PLAYING" | "FINISHED"
+    "WAITING" | "PLAYING" | "PAUSED" | "RESUMING" | "FINISHED"
   >("WAITING");
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [answer, setAnswer] = useState("");
@@ -106,6 +120,12 @@ export function useRankedMatch(
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [opponent, setOpponent] = useState<RankedPlayer | null>(null);
+  const [connectionState, setConnectionState] = useState<RankedSync | null>(null);
+  const [connectionCountdown, setConnectionCountdown] = useState(0);
+  const [syncing, setSyncing] = useState(!friendly);
+  const versionRef = useRef(-1);
+  const statusRef = useRef('WAITING');
+  const clockOffsetRef = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const questionRef = useRef<Question | null>(null);
   const pendingRef = useRef<string | null>(null);
@@ -118,6 +138,8 @@ export function useRankedMatch(
   const finishedRef = useRef(false);
   const answeredRef = useRef(new Set<string>());
   const deadlineRef = useRef(0);
+  const lastSyncRef = useRef(0);
+  const resolvedAtRef = useRef(0);
   const readyRef = useRef<() => void>(() => {});
   const answerHandlerRef = useRef<(data: AnswerResult) => void>(() => {});
   const { data: profile } = useQuery({
@@ -150,6 +172,7 @@ export function useRankedMatch(
     pendingRef.current = null;
     lastAttemptRef.current = null;
     finishedRef.current = false;
+    resolvedAtRef.current = 0;
     setMatchStatus("WAITING");
     setCurrentQuestion(null);
     setFinalResult(null);
@@ -159,14 +182,20 @@ export function useRankedMatch(
     setScore(0);
     setOpponentScore(0);
     setStreak(0);
+    versionRef.current = -1;
+    statusRef.current = 'WAITING';
+    setConnectionState(null);
+    setSyncing(!friendly);
     setSubmitting(false);
 
     const handleStart = (data: { matchId: string }) => {
+      if (['PAUSED','RESUMING'].includes(statusRef.current)) return;
       if (data.matchId !== matchId || finishedRef.current) return;
       setMatchStatus("PLAYING");
       setError(null);
     };
-    const handleQuestion = (data: Question) => {
+    const handleQuestion = (data: Question, fromSync = false) => {
+      if (!fromSync && (['PAUSED','RESUMING'].includes(statusRef.current) || (data.version !== undefined && data.version < versionRef.current))) return;
       if (
         data.matchId !== matchId ||
         finishedRef.current ||
@@ -177,17 +206,23 @@ export function useRankedMatch(
       )
         return;
       const previous = questionRef.current;
-      if (
-        previous &&
-        (data.questionIndex < previous.questionIndex ||
-          data.questionId === previous.questionId)
-      )
+      if (previous && data.questionIndex < previous.questionIndex) return;
+      // Snapshots can repeat the current question after reconnect or missed events.
+      if (previous?.questionId === data.questionId) {
+        const start = data.startedAt ? Date.parse(data.startedAt) : NaN;
+        if (Number.isFinite(start)) deadlineRef.current = start+data.timeLimit*1000-clockOffsetRef.current;
+        const letters = Array.from({ length: data.answerLength }, (_, index) => previous.letters?.[index] ?? data.letters?.[index] ?? null);
+        questionRef.current = { ...previous, ...data, letters };
+        setCurrentQuestion((current) => current?.questionId === data.questionId
+          ? { ...current, ...data, letters: letters.map((letter,index) => current.letters?.[index] ?? letter) } : current);
         return;
+      }
       questionRef.current = data;
+      resolvedAtRef.current = 0;
       const serverStart = data.startedAt ? Date.parse(data.startedAt) : NaN;
       deadlineRef.current =
         (Number.isFinite(serverStart) ? serverStart : Date.now()) +
-        data.timeLimit * 1000;
+        data.timeLimit * 1000-clockOffsetRef.current;
       pendingRef.current = null;
       lastAttemptRef.current = null;
       setCurrentQuestion(data);
@@ -214,7 +249,10 @@ export function useRankedMatch(
         data.attemptId !== lastAttemptRef.current?.attemptId
       )
         return;
-      if (data.resolved) answeredRef.current.add(data.questionId);
+      if (data.resolved) {
+        answeredRef.current.add(data.questionId);
+        resolvedAtRef.current ||= Date.now();
+      }
       pendingRef.current = null;
       lastAttemptRef.current = null;
       setSubmitting(false);
@@ -246,21 +284,25 @@ export function useRankedMatch(
       });
     };
     const handleHint = (data: {
+      version?: number;
       matchId: string;
       questionId: string;
       letters: (string | null)[];
     }) => {
+      if (['PAUSED','RESUMING'].includes(statusRef.current) || (data.version !== undefined && data.version < versionRef.current)) return;
       if (
         data.matchId !== matchId ||
-        data.questionId !== questionRef.current?.questionId ||
-        answeredRef.current.has(data.questionId)
-      )
-        return;
-      setCurrentQuestion((current) =>
-        current ? { ...current, letters: data.letters } : current,
-      );
+        data.questionId !== questionRef.current?.questionId
+      ) return;
+      // Only reveal new letters; delayed hint packets must never hide a revealed letter.
+      questionRef.current = { ...questionRef.current!, letters: data.letters.map((letter,index) => questionRef.current?.letters?.[index] ?? letter) };
+      setCurrentQuestion((current) => current?.questionId === data.questionId
+        ? { ...current, letters: data.letters.map((letter, index) =>
+            current.letters?.[index] ?? letter) } : current);
+
     };
     const handleResolved = (data: {
+      version?: number;
       matchId: string;
       questionId: string;
       winnerId: string | null;
@@ -270,31 +312,34 @@ export function useRankedMatch(
       example?: string;
       translation?: string;
       type?: string;
-      players: { userId: string; score: number; streak: number }[];
+      players: { userId: string; score: number; streak: number; earnedScore?: number }[];
     }) => {
+      if (data.version !== undefined && data.version < versionRef.current) return;
       if (
         data.matchId !== matchId ||
-        data.questionId !== questionRef.current?.questionId ||
-        answeredRef.current.has(data.questionId)
-      )
-        return;
+        data.questionId !== questionRef.current?.questionId
+      ) return;
+      const alreadyResolved = answeredRef.current.has(data.questionId);
       const me = data.players?.find(
         (player) => player.userId === currentUserId,
       );
       const other = data.players?.find(
         (player) => player.userId !== currentUserId,
       );
+      if (me) { setScore(me.score); setStreak(me.streak); }
       if (other) setOpponentScore(other.score);
+      if (alreadyResolved) return;
       handleAnswerResult({
         ...data,
         resolved: true,
         correct: data.winnerId === currentUserId,
-        points: data.winnerId === currentUserId ? 100 : 0,
+        points: me?.earnedScore ?? 0,
         totalScore: me?.score ?? 0,
         streak: me?.streak ?? 0,
       });
     };
     const handleScore = (data: ScoreUpdate) => {
+      if (data.version !== undefined && data.version < versionRef.current) return;
       if (data.matchId !== matchId || !Array.isArray(data.players)) return;
       const me = data.players.find((player) => player.userId === currentUserId);
       const other = data.players.find(
@@ -304,6 +349,7 @@ export function useRankedMatch(
       if (other) setOpponentScore(other.score);
     };
     const handleFinished = (data: Finished) => {
+      if (data.version !== undefined && data.version < versionRef.current) return;
       if (
         data.matchId !== matchId ||
         !Array.isArray(data.players) ||
@@ -311,6 +357,8 @@ export function useRankedMatch(
       )
         return;
       finishedRef.current = true;
+      statusRef.current = 'FINISHED';
+      setSyncing(false);
       questionRef.current = null;
       pendingRef.current = null;
       setMatchStatus("FINISHED");
@@ -327,6 +375,40 @@ export function useRankedMatch(
         queryKey: ["arena-matches", currentUserId],
       });
       void queryClient.invalidateQueries({ queryKey: ["arena-leaderboard"] });
+    };
+    const handleSync = (data: RankedSync) => {
+      if (friendly || data.matchId !== matchId || !Number.isInteger(data.version) || data.version < versionRef.current || finishedRef.current) return;
+      versionRef.current = data.version;
+      clockOffsetRef.current = data.serverNow-Date.now();
+      if (data.question) handleQuestion(data.question, true);
+      handleScore(data);
+      const me = data.players.find(p => p.userId === currentUserId);
+      if (me) setStreak(me.streak);
+      if (data.history) {
+        setHistory(data.history.reduce<boolean[]>((list, item) => { list[item.order-1] = item.correct; return list; }, []));
+        for (const item of data.history) if (item.questionId !== data.resolved?.questionId) answeredRef.current.add(item.questionId);
+      }
+      if (data.submitted?.answer && !data.resolved) setAnswer(data.submitted.answer);
+      if (data.resolved && data.question) handleResolved({ ...data.resolved, matchId, players: data.players.map(p => ({...p, earnedScore: p.userId === currentUserId ? (data.submitted?.earnedScore ?? 0) : 0})) });
+      if (data.resolved) setResult(current => ({
+        ...current, ...data.resolved, questionId: data.resolved!.questionId, matchId, resolved: true,
+        correct: data.resolved!.winnerId === currentUserId,
+        points: data.submitted?.earnedScore ?? current?.points ?? 0,
+        totalScore: me?.score ?? 0, streak: me?.streak ?? 0,
+      }));
+      statusRef.current = data.status;
+      setConnectionState(data);
+      if (data.status === 'PAUSED' || data.status === 'RESUMING') {
+        setMatchStatus(data.status);
+        setTimeLeft(Math.max(0, Math.ceil(data.remainingMs/1000)));
+        pendingRef.current = null; setSubmitting(false);
+      } else if (data.status === 'PLAYING') {
+        setMatchStatus('PLAYING');
+        deadlineRef.current = Date.now()+data.remainingMs;
+      }
+      setSyncing(false);
+      setError(null);
+      arenaSocket.emit('arena:match-synced', { matchId, version: data.version });
     };
     const handleException = (data: unknown) => {
       pendingRef.current = null;
@@ -360,7 +442,6 @@ export function useRankedMatch(
             if (
               !active ||
               sequence !== readySequence ||
-              questionRef.current ||
               finishedRef.current
             )
               return;
@@ -374,8 +455,10 @@ export function useRankedMatch(
     const handleConnect = () => {
       setConnected(true);
       setError(null);
+      // Wait for arena:authenticated before rejoining the protected match room.
     };
     const handleDisconnect = () => {
+      if (!friendly) setSyncing(true);
       setConnected(false);
       pendingRef.current = null;
       setSubmitting(false);
@@ -386,6 +469,7 @@ export function useRankedMatch(
       setError("Không thể kết nối tới máy chủ trận đấu.");
     };
     arenaSocket.on("match:start", handleStart);
+    arenaSocket.on('arena:match-sync', handleSync);
     arenaSocket.on("match:question", handleQuestion);
     arenaSocket.on("match:answer-result", handleAnswerResult);
     arenaSocket.on("match:hint", handleHint);
@@ -409,6 +493,7 @@ export function useRankedMatch(
       readyRef.current = () => {};
       answerHandlerRef.current = () => {};
       arenaSocket.off("match:start", handleStart);
+      arenaSocket.off('arena:match-sync', handleSync);
       arenaSocket.off("match:question", handleQuestion);
       arenaSocket.off("match:answer-result", handleAnswerResult);
       arenaSocket.off("match:hint", handleHint);
@@ -430,6 +515,7 @@ export function useRankedMatch(
       const question = questionRef.current;
       if (
         !question ||
+        (!friendly && (syncing || ['PAUSED','RESUMING'].includes(statusRef.current))) ||
         !arenaSocket.connected ||
         pendingRef.current ||
         answeredRef.current.has(question.questionId)
@@ -481,7 +567,7 @@ export function useRankedMatch(
         },
       );
     },
-    [matchId],
+    [matchId, friendly, syncing],
   );
 
   useEffect(() => {
@@ -496,6 +582,38 @@ export function useRankedMatch(
     return () => window.clearInterval(timer);
   }, [currentQuestion?.questionId, result?.resolved, matchStatus]);
 
+  // If an edge event is lost, request a server snapshot instead of getting
+  // stuck on zero seconds or trying to resolve a round on the client.
+  useEffect(() => {
+    if (!connected || matchStatus !== "PLAYING" || !currentQuestion)
+      return;
+    const sync = () => {
+      const expired = Date.now() >= deadlineRef.current + 1500;
+      const missingNext = resolvedAtRef.current > 0 && Date.now() >= resolvedAtRef.current + 5000;
+      if (!expired && !missingNext) return;
+      if (Date.now() - lastSyncRef.current < 3000) return;
+      lastSyncRef.current = Date.now();
+      readyRef.current();
+    };
+    const timer = window.setInterval(sync, 1000);
+    return () => window.clearInterval(timer);
+  }, [connected, matchStatus, currentQuestion?.questionId, result?.resolved]);
+
+  useEffect(() => {
+    if (!connectionState || !['PAUSED','RESUMING'].includes(connectionState.status)) return;
+    const tick = () => {
+      const deadline = connectionState.status === 'RESUMING' ? connectionState.resumeAt : Math.min(...connectionState.disconnected.map(m => m.deadlineAt ?? Infinity));
+      setConnectionCountdown(deadline && Number.isFinite(deadline) ? Math.max(0, Math.ceil((deadline-Date.now()-clockOffsetRef.current)/1000)) : 0);
+    };
+    tick(); const timer = window.setInterval(tick, 200);
+    return () => window.clearInterval(timer);
+  }, [connectionState]);
+  useEffect(() => {
+    if (friendly || !connected || finishedRef.current) return;
+    // Recover a missed pause/resume event even while the displayed timer is frozen.
+    const timer = window.setInterval(() => readyRef.current(), 5000);
+    return () => window.clearInterval(timer);
+  }, [friendly, connected, matchId]);
   useEffect(() => {
     if (currentQuestion && !result?.resolved && connected)
       inputRef.current?.focus();
@@ -518,17 +636,10 @@ export function useRankedMatch(
     playAudioAnswer,
     audioEnabled,
     matchStatus,
-    currentQuestion: currentQuestion
-      ? {
-          ...currentQuestion,
-          letters:
-            timeLeft > 5 && timeLeft < 20
-              ? currentQuestion.letters
-              : currentQuestion.letters?.map((letter) =>
-                  letter && /[\p{L}\p{N}]/u.test(letter) ? null : letter,
-                ),
-        }
-      : null,
+    connectionState,
+    connectionCountdown,
+    syncing,
+    currentQuestion,
     answer,
     setAnswer,
     timeLeft,

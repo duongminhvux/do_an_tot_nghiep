@@ -90,19 +90,19 @@ export function arenaHintLetters(
   answer: string,
   elapsedMs: number,
   limitMs: number,
+  settings: { startAfterSeconds?: number; intervalSeconds?: number; maxPercent?: number } = {},
 ) {
   const chars = Array.from(answer);
   const order = arenaHintOrder(answer);
-  const maxHints = Math.floor(order.length * 0.3);
-  const remainingMs = limitMs - elapsedMs;
-  // Hints exist only while 5 < remaining seconds < 20; never expose over 30%.
-  const count =
-    remainingMs > 5000 && remainingMs < 20000
-      ? Math.min(
-          maxHints,
-          Math.ceil((maxHints * (20000 - remainingMs)) / 15000),
-        )
-      : 0;
+  const percent = Math.max(0, Math.min(100, settings.maxPercent ?? 30));
+  const delayMs = Math.max(0, settings.startAfterSeconds ?? 10)*1000;
+  const intervalMs = Math.max(1, settings.intervalSeconds ?? 5)*1000;
+  // Keep at least one useful character for short words, but only 100% reveals
+  // the entire answer. Zero percent disables letter hints.
+  const maxHints = percent === 0 ? 0 : percent === 100 ? order.length
+    : Math.min(order.length-1, Math.max(1, Math.floor(order.length*percent/100)));
+  const elapsed = Math.max(0, Math.min(elapsedMs, limitMs));
+  const count = elapsed >= delayMs ? Math.min(maxHints, 1+Math.floor((elapsed-delayMs)/intervalMs)) : 0;
   const revealed = new Set(order.slice(0, count));
   return chars.map((char, index) =>
     revealed.has(index) || !/[\p{L}\p{N}]/u.test(char) ? char : null,

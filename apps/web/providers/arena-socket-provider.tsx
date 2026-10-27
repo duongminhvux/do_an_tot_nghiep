@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useAppSelector } from "@/redux/hooks";
 import { isAccessTokenValid } from "@/lib/access-token";
 import { FriendlyInvitations } from "@/components/friendly-invitations";
@@ -21,6 +21,8 @@ export function ArenaSocketProvider({
     (state) => state.auth,
   );
 
+  const connectedUserId = useRef<string | null>(null);
+
   useEffect(() => {
     const handleConnect = () => {
       console.log("Arena socket connected:", arenaSocket.id);
@@ -38,11 +40,17 @@ export function ArenaSocketProvider({
     arenaSocket.on("disconnect", handleDisconnect);
     arenaSocket.on("connect_error", handleConnectError);
 
+    const heartbeat = window.setInterval(() => {
+      if (arenaSocket.connected) arenaSocket.emit("arena:presence-heartbeat");
+    }, 15000);
+
     return () => {
+      window.clearInterval(heartbeat);
       arenaSocket.off("connect", handleConnect);
       arenaSocket.off("disconnect", handleDisconnect);
       arenaSocket.off("connect_error", handleConnectError);
 
+      connectedUserId.current = null;
       disconnectArenaSocket();
     };
   }, []);
@@ -55,21 +63,17 @@ export function ArenaSocketProvider({
       user?.role !== "ADMIN" &&
       isAccessTokenValid(accessToken)
     ) {
+      // Refreshing the same account's access token must not leave its queue/room.
+      // Update the handshake token for the next reconnect, keeping the live socket.
+      if (connectedUserId.current && connectedUserId.current !== user._id)
+        disconnectArenaSocket();
+      connectedUserId.current = user._id;
       connectArenaSocket(accessToken);
     } else {
+      connectedUserId.current = null;
       disconnectArenaSocket();
     }
 
-    const heartbeat = window.setInterval(() => {
-      if (arenaSocket.connected) {
-        arenaSocket.emit("arena:presence-heartbeat");
-      }
-    }, 15000);
-
-    return () => {
-      window.clearInterval(heartbeat);
-      disconnectArenaSocket();
-    };
   }, [isInitialized, isAuthenticated, accessToken, user?._id, user?.role]);
 
   return (

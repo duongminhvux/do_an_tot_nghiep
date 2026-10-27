@@ -29,7 +29,7 @@ export default function AuthLayout({
   }
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center p-4 sm:p-6 overflow-hidden bg-slate-50">
+    <div className="relative min-h-dvh flex items-center justify-center p-4 sm:p-6 overflow-hidden bg-slate-50">
       {/* Top right language switcher */}
       <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20">
         <LanguageSwitcher />

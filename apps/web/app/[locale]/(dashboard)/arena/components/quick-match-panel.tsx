@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import Image from "next/image";
+import { ArenaIllustration } from './arena-illustration';
 
 import {
   BarChart3,
@@ -246,11 +247,7 @@ function SearchingView({ text }: { text: (vi: string, en: string) => string }) {
 
         {/* current user */}
         <div className="relative size-16 overflow-hidden rounded-full border-4 border-white bg-blue-200 shadow-lg ring-4 ring-blue-200/60">
-          <Image
-            src="/images/arena/arena-hero.png"
-            alt=""
-            width={180}
-            height={120}
+          <ArenaIllustration
             className="absolute -left-5 -top-2 h-auto w-[180px] max-w-none"
           />
         </div>

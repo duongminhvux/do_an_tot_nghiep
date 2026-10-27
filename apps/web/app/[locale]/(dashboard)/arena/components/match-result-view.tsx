@@ -97,6 +97,10 @@ export function MatchResultView({
   // Format finish reason
   const getFinishReasonText = () => {
     switch (finishReason) {
+      case 'DISCONNECT_FORFEIT':
+        return vi ? 'Trận đấu kết thúc do người chơi không kết nối lại đúng hạn.' : 'The match ended because a player did not reconnect in time.';
+      case 'BOTH_DISCONNECTED':
+        return vi ? 'Cả hai người chơi mất kết nối quá hạn. Trận đã hủy và không thay đổi Elo.' : 'Both players exceeded their reconnect deadline. The match was cancelled without changing Elo.';
       case "PLAYER_LEFT":
         return vi
           ? "Người chơi đã rời khỏi trận đấu."

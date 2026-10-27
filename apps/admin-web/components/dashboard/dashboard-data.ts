@@ -29,8 +29,9 @@ export interface ActivityViewItem {
   id: string;
   userName: string;
   template: ActivityTemplateKey;
-  target: string;
-  score?: number;
+  action: string;
+  actionLabel?: string;
+  description?: string;
   minutesAgo: number;
 }
 
@@ -77,8 +78,9 @@ export function mapLogToActivity(log: ActivityLogItem): ActivityViewItem {
     id: log._id,
     userName,
     template,
-    target: target || log.description || log.actionLabel || log.action,
-    score,
+    action: log.action,
+    actionLabel: log.actionLabel,
+    description: log.description,
     minutesAgo: toMinutesAgo(log.createdAt),
   };
 }

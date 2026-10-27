@@ -1,3 +1,5 @@
+import { ActiveTimeService } from './active-time.service.js';
+import type { LearningOutcome } from '@repo/shared-types/mistakes';
 import { PgId, InjectPgConnection, type PgConnection } from '../../postgres/compat.js';
 import { randomUUID } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
@@ -33,6 +35,7 @@ export interface RecordActivityInput {
   score?: number;
   durationSec?: number;
   metadata?: Record<string, unknown>;
+  outcomes?: LearningOutcome[];
 }
 
 export interface LearningActivityWriter {
@@ -67,6 +70,7 @@ export class LearningActivityService {
     @InjectPgModel(LearningActivity.name)
     private readonly activities: Model<LearningActivity>,
     @InjectPgConnection() private readonly connection: PgConnection,
+    private readonly activeTime: ActiveTimeService,
   ) {}
 
   /** Exactly-once learning credit effect using one PostgreSQL transaction.
@@ -83,7 +87,8 @@ export class LearningActivityService {
     const activityId = randomUUID();
     const xp = Math.max(0, Math.round(input.xp));
     const occurredAt = input.occurredAt ?? new Date();
-    const payload = { ...input, userId, occurredAt: occurredAt.toISOString(), xp };
+    const { outcomes, ...activityInput } = input;
+    const payload = { ...activityInput, userId, occurredAt: occurredAt.toISOString(), xp };
     try {
       await client.query('BEGIN');
       const inserted = await client.query<{id:string}>(`INSERT INTO public.learning_activities
@@ -101,6 +106,10 @@ export class LearningActivityService {
           VALUES($1,$2::uuid,$3,$4,'learning',$5,$6,$7)`,
           [randomUUID(),userId,input.sourceKey,randomUUID(),xp,activityId,occurredAt]);
       }
+      if (outcomes?.length) {
+        await client.query('SELECT public.record_learning_outcomes($1,$2,$3,$4::jsonb)',
+          [userId,input.sourceKey,occurredAt,JSON.stringify(outcomes)]);
+      }
       await client.query('COMMIT');
       return inserted.rows.length > 0;
     } catch (error) {
@@ -113,6 +122,7 @@ export class LearningActivityService {
   }
 
   async home(userId: string, timezone = DEFAULT_TIMEZONE) {
+    const activeByDay = await this.activeTime.daily(userId, timezone);
     const rows = await this.activities
       .aggregate<{
         _id: { day: string; module: LearningModule };
@@ -133,7 +143,7 @@ export class LearningActivityService {
             xp: { $sum: '$xp' },
             count: {
               $sum: { $cond: [{ $in: ['$type', WORD_TYPES] }, 0, 1] } },
-            durationSec: { $sum: { $ifNull: ['$durationSec', 0] } } } },
+            durationSec: { $sum: 0 } } },
       ])
       .exec();
 
@@ -149,29 +159,29 @@ export class LearningActivityService {
       const day = days.get(row._id.day) ?? { ...emptyTotals(), byModule: {} };
       day.xp += row.xp;
       day.count += row.count;
-      day.durationSec += row.durationSec;
       day.byModule[row._id.module] = {
         xp: row.xp,
         count: row.count,
-        durationSec: row.durationSec };
+        durationSec: 0 };
       days.set(row._id.day, day);
       for (const target of [totals, byModule[row._id.module]]) {
         target.xp += row.xp;
         target.count += row.count;
-        target.durationSec += row.durationSec;
       }
     }
 
+    totals.durationSec = [...activeByDay.values()].reduce((sum, seconds) => sum + seconds, 0);
     const today = new Intl.DateTimeFormat('en-CA', {
       timeZone: timezone }).format(new Date());
     const sum = (from: number, to: number) => {
       const result = emptyTotals();
       for (let i = from; i < to; i++) {
-        const day = days.get(addDays(today, -i));
+        const date = addDays(today, -i);
+        result.durationSec += activeByDay.get(date) ?? 0;
+        const day = days.get(date);
         if (!day) continue;
         result.xp += day.xp;
         result.count += day.count;
-        result.durationSec += day.durationSec;
       }
       return result;
     };
@@ -204,7 +214,7 @@ export class LearningActivityService {
         xp: todayTotals.xp,
         goalXp: DAILY_GOAL_XP,
         activities: todayTotals.count,
-        durationSec: todayTotals.durationSec },
+        durationSec: activeByDay.get(today) ?? 0 },
       streak: { current, longest, activeToday: days.has(today) },
       totals: { ...totals, activeDays: days.size },
       week: thisWeek,
@@ -216,7 +226,7 @@ export class LearningActivityService {
       heatmap: [...days.entries()]
         .filter(([day]) => day >= heatmapStart)
         .sort(([a], [b]) => a.localeCompare(b))
-        .map(([date, day]) => ({ date, ...day })) };
+        .map(([date, day]) => ({ date, ...day, durationSec: activeByDay.get(date) ?? 0 })) };
   }
 
   async recent(userId: string, limit = 20, before?: Date) {

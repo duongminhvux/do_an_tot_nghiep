@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { PgModelsModule } from '../../postgres/compat.js';
 import { DashboardController } from './dashboard.controller.js';
 import { DashboardService } from './dashboard.service.js';
+import { ActivityLogsModule } from '../activity-logs/activity-logs.module.js';
 import { User, UserSchema } from '../users/schema/user.schema.js';
 import { Exam, ExamSchema } from '../assessment/exams/schemas/exam.schema.js';
 import { Attempt, AttemptSchema } from '../assessment/attempts/schemas/attempt.schema.js';
@@ -11,6 +12,7 @@ import {
 
 @Module({
   imports: [
+    ActivityLogsModule,
     PgModelsModule.forFeature([
       { name: User.name, schema: UserSchema },
       { name: Exam.name, schema: ExamSchema },

@@ -1,3 +1,4 @@
+import type {PublicationInfo,PublicationStatus} from '@repo/shared-types/publication';
 export type ExamType = "TOEIC" | "IELTS";
 export type ExamMode = "PRACTICE" | "FULL_TEST";
 export type ExamSection = "LISTENING" | "READING" | "FULL_TEST";
@@ -40,7 +41,7 @@ export interface ExamGroupListResponse {
   limit: number;
 }
 
-export interface ExamItem {
+export interface ExamItem extends Partial<PublicationInfo> {
   _id: string;
   totalAttempts?: number;
   completedAttempts?: number;
@@ -108,6 +109,7 @@ export interface CreateExamDto {
 export interface UpdateExamDto extends Partial<CreateExamDto> {}
 
 export interface QueryExamDto {
+  publicationStatus?:PublicationStatus;
   sortBy?: "name" | "totalQuestions" | "durationMinutes" | "order" | "isActive";
   sortOrder?: "asc" | "desc";
   search?: string;

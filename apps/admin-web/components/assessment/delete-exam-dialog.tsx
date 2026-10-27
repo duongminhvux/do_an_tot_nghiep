@@ -47,7 +47,7 @@ export function DeleteExamDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[420px] p-0 overflow-hidden bg-white border border-slate-200 rounded shadow-lg">
+      <DialogContent className="sm:max-w-[420px] p-0 overflow-x-hidden overflow-y-auto bg-white border border-slate-200 rounded shadow-lg">
         <DialogHeader className="p-4 bg-red-50/70 border-b border-red-100">
           <DialogTitle className="text-sm font-bold text-slate-900">
             Xác nhận xóa đề thi

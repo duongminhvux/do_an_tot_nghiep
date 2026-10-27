@@ -1,4 +1,5 @@
 import { httpPolicy } from './http-policy.js';
+import {learnerPublicationRequest} from '../modules/publication/publication-scope.js';
 import { refreshCookieOptions } from '../modules/auth/refresh-cookie.js';
 import { NestFactory } from '@nestjs/core';
 import type { Type } from '@nestjs/common';
@@ -22,6 +23,7 @@ export async function bootstrapService(role:OwnedService,modules:Type<unknown>[]
   const port=Number(process.env.PORT||5000);
   if(!Number.isInteger(port)||port<=0||port>65535)throw new Error('Invalid PORT');
   app.use(json({limit:'50mb'}));app.use(urlencoded({extended:true,limit:'50mb'}));app.use(cookieParser());
+  app.use(learnerPublicationRequest);
   const policy = httpPolicy(config);
   app.set('trust proxy', policy.trustProxy);
   if (role === 'identity') {

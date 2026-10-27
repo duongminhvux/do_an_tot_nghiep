@@ -14,6 +14,7 @@ import { DomainEventsModule } from '../common/events/domain-events.module.js';
 import { JwtModule } from '@nestjs/jwt';
 import { Public } from '../modules/auth/decorators/public.decorator.js';
 import { ReadModelsModule } from '../internal/read-models.module.js';
+import {PublicationModule} from '../modules/publication/publication.module.js';
 
 export type OwnedService = 'identity'|'content'|'assessment'|'arena'|'learning'|'media-jobs'|'ai-import'|'notification';
 export const DATABASE_NAMES:Record<OwnedService,string> = Object.freeze({
@@ -72,7 +73,7 @@ export class PlatformModule {
         resolvers:[new HeaderResolver(['x-custom-lang']),AcceptLanguageResolver]}),
       PgModelsModule.forRootAsync(),
       ...(role==='arena'?[RedisModule]:[]),JwtModule.register({}),MediaStorageModule,
-      DomainEventsModule,NotificationClientModule,LearningActivityClientModule,ReadModelsModule,...business,
+      DomainEventsModule,NotificationClientModule,LearningActivityClientModule,ReadModelsModule,PublicationModule,...business,
     ],controllers:[HealthController]};
   }
 }

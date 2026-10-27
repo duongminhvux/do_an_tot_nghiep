@@ -1,3 +1,4 @@
+import type {PublicationInfo} from '@repo/shared-types/publication';
 export type DictationLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
 export type DictationStatus =
   | 'DRAFT'
@@ -63,7 +64,7 @@ export interface DictationSegment {
   words?: DictationWordTiming[];
 }
 
-export interface DictationLesson {
+export interface DictationLesson extends Partial<PublicationInfo> {
   _id: string;
   title: string;
   slug: string;

@@ -76,13 +76,16 @@ export function ClassicMatch({
     submitAnswer,
     opponent,
     myRating,
+    connectionState,
+    connectionCountdown,
+    syncing,
   } = game;
   const [leaving, setLeaving] = useState(false);
   const [exitDialogOpen, setExitDialogOpen] = useState(false);
   const [exitError, setExitError] = useState("");
 
   const handleLeaveClick = () => {
-    if (matchStatus === "PLAYING" && !finished) {
+    if (["PLAYING", "PAUSED", "RESUMING"].includes(matchStatus) && !finished) {
       setExitDialogOpen(true);
       return;
     }
@@ -250,6 +253,22 @@ export function ClassicMatch({
 
   return (
     <main className="mx-auto flex min-h-[calc(100dvh-3.5rem)] w-full max-w-[900px] flex-col bg-background px-3 py-3 sm:px-5">
+      {!friendly && !finished && (syncing || !connected || matchStatus === 'PAUSED' || matchStatus === 'RESUMING') && (
+        <div role="status" aria-live="polite" className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-center text-amber-950">
+          <h2 className="font-semibold">
+            {!connected || syncing ? text('Đang khôi phục trận đấu', 'Restoring match')
+              : matchStatus === 'RESUMING' ? text('Trận đấu sắp tiếp tục', 'Match resuming')
+              : text('Trận đấu tạm dừng do mất kết nối', 'Match paused due to a lost connection')}
+          </h2>
+          <p className="mt-1 text-sm">
+            {matchStatus === 'RESUMING' ? text(`Tiếp tục sau ${connectionCountdown} giây.`, `Resuming in ${connectionCountdown} seconds.`)
+              : connectionState?.disconnected.some(p => p.userId === currentUserId)
+                ? text(`Đang chờ bạn kết nối lại. Còn ${connectionCountdown} giây.`, `Waiting for your connection. ${connectionCountdown} seconds remaining.`)
+                : text(`Đang chờ đối thủ kết nối lại. Còn ${connectionCountdown} giây.`, `Waiting for your opponent. ${connectionCountdown} seconds remaining.`)}
+          </p>
+          <p className="mt-1 text-xs">{text('Thời gian và gợi ý được giữ nguyên trong lúc tạm dừng.', 'Time and hints are frozen while the match is paused.')}</p>
+        </div>
+      )}
       {/* HEADER */}
 
       <div className="mb-2 flex items-center justify-between gap-3">
@@ -501,16 +520,6 @@ export function ClassicMatch({
               ))}
             </div>
 
-            {!roundEnded &&
-              currentQuestion?.letters?.some((letter) => letter !== null) && (
-                <p className="mb-2 text-center text-xs text-amber-600">
-                  {text(
-                    "Gợi ý tối đa 30% ký tự: đầu → cuối → giữa",
-                    "Hints reveal up to 30%: first → last → middle",
-                  )}
-                </p>
-              )}
-
             {/* MEANING */}
 
             <div className="flex items-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2">
@@ -671,7 +680,7 @@ export function ClassicMatch({
                 submitting ||
                 !connected ||
                 timeLeft === 0 ||
-                matchStatus !== "PLAYING"
+                matchStatus !== "PLAYING" || (!friendly && syncing)
               }
               autoComplete="off"
               autoCapitalize="none"
@@ -692,7 +701,7 @@ export function ClassicMatch({
                 !connected ||
                 !answer.trim() ||
                 timeLeft === 0 ||
-                matchStatus !== "PLAYING"
+                matchStatus !== "PLAYING" || (!friendly && syncing)
               }
               className="flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-primary text-white shadow-sm transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
               aria-label={text("Gửi đáp án", "Submit answer")}

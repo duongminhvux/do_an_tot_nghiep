@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 import Link from 'next/link';
 import { KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
@@ -46,6 +46,8 @@ function normalizeAnswer(value: string) {
 export default function DictationPracticePage() {
   const { t } = useTranslation('dictation');
   const params = useParams();
+  const requestedSegmentRaw = useSearchParams().get('segment');
+  const requestedSegment = requestedSegmentRaw === null ? -1 : Number(requestedSegmentRaw);
   const locale = (params?.locale as string) || 'vi';
   const slug = String(params?.slug || '');
   const queryClient = useQueryClient();
@@ -94,8 +96,8 @@ export default function DictationPracticePage() {
     const nextIndex = lesson.progress?.completed
       ? 0
       : Math.min(lesson.progress?.currentSegment || 0, Math.max((lesson.segments?.length || 1) - 1, 0));
-    setCurrentIndex(nextIndex);
-  }, [lesson?._id]);
+    setCurrentIndex(Number.isInteger(requestedSegment) && requestedSegment >= 0 && requestedSegment < lesson.segments.length ? requestedSegment : nextIndex);
+  }, [lesson?._id, requestedSegment]);
 
   useEffect(() => () => {
     if (autoNextTimerRef.current) clearTimeout(autoNextTimerRef.current);

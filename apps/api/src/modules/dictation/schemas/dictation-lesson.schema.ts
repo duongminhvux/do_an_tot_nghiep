@@ -28,6 +28,9 @@ export enum DictationAudioSource {
 
 @PgEntity({ timestamps: true })
 export class DictationLesson {
+  @PgField({default:'DRAFT'}) publicationStatus: string;
+  @PgField({default:1}) publicationRevision: number;
+  @PgField({type:Object}) publicationValidation?: Record<string,unknown>;
   @PgField({ required: true, trim: true })
   title!: string;
 

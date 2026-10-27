@@ -24,12 +24,13 @@ import {
 export default function AdminHomePage() {
   const params = useParams();
   const locale = (params?.locale as string) || 'vi';
-  const { t } = useTranslation('dashboard');
+  const { t, i18n } = useTranslation('dashboard');
+  const language = (i18n.resolvedLanguage || i18n.language || locale).startsWith('en') ? 'en' : 'vi';
   const [days, setDays] = useState<TimeRangeDays>(7);
 
   const overviewQuery = useQuery({
-    queryKey: ['admin-dashboard-overview', days],
-    queryFn: () => dashboardService.getOverview(days),
+    queryKey: ['admin-dashboard-overview', days, language],
+    queryFn: () => dashboardService.getOverview(days, language),
   });
   const overview = overviewQuery.data;
   const loading = overviewQuery.isLoading;

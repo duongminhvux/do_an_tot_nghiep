@@ -62,7 +62,7 @@ export class MiniGameWordSourceService {
   ) {
     const lessons = systemIds.length
       ? await this.lessons
-          .find({ ...available, collectionId: { $in: systemIds } })
+          .find({ ...available, publicationStatus:'PUBLISHED', collectionId: { $in: systemIds } })
           .select('_id collectionId')
           .lean()
       : [];
@@ -88,7 +88,7 @@ export class MiniGameWordSourceService {
     const words = ids.length
       ? await this.words
           .find({
-            ...available,
+            ...available, publicationStatus:'PUBLISHED',
             _id: { $in: ids.map((id) => new PgId(id)) } })
           .select('_id word parts')
           .lean()

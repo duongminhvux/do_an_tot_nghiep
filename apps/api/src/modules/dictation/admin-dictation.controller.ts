@@ -6,6 +6,7 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   UploadedFile,
   UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -134,13 +135,13 @@ export class AdminDictationController {
   }
 
   @Post(':id/publish')
-  publish(@Param('id') id: string) {
-    return this.dictationService.publish(id);
+  publish(@Param('id') id: string,@Req() req:{user:{_id:string}}) {
+    return this.dictationService.publish(id,String(req.user._id));
   }
 
   @Post(':id/unpublish')
-  unpublish(@Param('id') id: string) {
-    return this.dictationService.unpublish(id);
+  unpublish(@Param('id') id: string,@Req() req:{user:{_id:string}}) {
+    return this.dictationService.unpublish(id,String(req.user._id));
   }
 
   @Delete(':id')

@@ -1,4 +1,5 @@
 'use client';
+import {PublicationBadge,PublicationFilter} from '@/components/publication/publication-controls';
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -54,6 +55,7 @@ export default function WordsPage() {
     lessonTitle: string;
   } | null>(null);
 
+  const [publicationFilter,setPublicationFilter]=useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedLevel, setSelectedLevel] = useState('All levels');
@@ -163,6 +165,7 @@ export default function WordsPage() {
       search?: string;
       level?: string;
       isActive?: boolean;
+      publicationStatus?: 'DRAFT'|'IN_REVIEW'|'PUBLISHED';
       sortBy?: string;
       sortOrder?: 'asc' | 'desc';
     } = {
@@ -186,8 +189,9 @@ export default function WordsPage() {
       params.isActive = false;
     }
 
+    params.publicationStatus=(publicationFilter||undefined) as 'DRAFT'|'IN_REVIEW'|'PUBLISHED'|undefined;
     return params;
-  }, [page, pageSize, debouncedSearch, selectedLevel, selectedStatus]);
+  }, [page, pageSize, debouncedSearch, selectedLevel, selectedStatus,publicationFilter]);
 
   // Fetch data
   const { data: response, isLoading } = useQuery({
@@ -292,7 +296,7 @@ export default function WordsPage() {
   };
 
   return (
-    <div className="p-6 md:p-8 w-full mx-auto space-y-6">
+    <div className="p-4 sm:p-6 md:p-8 w-full mx-auto space-y-6">
       {/* PAGE HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -377,6 +381,7 @@ export default function WordsPage() {
         </div>
       )}
 
+      <PublicationFilter value={publicationFilter} onChange={value=>{setPublicationFilter(value);setPage(1);}} />
       {/* FILTER BAR */}
       <div className="flex flex-col lg:flex-row items-stretch lg:items-end gap-4 bg-white p-4 rounded-[6px] border border-slate-200">
         {/* Search Input */}
@@ -539,7 +544,7 @@ export default function WordsPage() {
 
       {/* TABLE CONTAINER */}
       <div className="bg-white rounded-[6px] border border-slate-200 overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="min-w-0 max-w-full overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/70 text-xs font-semibold text-slate-500 uppercase tracking-wider select-none">
@@ -603,7 +608,7 @@ export default function WordsPage() {
 
                       {/* Word + Phonetic (US / UK) + audio status */}
                       <td className="py-3.5 px-4">
-                        <div className="text-base font-bold tracking-tight text-slate-900">{item.word}</div>
+                        <div className="text-base font-bold tracking-tight text-slate-900">{item.word}</div><PublicationBadge item={item} />
                         <div className="mt-1 space-y-0.5 text-xs">
                           {(['us', 'uk'] as const).map((accent) => {
                             const ipa = item.ipa?.[accent];

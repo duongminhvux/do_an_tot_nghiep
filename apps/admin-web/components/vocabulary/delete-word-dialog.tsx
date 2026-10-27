@@ -53,7 +53,7 @@ export function DeleteWordDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md w-full p-6 rounded-[6px] border border-slate-200 shadow-none bg-white space-y-4">
+      <DialogContent className="max-w-md w-[calc(100vw-2rem)] p-6 rounded-[6px] border border-slate-200 shadow-none bg-white space-y-4">
         <div className="flex items-start gap-4">
           <div className="w-11 h-11 rounded-[6px] bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center shrink-0">
             <Trash2 className="w-5 h-5" />
