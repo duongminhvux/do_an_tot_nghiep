@@ -131,12 +131,20 @@ IP requires an additional explicit trusted-proxy policy.
 ```powershell
 docker compose -f docker-compose.yml -f compose.edge.yml exec -T edge nginx -t
 docker compose exec -T gateway nginx -t
+node scripts/check-gateway-contract.cjs
+node scripts/check-client-gateway-routes.cjs
 docker compose exec -T identity-service node scripts/smoke-network.mjs
 curl.exe -I https://learn.example.com/
 curl.exe -i -X OPTIONS https://learn.example.com/api/auth/login -H "Origin: https://learn.example.com" -H "Access-Control-Request-Method: POST"
 curl.exe -i -X OPTIONS https://learn.example.com/api/auth/login -H "Origin: https://unlisted.example" -H "Access-Control-Request-Method: POST"
 curl.exe -i https://learn.example.com/api/_internal/read-models/users
 ```
+
+Check `/gateway/identity-ready` through `/gateway/notification-ready` (eight named
+role probes including `media-jobs` and `ai-import`) to verify backend dependencies.
+The `/gateway/health` and `/api/health` endpoints only report Nginx liveness.
+The gateway now waits for each role's Docker healthcheck before starting, and web/admin
+wait for the gateway healthcheck. These probes do not replace authenticated E2E tests.
 
 Expect the configured-origin preflight to succeed with the exact allow-origin and
 credentials headers, the unlisted origin to return 403, and the internal URL to return

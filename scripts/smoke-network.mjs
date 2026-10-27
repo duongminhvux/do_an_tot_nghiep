@@ -25,6 +25,11 @@ for (const role of ['identity', 'content', 'assessment', 'arena', 'learning', 'm
   await check(`${role} -> /api/health`, `http://${role}-service:5000/api/health`, [200]);
 }
 await check('Gateway local health', 'http://gateway:5000/gateway/health', [200]);
+for (const role of ['identity', 'content', 'assessment', 'arena', 'learning', 'media-jobs', 'ai-import', 'notification']) {
+  await check(`Gateway -> ${role} readiness`, `http://gateway:5000/gateway/${role}-ready`, [200]);
+}
+await check('Gateway denies internal read API', 'http://gateway:5000/api/_internal/read-models/users', [404]);
+await check('Gateway denies unknown API', 'http://gateway:5000/api/route-that-does-not-exist', [404]);
 await check('Gateway -> Identity', 'http://gateway:5000/gateway/identity-health', [200]);
 await check('Gateway -> Admin auth (missing credentials)', 'http://gateway:5000/api/admin/auth/login', [400, 401], { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
 await check('Gateway -> Learner XP home (anonymous)', 'http://gateway:5000/api/learning-activity/home', [401, 403]);
@@ -40,7 +45,21 @@ if (identityToken.length >= 24) {
   results.push({ label: 'Identity internal token', pass: false });
 }
 if (token.length >= 24) {
+  // Safe and bounded read contracts: no database credentials or raw SQL over HTTP.
+  await check('Service -> Content SQL read-model page',
+    'http://content-service:5000/api/_internal/read-models/collections/query', [200],
+    { method:'POST', headers:{'content-type':'application/json','x-internal-token':token},
+      body: JSON.stringify({filter:{isDeleted:{$ne:true}},sort:{order:1,createdAt:-1},limit:2,offset:0}) });
+  await check('Service -> Content SQL read-model count',
+    'http://content-service:5000/api/_internal/read-models/collections/count', [200],
+    { method:'POST', headers:{'content-type':'application/json','x-internal-token':token},
+      body: JSON.stringify({filter:{isDeleted:{$ne:true}}}) });
+  await check('Service -> SQL read-model refuses unbounded request',
+    'http://content-service:5000/api/_internal/read-models/collections/query', [422],
+    { method:'POST', headers:{'content-type':'application/json','x-internal-token':token},
+      body: JSON.stringify({filter:{},limit:50000}) });
   await check('Service -> Learning XP internal (invalid payload)',
+
     'http://learning-service:5000/api/_internal/learning/activity', [400],
     { method: 'POST', headers: { 'content-type': 'application/json', 'x-internal-token': token },
       body: JSON.stringify({}) });

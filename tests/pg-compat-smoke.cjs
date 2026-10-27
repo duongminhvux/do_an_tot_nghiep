@@ -4,8 +4,9 @@ const ts=require(require.resolve('typescript',{paths:[path.join(__dirname,'..','
 const location=path.join(__dirname,'../apps/api/src/postgres/compat.ts');
 const transpiled=ts.transpileModule(fs.readFileSync(location,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,experimentalDecorators:true}}).outputText;
 class FakePool {
- constructor(){this.tables={users:[],gamedefinitions:[]};}
+ constructor(){this.tables={users:[],gamedefinitions:[]};this.statements=[];}
  async query(sql,params=[]){
+  this.statements.push({sql,params});
   if(sql.includes('information_schema.columns')){
    const table=params[0];
    const columns=table==='gamedefinitions'
@@ -13,6 +14,11 @@ class FakePool {
      : {id:'uuid',payload:'jsonb',email:'text',username:'text',password_hash:'text',is_deleted:'boolean',created_at:'timestamp with time zone',updated_at:'timestamp with time zone'};
    return {rows:Object.entries(columns).map(([column_name,data_type])=>({column_name,data_type}))};
   }
+  if(sql.includes('AS group_key, COUNT(*)::integer AS count'))return {rows:[{group_key:'TYPING_RUSH',count:1}]};
+  const counts=sql.match(/^SELECT COUNT\(\*\)::integer AS n FROM public\."([a-z_]+)"/);
+  if(counts)return {rows:[{n:this.tables[counts[1]].length}]};
+  const ids=sql.match(/^SELECT id FROM public\."([a-z_]+)"/);
+  if(ids)return {rows:this.tables[ids[1]].slice(0,1)};
   const queryTable=sql.match(/^SELECT \* FROM public\."([a-z_]+)"/);
   if(queryTable)return {rows:[...this.tables[queryTable[1]]]};
   const insertTable=sql.match(/^INSERT INTO public\."([a-z_]+)"/);
@@ -41,12 +47,18 @@ const nestStub={Injectable:noop,Inject:noop,Module:noop,Global:noop};
 const mod={exports:{}};
 let remoteFetch = async () => { throw new Error('Unexpected remote read'); };
 const ownership={exports:{}};
+const sessionStub={sessionPool:pool=>pool};
+const publicationStub={publicationScope:{getStore:()=>undefined},PUBLICATION_TABLES:new Set(),visiblePublicationRows:(_table,rows)=>rows};
 vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname,'../apps/api/src/postgres/ownership.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,
  {module:ownership,exports:ownership.exports,process,Buffer,Object},{filename:'ownership.ts'});
-vm.runInNewContext(transpiled,{module:mod,exports:mod.exports,require(name){return name==='./ownership.js'?ownership.exports:name==='pg'?{default:FakePool,Pool:FakePool}:name==='@nestjs/common'?nestStub:require(name);},fetch:(...args)=>remoteFetch(...args),AbortSignal,process,console,Buffer,Date,Math,Promise,JSON,RegExp,Number,String,Object,Array,Map,Set,Symbol,Error,Boolean,Intl,setTimeout,clearTimeout},{filename:location});
-const {makePgModel,PgId,PgField,PgSchemaFactory,sqlTable,runAggregation}=mod.exports;
+vm.runInNewContext(transpiled,{module:mod,exports:mod.exports,require(name){return name==='./ownership.js'?ownership.exports:name==='./session.js'?sessionStub:name==='../modules/publication/publication-scope.js'?publicationStub:name==='pg'?{default:FakePool,Pool:FakePool}:name==='@nestjs/common'?nestStub:require(name);},fetch:(...args)=>remoteFetch(...args),AbortSignal,process,console,Buffer,Date,Math,Promise,JSON,RegExp,Number,String,Object,Array,Map,Set,Symbol,Error,Boolean,Intl,setTimeout,clearTimeout},{filename:location});
+const {makePgModel,PgId,PgField,PgSchemaFactory,sqlTable,runAggregation,simpleWhere,matches}=mod.exports;
 (async()=>{
  const pool=new FakePool();
+ const regexWhere=simpleWhere({username:{$regex:/^alice$/i}},new Map([['username','text']]));
+ assert(regexWhere.sql.includes('~*'));
+ assert.equal(regexWhere.values[0],'^alice$');
+ assert(matches({username:'ALICE'},{username:{$regex:/^alice$/i}}));
  class User{};PgField({type:String,required:true})(User.prototype,'email');PgSchemaFactory.createForClass(User);
  const users=makePgModel('User',pool);
  const a=await users.create({email:'a@example.org',username:'alice',isDeleted:false});
@@ -71,6 +83,11 @@ const {makePgModel,PgId,PgField,PgSchemaFactory,sqlTable,runAggregation}=mod.exp
  assert.equal((await users.findById(a.id)).username,'bobby');
  assert.equal((await users.findOne({email:{$in:['a@example.org']}})).loginCount,1);
  assert.equal((await users.find({}).lean().sort('-createdAt').limit(10)).length,1);
+ assert(pool.statements.some(s=>/ORDER BY \"created_at\" DESC NULLS LAST/.test(s.sql)&&/ LIMIT \$\d+/.test(s.sql)), 'find().sort().limit() must paginate in SQL');
+ await users.find({isDeleted:{$ne:true}}).sort({createdAt:-1}).skip(5).limit(10).exec();
+ assert(pool.statements.some(s=>/ORDER BY \"created_at\" DESC/.test(s.sql)&&/ OFFSET \$\d+/.test(s.sql)), 'find().skip() must use SQL OFFSET');
+ await users.find({isDeleted:{$in:[false]}}).limit(5).exec();
+ assert(pool.statements.some(s=>/\"is_deleted\" IN \(\$\d+\)/.test(s.sql)), 'native boolean IN must not cast to text');
  assert.equal(await users.countDocuments({isDeleted:false}),1);
  assert.equal((await users.updateMany({isDeleted:false},{$set:{active:true}}).exec()).modifiedCount,1);
  assert.equal((await users.distinct('email').exec()).length,1);
@@ -94,6 +111,9 @@ const {makePgModel,PgId,PgField,PgSchemaFactory,sqlTable,runAggregation}=mod.exp
  await games.updateOne({code:'TYPING_RUSH'},{$set:{category:'MULTIPLAYER',badge:null}}).exec();
  assert.equal(pool.tables.gamedefinitions[0].category,'MULTIPLAYER');
  assert.equal(pool.tables.gamedefinitions[0].badge,null);
+ const fastGrouped=await games.aggregate([{$match:{code:'TYPING_RUSH'}},{$group:{_id:'$code',count:{$sum:1}}}]);
+ assert.equal(fastGrouped[0].count,1);
+ assert(pool.statements.some(x=>x.sql.includes('GROUP BY \"code\"')), 'simple group count should run in PostgreSQL');
  const ranked=await runAggregation([
    {$setWindowFields:{sortBy:{rating:-1},output:{position:{$rank:{}}}}},
  ],[{rating:800},{rating:1000},{rating:1000},{rating:700}]);
@@ -121,16 +141,18 @@ const {makePgModel,PgId,PgField,PgSchemaFactory,sqlTable,runAggregation}=mod.exp
    const userId=String(a._id);
    remoteFetch=async(url,options)=>{
      requests++;
-     assert.equal(url,'http://learning-service:5000/api/_internal/read-models/userlessonwords');
+     assert(url.startsWith('http://learning-service:5000/api/_internal/read-models/userlessonwords'));
      assert.equal(options.headers['x-internal-token'],process.env.INTERNAL_SERVICE_TOKEN);
+     if(url.endsWith('/count'))return {ok:true,json:async()=>({statusCode:200,data:{count:1}})};
      return {ok:true,json:async()=>({data:[{id:String(new PgId()),user_id:userId,payload:{},created_at:new Date()}]})};
    };
    const foreign=makePgModel('UserLessonWord',pool);
    assert.equal(await foreign.countDocuments({userId}),1);
+   assert.equal((await foreign.find({userId}).limit(1).exec()).length,1);
    assert.equal((await foreign.aggregate([{$group:{_id:'$userId',count:{$sum:1}}}]))[0].count,1);
    await assert.rejects(()=>foreign.create({userId}),/cannot write learning.userlessonwords/);
    await assert.rejects(()=>foreign.updateOne({},{$set:{status:'done'}}).exec(),/cannot write/);
-   assert.equal(requests,2,'Cross-service writes must fail before any read');
+   assert.equal(requests,3,'Cross-service writes must fail before any read');
    remoteFetch=async()=>({ok:false,status:503});
    await assert.rejects(()=>foreign.find().exec(),/unavailable \(503\)/);
  } finally {

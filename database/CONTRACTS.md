@@ -2,7 +2,23 @@
 
 Each backend role owns exactly one of the eight PostgreSQL databases defined in `database/postgres/01-init.sql`. Cross-service reads/writes must go through authenticated HTTP or domain events. Each database has `outbox_events` and `inbox_events` for reliable RabbitMQ handling.
 
-Existing document-shaped queries read foreign data through the owner's authenticated, read-only `GET /api/_internal/read-models/:table` endpoint. `apps/api/src/postgres/ownership.ts` declares ownership; callers never receive another service's database credentials. The endpoint accepts only owned business tables, excludes admin credentials and PDF correction payloads, and removes user authentication secrets. The public gateway blocks all internal endpoints. Foreign writes fail explicitly and require an owner command API. This bridge still reads tables into memory; filtered SQL read contracts or event-fed projections are required for large datasets.
+Cross-service query pages and counts can now use authenticated owner SQL contracts:
+`POST /api/_internal/read-models/:table/query` (filter, indexed-column sort, required limit 1..2000, offset)
+and `POST /api/_internal/read-models/:table/count` (filter). They accept **structured,
+parameterized filters only**, never caller-supplied SQL. Unsupported filters return 422
+and the caller temporarily uses the legacy compatibility endpoint. `apps/api/src/postgres/ownership.ts`
+declares ownership; callers never receive another service's database credentials.
+The endpoint accepts only owned business tables, excludes admin credentials and PDF
+correction payloads, and removes user authentication secrets. Query/count on `users`
+are restricted to public identity projection columns. The public gateway blocks
+all internal endpoints. Foreign writes still require an owner command API.
+
+**Migration caveat:** The existing authenticated `GET /api/_internal/read-models/:table`
+remains available to complex aggregation/lookup consumers and can still return a full
+snapshot. Migrate those callers to bounded owner-specific DTO APIs or event-fed local
+projections before removing it. Arena/Learning/Notification continue using their
+local `identity_profiles` projection instead of calling Identity synchronously.
+
 
 `database/postgres/01-init.sql` bootstraps fresh installations only. On existing volumes, `scripts/repair-postgres-docker.ps1` adds Assessment's missing PDF correction outbox and removes erroneous root NOT NULL requirements inherited from embedded Content/Arena schemas. It retains all columns and rows. Word parts belong in `parts` JSONB, dictation word timings in `words` JSONB, and member/option data in their parent JSONB arrays. Required fields of an embedded object must not become required columns of its parent. `tests/schema-contracts.cjs` checks this contract. Assessment and AI Import retain separate correction records in their respective databases. No legacy database driver is used.
 

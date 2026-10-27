@@ -20,8 +20,12 @@ function target(url){const path=url.split('?')[0];if(path.startsWith('/api/_inte
 function error(res,status,msg){res.writeHead(status,{'content-type':'application/json'});res.end(JSON.stringify({statusCode:status,message:msg}));}
 const srv=createServer((req,res)=>{
  if(['/gateway/health','/api/health'].includes(req.url)){error(res,200,'development gateway ready');return;}
- const role=target(req.url||'/');if(!role)return error(res,404,'Not found');
- const p=defaultPorts[role];const upstream=proxyRequest({hostname:'127.0.0.1',port:p,path:req.url,method:req.method,
+ const readyMatch=/^\/gateway\/(identity|content|assessment|arena|learning|media-jobs|ai-import|notification)-ready$/.exec(req.url||'');
+ const oldHealth={'/gateway/identity-health':'identity','/gateway/notification-health':'notification'};
+ const role=readyMatch?.[1]||oldHealth[req.url||'']||target(req.url||'/');if(!role)return error(res,404,'Not found');
+ const p=defaultPorts[role];
+ const upstreamPath=readyMatch?'/api/health/ready':oldHealth[req.url||'']?'/api/health':req.url;
+ const upstream=proxyRequest({hostname:'127.0.0.1',port:p,path:upstreamPath,method:req.method,
     headers:{...req.headers,host:`127.0.0.1:${p}`}},r=>{res.writeHead(r.statusCode||502,r.headers);r.pipe(res)});
  upstream.on('error',e=>error(res,502,`Backend ${role} unavailable: ${e.message}`));req.pipe(upstream);
 });

@@ -171,7 +171,7 @@ export function matches(doc:any, filter:any, variables:Record<string,any>={}):bo
           case '$lte':return value!=null&&cmp(value,v)<=0;
           case '$exists':return v ? value!==undefined : value===undefined;
           case '$type':return v==='number'?typeof value==='number':v==='string'?typeof value==='string':v==='date'?value instanceof Date:v==='array'?Array.isArray(value):v==='object'?value!==null&&typeof value==='object':false;
-          case '$regex':return new RegExp(v,e.$options??'').test(String(value??''));
+          case '$regex':return new RegExp(v instanceof RegExp?v.source:String(v),e.$options??(v instanceof RegExp?v.flags:'')).test(String(value??''));
           case '$options':return true;
           case '$size':return Array.isArray(value)&&value.length===v;
           case '$elemMatch':return Array.isArray(value)&&value.some(x=>matches(x,v));
@@ -295,10 +295,15 @@ function applyUpdate(doc:any, update:any, isInsert=false, filter:any={}):any {
   }
   return next;
 }
+type SqlPageRequest = { sort?: any; offset: number; limit?: number; one: boolean };
+/** A null result explicitly requests the compatibility fallback. An empty array is
+ * a successful, empty SQL result and must not trigger a full-table read. */
+type SqlPageRunner = (request: SqlPageRequest) => Promise<any[] | null>;
 export class PgQuery<T=any> implements PromiseLike<T> {
   private selection:any; private ordering:any; private offset=0; private cap?:number;
   private populatePaths:any[]=[]; private distinctPath?:string; private collator?:Intl.Collator;
-  constructor(private readonly run:()=>Promise<any>,private readonly model:any,private readonly one=false){}
+  constructor(private readonly run:()=>Promise<any>,private readonly model:any,private readonly one=false,
+    private readonly sqlPage?: SqlPageRunner){}
   lean(_opt?:any):this{return this;}
   exec():Promise<T>{return this.resolve() as Promise<T>}
   then<TResult1=T,TResult2=never>(onfulfilled?:((value:T)=>TResult1|PromiseLike<TResult1>)|null,onrejected?:((reason:any)=>TResult2|PromiseLike<TResult2>)|null):Promise<TResult1|TResult2>{return this.resolve().then(onfulfilled,onrejected)}
@@ -316,13 +321,19 @@ export class PgQuery<T=any> implements PromiseLike<T> {
   populate(fields:any, select?:any):this{this.populatePaths.push(typeof fields === "string" && select ? {path:fields,select} : fields);return this;}
   distinct(path:string):this{this.distinctPath=path;return this;}
   private async resolve():Promise<any>{
-    let result=await this.run();const many=Array.isArray(result);
+    // Push simple find/findOne filters, numeric/date ordering and pagination
+    // into PostgreSQL. Unsupported or locale-sensitive sorts keep the exact
+    // existing in-memory behavior rather than silently changing their order.
+    const sqlResult = this.sqlPage && (!this.collator || !this.ordering)
+      ? await this.sqlPage({sort:this.ordering,offset:this.offset,limit:this.cap,one:this.one}) : null;
+    const pushed = sqlResult !== null && sqlResult !== undefined;
+    let result=pushed?sqlResult:await this.run();const many=Array.isArray(result);
     let arr=many?result:result==null?[]:[result];
-    if(this.ordering){ const order= typeof this.ordering==='string' ? Object.fromEntries(this.ordering.split(/\s+/).filter(Boolean).map((x:string)=>[x.replace(/^-/,''),x.startsWith('-')?-1:1])) : this.ordering;
+    if(this.ordering && !pushed){ const order= typeof this.ordering==='string' ? Object.fromEntries(this.ordering.split(/\s+/).filter(Boolean).map((x:string)=>[x.replace(/^-/,''),x.startsWith('-')?-1:1])) : this.ordering;
       arr=[...arr].sort((a,b)=>{for(const [k,v] of Object.entries(order)){const av=getValue(a,k),bv=getValue(b,k);
         const cmpv=this.collator&&typeof av==='string'&&typeof bv==='string'?this.collator.compare(av,bv):cmp(av,bv);
         if(cmpv)return cmpv*(Number(v)===-1?-1:1);}return 0;});}
-    if(many){arr=arr.slice(this.offset,this.cap==null?undefined:this.offset+this.cap)}
+    if(many && !pushed){arr=arr.slice(this.offset,this.cap==null?undefined:this.offset+this.cap)}
     for(const option of this.populatePaths){for(const doc of arr)await this.model.populate(doc,option)}
     if(this.selection){
       const keys:string[]=typeof this.selection==='string'?this.selection.split(/\s+/).filter(Boolean)
@@ -369,6 +380,22 @@ export type PgModel<T=any> = (new (values?:any)=>PgDocument<T>) & {
 };
 
 type PoolLike = Pick<pg.Pool,'query'>;
+/** SQL read contracts transport only data, never database credentials or SQL. */
+async function ownerReadRequest(owner:string, table:string, kind:'query'|'count', payload:any):Promise<any|null>{
+  const token=process.env.INTERNAL_SERVICE_TOKEN;
+  if(!token || token.length<24)throw new Error('Internal read authentication not configured');
+  const response=await fetch(`${serviceUrl(owner)}/api/_internal/read-models/${table}/${kind}`,{
+    method:'POST',headers:{'x-internal-token':token,'content-type':'application/json'},
+    body:JSON.stringify(payload,(_key,value)=>value instanceof RegExp
+      ? {$regex:value.source,$options:value.ignoreCase?'i':''}:value),
+    signal:AbortSignal.timeout(8000),
+  });
+  // The owner explicitly rejects unsupported document filters/sort columns.
+  // Preserve the old read path in that case until the use case is migrated.
+  if(response.status===422)return null;
+  if(!response.ok)throw new Error(`Read model ${owner}.${table} unavailable (${response.status})`);
+  return response.json();
+}
 async function readRows(table: string, pool: PoolLike): Promise<any[]> {
   const role = serviceRole(), owner = tableOwner(table);
   if (!role || !owner || owner === role) {
@@ -396,7 +423,7 @@ async function readRows(table: string, pool: PoolLike): Promise<any[]> {
 /** Push safe, common document filters into PostgreSQL. Unsupported operators
  * retain the legacy adapter behavior until their owner repositories are migrated.
  * All user values are bound parameters; identifiers are introspected columns. */
-function simpleWhere(filter: any, columns: Map<string,string>): {sql:string; values:any[]} | null {
+export function simpleWhere(filter: any, columns: Map<string,string>): {sql:string; values:any[]} | null {
   const values:any[]=[];
   const bind=(value:any)=>{values.push(value instanceof PgId?String(value):value);return `$${values.length}`;};
   const column=(key:string):string|null=>{
@@ -408,10 +435,13 @@ function simpleWhere(filter: any, columns: Map<string,string>): {sql:string; val
     if(!col)return null;
     // JSON/array fields use document membership semantics, not scalar SQL equality.
     // In particular, binding a UUID directly against JSONB is invalid JSON.
-    if(['json','jsonb','ARRAY'].includes(columns.get(key==='_id'?'id':snake(key))||''))return null;
+    const columnType=columns.get(key==='_id'?'id':snake(key))||'';
+    if(['json','jsonb','ARRAY'].includes(columnType))return null;
+    const textColumn=['text','character varying','character'].includes(columnType);
     if(value instanceof RegExp) {
-      if(/[^i]/.test(value.flags))return null;
-      return `${col} ${value.ignoreCase?'~*':'~'} ${bind(value.source)}`;
+      if(!textColumn||/[^i]/.test(value.flags))return null;
+      const expression=`${col} ${value.ignoreCase?'~*':'~'} ${bind(value.source)}`;
+      return value.test('')?`(${col} IS NULL OR ${expression})`:expression;
     }
     if(value===null)return `${col} IS NULL`;
     if(value && typeof value==='object' && !(value instanceof Date) && !(value instanceof PgId)) {
@@ -421,16 +451,23 @@ function simpleWhere(filter: any, columns: Map<string,string>): {sql:string; val
         if(op==='$options')continue;
         if(op==='$exists'){conditions.push(`${col} IS ${target?'NOT ':''}NULL`);continue;}
         if(op==='$regex'){
-          const opts=String((value as any).$options||'');
-          if(/[^i]/.test(opts))return null;
-          conditions.push(`${col} ${opts.includes('i')?'~*':'~'} ${bind(target)}`);continue;
+          const opts=String((value as any).$options??(target instanceof RegExp?target.flags:''));
+          if(!textColumn||/[^i]/.test(opts))return null;
+          const expression=target instanceof RegExp?target.source:String(target);
+          const sql=`${col} ${opts.includes('i')?'~*':'~'} ${bind(expression)}`;
+          conditions.push(new RegExp(expression,opts).test('')?`(${col} IS NULL OR ${sql})`:sql);continue;
         }
         if(op==='$ne'){conditions.push(`${col} IS DISTINCT FROM ${bind(target)}`);continue;}
         if(op==='$eq'){conditions.push(`${col} IS NOT DISTINCT FROM ${bind(target)}`);continue;}
         if(op==='$in'||op==='$nin'){
           if(!Array.isArray(target))return null;
-          const hasNull=target.some(item=>item==null),vs=target.filter(item=>item!=null).map(String);
-          const comparison=`${col}::text ${op==='$in'?'= ANY':'<> ALL'}(${bind(vs)}::text[])`;
+          // Keep the native column type (UUID/boolean/numeric/timestamp). Text
+          // casts prevent index use and convert boolean 'true' to PostgreSQL 't'.
+          const hasNull=target.some(item=>item==null);
+          const vs=target.filter(item=>item!=null);
+          const comparison=vs.length
+            ? `${col} ${op==='$in'?'IN':'NOT IN'} (${vs.map(item=>bind(item)).join(',')})`
+            : (op==='$in'?'FALSE':'TRUE');
           conditions.push(op==='$in'?(hasNull?`(${col} IS NULL OR ${comparison})`:comparison)
             :hasNull?`(${col} IS NOT NULL AND ${comparison})`:`(${col} IS NULL OR ${comparison})`);
           continue;
@@ -524,8 +561,63 @@ export function makePgModel<T=any>(name:string,pool:pg.Pool):PgModel<T> {
     return data;
   }
   async function all(){return (await readRows(table,pool)).map(hydrate);}
+  function scopedFilter(filter:any){
+    return publicationScope.getStore() && PUBLICATION_TABLES.has(table)
+      ? {$and:[filter||{},{publicationStatus:'PUBLISHED',isDeleted:{$ne:true},isActive:{$ne:false}}]}
+      : filter||{};
+  }
+  function localIdentityProjection(role:string|undefined){
+    return table==='users' && !!role && ['arena','learning','notification'].includes(role);
+  }
+  async function sqlPage(filter:any, request:SqlPageRequest):Promise<any[]|null>{
+    const owner=tableOwner(table),role=serviceRole();
+    const effective=scopedFilter(filter);
+    // These roles use their local, event-fed identity_profiles projection.
+    // Do not silently reintroduce synchronous reads from the Identity service.
+    if(localIdentityProjection(role))return null;
+    if(owner && role && owner!==role){
+      const limit=request.one?1:request.limit;
+      // Never request an unbounded foreign result via the fast-path API.
+      if(limit===undefined || !Number.isSafeInteger(limit) || limit<1 || limit>2000)return null;
+      const body=await ownerReadRequest(owner,table,'query',{
+        filter:effective,sort:request.sort,offset:request.offset,limit,
+      });
+      if(body===null)return null;
+      const rows=body?.data??body;
+      if(!Array.isArray(rows))throw new Error(`Invalid read model response for ${owner}.${table}`);
+      return rows.map(hydrate).filter((row:any)=>matches(row,effective));
+    }
+    const cols=await fields();
+    const where=simpleWhere(effective,cols);
+    if(!where)return null;
+    const order=typeof request.sort==='string'
+      ? Object.fromEntries(request.sort.split(/\s+/).filter(Boolean).map((item:string)=>[item.replace(/^-/,''),item.startsWith('-')?-1:1]))
+      : request.sort||{};
+    const clauses:string[]=[];
+    for(const [key,value] of Object.entries(order)){
+      const field=key==='_id'?'id':snake(key),type=cols.get(field);
+      // JS localeCompare and database collations differ for text fields. Only
+      // SQL-order types whose comparison semantics match are pushed down.
+      if(!type || !['double precision','real','integer','bigint','smallint','numeric',
+        'timestamp with time zone','timestamp without time zone','date'].includes(type)
+        || ![1,-1,'asc','desc','ascending','descending'].includes(value as any))return null;
+      const descending=value===-1||value==='desc'||value==='descending';
+      clauses.push(`${safeName(field)} ${descending?'DESC NULLS LAST':'ASC NULLS FIRST'}`);
+    }
+    const values=[...where.values];
+    let sql=`SELECT * FROM public.${safeName(table)} WHERE ${where.sql}`;
+    if(clauses.length)sql+=' ORDER BY '+clauses.join(', ')+', id ASC';
+    // A stable fallback order also keeps pagination consistent on identical
+    // timestamps and concurrent requests, without sorting the full result in JS.
+    else if(request.limit!==undefined || request.offset>0 || request.one)sql+=' ORDER BY id ASC';
+    const limit=request.one?1:request.limit;
+    if(limit!==undefined){values.push(Math.max(0,limit));sql+=` LIMIT $${values.length}`;}
+    if(request.offset>0){values.push(request.offset);sql+=` OFFSET $${values.length}`;}
+    const result=await pool.query(sql,values);
+    return result.rows.map(hydrate).filter((row:any)=>matches(row,effective));
+  }
   async function selected(filter?:any){
-    if(publicationScope.getStore() && PUBLICATION_TABLES.has(table)) filter={$and:[filter||{},{publicationStatus:'PUBLISHED',isDeleted:{$ne:true},isActive:{$ne:false}}]};
+    filter=scopedFilter(filter);
     const owner=tableOwner(table),role=serviceRole();
     if(!owner||!role||owner===role){
       const where=simpleWhere(filter,await fields());
@@ -578,6 +670,27 @@ export function makePgModel<T=any>(name:string,pool:pg.Pool):PgModel<T> {
     if(!targets.length&&opts.upsert){const seed=Object.fromEntries(Object.entries(filter||{}).filter(([k,v])=>!k.startsWith('$')&&!(typeof v==='object'&&!Array.isArray(v)&&!(v instanceof Date)&&!(v instanceof PgId))));first=await save(applyUpdate(seed,updates,true));}
     return {first,modifiedCount:matchedCount,matchedCount,upsertedCount:!targets.length&&first?1:0};
   }
+  /** Fast path for the frequent `match -> group by indexed FK -> count` pattern.
+   * Other pipelines keep the compatibility implementation until migrated. */
+  async function sqlGroupedCount(pipeline:any[]):Promise<any[]|null>{
+    const owner=tableOwner(table),role=serviceRole();
+    if(owner && role && owner!==role)return null;
+    if(pipeline.length<1 || pipeline.length>2)return null;
+    const group=pipeline.at(-1)?.$group;
+    const filter=pipeline.length===2?pipeline[0]?.$match:{};
+    if(!group || !filter || typeof group._id!=='string' || !group._id.startsWith('$'))return null;
+    const accs=Object.entries(group).filter(([key])=>key!=='_id');
+    if(accs.length!==1)return null;
+    const [out,acc]=accs[0];
+    if(!/^[a-zA-Z][a-zA-Z0-9]*$/.test(out) || !acc || (acc as any).$sum!==1 || Object.keys(acc as any).length!==1)return null;
+    const cols=await fields(),column=snake(group._id.slice(1));
+    if(!cols.has(column))return null;
+    const where=simpleWhere(scopedFilter(filter),cols);
+    if(!where)return null;
+    const result=await pool.query(`SELECT ${safeName(column)} AS group_key, COUNT(*)::integer AS count
+      FROM public.${safeName(table)} WHERE ${where.sql} GROUP BY ${safeName(column)}`,where.values);
+    return result.rows.map(row=>({_id:row.group_key,[out]:row.count}));
+  }
   async function erase(filter:any,one:boolean){const targets=(await selected(filter)).slice(0,one?1:undefined);
     assertOwnedWrite(table);
     for(const v of targets)await pool.query(`DELETE FROM public.${safeName(table)} WHERE id=$1`,[String(v._id)]);return targets;
@@ -586,8 +699,10 @@ export function makePgModel<T=any>(name:string,pool:pg.Pool):PgModel<T> {
     static [PG_UPDATE]=update;
     static readonly collection={name:table};
     constructor(data:any={}) {return hydrate({id:data._id||data.id||randomUUID(),payload:normalize(data),created_at:new Date(),updated_at:new Date()});}
-    static find(filter:any={},projection?:any){const q=new PgQuery(()=>selected(filter),PgDynamicModel);if(projection)q.select(projection);return q;}
-    static findOne(filter:any={},projection?:any){const q=new PgQuery(async()=>await selected(filter),PgDynamicModel,true);if(projection)q.select(projection);return q;}
+    static find(filter:any={},projection?:any){const q=new PgQuery(()=>selected(filter),PgDynamicModel,false,
+      request=>sqlPage(filter,request));if(projection)q.select(projection);return q;}
+    static findOne(filter:any={},projection?:any){const q=new PgQuery(()=>selected(filter),PgDynamicModel,true,
+      request=>sqlPage(filter,request));if(projection)q.select(projection);return q;}
     static findById(id:any,projection?:any){return PgDynamicModel.findOne({_id:String(id)},projection);}
     static findOneAndUpdate(filter:any,values:any,opts:any={}){return new PgQuery(async()=>{
       const old=(await selected(filter))[0]||null, result=await update(filter,values,opts,true);
@@ -608,9 +723,18 @@ export function makePgModel<T=any>(name:string,pool:pg.Pool):PgModel<T> {
     static deleteOne(filter:any){return new PgQuery(async()=>({deletedCount:(await erase(filter,true)).length}),PgDynamicModel);}
     static deleteMany(filter:any){return new PgQuery(async()=>({deletedCount:(await erase(filter,false)).length}),PgDynamicModel);}
     static countDocuments(filter:any={}){return new PgQuery(async()=>{
+      const effective=scopedFilter(filter);
       const owner=tableOwner(table),role=serviceRole();
-      if(!owner||!role||owner===role){
-        const where=simpleWhere(filter,await fields());
+      if(localIdentityProjection(role))return (await selected(filter)).length;
+      if(owner&&role&&owner!==role){
+        const response=await ownerReadRequest(owner,table,'count',{filter:effective});
+        if(response!==null){
+          const result=response?.data??response; // Nest TransformInterceptor wraps HTTP responses
+          if(!Number.isSafeInteger(result?.count))throw new Error('Invalid read-model count');
+          return result.count;
+        }
+      }else{
+        const where=simpleWhere(effective,await fields());
         if(where){const result=await pool.query(`SELECT COUNT(*)::integer AS n FROM public.${safeName(table)} WHERE ${where.sql}`,where.values);
           return result.rows[0].n as number;}
       }
@@ -618,9 +742,13 @@ export function makePgModel<T=any>(name:string,pool:pg.Pool):PgModel<T> {
     },PgDynamicModel);}
     static estimatedDocumentCount(){return PgDynamicModel.countDocuments({});}
     static exists(filter:any){return new PgQuery(async()=>{
+      const effective=scopedFilter(filter);
       const owner=tableOwner(table),role=serviceRole();
-      if(!owner||!role||owner===role){
-        const where=simpleWhere(filter,await fields());
+      if(owner&&role&&owner!==role){
+        const result=await sqlPage(filter,{offset:0,limit:1,one:true});
+        if(result!==null)return result[0]?{_id:result[0]._id}:null;
+      }else{
+        const where=simpleWhere(effective,await fields());
         if(where){const result=await pool.query(`SELECT id FROM public.${safeName(table)} WHERE ${where.sql} LIMIT 1`,where.values);
           return result.rows[0]?{_id:new PgId(result.rows[0].id)}:null;}
       }
@@ -636,7 +764,10 @@ export function makePgModel<T=any>(name:string,pool:pg.Pool):PgModel<T> {
     } return {ok:1};}
     static distinct(field:string,filter:any={}){return new PgQuery(async()=>
       [...new Set((await selected(filter)).map(v=>getValue(v,field)))],PgDynamicModel)}
-    static aggregate<U=any>(pipeline:any[]=[]):PgQuery<U[]>{return new PgQuery<U[]>(async()=>runAggregation(pipeline,await all(),pool),PgDynamicModel);}
+    static aggregate<U=any>(pipeline:any[]=[]):PgQuery<U[]>{return new PgQuery<U[]>(async()=>{
+      const grouped=await sqlGroupedCount(pipeline);
+      return grouped??runAggregation(pipeline,await all(),pool);
+    },PgDynamicModel);}
     static async populate(doc:any, option:any){const opts=typeof option==='string'?{path:option}:option;const key=opts.path as string;
       const ref=defined[key]?.ref; if(!ref) return doc;
       const destination=makePgModel(ref,pool), id=doc[key];if(!id)return doc;

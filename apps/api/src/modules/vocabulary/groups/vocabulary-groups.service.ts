@@ -1,15 +1,14 @@
-import { PgId } from '../../../postgres/compat.js';
+import { PgId, InjectPgConnection, type PgConnection } from '../../../postgres/compat.js';
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectPgModel } from '../../../postgres/compat.js';
 import { type Model } from '../../../postgres/compat.js';
 import { I18nContext, I18nService } from 'nestjs-i18n';
 import { VocabularyGroup, VocabularyGroupDocument } from './vocabulary-group.schema.js';
 import { Collection, CollectionDocument } from '../collections/collection.schema.js';
-import { Lesson, LessonDocument } from '../lessons/lesson.schema.js';
-import { LessonWord, LessonWordDocument } from '../lessons/lesson-word.schema.js';
 import { CreateVocabularyGroupDto } from './dto/create-vocabulary-group.dto.js';
 import { UpdateVocabularyGroupDto } from './dto/update-vocabulary-group.dto.js';
 import { QueryVocabularyGroupDto } from './dto/query-vocabulary-group.dto.js';
+import { publicationScope } from '../../publication/publication-scope.js';
 
 @Injectable()
 export class VocabularyGroupsService {
@@ -18,10 +17,7 @@ export class VocabularyGroupsService {
     private readonly vocabularyGroupModel: Model<VocabularyGroupDocument>,
     @InjectPgModel(Collection.name)
     private readonly collectionModel: Model<CollectionDocument>,
-    @InjectPgModel(Lesson.name)
-    private readonly lessonModel: Model<LessonDocument>,
-    @InjectPgModel(LessonWord.name)
-    private readonly lessonWordModel: Model<LessonWordDocument>,
+    @InjectPgConnection() private readonly connection: PgConnection,
     private readonly i18n: I18nService,
   ) {}
 
@@ -127,34 +123,31 @@ export class VocabularyGroupsService {
       .lean()
       .exec();
 
-    const collectionIds = rawCollections.map((c) => c._id);
-
-    // Fetch lessons for these collections
-    const rawLessons = await this.lessonModel
-      .find({ collectionId: { $in: collectionIds }, isDeleted: { $ne: true } })
-      .select('_id collectionId')
-      .lean()
-      .exec();
-
-    const lessonIds = rawLessons.map((l) => l._id);
-
-    // Count words per lesson
-    const wordCountsPerLesson = await this.lessonWordModel.aggregate([
-      { $match: { lessonId: { $in: lessonIds } } },
-      { $group: { _id: '$lessonId', count: { $sum: 1 } } },
-    ]);
-    const lessonWordCountMap = new Map(wordCountsPerLesson.map((w) => [w._id.toString(), w.count]));
-
-    // Map lessons and words to collections
+    // Execute the lesson/word counts in PostgreSQL instead of materializing
+    // every lesson and every lesson-word in Node.js for each page. A single
+    // grouped query returns at most one summary row per visible collection.
+    const collectionIds = rawCollections.map((c) => String(c._id));
     const collectionLessonsCountMap = new Map<string, number>();
     const collectionWordsCountMap = new Map<string, number>();
-
-    rawLessons.forEach((lesson) => {
-      const colId = lesson.collectionId.toString();
-      collectionLessonsCountMap.set(colId, (collectionLessonsCountMap.get(colId) || 0) + 1);
-      const wordsInLesson = lessonWordCountMap.get(lesson._id.toString()) || 0;
-      collectionWordsCountMap.set(colId, (collectionWordsCountMap.get(colId) || 0) + wordsInLesson);
-    });
+    if (collectionIds.length) {
+      const learner = publicationScope.getStore() === true;
+      const rows = await this.connection.query(`
+        SELECT l.collection_id AS collection_id,
+               COUNT(DISTINCT l.id)::integer AS lessons_count,
+               COUNT(lw.id)::integer AS words_count
+        FROM public.lessons l
+        LEFT JOIN public.lessonwords lw ON lw.lesson_id = l.id
+        WHERE l.collection_id = ANY($1::uuid[])
+          AND l.is_deleted IS NOT TRUE
+          ${learner ? "AND l.publication_status = 'PUBLISHED' AND l.is_active IS NOT FALSE" : ''}
+        GROUP BY l.collection_id
+      `, [collectionIds]);
+      for (const row of rows.rows) {
+        const id = String(row.collection_id);
+        collectionLessonsCountMap.set(id, Number(row.lessons_count));
+        collectionWordsCountMap.set(id, Number(row.words_count));
+      }
+    }
 
     // Group collections by groupId
     const collectionsByGroup = new Map<string, any[]>();
