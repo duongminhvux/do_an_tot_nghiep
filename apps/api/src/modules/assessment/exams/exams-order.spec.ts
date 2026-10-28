@@ -5,8 +5,21 @@ import {sql,rows} from '../../../postgres/sql.js';
 const suite=databaseSuite('assessment');
 import {ExamsService} from './exams.service.js';
 import {DomainOutboxService} from '../../../common/events/domain-outbox.service.js';
+import {publicationScope} from '../../publication/publication-scope.js';
+import {ExamGroupsService} from './exam-groups.service.js';
 describe('native exam positions',()=>{
  const fixture=()=>new ExamsService(suite.db,{t:async(key:string)=>key} as never,new DomainOutboxService(suite.db));
+ it('keeps draft exams out of learner lists, detail and group reads',async()=>{
+   const service=fixture(),groups=new ExamGroupsService(suite.db),group=await groups.create({name:'Draft group'});
+   const exam:any=await service.create({name:'Draft exam',type:'TOEIC',groupId:(group as any)._id} as never);
+   await publicationScope.run(true,async()=>{
+     expect((await service.findAll({})).total).toBe(0);
+     expect((await service.findAll({publicationStatus:'DRAFT'})).total).toBe(0);
+     await expect(service.findOne(exam._id)).rejects.toThrow();
+     expect(await groups.getExams((group as any)._id)).toEqual([]);
+   });
+   expect((await service.findAll({})).total).toBe(1);
+ });
  it('serializes simultaneous creates and closes removed positions',async()=>{
    const service=fixture(),created=await Promise.all(['Three','One','Two'].map(name=>service.create({name,type:'TOEIC'} as never)));expect((await service.findAll({})).data.map(row=>row.order)).toEqual([1,2,3]);
    await service.remove(String((created[1] as any)._id));expect((await service.findAll({})).data.map(row=>row.order)).toEqual([1,2]);await service.restore(String((created[1] as any)._id));expect((await service.findAll({})).data.map(row=>row.order)).toEqual([1,2,3]);

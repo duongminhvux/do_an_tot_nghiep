@@ -7,11 +7,12 @@
     "root_env_template": true,
     "local_infra_excludes_backends": true,
     "local_infra_has_redis_rabbitmq_ai": true,
-    "no_migration_tree": true,
+    "versioned_sql_migrations": true,
     "seed_before_identity": true,
     "distinct_consumers": true,
     "compose_dependencies_valid_full": true,
     "no_old_db_runtime_imports": true,
+    "all_database_queries_native": true,
     "no_jsonb_btree_indexes": true,
     "full_typescript_typecheck": null,
     "postgres_sql_executed": null,
@@ -20,7 +21,22 @@
   },
   "details": {
     "legacy_db_references": [],
-    "sql_business_tables": 49,
+    "native_query_audit": {
+      "complete": true,
+      "scannedFiles": 332,
+      "scope": "All runtime TypeScript in apps/api/src; specs, comments and SQL parameter strings excluded.",
+      "bridgePresent": false,
+      "totals": {
+        "compatImports": 0,
+        "modelInjections": 0,
+        "operators": 0,
+        "methods": 0,
+        "legacyDeclarations": 0,
+        "legacySchemas": 0
+      },
+      "filesRemaining": 0
+    },
+    "sql_business_tables": 50,
     "sql_database_names": [
       "identity_db",
       "content_db",
@@ -31,16 +47,13 @@
       "ai_import_db",
       "notification_db"
     ],
-    "compose_services_full": 32,
+    "compose_services_full": 35,
     "compose_services_local_infra": 10,
-    "source_files_scanned": 749,
+    "source_files_scanned": 885,
     "invalid_index_lines": [],
     "known_blockers": [
-      "PostgreSQL repository compatibility adapter is not a complete service-specific SQL rewrite.",
-      "Complex aggregation pipelines and old populate relationships across service databases are not fully implemented.",
-      "Domain-event inbox records receipt but does not yet perform all business projections.",
-      "Live PostgreSQL bootstrap, full TypeScript typecheck, Docker build, auth/TOEIC/XP/arena end-to-end NOT run in this environment.",
-      "Local PostgreSQL must allow host.docker.internal connections by Docker-hosted Python workers."
+      "Full application deployment, HTTP/WebSocket traffic and Redis/RabbitMQ delivery are not certified by this static audit.",
+      "Executed TypeScript, PostgreSQL 17 and concurrency test results are recorded in POSTGRES_NATIVE_REFACTOR_STATUS_VI.md."
     ]
   }
 }

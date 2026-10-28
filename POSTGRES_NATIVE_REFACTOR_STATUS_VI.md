@@ -1,54 +1,86 @@
-# Tiến độ chuyển backend sang PostgreSQL native
+# Backend PostgreSQL native — trạng thái hoàn tất
 
-**Chưa hoàn tất toàn bộ backend.** Các phần dưới đây đã được sửa và kiểm thử; `compat.ts` vẫn có consumer đang hoạt động nên chưa được xóa toàn bộ.
+Cập nhật ngày 28/10/2026. Toàn bộ 40 model với 116 vị trí injection còn lại ở commit `7f9045e` đã được chuyển sang truy vấn PostgreSQL native. Đã xóa `apps/api/src/postgres/compat.ts`, các schema decorator cũ và đăng ký `PgModelsModule.forFeature`.
 
-## Đã chuyển sang SQL trực tiếp
+## Kết quả audit source
 
-- Toàn bộ `VocabularyGroupsService`, `CollectionsService`, `LessonsService`, `WordsService`: đọc, tạo, sửa, soft-delete/restore, phân trang, tìm kiếm, thống kê, gán nhóm, sắp xếp, thêm/xóa từ trong bài học. Giữ phần `findAll` của groups đã có trong worktree và chuyển các phương thức còn lại.
-- `AdminsService`: tìm tài khoản và đăng nhập đọc cột PostgreSQL; bỏ model injection, `toObject()` và schema admin cũ.
-- Cập nhật audio thuộc Content/Assessment: câu lệnh SQL/JSONB nguyên tử; worker và owner nhận `{ fields: ... }`, không còn giao thức `$set` cho luồng ghi audio.
-- Kết nối/pool/transaction chuyển sang `postgres/connection.ts`; `postgres/sql.ts` cung cấp tham số SQL và ánh xạ cột sang tên trường API. Các service vốn đã dùng SQL trực tiếp được chuyển import khỏi `compat.ts`.
-- Module vocabulary không còn đăng ký model/schema. Các module khác còn đọc vocabulary qua bridge cũ vẫn giữ metadata cần dùng.
+Chạy `node scripts/audit-postgres-native.cjs --check-complete --output POSTGRES_NATIVE_AUDIT.json`.
 
-SQL thực hiện lọc, `JOIN`, `COUNT`, phân trang, bulk reorder và upsert trên database. Xóa group và tách collections, xóa section và tách lessonwords chạy chung transaction. Đổi từ và đánh dấu audio stale chạy cùng một `UPDATE`, chỉ tăng publication revision một lần. Publication gate cho learner vẫn được áp dụng.
+| Chỉ số | Còn lại |
+| --- | ---: |
+| Import compat / driver Mongo | 0 |
+| Model injection cũ | 0 |
+| Toán tử truy vấn Mongo | 0 |
+| Phương thức truy vấn document cũ | 0 |
+| Khai báo kiểu/decorator/registry cũ | 0 |
+| File `*.schema.ts` trong backend | 0 |
+| File runtime còn vi phạm | 0 |
 
-Cột SQL là nguồn dữ liệu chính, kể cả `NULL`. Khi sửa, các bản sao tương ứng trong `payload` bị loại bỏ để reader cũ không khôi phục giá trị đã xóa. Hai trường `variations`/`related_words` của baseline vẫn là `TEXT` chứa JSON; code xử lý đúng dạng này, chưa thay đổi DDL hoặc migration đã phát hành.
+Audit kiểm tra toàn bộ 332 file TypeScript runtime, không dùng danh sách miễn trừ theo service. `$1`, `$2` trong SQL là tham số PostgreSQL hợp lệ. Các test kiểm tra việc từ chối giao thức cũ không phải consumer Mongo đang hoạt động.
 
-## Đã gỡ phần schema/compat không còn tác dụng
+## Phạm vi 40 model
 
-- Xóa `modules/admins/schema/admin.schema.ts` và file re-export thừa `modules/learning/progress/user-daily-activity.schema.ts`.
-- Xóa 56 lời gọi `Schema.index(...)` không tạo index trên PostgreSQL. Index thật vẫn thuộc migration SQL.
-- Xóa 55 decorator `PgEntity` không có tác dụng, registry không được đọc, hook/schema API không có consumer và các alias Mongo cũ không dùng.
-- Tách enum audio khỏi schema để các luồng SQL native không phải nạp schema decorator.
+| Nhóm | Model đã chuyển |
+| --- | --- |
+| Identity | `User` |
+| Vocabulary | `Word`, `Collection`, `Lesson`, `LessonWord`, `Section` |
+| Assessment | `Exam`, `ExamGroup`, `Question`, `Passage`, `PassageGroup`, `Attempt`, `PdfAiCorrectionEvent` |
+| Dictation | `DictationLesson`, `DictationProgress`, `DictationSection`, `DictationSegment`, `DictationTopic` |
+| Learning | `UserDailyActivity`, `UserLessonProgress`, `UserLessonWord`, `UserWordReview`, `UserSavedWord`, `VocabularyFolder`, `LearningSession`, `LearningSessionWord`, `LearningActivity`, `GameDefinition`, `MiniGameResult` |
+| Arena | `ArenaInvitation`, `ArenaMatch`, `ArenaMatchPlayer`, `ArenaMatchQuestion`, `ArenaPlayerAnswer`, `ArenaProfile`, `ArenaRatingHistory`, `ArenaRoom`, `ArenaSettings`, `FriendRoom` |
+| Activity logs | `ActivityLog` |
 
-Các `PgField`/schema definition còn lại vẫn cung cấp default, validation, reference hoặc khôi phục kiểu ngày cho consumer cũ. Chưa xóa chúng khi consumer đó vẫn hoạt động.
+`AdminsService`, vocabulary groups và các service vocabulary đã chuyển ở lượt trước tiếp tục dùng SQL. Audio jobs và worker settings cũng đã bỏ `makePgModel`, dùng SQL trực tiếp.
 
-## Audit còn lại
+## Cách triển khai hiện tại
 
-Chạy `node scripts/audit-postgres-native.cjs --output POSTGRES_NATIVE_AUDIT.json` để xuất vị trí cụ thể; thêm `--check-complete` để nhận exit code lỗi khi còn bridge cũ. Audit dùng AST và kiểu TypeScript, bỏ qua spec/comment và tham số SQL `$1`, `$2`.
+- `postgres/connection.ts`: pool và giao dịch PostgreSQL; các repository, outbox và ghi XP trong cùng luồng dùng chung kết nối giao dịch.
+- `postgres/sql.ts`, `postgres/records.ts`: câu SQL có tham số, ánh xạ cột, `INSERT`, `UPDATE ... RETURNING`, `ON CONFLICT`, `SELECT ... FOR UPDATE`. Không có bộ dịch filter/pipeline Mongo.
+- Các file `rows/*.row.ts` chỉ chứa interface/enum TypeScript. Default ứng dụng được khai báo trong `record-defaults.ts`; kiểu cột, constraint, index và trigger thuộc migration SQL.
+- API tiếp tục trả `_id` dạng chuỗi UUID để các client hiện tại sử dụng. Không còn `PgId`, document method, `save()`, `toObject()` hay `populate()` của model.
+- Đọc dữ liệu giữa các service đi qua API nội bộ chuyên biệt của owner, xác thực token và role. Đã xóa endpoint read-model tổng quát nhận filter document và xuất cả bảng.
+- Các danh sách/detail dành cho người học áp dụng điều kiện publication trong SQL. Tìm kiếm nội dung dùng tham số và coi ký tự `%` là văn bản.
+- Lưu đáp án, giới hạn phát audio, chấm TOEIC, cộng điểm Arena, cập nhật thành viên phòng và SRS dùng khóa/giao dịch hoặc điều kiện cập nhật nguyên tử. Kết quả và sự kiện outbox được ghi cùng giao dịch.
+- Đã thay các test dùng model giả/pipeline cũ bằng kiểm thử SQL; xóa smoke test chỉ dành cho bridge đã gỡ.
 
-| Chỉ số source runtime                                    | Hiện tại |
-| -------------------------------------------------------- | -------: |
-| Import từ compat                                         |      228 |
-| Model injection                                          |      116 |
-| Thuộc tính/toán tử truy vấn bắt đầu bằng `$`             |      974 |
-| Lời gọi phương thức trên kiểu được khai báo trong compat |      980 |
-| File còn tham chiếu hoặc truy vấn cũ                     |       97 |
-| File SQL native đã đưa vào kiểm tra chống regression     |        8 |
+## Migration cần chạy khi triển khai
 
-Các con số này dùng cách đếm AST, không so trực tiếp với audit regex theo dòng trước đây. Receiver kiểu `any` cần rà soát thủ công thêm. So với `HEAD`, audit cùng công cụ ghi nhận 264 import, 128 injection, 1.106 toán tử, 1.158 lời gọi và 120 file; so sánh này cũng bao gồm thay đổi groups đã có sẵn trước lượt làm việc này.
+Migration mới: `database/postgres/migrations/assessment/0016_native_attempt_fields.sql`.
 
-Phần còn lại gồm Users, Assessment/Attempts/Exams/Questions, Arena, Dictation, Learning/Reviews/SavedWords/Sessions/Progress, Activity logs, Dashboard, Minigame và các read-model bridge. **Chưa đáp ứng điều kiện xóa toàn bộ `compat.ts`.**
+Migration chuyển các trường thường truy vấn của attempt và `group_order` của exam từ JSONB extension sang cột có kiểu, backfill giá trị hiện có và tạo index. Schema contract đã được tạo lại từ database PostgreSQL 17 tạm, khớp migration mới.
+
+Chạy migration Assessment với cấu hình kết nối của môi trường triển khai trước khi khởi động phiên bản backend này:
+
+```powershell
+$env:SERVICE_ROLE = 'assessment'
+node scripts/migrate.mjs
+```
+
+Database ứng dụng hiện có chưa được thay đổi trong lượt refactor; các kiểm thử server sử dụng container/database tạm riêng và tự dọn sau khi chạy.
 
 ## Kiểm chứng
 
-- TypeScript `--noEmit`: PASS toàn source backend và cả 9 cấu hình role (identity, content, assessment, learning, arena, media-jobs, ai-import, notification, audio-worker).
-- `node tests/postgres-native-content.cjs`: PASS. Thực thi SQL trên PostgreSQL WASM/PGlite với baseline/migration của dự án: CRUD, JOIN, JSONB, upsert, reorder, publication, rollback khi tách collection thất bại, audio path validation và admin authentication.
-- `node tests/pg-compat-smoke.cjs`: PASS; dùng pool giả, chỉ xác nhận consumer cũ vẫn hoạt động.
-- `node tests/read-model-sql-contract.cjs`: PASS.
-- `node tests/schema-contracts.cjs`: PASS.
-- Audit 8 file đã chuyển: PASS, không còn import/model/toán tử bridge cũ trong các file này.
-- Vitest toàn backend: **335 PASS, 24 FAIL, 40 SKIP**. Các test FAIL đã tái hiện trên bản `HEAD` với cùng dependency; không có tên test thất bại mới. Test reorder dùng UUID ngẫu nhiên còn có thể dao động thêm một lỗi giữa các lần chạy.
-- Chưa chạy deployment Docker, PostgreSQL server ngoài, HTTP/WebSocket end-to-end hoặc workflow Redis/RabbitMQ.
+| Kiểm tra | Kết quả |
+| --- | --- |
+| TypeScript toàn backend, bao gồm spec | PASS |
+| TypeScript cả 9 role | PASS |
+| Vitest toàn backend | 223 PASS, 0 FAIL, 40 SKIP khi không cấu hình database ngoài |
+| Bộ tích hợp PostgreSQL 17 riêng: publication, mistakes, recommendations, Arena và các boundary liên quan | 167 PASS |
+| TOEIC với nhiều kết nối PostgreSQL thật | PASS: giữ đủ đáp án, cho sửa TEST, khóa PRACTICE sau reveal, submit nhất quán |
+| 41 row contract so với schema đã chạy migration | PASS |
+| SQL/PGlite cho Vocabulary, Admin, audio và các domain còn lại | PASS |
+| Owner API: xác thực, role, scope, giới hạn trang/ID và tham số SQL | PASS |
+| Audit PostgreSQL native | PASS, không còn bridge/schema/query Mongo |
+| Audit cấu hình tĩnh PostgreSQL tổng thể | 13 PASS, 0 FAIL |
 
-Dependency test PostgreSQL WASM được khai báo tại `apps/api/package.json`; chạy bằng `pnpm --filter api test:postgres-native`. Worker audio và owner phải cùng dùng phiên bản giao thức `{ fields: ... }` sau khi triển khai.
+Lệnh chạy lại:
+
+```text
+pnpm --filter api check-types
+pnpm --filter api test
+pnpm --filter api test:postgres-native
+node scripts/audit-postgres-native.cjs --check-complete
+node scripts/test-recommendations-postgres.mjs --publication --mistakes --arena
+```
+
+Lệnh kiểm thử PostgreSQL 17 cần Docker và tạo container tạm; không dùng database ứng dụng. Chưa chạy triển khai toàn bộ stack hoặc kiểm thử HTTP/WebSocket/Redis/RabbitMQ từ đầu đến cuối. `POSTGRES_OVERHAUL_AUDIT.json` là báo cáo tĩnh; các trường runtime chưa xác nhận bởi chính script đó vẫn được giữ `null`.

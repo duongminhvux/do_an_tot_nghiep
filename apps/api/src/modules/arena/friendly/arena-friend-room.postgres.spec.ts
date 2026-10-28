@@ -44,7 +44,7 @@ describe.runIf(Boolean(process.env.ARENA_TEST_DATABASE_URL))('Arena room Postgre
     expect(saved?.members[1].disconnectedAt?.getTime()).toBe(disconnectedAt.getTime());
     await rooms.patch(sql`id=${room._id}::uuid`,{},{members:sql`(SELECT jsonb_agg(m||jsonb_build_object('isReady',false) ORDER BY ordinal) FROM jsonb_array_elements(members) WITH ORDINALITY entry(m,ordinal))`});
     saved = await rooms.one(sql`id=${room._id}::uuid`);
-    expect(saved?.members.map(m => m.isReady)).toEqual([false, false]);
+    expect(saved?.members.map((m:any) => m.isReady)).toEqual([false, false]);
   });
   afterEach(() => vi.unstubAllEnvs());
   afterAll(async () => {

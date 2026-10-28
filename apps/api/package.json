@@ -25,7 +25,7 @@
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
     "test:minigames": "node ../../scripts/minigame-http-smoke.mjs",
     "test:arena-admin": "node ../../scripts/arena-admin-http-smoke.mjs",
-    "test:postgres-native": "node ../../tests/postgres-native-content.cjs",
+    "test:postgres-native": "node ../../tests/postgres-native.cjs",
     "build:services": "node ../../scripts/build-service-roles.mjs",
     "dev:all": "node ../../scripts/dev-local.mjs",
     "db:seed-admin": "node src/scripts/seed-admin.mjs"

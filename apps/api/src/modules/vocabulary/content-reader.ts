@@ -41,10 +41,10 @@ export async function readContentRows(db: PgConnection, kind: ContentKind, input
   if(input.word!==undefined){if(kind!=='words'||typeof input.word!=='string'||input.word.length>200)throw new BadRequestException('Invalid word');conditions.push(sql`LOWER(word)=LOWER(${input.word})`);}
   if (input.search) {
     if (kind !== 'words' || typeof input.search !== 'string' || input.search.length > 100) throw new BadRequestException('Invalid search');
-    conditions.push(sql`(word ILIKE '%'||${input.search}||'%' OR EXISTS(
+    conditions.push(sql`(position(lower(${input.search}) in lower(word))>0 OR EXISTS(
       SELECT 1 FROM jsonb_array_elements(COALESCE(parts,'[]'::jsonb)) part
       CROSS JOIN LATERAL jsonb_array_elements(COALESCE(part->'meanings','[]'::jsonb)) meaning
-      WHERE meaning->>'definition' ILIKE '%'||${input.search}||'%' OR (meaning->'translation')::text ILIKE '%'||${input.search}||'%'))`);
+      WHERE position(lower(${input.search}) in lower(meaning->>'definition'))>0 OR position(lower(${input.search}) in lower((meaning->'translation')::text))>0))`);
   }
   const limit = input.limit ?? 500, offset = input.offset ?? 0;
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > 2000 || !Number.isSafeInteger(offset) || offset < 0) throw new BadRequestException('Invalid content page');
