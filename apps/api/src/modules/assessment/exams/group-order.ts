@@ -1,5 +1,5 @@
 import { PgId } from '../../../postgres/compat.js';
-import { Model } from '../../../postgres/compat.js';
+import type { Model } from '../../../postgres/compat.js';
 
 /** Position for an exam appended to the end of a group (1-based). */
 export async function nextGroupOrder(

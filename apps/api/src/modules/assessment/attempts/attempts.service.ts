@@ -13,7 +13,7 @@ import { toeicAttemptXp } from '@repo/shared-types/learning-xp';
 import { LearningActivityClient } from '../../../common/clients/learning-activity-client.js';
 import type { LearningActivityWriter } from '../../learning-activity/learning-activity.service.js';
 import { InjectPgModel } from '../../../postgres/compat.js';
-import { Model } from '../../../postgres/compat.js';
+import type { Model } from '../../../postgres/compat.js';
 import { CreateAttemptDto } from './dto/create-attempt.dto.js';
 import {
   AudioPlayDto,

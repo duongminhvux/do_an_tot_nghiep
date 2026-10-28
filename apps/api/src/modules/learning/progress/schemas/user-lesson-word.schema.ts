@@ -1,10 +1,9 @@
 import { PgId } from '../../../../postgres/compat.js';
-import { PgField, PgEntity, PgSchemaFactory } from '../../../../postgres/compat.js';
+import { PgField, PgSchemaFactory } from '../../../../postgres/compat.js';
 import { type PgDocument } from '../../../../postgres/compat.js';
 
 export type UserLessonWordDocument = PgDocument<UserLessonWord>;
 
-@PgEntity({ timestamps: true })
 export class UserLessonWord {
   @PgField({
     type: PgId,
@@ -29,8 +28,3 @@ export class UserLessonWord {
 
 export const UserLessonWordSchema =
   PgSchemaFactory.createForClass(UserLessonWord);
-
-UserLessonWordSchema.index(
-  { userId: 1, lessonWordId: 1 },
-  { unique: true },
-);

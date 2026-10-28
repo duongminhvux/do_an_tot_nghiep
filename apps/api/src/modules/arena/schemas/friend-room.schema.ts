@@ -1,5 +1,5 @@
 import { PgId } from '../../../postgres/compat.js';
-import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
+import { PgField, PgSchemaFactory } from '../../../postgres/compat.js';
 import { ArenaFriendMode } from './arena-match.schema.js';
 
 export enum FriendRoomStatus {
@@ -11,7 +11,7 @@ export type FriendRoomSettings = {
   timePerQuestion?: number;
   turnTime?: number;
 };
-@PgEntity({ _id: false })
+
 export class FriendRoomMember {
   @PgField({ type: PgId, required: true, ref: 'User' })
   userId: PgId;
@@ -19,7 +19,7 @@ export class FriendRoomMember {
   @PgField({ type: Date, default: null }) disconnectedAt: Date | null;
 }
 const FriendRoomMemberSchema = PgSchemaFactory.createForClass(FriendRoomMember);
-@PgEntity({ timestamps: true })
+
 export class FriendRoom {
   @PgField({ type: Object, default: null })
   runtimePolicy?: { reconnectGrace: number; idleTimeout: number } | null;

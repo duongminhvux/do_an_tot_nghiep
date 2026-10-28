@@ -1,17 +1,8 @@
-import { PgField, PgEntity, PgSchemaFactory } from '../../postgres/compat.js';
+import { PgField, PgSchemaFactory } from '../../postgres/compat.js';
 
-export enum AudioSourceType {
-  TTS = 'TTS',
-  UPLOAD = 'UPLOAD' }
+import { AudioSourceType, AudioGenerationStatus } from './audio.types.js';
+export { AudioSourceType, AudioGenerationStatus } from './audio.types.js';
 
-export enum AudioGenerationStatus {
-  NONE = 'NONE',
-  PROCESSING = 'PROCESSING',
-  READY = 'READY',
-  STALE = 'STALE',
-  FAILED = 'FAILED' }
-
-@PgEntity({ _id: false })
 export class AudioSegmentMetadata {
   @PgField({ trim: true, default: '' })
   text?: string;
@@ -31,7 +22,6 @@ export class AudioSegmentMetadata {
 
 export const AudioSegmentMetadataSchema = PgSchemaFactory.createForClass(AudioSegmentMetadata);
 
-@PgEntity({ _id: false })
 export class GeneratedAudioMetadata {
   @PgField({ type: String, enum: Object.values(AudioSourceType), default: AudioSourceType.TTS })
   source!: AudioSourceType;

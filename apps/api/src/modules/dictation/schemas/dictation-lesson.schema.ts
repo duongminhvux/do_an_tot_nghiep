@@ -1,5 +1,5 @@
 import { PgId } from '../../../postgres/compat.js';
-import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
+import { PgField, PgSchemaFactory } from '../../../postgres/compat.js';
 import { type PgDocument } from '../../../postgres/compat.js';
 import { DictationTopic } from './dictation-topic.schema.js';
 import { DictationSection } from './dictation-section.schema.js';
@@ -26,7 +26,6 @@ export enum DictationAudioSource {
   TTS = 'TTS',
   UPLOAD = 'UPLOAD' }
 
-@PgEntity({ timestamps: true })
 export class DictationLesson {
   @PgField({default:'DRAFT'}) publicationStatus: string;
   @PgField({default:1}) publicationRevision: number;
@@ -115,8 +114,3 @@ export class DictationLesson {
 }
 
 export const DictationLessonSchema = PgSchemaFactory.createForClass(DictationLesson);
-
-DictationLessonSchema.index(
-  { slug: 1 },
-  { unique: true, partialFilterExpression: { isDeleted: false } },
-);

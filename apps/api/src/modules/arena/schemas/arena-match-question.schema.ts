@@ -1,10 +1,9 @@
 import { PgId } from '../../../postgres/compat.js';
-import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
+import { PgField, PgSchemaFactory } from '../../../postgres/compat.js';
 import { type PgDocument } from '../../../postgres/compat.js';
 
 export type ArenaMatchQuestionDocument = PgDocument<ArenaMatchQuestion>;
 
-@PgEntity({ _id: false })
 export class ArenaQuestionOption {
   @PgField({ required: true })
   key: string;
@@ -16,7 +15,6 @@ export class ArenaQuestionOption {
 export const ArenaQuestionOptionSchema =
   PgSchemaFactory.createForClass(ArenaQuestionOption);
 
-@PgEntity({ timestamps: true })
 /** Snapshot câu hỏi được cố định cho một trận để mọi client dùng cùng dữ liệu. */
 export class ArenaMatchQuestion {
   @PgField({
@@ -80,4 +78,3 @@ export class ArenaMatchQuestion {
 
 export const ArenaMatchQuestionSchema =
   PgSchemaFactory.createForClass(ArenaMatchQuestion);
-ArenaMatchQuestionSchema.index({ matchId: 1, order: 1 }, { unique: true });

@@ -8,7 +8,7 @@ import { readRecommendationRules } from '../learning/recommendations/recommendat
 import {
   InjectPgConnection,
   type PgConnection,
-} from '../../postgres/compat.js';
+} from '../../postgres/connection.js';
 import {
   normalizeSiteSettings,
   type SiteSettings,

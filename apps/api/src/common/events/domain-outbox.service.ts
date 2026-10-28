@@ -1,5 +1,5 @@
 import {Injectable} from '@nestjs/common';
-import {InjectPgConnection,type PgConnection,type ClientSession} from '../../postgres/compat.js';
+import {InjectPgConnection,type PgConnection,type ClientSession} from '../../postgres/connection.js';
 import {randomUUID} from 'node:crypto';
 import { currentPgSession } from '../../postgres/session.js';
 export type DomainEventType='identity.user.created.v1'|'assessment.exam.created.v1'|'arena.match.finished.v1'|'learning.activity.recorded.v1'|'identity.user.updated.v1';

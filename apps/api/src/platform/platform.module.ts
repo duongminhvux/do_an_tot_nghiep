@@ -1,6 +1,6 @@
 import { Controller, DynamicModule, Get, Module, Type, Optional, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { PgModelsModule, InjectPgConnection, type PgConnection } from '../postgres/compat.js';
+import { PgDatabaseModule, InjectPgConnection, type PgConnection } from '../postgres/connection.js';
 import { I18nModule, HeaderResolver, AcceptLanguageResolver } from 'nestjs-i18n';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -71,7 +71,7 @@ export class PlatformModule {
       ConfigModule.forRoot({isGlobal:true,envFilePath:[rootDotenvPath()]}),
       I18nModule.forRoot({fallbackLanguage:'vi',loaderOptions:{path:i18nPath,watch:process.env.NODE_ENV!=='production'},
         resolvers:[new HeaderResolver(['x-custom-lang']),AcceptLanguageResolver]}),
-      PgModelsModule.forRootAsync(),
+      PgDatabaseModule.forRootAsync(),
       ...(role==='arena'?[RedisModule]:[]),JwtModule.register({}),MediaStorageModule,
       DomainEventsModule,NotificationClientModule,LearningActivityClientModule,ReadModelsModule,PublicationModule,...business,
     ],controllers:[HealthController]};

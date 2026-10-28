@@ -1,10 +1,9 @@
 import { PgId } from '../../../postgres/compat.js';
-import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
+import { PgField, PgSchemaFactory } from '../../../postgres/compat.js';
 import { type PgDocument } from '../../../postgres/compat.js';
 
 export type ArenaRoomDocument = PgDocument<ArenaRoom>;
 
-@PgEntity({ _id: false })
 export class ArenaRoomMember {
   @PgField({ type: PgId, ref: 'User', required: true })
   userId: PgId;
@@ -22,7 +21,6 @@ export class ArenaRoomMember {
 export const ArenaRoomMemberSchema =
   PgSchemaFactory.createForClass(ArenaRoomMember);
 
-@PgEntity({ timestamps: true })
 /** Metadata của phòng đấu, dùng cho các mode friend/room. */
 export class ArenaRoom {
   @PgField({ required: true, trim: true })

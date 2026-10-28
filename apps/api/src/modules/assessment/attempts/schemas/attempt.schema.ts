@@ -1,5 +1,5 @@
 import { PgId } from '../../../../postgres/compat.js';
-import { PgField, PgEntity, PgSchemaFactory } from '../../../../postgres/compat.js';
+import { PgField, PgSchemaFactory } from '../../../../postgres/compat.js';
 import { type PgDocument,  PgSchemaDefinition } from '../../../../postgres/compat.js';
 import { ExamMode, ToeicAttemptStatus } from '../attempt.types.js';
 import type { SnapshotQuestion } from '../attempt.types.js';
@@ -7,7 +7,6 @@ import type { RawSectionResult } from '../attempt.types.js';
 
 export type AttemptDocument = PgDocument<Attempt>;
 
-@PgEntity({ timestamps: true, minimize: false })
 export class Attempt {
   @PgField() examPublicationRevision?:number;
   @PgField({
@@ -124,6 +123,3 @@ export class Attempt {
 }
 
 export const AttemptSchema = PgSchemaFactory.createForClass(Attempt);
-AttemptSchema.index({ userId: 1, status: 1, createdAt: -1 });
-AttemptSchema.index({ examId: 1, status: 1, createdAt: -1 });
-AttemptSchema.index({ userId: 1, createdAt: -1 });

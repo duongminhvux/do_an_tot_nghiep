@@ -1,11 +1,10 @@
 import { PgId } from '../../../postgres/compat.js';
-import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
+import { PgField, PgSchemaFactory } from '../../../postgres/compat.js';
 import { type PgDocument } from '../../../postgres/compat.js';
 import { ArenaFriendMode } from './arena-match.schema.js';
 
 export type ArenaMatchPlayerDocument = PgDocument<ArenaMatchPlayer>;
 
-@PgEntity({ timestamps: true })
 /** Điểm số, trạng thái ready và kết quả của một người trong trận. */
 export class ArenaMatchPlayer {
   @PgField({ type: String, enum: Object.values(ArenaFriendMode), default: null })
@@ -87,4 +86,3 @@ export class ArenaMatchPlayer {
 
 export const ArenaMatchPlayerSchema =
   PgSchemaFactory.createForClass(ArenaMatchPlayer);
-ArenaMatchPlayerSchema.index({ matchId: 1, userId: 1 }, { unique: true });

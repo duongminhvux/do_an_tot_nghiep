@@ -1,11 +1,10 @@
 import { PgId } from '../../../../postgres/compat.js';
-import { PgField, PgEntity, PgSchemaFactory } from '../../../../postgres/compat.js';
+import { PgField, PgSchemaFactory } from '../../../../postgres/compat.js';
 import { type PgDocument } from '../../../../postgres/compat.js';
 
 export type LearningSessionWordDocument =
   PgDocument<LearningSessionWord>;
 
-@PgEntity({ timestamps: true })
 export class LearningSessionWord {
   @PgField({
     type: PgId,

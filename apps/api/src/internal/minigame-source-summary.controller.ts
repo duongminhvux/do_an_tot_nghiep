@@ -1,6 +1,6 @@
 import { Controller, ForbiddenException, Get, Headers, Injectable } from '@nestjs/common';
 import { timingSafeEqual } from 'node:crypto';
-import { InjectPgConnection, type PgConnection } from '../postgres/compat.js';
+import { InjectPgConnection, type PgConnection } from '../postgres/connection.js';
 import { Public } from '../modules/auth/decorators/public.decorator.js';
 import { serviceRole } from '../postgres/ownership.js';
 

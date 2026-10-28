@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AudioWorkerModule } from './audio-worker.module.js';
-import { getConnectionToken,type PgConnection } from './postgres/compat.js';
+import { getConnectionToken,type PgConnection } from './postgres/connection.js';
 async function main(){
   if(process.env.SERVICE_ROLE&&process.env.SERVICE_ROLE!=='audio-worker')throw new Error('Audio worker requires SERVICE_ROLE=audio-worker');
   process.env.SERVICE_ROLE='audio-worker';

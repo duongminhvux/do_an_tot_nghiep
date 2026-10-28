@@ -1,12 +1,11 @@
 import { PgId } from '../../../postgres/compat.js';
-import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
+import { PgField, PgSchemaFactory } from '../../../postgres/compat.js';
 import { type PgDocument } from '../../../postgres/compat.js';
 import { DictationLesson } from './dictation-lesson.schema.js';
 import { User } from '../../users/schema/user.schema.js';
 
 export type DictationProgressDocument = PgDocument<DictationProgress>;
 
-@PgEntity({ _id: false })
 export class DictationSegmentProgress {
   @PgField({ required: true, min: 0 })
   segmentIndex!: number;
@@ -35,7 +34,6 @@ export class DictationSegmentProgress {
 
 const DictationSegmentProgressSchema = PgSchemaFactory.createForClass(DictationSegmentProgress);
 
-@PgEntity({ timestamps: true })
 export class DictationProgress {
   @PgField({ type: PgId, ref: User.name, required: true, index: true })
   userId!: PgId;
@@ -78,4 +76,3 @@ export class DictationProgress {
 }
 
 export const DictationProgressSchema = PgSchemaFactory.createForClass(DictationProgress);
-DictationProgressSchema.index({ userId: 1, lessonId: 1 }, { unique: true });

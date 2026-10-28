@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { InjectPgConnection, type PgConnection } from '../../../postgres/compat.js';
+import { InjectPgConnection, type PgConnection } from '../../../postgres/connection.js';
 import { withMatchTransaction } from '../../../postgres/session.js';
 @Injectable()
 export class ArenaMatchTransactions {

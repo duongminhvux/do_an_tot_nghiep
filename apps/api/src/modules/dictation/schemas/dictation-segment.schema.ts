@@ -1,11 +1,10 @@
 import { PgId } from '../../../postgres/compat.js';
-import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
+import { PgField, PgSchemaFactory } from '../../../postgres/compat.js';
 import { type PgDocument } from '../../../postgres/compat.js';
 import { DictationLesson } from './dictation-lesson.schema.js';
 
 export type DictationSegmentDocument = PgDocument<DictationSegment>;
 
-@PgEntity({ _id: false })
 export class DictationWordTiming {
   @PgField({ required: true })
   word!: string;
@@ -22,7 +21,6 @@ export class DictationWordTiming {
 
 const DictationWordTimingSchema = PgSchemaFactory.createForClass(DictationWordTiming);
 
-@PgEntity({ timestamps: true })
 export class DictationSegment {
   @PgField({ type: PgId, ref: DictationLesson.name, required: true, index: true })
   lessonId!: PgId;
@@ -78,4 +76,3 @@ export class DictationSegment {
 }
 
 export const DictationSegmentSchema = PgSchemaFactory.createForClass(DictationSegment);
-DictationSegmentSchema.index({ lessonId: 1, order: 1 }, { unique: true });

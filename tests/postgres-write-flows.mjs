@@ -7,6 +7,7 @@ const require=createRequire(new URL('../apps/api/package.json',import.meta.url))
 require('reflect-metadata');
 const {Pool}=require('pg'),{ConfigService}=require('@nestjs/config');
 const {makePgModel}=await import('../apps/api/dist/postgres/compat.js');
+const {createConnection}=await import('../apps/api/dist/postgres/connection.js');
 const role=process.env.SERVICE_ROLE;
 assert(['content','assessment','arena'].includes(role),'Run in Content, Assessment or Arena');
 const pool=new Pool(),client=await pool.connect();
@@ -17,7 +18,8 @@ try {
   if(role==='content') {
     const {WordsService}=await import('../apps/api/dist/modules/vocabulary/words/words.service.js');
     const words=model('Word');
-    const service=new WordsService(words,{t:async key=>key});
+    const {ContentSqlRepository}=await import('../apps/api/dist/modules/vocabulary/content-sql.repository.js');
+    const service=new WordsService(new ContentSqlRepository(createConnection(client)),{t:async key=>key});
     const result=await service.create({word:prefix,level:'A1',parts:[{partOfSpeech:'noun',meanings:[{definition:'A fixture'}]}]});
     assert.equal(result.data.parts[0].partOfSpeech,'noun');
     assert.equal((await words.findById(result.data._id)).word,prefix);

@@ -1,5 +1,5 @@
 import { PgId } from '../../../postgres/compat.js';
-import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
+import { PgField, PgSchemaFactory } from '../../../postgres/compat.js';
 import { type PgDocument } from '../../../postgres/compat.js';
 
 export type WordGuessFeedback = 'correct' | 'present' | 'absent';
@@ -46,8 +46,6 @@ export enum ArenaQuestionMode {
   LISTENING = 'LISTENING',
   CONTEXT = 'CONTEXT' }
 
-@PgEntity({
-  timestamps: true })
 /** Trạng thái tổng quát và cấu hình của một trận Arena. */
 export class ArenaMatch {
   @PgField({ type: Object, default: null, immutable: true })
@@ -213,4 +211,3 @@ export class ArenaMatch {
 }
 
 export const ArenaMatchSchema = PgSchemaFactory.createForClass(ArenaMatch);
-ArenaMatchSchema.index({ status: 1, type: 1, finishedAt: -1 });

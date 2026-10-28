@@ -1,11 +1,10 @@
 import { PgId } from '../../../postgres/compat.js';
-import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
+import { PgField, PgSchemaFactory } from '../../../postgres/compat.js';
 import { type PgDocument } from '../../../postgres/compat.js';
 import { ArenaFriendMode } from './arena-match.schema.js';
 
 export type ArenaInvitationDocument = PgDocument<ArenaInvitation>;
 
-@PgEntity({ timestamps: true })
 /** Lời mời người chơi tham gia một trận hoặc phòng Arena. */
 export class ArenaInvitation {
   @PgField({
@@ -56,16 +55,3 @@ export class ArenaInvitation {
 
 export const ArenaInvitationSchema =
   PgSchemaFactory.createForClass(ArenaInvitation);
-
-ArenaInvitationSchema.index(
-  { senderId: 1, type: 1 },
-  {
-    unique: true,
-    partialFilterExpression: { status: 'PENDING', type: 'DUEL' } },
-);
-
-// Only remove expired invitations; accepted/rejected invitations remain available.
-ArenaInvitationSchema.index(
-  { expiresAt: 1 },
-  { expireAfterSeconds: 0, partialFilterExpression: { status: 'EXPIRED' } },
-);

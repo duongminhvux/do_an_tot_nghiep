@@ -1,10 +1,9 @@
 import { PgId } from '../../../../postgres/compat.js';
-import { PgField, PgEntity, PgSchemaFactory } from '../../../../postgres/compat.js';
+import { PgField, PgSchemaFactory } from '../../../../postgres/compat.js';
 import { type PgDocument } from '../../../../postgres/compat.js';
 
 export type AttemptAnswerDocument = PgDocument<AttemptAnswer>;
 
-@PgEntity({ timestamps: true })
 export class AttemptAnswer {
   @PgField({
     type: PgId,
@@ -33,11 +32,3 @@ export class AttemptAnswer {
 }
 
 export const AttemptAnswerSchema = PgSchemaFactory.createForClass(AttemptAnswer);
-
-AttemptAnswerSchema.index(
-  {
-    attemptId: 1,
-    questionId: 1 },
-  {
-    unique: true },
-);

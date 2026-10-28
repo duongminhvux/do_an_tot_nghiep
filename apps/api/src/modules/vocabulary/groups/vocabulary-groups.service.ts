@@ -1,10 +1,11 @@
-import { PgId, InjectPgConnection, type PgConnection } from '../../../postgres/compat.js';
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { InjectPgModel } from '../../../postgres/compat.js';
-import { type Model } from '../../../postgres/compat.js';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { I18nContext, I18nService } from 'nestjs-i18n';
-import { VocabularyGroup, VocabularyGroupDocument } from './vocabulary-group.schema.js';
-import { Collection, CollectionDocument } from '../collections/collection.schema.js';
+import { ContentSqlRepository } from '../content-sql.repository.js';
+import { sql } from '../../../postgres/sql.js';
 import { CreateVocabularyGroupDto } from './dto/create-vocabulary-group.dto.js';
 import { UpdateVocabularyGroupDto } from './dto/update-vocabulary-group.dto.js';
 import { QueryVocabularyGroupDto } from './dto/query-vocabulary-group.dto.js';
@@ -13,22 +14,14 @@ import { publicationScope } from '../../publication/publication-scope.js';
 @Injectable()
 export class VocabularyGroupsService {
   constructor(
-    @InjectPgModel(VocabularyGroup.name)
-    private readonly vocabularyGroupModel: Model<VocabularyGroupDocument>,
-    @InjectPgModel(Collection.name)
-    private readonly collectionModel: Model<CollectionDocument>,
-    @InjectPgConnection() private readonly connection: PgConnection,
+    private readonly repository: ContentSqlRepository,
     private readonly i18n: I18nService,
   ) {}
-
-  private getLang(): string {
+  private getLang() {
     return I18nContext.current()?.lang || 'vi';
   }
-
-  private generateSlug(text: string): string {
-    if (!text) return '';
+  private generateSlug(text: string) {
     return text
-      .toString()
       .toLowerCase()
       .trim()
       .normalize('NFD')
@@ -37,115 +30,143 @@ export class VocabularyGroupsService {
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-');
   }
-
-  async create(createVocabularyGroupDto: CreateVocabularyGroupDto): Promise<VocabularyGroup> {
-    const lang = this.getLang();
-    const trimmedName = createVocabularyGroupDto.name.trim();
-
-    // 1. Check if an ACTIVE group with this name already exists
-    const escapedName = trimmedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const existingActive = await this.vocabularyGroupModel.findOne({
-      name: { $regex: new RegExp(`^${escapedName}$`, 'i') },
-      isDeleted: { $ne: true } });
-    if (existingActive) {
-      throw new ConflictException(
-        await this.i18n.t('vocabulary-group.GROUP_ALREADY_EXISTS', { lang }),
-      );
-    }
-
-    const rawSlug = createVocabularyGroupDto.slug?.trim() || trimmedName;
-    const baseSlug = this.generateSlug(rawSlug) || 'group';
-    let slug = baseSlug;
-    let counter = 1;
-    while (await this.vocabularyGroupModel.exists({ slug, isDeleted: { $ne: true } })) {
-      slug = `${baseSlug}-${counter++}`;
-    }
-
-    // 2. Free any legacy deleted records that had this name or slug to avoid E11000
-    const legacyDeleted = await this.vocabularyGroupModel.find({
-      $or: [{ name: trimmedName }, { slug }],
-      isDeleted: true });
-    for (const legacy of legacyDeleted) {
-      const ts = Date.now();
-      await this.vocabularyGroupModel.findByIdAndUpdate(legacy._id, {
-        name: `${legacy.name}_deleted_${ts}`,
-        slug: `${legacy.slug}_deleted_${ts}` });
-    }
-
-    let order = createVocabularyGroupDto.order;
-    if (order === undefined || order === null || order <= 0) {
-      const count = await this.vocabularyGroupModel.countDocuments({ isDeleted: { $ne: true } });
-      order = count + 1;
-    }
-
-    const createdGroup = new this.vocabularyGroupModel({
-      ...createVocabularyGroupDto,
-      name: trimmedName,
+  private async conflict() {
+    throw new ConflictException(
+      await this.i18n.t('vocabulary-group.GROUP_ALREADY_EXISTS', {
+        lang: this.getLang(),
+      }),
+    );
+  }
+  private async missing(): Promise<never> {
+    throw new NotFoundException(
+      await this.i18n.t('vocabulary-group.GROUP_NOT_FOUND', {
+        lang: this.getLang(),
+      }),
+    );
+  }
+  private async uniqueSlug(raw: string, id: string | null = null) {
+    const base = this.generateSlug(raw) || 'group';
+    let slug = base,
+      counter = 1;
+    while (
+      await this.repository.one(
+        'vocabularygroups',
+        sql`slug = ${slug} AND is_deleted IS NOT TRUE AND id IS DISTINCT FROM ${id}::uuid`,
+      )
+    )
+      slug = `${base}-${counter++}`;
+    return slug;
+  }
+  async create(input: CreateVocabularyGroupDto) {
+    const name = input.name.trim();
+    if (
+      await this.repository.one(
+        'vocabularygroups',
+        sql`LOWER(name) = LOWER(${name}) AND is_deleted IS NOT TRUE`,
+      )
+    )
+      await this.conflict();
+    const slug = await this.uniqueSlug(input.slug?.trim() || name);
+    const order =
+      input.order && input.order > 0
+        ? input.order
+        : (await this.repository.count(
+            'vocabularygroups',
+            sql`is_deleted IS NOT TRUE`,
+          )) + 1;
+    return this.repository.insert('vocabularygroups', {
+      ...input,
+      name,
       slug,
-      order });
-    return createdGroup.save();
+      order,
+      isActive: input.isActive ?? true,
+      isDeleted: false,
+    });
   }
 
-  async findAll(query: QueryVocabularyGroupDto): Promise<{ data: any[]; total: number; page: number; limit: number }> {
+  async findAll(
+    query: QueryVocabularyGroupDto,
+  ): Promise<{ data: any[]; total: number; page: number; limit: number }> {
     const { search, isActive, page = 1, limit = 10 } = query;
-    const filter: Record<string, any> = { isDeleted: { $ne: true } };
+    const safePage = Math.max(1, Math.floor(Number(page) || 1));
+    const safeLimit = Math.min(
+      100,
+      Math.max(1, Math.floor(Number(limit) || 10)),
+    );
+    const learner = publicationScope.getStore() === true;
 
-    if (search) {
-      filter.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
-      ];
-    }
-
-    if (isActive !== undefined) {
-      filter.isActive = isActive;
-    }
-
-    const skip = (page - 1) * limit;
-
-    const [rawGroups, total] = await Promise.all([
-      this.vocabularyGroupModel
-        .find(filter)
-        .sort({ order: 1, createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean()
-        .exec(),
-      this.vocabularyGroupModel.countDocuments(filter).exec(),
+    // SQL-native pagination and aggregation. Never materialize all lessons/words.
+    const [groupsResult, countResult] = await Promise.all([
+      this.repository.connection.query(
+        `
+        SELECT g.id AS "_id", g.name, g.slug, g.description,
+               g."order", g.is_active AS "isActive", g.is_deleted AS "isDeleted",
+               g.created_at AS "createdAt", g.updated_at AS "updatedAt"
+        FROM public.vocabularygroups g
+        WHERE g.is_deleted IS NOT TRUE
+          AND ($1::text IS NULL OR g.name ILIKE '%' || $1 || '%'
+               OR g.description ILIKE '%' || $1 || '%')
+          AND ($2::boolean IS NULL OR g.is_active = $2)
+        ORDER BY g."order" ASC NULLS LAST, g.created_at DESC, g.id
+        LIMIT $3 OFFSET $4
+      `,
+        [
+          search || null,
+          isActive ?? null,
+          safeLimit,
+          (safePage - 1) * safeLimit,
+        ],
+      ),
+      this.repository.connection.query(
+        `
+        SELECT COUNT(*)::integer AS total FROM public.vocabularygroups g
+        WHERE g.is_deleted IS NOT TRUE
+          AND ($1::text IS NULL OR g.name ILIKE '%' || $1 || '%'
+               OR g.description ILIKE '%' || $1 || '%')
+          AND ($2::boolean IS NULL OR g.is_active = $2)
+      `,
+        [search || null, isActive ?? null],
+      ),
     ]);
-
-    const groupIds = rawGroups.map((g) => g._id);
-
-    // Fetch collections for these groups
-    const rawCollections = await this.collectionModel
-      .find({ groupId: { $in: groupIds }, isDeleted: { $ne: true } })
-      .sort({ order: 1, createdAt: -1 })
-      .lean()
-      .exec();
-
-    // Execute the lesson/word counts in PostgreSQL instead of materializing
-    // every lesson and every lesson-word in Node.js for each page. A single
-    // grouped query returns at most one summary row per visible collection.
-    const collectionIds = rawCollections.map((c) => String(c._id));
+    const rawGroups = groupsResult.rows;
+    const total = Number(countResult.rows[0]?.total ?? 0);
+    const groupIds = rawGroups.map((g) => String(g._id));
+    const rawCollections: any[] = [];
     const collectionLessonsCountMap = new Map<string, number>();
     const collectionWordsCountMap = new Map<string, number>();
-    if (collectionIds.length) {
-      const learner = publicationScope.getStore() === true;
-      const rows = await this.connection.query(`
-        SELECT l.collection_id AS collection_id,
-               COUNT(DISTINCT l.id)::integer AS lessons_count,
-               COUNT(lw.id)::integer AS words_count
-        FROM public.lessons l
-        LEFT JOIN public.lessonwords lw ON lw.lesson_id = l.id
-        WHERE l.collection_id = ANY($1::uuid[])
-          AND l.is_deleted IS NOT TRUE
-          ${learner ? "AND l.publication_status = 'PUBLISHED' AND l.is_active IS NOT FALSE" : ''}
-        GROUP BY l.collection_id
-      `, [collectionIds]);
-      for (const row of rows.rows) {
-        const id = String(row.collection_id);
-        collectionLessonsCountMap.set(id, Number(row.lessons_count));
-        collectionWordsCountMap.set(id, Number(row.words_count));
+    if (groupIds.length) {
+      const result = await this.repository.connection.query(
+        `
+        SELECT c.id AS "_id", c.group_id AS "groupId", c.name, c.slug,
+               c.description, c.cover_url AS "coverUrl", c."order",
+               c.is_active AS "isActive", c.is_deleted AS "isDeleted",
+               c.created_at AS "createdAt", c.updated_at AS "updatedAt",
+               COALESCE(stats.lessons_count, 0)::integer AS "_lessonsCount",
+               COALESCE(stats.words_count, 0)::integer AS "_wordsCount"
+        FROM public.collections c
+        LEFT JOIN LATERAL (
+          SELECT COUNT(DISTINCT l.id) AS lessons_count,
+                 COUNT(lw.id) AS words_count
+          FROM public.lessons l
+          LEFT JOIN public.lessonwords lw ON lw.lesson_id = l.id
+          WHERE l.collection_id = c.id AND l.is_deleted IS NOT TRUE
+            ${learner ? "AND l.publication_status = 'PUBLISHED' AND l.is_active IS NOT FALSE" : ''}
+        ) stats ON TRUE
+        WHERE c.group_id = ANY($1::uuid[]) AND c.is_deleted IS NOT TRUE
+        ORDER BY c."order" ASC NULLS LAST, c.created_at DESC, c.id
+      `,
+        [groupIds],
+      );
+      for (const { _lessonsCount, _wordsCount, ...collection } of result.rows) {
+        rawCollections.push(collection);
+        collectionLessonsCountMap.set(
+          String(collection._id),
+          Number(_lessonsCount),
+        );
+        collectionWordsCountMap.set(
+          String(collection._id),
+          Number(_wordsCount),
+        );
       }
     }
 
@@ -160,196 +181,111 @@ export class VocabularyGroupsService {
       collectionsByGroup.get(gId)!.push({
         ...c,
         lessonsCount: collectionLessonsCountMap.get(c._id.toString()) || 0,
-        wordsCount: collectionWordsCountMap.get(c._id.toString()) || 0 });
+        wordsCount: collectionWordsCountMap.get(c._id.toString()) || 0,
+      });
     });
 
     const data = rawGroups.map((g) => {
       const cols = collectionsByGroup.get(g._id.toString()) || [];
-      const totalLessons = cols.reduce((acc, cur) => acc + (cur.lessonsCount || 0), 0);
-      const totalWords = cols.reduce((acc, cur) => acc + (cur.wordsCount || 0), 0);
+      const totalLessons = cols.reduce(
+        (acc, cur) => acc + (cur.lessonsCount || 0),
+        0,
+      );
+      const totalWords = cols.reduce(
+        (acc, cur) => acc + (cur.wordsCount || 0),
+        0,
+      );
       return {
         ...g,
         collectionsCount: cols.length,
         lessonsCount: totalLessons,
         wordsCount: totalWords,
-        collections: cols };
+        collections: cols,
+      };
     });
 
     return {
       data,
       total,
-      page,
-      limit };
+      page: safePage,
+      limit: safeLimit,
+    };
   }
 
-  async findOne(id: string): Promise<any> {
-    const lang = this.getLang();
-    const group = await this.vocabularyGroupModel
-      .findOne({ _id: id, isDeleted: { $ne: true } })
-      .lean()
-      .exec();
-
-    if (!group) {
-      throw new NotFoundException(
-        await this.i18n.t('vocabulary-group.GROUP_NOT_FOUND', { lang }),
-      );
-    }
-
-    const collectionsCount = await this.collectionModel.countDocuments({
-      groupId: new PgId(id),
-      isDeleted: { $ne: true } }).exec();
-
-    return {
-      ...group,
-      collectionsCount };
+  async findOne(id: string) {
+    const group = await this.repository.one(
+      'vocabularygroups',
+      sql`id = ${id}::uuid AND is_deleted IS NOT TRUE`,
+    );
+    if (!group) return this.missing();
+    const collectionsCount = await this.repository.count(
+      'collections',
+      sql`group_id = ${id}::uuid AND is_deleted IS NOT TRUE`,
+    );
+    return { ...group, collectionsCount };
   }
-
-  async update(id: string, updateVocabularyGroupDto: UpdateVocabularyGroupDto): Promise<VocabularyGroup> {
-    const lang = this.getLang();
-    const updateData: Partial<VocabularyGroup> = { ...updateVocabularyGroupDto } as any;
-
-    if (updateVocabularyGroupDto.name) {
-      const trimmedName = updateVocabularyGroupDto.name.trim();
-      const escapedName = trimmedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const existingActive = await this.vocabularyGroupModel.findOne({
-        _id: { $ne: id },
-        name: { $regex: new RegExp(`^${escapedName}$`, 'i') },
-        isDeleted: { $ne: true } });
-      if (existingActive) {
-        throw new ConflictException(
-          await this.i18n.t('vocabulary-group.GROUP_ALREADY_EXISTS', { lang }),
-        );
-      }
-      updateData.name = trimmedName;
-
-      // Free any legacy deleted records with this name
-      const legacyDeleted = await this.vocabularyGroupModel.find({
-        _id: { $ne: id },
-        name: trimmedName,
-        isDeleted: true });
-      for (const legacy of legacyDeleted) {
-        const ts = Date.now();
-        await this.vocabularyGroupModel.findByIdAndUpdate(legacy._id, {
-          name: `${legacy.name}_deleted_${ts}`,
-          slug: `${legacy.slug}_deleted_${ts}` });
-      }
-    }
-
-    if (updateVocabularyGroupDto.slug || updateVocabularyGroupDto.name) {
-      const rawSlug = updateVocabularyGroupDto.slug?.trim() || updateVocabularyGroupDto.name;
-      if (rawSlug) {
-        const baseSlug = this.generateSlug(rawSlug) || 'group';
-        let slug = baseSlug;
-        let counter = 1;
-        while (
-          await this.vocabularyGroupModel.exists({
-            _id: { $ne: id },
-            slug,
-            isDeleted: { $ne: true } })
-        ) {
-          slug = `${baseSlug}-${counter++}`;
-        }
-        updateData.slug = slug;
-
-        // Free any legacy deleted records with this slug
-        const legacySlugDeleted = await this.vocabularyGroupModel.find({
-          _id: { $ne: id },
-          slug,
-          isDeleted: true });
-        for (const legacy of legacySlugDeleted) {
-          const ts = Date.now();
-          await this.vocabularyGroupModel.findByIdAndUpdate(legacy._id, {
-            name: `${legacy.name}_deleted_${ts}`,
-            slug: `${legacy.slug}_deleted_${ts}` });
-        }
-      }
-    }
-
-    const updatedGroup = await this.vocabularyGroupModel
-      .findOneAndUpdate({ _id: id, isDeleted: { $ne: true } }, updateData, { returnDocument: 'after' })
-      .exec();
-
-    if (!updatedGroup) {
-      throw new NotFoundException(
-        await this.i18n.t('vocabulary-group.GROUP_NOT_FOUND', { lang }),
-      );
-    }
-    return updatedGroup;
-  }
-
-  async toggleActive(id: string, isActive?: boolean): Promise<VocabularyGroup> {
-    const lang = this.getLang();
-    const group = await this.findOne(id);
-    const nextActive = isActive !== undefined ? isActive : !group.isActive;
-    const updated = await this.vocabularyGroupModel
-      .findOneAndUpdate(
-        { _id: id, isDeleted: { $ne: true } },
-        { isActive: nextActive },
-        { returnDocument: 'after' },
+  async update(id: string, input: UpdateVocabularyGroupDto) {
+    const data = { ...input };
+    if (input.name) {
+      data.name = input.name.trim();
+      if (
+        await this.repository.one(
+          'vocabularygroups',
+          sql`id <> ${id}::uuid AND LOWER(name) = LOWER(${data.name}) AND is_deleted IS NOT TRUE`,
+        )
       )
-      .exec();
-
-    if (!updated) {
-      throw new NotFoundException(
-        await this.i18n.t('vocabulary-group.GROUP_NOT_FOUND', { lang }),
-      );
+        await this.conflict();
     }
-    return updated;
+    if (input.slug || input.name)
+      data.slug = await this.uniqueSlug(input.slug?.trim() || input.name!, id);
+    const updated = await this.repository.patch(
+      'vocabularygroups',
+      sql`id = ${id}::uuid AND is_deleted IS NOT TRUE`,
+      data,
+    );
+    return updated ?? this.missing();
   }
-
-  async remove(id: string): Promise<VocabularyGroup> {
-    const lang = this.getLang();
-    const group = await this.vocabularyGroupModel.findOne({ _id: id, isDeleted: { $ne: true } });
-    if (!group) {
-      throw new NotFoundException(
-        await this.i18n.t('vocabulary-group.GROUP_NOT_FOUND', { lang }),
+  async toggleActive(id: string, isActive?: boolean) {
+    const group = await this.findOne(id);
+    const updated = await this.repository.patch(
+      'vocabularygroups',
+      sql`id = ${id}::uuid AND is_deleted IS NOT TRUE`,
+      { isActive: isActive ?? !group.isActive },
+    );
+    return updated ?? this.missing();
+  }
+  async remove(id: string) {
+    return this.repository.transaction(async (repository) => {
+      const group = await repository.one(
+        'vocabularygroups',
+        sql`id = ${id}::uuid AND is_deleted IS NOT TRUE`,
       );
-    }
-
-    const timestamp = Date.now();
-    const deletedName = `${group.name}_deleted_${timestamp}`;
-    const deletedSlug = `${group.slug}_deleted_${timestamp}`;
-
-    const deletedGroup = await this.vocabularyGroupModel
-      .findByIdAndUpdate(
-        id,
+      if (!group) return this.missing();
+      const timestamp = Date.now();
+      const deleted = await repository.patch(
+        'vocabularygroups',
+        sql`id = ${id}::uuid AND is_deleted IS NOT TRUE`,
         {
           isDeleted: true,
-          name: deletedName,
-          slug: deletedSlug },
-        { returnDocument: 'after' },
-      )
-      .exec();
-
-    // Detach all collections assigned to this group
-    await this.collectionModel
-      .updateMany({ groupId: new PgId(id) }, { $unset: { groupId: 1 } })
-      .exec();
-
-    return deletedGroup!;
-  }
-
-  async restore(id: string): Promise<VocabularyGroup> {
-    const lang = this.getLang();
-    const restored = await this.vocabularyGroupModel
-      .findOneAndUpdate({ _id: id }, { isDeleted: false }, { returnDocument: 'after' })
-      .exec();
-
-    if (!restored) {
-      throw new NotFoundException(
-        await this.i18n.t('vocabulary-group.GROUP_NOT_FOUND', { lang }),
+          name: `${group.name}_deleted_${timestamp}`,
+          slug: `${group.slug}_deleted_${timestamp}`,
+        },
       );
-    }
-    return restored;
+      if (!deleted) return this.missing();
+      await repository.patch('collections', sql`group_id = ${id}::uuid`, {
+        groupId: null,
+      });
+      return deleted;
+    });
   }
-
-  async reorderGroups(items: { id: string; order: number }[]): Promise<void> {
-    const operations = items.map((item) => ({
-      updateOne: {
-        filter: { _id: new PgId(item.id) },
-        update: { $set: { order: item.order } } } }));
-    if (operations.length > 0) {
-      await this.vocabularyGroupModel.bulkWrite(operations);
-    }
+  async restore(id: string) {
+    return (
+      (await this.repository.patch('vocabularygroups', sql`id = ${id}::uuid`, {
+        isDeleted: false,
+      })) ?? this.missing()
+    );
+  }
+  reorderGroups(items: { id: string; order: number }[]) {
+    return this.repository.reorder('vocabularygroups', items);
   }
 }

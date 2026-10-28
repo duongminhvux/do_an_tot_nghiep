@@ -2,7 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import {
   InjectPgConnection,
   type PgConnection,
-} from '../../postgres/compat.js';
+} from '../../postgres/connection.js';
 import { ACTIVE_TIME_MAX_SLICE_MS } from '@repo/shared-types/active-time';
 import type { ActiveTimePulse } from '@repo/shared-types/active-time';
 

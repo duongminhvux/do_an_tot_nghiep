@@ -11,7 +11,7 @@ import {
 import {
   InjectPgConnection,
   type PgConnection,
-} from '../../postgres/compat.js';
+} from '../../postgres/connection.js';
 import { serviceRole } from '../../postgres/ownership.js';
 import { publicQuestion } from '../assessment/attempts/attempts.service.js';
 import type { SnapshotQuestion } from '../assessment/attempts/attempt.types.js';

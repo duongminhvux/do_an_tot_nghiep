@@ -1,10 +1,10 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { InjectPgModel, PgEntity, PgSchemaFactory, PgField } from '../../../postgres/compat.js';
+import { InjectPgModel, PgSchemaFactory, PgField } from '../../../postgres/compat.js';
 import { type Model, PgSchemaDefinition } from '../../../postgres/compat.js';
 import { createHash } from 'node:crypto';
 import { PdfAiService } from './pdf-ai.service.js';
 
-@PgEntity({ timestamps: true, collection: 'pdf_ai_correction_events' })
+
 export class PdfAiCorrectionEvent {
   @PgField({ required: true, unique: true }) eventId: string;
   @PgField({ type: PgSchemaDefinition.Types.Mixed, required: true }) payload: Record<string, any>;

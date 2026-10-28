@@ -1,11 +1,10 @@
 import { PgId } from '../../../postgres/compat.js';
-import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
+import { PgField, PgSchemaFactory } from '../../../postgres/compat.js';
 import { type PgDocument } from '../../../postgres/compat.js';
 import { Collection } from '../collections/collection.schema.js';
 
 export type LessonDocument = PgDocument<Lesson>;
 
-@PgEntity({ timestamps: true })
 export class Lesson {
   @PgField({default:'DRAFT'}) publicationStatus: string;
   @PgField({default:1}) publicationRevision: number;
@@ -36,4 +35,3 @@ export class Lesson {
 }
 
 export const LessonSchema = PgSchemaFactory.createForClass(Lesson);
-LessonSchema.index({ collectionId: 1, slug: 1 }, { unique: true });

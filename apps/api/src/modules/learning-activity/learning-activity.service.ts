@@ -4,7 +4,7 @@ import { PgId, InjectPgConnection, type PgConnection } from '../../postgres/comp
 import { randomUUID } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectPgModel } from '../../postgres/compat.js';
-import { Model } from '../../postgres/compat.js';
+import type { Model } from '../../postgres/compat.js';
 import {
   DAILY_GOAL_XP,
   LEARNING_MODULES } from '@repo/shared-types/learning-xp';

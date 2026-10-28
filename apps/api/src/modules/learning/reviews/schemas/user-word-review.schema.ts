@@ -1,11 +1,11 @@
 import { PgId } from '../../../../postgres/compat.js';
-import { PgField, PgEntity, PgSchemaFactory } from '../../../../postgres/compat.js';
+import { PgField, PgSchemaFactory } from '../../../../postgres/compat.js';
 import { type PgDocument } from '../../../../postgres/compat.js';
 
 export type UserWordReviewDocument = PgDocument<UserWordReview>;
 
 export class Review {}
-@PgEntity({ timestamps: true })
+
 export class UserWordReview {
   @PgField({
     type: PgId,
@@ -56,12 +56,3 @@ export class UserWordReview {
 
 export const UserWordReviewSchema =
   PgSchemaFactory.createForClass(UserWordReview);
-
-UserWordReviewSchema.index(
-  { userId: 1, wordId: 1 },
-  { unique: true },
-);
-
-UserWordReviewSchema.index({
-  userId: 1,
-  nextReviewAt: 1 });

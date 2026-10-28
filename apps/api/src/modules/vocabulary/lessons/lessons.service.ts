@@ -1,34 +1,39 @@
-import { PgId } from '../../../postgres/compat.js';
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectPgModel } from '../../../postgres/compat.js';
-import { type Model } from '../../../postgres/compat.js';
+﻿import { Injectable, NotFoundException } from '@nestjs/common';
 import { I18nContext, I18nService } from 'nestjs-i18n';
-import { Lesson, LessonDocument } from './lesson.schema.js';
-import { Section, SectionDocument } from './section.schema.js';
-import { LessonWord, LessonWordDocument } from './lesson-word.schema.js';
+import { ContentSqlRepository } from '../content-sql.repository.js';
+import {
+  first,
+  joinSql,
+  literal,
+  rowData,
+  rows,
+  sql,
+  type Sql,
+} from '../../../postgres/sql.js';
 import { CreateLessonDto } from './dto/create-lesson.dto.js';
 import { UpdateLessonDto } from './dto/update-lesson.dto.js';
 import { CreateSectionDto } from './dto/create-section.dto.js';
 import { UpdateSectionDto } from './dto/update-section.dto.js';
 import { UpdateLessonWordDto } from './dto/update-lesson-word.dto.js';
+import { publicationScope } from '../../publication/publication-scope.js';
 
+const validUuid = (value: string) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 @Injectable()
 export class LessonsService {
   constructor(
-    @InjectPgModel(Lesson.name) private readonly lessonModel: Model<LessonDocument>,
-    @InjectPgModel(Section.name) private readonly sectionModel: Model<SectionDocument>,
-    @InjectPgModel(LessonWord.name) private readonly lessonWordModel: Model<LessonWordDocument>,
+    private readonly repository: ContentSqlRepository,
     private readonly i18n: I18nService,
   ) {}
-
-  private getLang(): string {
-    return I18nContext.current()?.lang || 'vi';
+  private async missing(key = 'LESSON_NOT_FOUND'): Promise<never> {
+    throw new NotFoundException(
+      await this.i18n.t(`lesson.${key}`, {
+        lang: I18nContext.current()?.lang || 'vi',
+      }),
+    );
   }
-
-  private generateSlug(text: string): string {
-    if (!text) return '';
+  private generateSlug(text: string) {
     return text
-      .toString()
       .toLowerCase()
       .trim()
       .normalize('NFD')
@@ -37,505 +42,339 @@ export class LessonsService {
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-');
   }
-
-  async createLesson(createLessonDto: CreateLessonDto): Promise<Lesson> {
-    const collectionIdObj = new PgId(createLessonDto.collectionId);
-    const rawSlug = createLessonDto.slug?.trim() || createLessonDto.title;
-    const baseSlug = this.generateSlug(rawSlug) || 'lesson';
-    let slug = baseSlug;
-    let counter = 1;
+  private async uniqueSlug(
+    table: 'lessons' | 'sections',
+    raw: string,
+    parent: Sql,
+    id: string | null = null,
+  ) {
+    const base =
+      this.generateSlug(raw) || (table === 'lessons' ? 'lesson' : 'section');
+    let slug = base,
+      counter = 1;
+    // PostgreSQL's (collection_id,slug)/(lesson_id,slug) indexes include deleted rows.
     while (
-      await this.lessonModel.exists({
-        collectionId: collectionIdObj,
-        slug,
-        isDeleted: { $ne: true } })
-    ) {
-      slug = `${baseSlug}-${counter++}`;
-    }
-
-    let order = createLessonDto.order;
-    if (order === undefined || order === null || order <= 0) {
-      const count = await this.lessonModel.countDocuments({
-        collectionId: collectionIdObj,
-        isDeleted: { $ne: true } });
-      order = count + 1;
-    }
-
-    const createdLesson = new this.lessonModel({
-      ...createLessonDto,
-      collectionId: collectionIdObj,
-      slug,
-      order });
-    return createdLesson.save();
-  }
-
-  async findAllLessons(collectionId?: string,publicationStatus?:string): Promise<any[]> {
-    const filter: Record<string, any> = { isDeleted: { $ne: true } };
-    if(publicationStatus)filter.publicationStatus=publicationStatus;
-    if (collectionId) {
-      filter.collectionId = new PgId(collectionId);
-    }
-    const lessons = await this.lessonModel
-      .find(filter)
-      .sort({ order: 1, createdAt: -1 })
-      .lean()
-      .exec();
-
-    const lessonIds = lessons.map((l) => l._id);
-    const [wordCounts, sectionCounts] = await Promise.all([
-      this.lessonWordModel.aggregate([
-        { $match: { lessonId: { $in: lessonIds } } },
-        { $group: { _id: '$lessonId', count: { $sum: 1 } } },
-      ]),
-      this.sectionModel.aggregate([
-        { $match: { lessonId: { $in: lessonIds } } },
-        { $group: { _id: '$lessonId', count: { $sum: 1 } } },
-      ]),
-    ]);
-
-    const wordCountMap = new Map(
-      wordCounts.map((wc) => [wc._id.toString(), wc.count]),
-    );
-    const sectionCountMap = new Map(
-      sectionCounts.map((sc) => [sc._id.toString(), sc.count]),
-    );
-
-    return lessons.map((l) => ({
-      ...l,
-      wordsCount: wordCountMap.get(l._id.toString()) || 0,
-      sectionsCount: sectionCountMap.get(l._id.toString()) || 0 }));
-  }
-
-  async findBySlug(slug: string, collectionId?: string): Promise<any> {
-    const lang = this.getLang();
-    const filter: Record<string, any> = { slug, isDeleted: { $ne: true } };
-    if (collectionId && PgId.isValid(collectionId)) {
-      filter.collectionId = new PgId(collectionId);
-    }
-    let lesson = await this.lessonModel.findOne(filter).lean().exec();
-    if (!lesson) {
-      if (PgId.isValid(slug)) {
-        return this.findOneLesson(slug);
-      }
-      throw new NotFoundException(
-        await this.i18n.t('lesson.LESSON_NOT_FOUND', { lang }),
-      );
-    }
-    const [wordsCount, sectionsCount] = await Promise.all([
-      this.lessonWordModel.countDocuments({
-        lessonId: lesson._id }).exec(),
-      this.sectionModel.countDocuments({
-        lessonId: lesson._id }).exec(),
-    ]);
-    return {
-      ...lesson,
-      wordsCount,
-      sectionsCount };
-  }
-
-  async findOneLesson(id: string): Promise<any> {
-    const lang = this.getLang();
-    const lesson = await this.lessonModel.findOne({ _id: id, isDeleted: { $ne: true } }).lean().exec();
-    if (!lesson) {
-      throw new NotFoundException(
-        await this.i18n.t('lesson.LESSON_NOT_FOUND', { lang }),
-      );
-    }
-    const [wordsCount, sectionsCount] = await Promise.all([
-      this.lessonWordModel.countDocuments({
-        lessonId: new PgId(id) }).exec(),
-      this.sectionModel.countDocuments({
-        lessonId: new PgId(id) }).exec(),
-    ]);
-    return {
-      ...lesson,
-      wordsCount,
-      sectionsCount };
-  }
-
-
-  async updateLesson(id: string, updateLessonDto: UpdateLessonDto): Promise<Lesson> {
-    const lang = this.getLang();
-    const updateData: Partial<Lesson> = { ...updateLessonDto } as any;
-    if (updateLessonDto.collectionId) {
-      updateData.collectionId = new PgId(updateLessonDto.collectionId);
-    }
-
-    if (updateLessonDto.slug || updateLessonDto.title) {
-      const existingLesson = await this.findOneLesson(id);
-      const targetColId = updateData.collectionId || existingLesson.collectionId;
-      const rawSlug = updateLessonDto.slug?.trim() || updateLessonDto.title;
-      if (rawSlug) {
-        const baseSlug = this.generateSlug(rawSlug) || 'lesson';
-        let slug = baseSlug;
-        let counter = 1;
-        while (
-          await this.lessonModel.exists({
-            _id: { $ne: id },
-            collectionId: targetColId,
-            slug,
-            isDeleted: { $ne: true } })
-        ) {
-          slug = `${baseSlug}-${counter++}`;
-        }
-        updateData.slug = slug;
-      }
-    }
-
-    const updatedLesson = await this.lessonModel
-      .findOneAndUpdate({ _id: id, isDeleted: { $ne: true } }, updateData, { returnDocument: 'after' })
-      .exec();
-    if (!updatedLesson) {
-      throw new NotFoundException(
-        await this.i18n.t('lesson.LESSON_NOT_FOUND', { lang }),
-      );
-    }
-    return updatedLesson;
-  }
-
-  async toggleActive(id: string, isActive?: boolean): Promise<Lesson> {
-    const lang = this.getLang();
-    const lesson = await this.findOneLesson(id);
-    const nextActive = isActive !== undefined ? isActive : !lesson.isActive;
-    const updated = await this.lessonModel
-      .findOneAndUpdate(
-        { _id: id, isDeleted: { $ne: true } },
-        { isActive: nextActive },
-        { returnDocument: 'after' },
+      await this.repository.one(
+        table,
+        sql`(${parent}) AND slug = ${slug} AND id IS DISTINCT FROM ${id}::uuid`,
       )
-      .exec();
-    if (!updated) {
-      throw new NotFoundException(
-        await this.i18n.t('lesson.LESSON_NOT_FOUND', { lang }),
-      );
-    }
-    return updated;
+    )
+      slug = `${base}-${counter++}`;
+    return slug;
   }
-
-  async removeLesson(id: string): Promise<Lesson> {
-    const lang = this.getLang();
-    const deletedLesson = await this.lessonModel
-      .findOneAndUpdate({ _id: id, isDeleted: { $ne: true } }, { isDeleted: true }, { returnDocument: 'after' })
-      .exec();
-    if (!deletedLesson) {
-      throw new NotFoundException(
-        await this.i18n.t('lesson.LESSON_NOT_FOUND', { lang }),
-      );
-    }
-    return deletedLesson;
-  }
-
-  async restore(id: string): Promise<Lesson> {
-    const lang = this.getLang();
-    const restored = await this.lessonModel
-      .findOneAndUpdate({ _id: id }, { isDeleted: false }, { returnDocument: 'after' })
-      .exec();
-    if (!restored) {
-      throw new NotFoundException(
-        await this.i18n.t('lesson.LESSON_NOT_FOUND', { lang }),
-      );
-    }
-    return restored;
-  }
-
-  async reorderLessons(items: { id: string; order: number }[]): Promise<void> {
-    const operations = items.map((item) => ({
-      updateOne: {
-        filter: { _id: new PgId(item.id) },
-        update: { $set: { order: item.order } } } }));
-    if (operations.length > 0) {
-      await this.lessonModel.bulkWrite(operations);
-    }
-  }
-
-  // ==========================
-  // SECTIONS MANAGEMENT
-  // ==========================
-  async createSection(lessonId: string, createSectionDto: CreateSectionDto): Promise<Section> {
-    await this.findOneLesson(lessonId); // Validate lesson exists
-
-    const lessonIdObj = new PgId(lessonId);
-    const rawSlug = createSectionDto.slug?.trim() || createSectionDto.name;
-    const baseSlug = this.generateSlug(rawSlug) || 'section';
-    let slug = baseSlug;
-    let counter = 1;
-    while (
-      await this.sectionModel.exists({
-        lessonId: lessonIdObj,
-        slug })
-    ) {
-      slug = `${baseSlug}-${counter++}`;
-    }
-
-    let order = createSectionDto.order;
-    if (order === undefined || order === null || order <= 0) {
-      const count = await this.sectionModel.countDocuments({
-        lessonId: lessonIdObj });
-      order = count + 1;
-    }
-
-    const section = new this.sectionModel({
-      ...createSectionDto,
-      lessonId: lessonIdObj,
+  async createLesson(input: CreateLessonDto) {
+    const slug = await this.uniqueSlug(
+      'lessons',
+      input.slug?.trim() || input.title,
+      sql`collection_id = ${input.collectionId}::uuid`,
+    );
+    const order =
+      input.order && input.order > 0
+        ? input.order
+        : (await this.repository.count(
+            'lessons',
+            sql`collection_id = ${input.collectionId}::uuid AND is_deleted IS NOT TRUE`,
+          )) + 1;
+    return this.repository.insert('lessons', {
+      ...input,
       slug,
-      order });
-    return section.save();
+      order,
+      isActive: input.isActive ?? true,
+      isDeleted: false,
+    });
   }
-
-  async getSections(lessonId: string): Promise<any[]> {
-    await this.findOneLesson(lessonId);
-
-    const sections = await this.sectionModel
-      .find({ lessonId: new PgId(lessonId) })
-      .sort({ order: 1, createdAt: 1 })
-      .lean()
-      .exec();
-
-    const sectionIds = sections.map((s) => s._id);
-    const wordCounts = await this.lessonWordModel.aggregate([
-      { $match: { sectionId: { $in: sectionIds } } },
-      { $group: { _id: '$sectionId', count: { $sum: 1 } } },
-    ]);
-    const countMap = new Map(wordCounts.map((wc) => [wc._id.toString(), wc.count]));
-
-    return sections.map((s) => ({
-      ...s,
-      wordsCount: countMap.get(s._id.toString()) || 0 }));
+  private async lessons(where: Sql, tail = literal('')) {
+    const learner = publicationScope.getStore() === true;
+    const gate = learner
+      ? literal(
+          "AND l.publication_status = 'PUBLISHED' AND l.is_active IS NOT FALSE",
+        )
+      : literal('');
+    const result = await rows(
+      this.repository.connection,
+      sql`SELECT l.*,
+      (SELECT COUNT(*)::integer FROM public.lessonwords lw WHERE lw.lesson_id = l.id) AS words_count,
+      (SELECT COUNT(*)::integer FROM public.sections s WHERE s.lesson_id = l.id) AS sections_count
+      FROM public.lessons l WHERE l.is_deleted IS NOT TRUE AND (${where}) ${gate} ${tail}`,
+    );
+    return result.map(({ words_count, sections_count, ...row }) => ({
+      ...rowData(row),
+      wordsCount: Number(words_count),
+      sectionsCount: Number(sections_count),
+    }));
   }
-
-  async getSectionById(sectionId: string): Promise<any> {
-    const lang = this.getLang();
-    const section = await this.sectionModel.findById(sectionId).lean().exec();
-    if (!section) {
-      throw new NotFoundException(
-        await this.i18n.t('lesson.SECTION_NOT_FOUND', { lang }),
+  findAllLessons(collectionId?: string, publicationStatus?: string) {
+    return this.lessons(
+      sql`(${collectionId || null}::uuid IS NULL OR l.collection_id = ${collectionId || null}::uuid)
+      AND (${publicationStatus || null}::text IS NULL OR l.publication_status = ${publicationStatus || null})`,
+      literal('ORDER BY l."order" ASC NULLS LAST, l.created_at DESC, l.id'),
+    );
+  }
+  async findBySlug(slug: string, collectionId?: string) {
+    const parent =
+      collectionId && validUuid(collectionId)
+        ? sql`l.collection_id = ${collectionId}::uuid`
+        : literal('TRUE');
+    const lesson = (
+      await this.lessons(
+        sql`l.slug = ${slug} AND (${parent})`,
+        literal('LIMIT 1'),
+      )
+    )[0];
+    if (lesson) return lesson;
+    return validUuid(slug) ? this.findOneLesson(slug) : this.missing();
+  }
+  async findOneLesson(id: string) {
+    return (
+      (await this.lessons(sql`l.id = ${id}::uuid`, literal('LIMIT 1')))[0] ??
+      this.missing()
+    );
+  }
+  async updateLesson(id: string, input: UpdateLessonDto) {
+    const data = { ...input };
+    if (input.slug || input.title) {
+      const existing = await this.findOneLesson(id);
+      data.slug = await this.uniqueSlug(
+        'lessons',
+        input.slug?.trim() || input.title!,
+        sql`collection_id = ${input.collectionId || existing.collectionId}::uuid`,
+        id,
       );
     }
-    const wordsCount = await this.lessonWordModel.countDocuments({
-      sectionId: new PgId(sectionId) }).exec();
+    return (
+      (await this.repository.patch(
+        'lessons',
+        sql`id = ${id}::uuid AND is_deleted IS NOT TRUE`,
+        data,
+      )) ?? this.missing()
+    );
+  }
+  async toggleActive(id: string, isActive?: boolean) {
+    const lesson = await this.findOneLesson(id);
+    return (
+      (await this.repository.patch(
+        'lessons',
+        sql`id = ${id}::uuid AND is_deleted IS NOT TRUE`,
+        { isActive: isActive ?? !lesson.isActive },
+      )) ?? this.missing()
+    );
+  }
+  async removeLesson(id: string) {
+    return (
+      (await this.repository.patch(
+        'lessons',
+        sql`id = ${id}::uuid AND is_deleted IS NOT TRUE`,
+        { isDeleted: true },
+      )) ?? this.missing()
+    );
+  }
+  async restore(id: string) {
+    return (
+      (await this.repository.patch('lessons', sql`id = ${id}::uuid`, {
+        isDeleted: false,
+      })) ?? this.missing()
+    );
+  }
+  reorderLessons(items: { id: string; order: number }[]) {
+    return this.repository.reorder('lessons', items);
+  }
+
+  async createSection(lessonId: string, input: CreateSectionDto) {
+    await this.findOneLesson(lessonId);
+    const slug = await this.uniqueSlug(
+      'sections',
+      input.slug?.trim() || input.name,
+      sql`lesson_id = ${lessonId}::uuid`,
+    );
+    const order =
+      input.order && input.order > 0
+        ? input.order
+        : (await this.repository.count(
+            'sections',
+            sql`lesson_id = ${lessonId}::uuid`,
+          )) + 1;
+    return this.repository.insert('sections', {
+      ...input,
+      lessonId,
+      slug,
+      order,
+    });
+  }
+  async getSections(lessonId: string) {
+    await this.findOneLesson(lessonId);
+    const result = await rows(
+      this.repository.connection,
+      sql`SELECT s.*,
+      (SELECT COUNT(*)::integer FROM public.lessonwords lw WHERE lw.section_id = s.id) AS words_count
+      FROM public.sections s WHERE s.lesson_id = ${lessonId}::uuid ORDER BY s."order" ASC NULLS LAST, s.created_at ASC, s.id`,
+    );
+    return result.map(({ words_count, ...row }) => ({
+      ...rowData(row),
+      wordsCount: Number(words_count),
+    }));
+  }
+  async getSectionById(sectionId: string) {
+    const section = await this.repository.one(
+      'sections',
+      sql`id = ${sectionId}::uuid`,
+    );
+    if (!section) return this.missing('SECTION_NOT_FOUND');
     return {
       ...section,
-      wordsCount };
+      wordsCount: await this.repository.count(
+        'lessonwords',
+        sql`section_id = ${sectionId}::uuid`,
+      ),
+    };
   }
-
-  async updateSection(sectionId: string, updateSectionDto: UpdateSectionDto): Promise<Section> {
-    const lang = this.getLang();
-    const existing = await this.sectionModel.findById(sectionId).exec();
-    if (!existing) {
-      throw new NotFoundException(
-        await this.i18n.t('lesson.SECTION_NOT_FOUND', { lang }),
+  async updateSection(sectionId: string, input: UpdateSectionDto) {
+    const existing = await this.getSectionById(sectionId);
+    const data = { ...input };
+    if (input.name || input.slug)
+      data.slug = await this.uniqueSlug(
+        'sections',
+        input.slug?.trim() || input.name || existing.name,
+        sql`lesson_id = ${existing.lessonId}::uuid`,
+        sectionId,
       );
-    }
-
-    const updateData: any = { ...updateSectionDto };
-
-    if (updateSectionDto.name || updateSectionDto.slug) {
-      const rawSlug = updateSectionDto.slug?.trim() || updateSectionDto.name || existing.name;
-      const baseSlug = this.generateSlug(rawSlug) || 'section';
-      let slug = baseSlug;
-      let counter = 1;
-      while (
-        await this.sectionModel.exists({
-          _id: { $ne: sectionId },
-          lessonId: existing.lessonId,
-          slug })
-      ) {
-        slug = `${baseSlug}-${counter++}`;
-      }
-      updateData.slug = slug;
-    }
-
-    const updated = await this.sectionModel
-      .findByIdAndUpdate(sectionId, updateData, { returnDocument: 'after' })
-      .exec();
-    if (!updated) {
-      throw new NotFoundException(
-        await this.i18n.t('lesson.SECTION_NOT_FOUND', { lang }),
-      );
-    }
-    return updated;
+    return (
+      (await this.repository.patch(
+        'sections',
+        sql`id = ${sectionId}::uuid`,
+        data,
+      )) ?? this.missing('SECTION_NOT_FOUND')
+    );
   }
-
   async deleteSection(sectionId: string): Promise<void> {
-    const lang = this.getLang();
-    const res = await this.sectionModel.findByIdAndDelete(sectionId).exec();
-    if (!res) {
-      throw new NotFoundException(
-        await this.i18n.t('lesson.SECTION_NOT_FOUND', { lang }),
+    await this.repository.transaction(async (repository) => {
+      const deleted = await first(
+        repository.connection,
+        sql`DELETE FROM public.sections WHERE id = ${sectionId}::uuid RETURNING id`,
       );
-    }
-    // Unassign sectionId for words that belonged to this section
-    await this.lessonWordModel
-      .updateMany(
-        { sectionId: new PgId(sectionId) },
-        { $unset: { sectionId: 1 } },
-      )
-      .exec();
+      if (!deleted) return this.missing('SECTION_NOT_FOUND');
+      await repository.patch(
+        'lessonwords',
+        sql`section_id = ${sectionId}::uuid`,
+        { sectionId: null },
+      );
+    });
   }
-
-  async reorderSections(lessonId: string, items: { id: string; order: number }[]): Promise<void> {
-    const operations = items.map((item) => ({
-      updateOne: {
-        filter: { _id: new PgId(item.id), lessonId: new PgId(lessonId) },
-        update: { $set: { order: item.order } } } }));
-    if (operations.length > 0) {
-      await this.sectionModel.bulkWrite(operations);
-    }
+  reorderSections(lessonId: string, items: { id: string; order: number }[]) {
+    return this.repository.reorder(
+      'sections',
+      items,
+      sql`target.lesson_id = ${lessonId}::uuid`,
+    );
   }
-
-  // ==========================
-  // LESSON WORDS MANAGEMENT
-  // ==========================
   async addWordsToLesson(
     lessonId: string,
     wordIds: string[],
     sectionId?: string,
-  ): Promise<LessonWord[]> {
-    await this.findOneLesson(lessonId); // Validate lesson existence
-
-    const lessonPgId = new PgId(lessonId);
-    const sectionPgId = sectionId ? new PgId(sectionId) : undefined;
-
-    const baseFilter: any = { lessonId: lessonPgId };
-    if (sectionPgId) {
-      baseFilter.sectionId = sectionPgId;
-    }
-    const currentCount = await this.lessonWordModel.countDocuments(baseFilter);
-
-    const operations = wordIds.map((wordId, index) => {
-      const setOnInsert: any = {
-        lessonId: lessonPgId,
-        wordId: new PgId(wordId),
-        order: currentCount + index + 1 };
-
-      const updateDoc: any = {
-        $setOnInsert: setOnInsert };
-
-      if (sectionPgId) {
-        updateDoc.$set = { sectionId: sectionPgId };
+  ) {
+    await this.findOneLesson(lessonId);
+    await this.repository.transaction(async (repository) => {
+      // Serialize the count/order assignment for this lesson with concurrent additions.
+      await rows(
+        repository.connection,
+        sql`SELECT id FROM public.lessons WHERE id = ${lessonId}::uuid FOR UPDATE`,
+      );
+      if (sectionId) {
+        const section = await repository.one(
+          'sections',
+          sql`id = ${sectionId}::uuid AND lesson_id = ${lessonId}::uuid`,
+        );
+        if (!section) return this.missing('SECTION_NOT_FOUND');
       }
-
-      return {
-        updateOne: {
-          filter: { lessonId: lessonPgId, wordId: new PgId(wordId) },
-          update: updateDoc,
-          upsert: true } };
+      const count = await repository.count(
+        'lessonwords',
+        sql`lesson_id = ${lessonId}::uuid AND (${sectionId || null}::uuid IS NULL OR section_id = ${sectionId || null}::uuid)`,
+      );
+      const unique = [...new Set(wordIds)];
+      if (!unique.length) return;
+      await rows(
+        repository.connection,
+        sql`INSERT INTO public.lessonwords (lesson_id, word_id, section_id, "order")
+        SELECT ${lessonId}::uuid, input.word_id, ${sectionId || null}::uuid, ${count}::double precision + input.ordinality
+        FROM unnest(${unique}::uuid[]) WITH ORDINALITY AS input(word_id, ordinality)
+        ON CONFLICT (lesson_id, word_id) DO UPDATE SET
+          section_id = CASE WHEN ${sectionId || null}::uuid IS NULL THEN lessonwords.section_id ELSE EXCLUDED.section_id END,
+          payload = lessonwords.payload - 'sectionId'`,
+      );
     });
-
-    if (operations.length > 0) {
-      await this.lessonWordModel.bulkWrite(operations);
-    }
-
     return this.getWordsInLesson(lessonId, sectionId);
   }
-
-  async getWordsInLesson(lessonId: string, sectionId?: string): Promise<LessonWord[]> {
-    await this.findOneLesson(lessonId); // Validate lesson existence
-
-    const filter: any = { lessonId: new PgId(lessonId) };
-    if (sectionId) {
-      filter.sectionId = new PgId(sectionId);
-    }
-
-    return this.lessonWordModel
-      .find(filter)
-      .populate('wordId')
-      .populate('sectionId')
-      .sort({ createdAt: -1, _id: -1 })
-      .exec();
+  private async populatedWords(where: Sql) {
+    const gate =
+      publicationScope.getStore() === true
+        ? literal(
+            "AND w.publication_status = 'PUBLISHED' AND w.is_deleted IS NOT TRUE AND w.is_active IS NOT FALSE",
+          )
+        : literal('');
+    const result = await rows(
+      this.repository.connection,
+      sql`SELECT lw.*, to_jsonb(w) AS joined_word, to_jsonb(s) AS joined_section
+      FROM public.lessonwords lw LEFT JOIN public.words w ON w.id = lw.word_id ${gate}
+      LEFT JOIN public.sections s ON s.id = lw.section_id WHERE ${where}
+      ORDER BY lw.created_at DESC, lw.id DESC`,
+    );
+    return result.map(({ joined_word, joined_section, ...row }) => ({
+      ...rowData(row),
+      wordId: joined_word ? rowData(joined_word) : null,
+      sectionId: joined_section ? rowData(joined_section) : null,
+    }));
   }
-
+  async getWordsInLesson(lessonId: string, sectionId?: string) {
+    await this.findOneLesson(lessonId);
+    return this.populatedWords(
+      sql`lw.lesson_id = ${lessonId}::uuid AND (${sectionId || null}::uuid IS NULL OR lw.section_id = ${sectionId || null}::uuid)`,
+    );
+  }
   async updateLessonWord(
     lessonId: string,
     wordId: string,
-    updateDto: UpdateLessonWordDto,
-  ): Promise<LessonWord> {
-    const updateSet: any = {};
-    const updateUnset: any = {};
-
-    if (updateDto.sectionId !== undefined) {
-      if (updateDto.sectionId) {
-        updateSet.sectionId = new PgId(updateDto.sectionId);
-      } else {
-        updateUnset.sectionId = 1;
-      }
-    }
-    if (updateDto.order !== undefined) {
-      updateSet.order = updateDto.order;
-    }
-    if (updateDto.customNote !== undefined) {
-      updateSet.customNote = updateDto.customNote;
-    }
-
-    const query = {
-      lessonId: new PgId(lessonId),
-      wordId: new PgId(wordId) };
-
-    const updatePayload: any = {};
-    if (Object.keys(updateSet).length > 0) updatePayload.$set = updateSet;
-    if (Object.keys(updateUnset).length > 0) updatePayload.$unset = updateUnset;
-
-    const updated = await this.lessonWordModel
-      .findOneAndUpdate(query, updatePayload, { returnDocument: 'after' })
-      .populate('wordId')
-      .populate('sectionId')
-      .exec();
-
-    if (!updated) {
-      const lang = this.getLang();
-      throw new NotFoundException(
-        await this.i18n.t('lesson.WORD_NOT_IN_LESSON', { lang }),
-      );
-    }
-    return updated;
+    input: UpdateLessonWordDto,
+  ) {
+    const data = { ...input };
+    if (input.sectionId !== undefined) data.sectionId = input.sectionId || null;
+    const updated = await this.repository.patch(
+      'lessonwords',
+      sql`lesson_id = ${lessonId}::uuid AND word_id = ${wordId}::uuid`,
+      data,
+    );
+    if (!updated) return this.missing('WORD_NOT_IN_LESSON');
+    return (
+      await this.populatedWords(
+        sql`lw.lesson_id = ${lessonId}::uuid AND lw.word_id = ${wordId}::uuid`,
+      )
+    )[0];
   }
-
   async reorderLessonWords(
     lessonId: string,
     items: { wordId: string; order: number; sectionId?: string | null }[],
   ): Promise<void> {
-    const lessonPgId = new PgId(lessonId);
-    const operations = items.map((item) => {
-      const updateSet: any = { order: item.order };
-      const updateUnset: any = {};
-
-      if (item.sectionId !== undefined) {
-        if (item.sectionId) {
-          updateSet.sectionId = new PgId(item.sectionId);
-        } else {
-          updateUnset.sectionId = 1;
-        }
-      }
-
-      const updatePayload: any = { $set: updateSet };
-      if (Object.keys(updateUnset).length > 0) {
-        updatePayload.$unset = updateUnset;
-      }
-
-      return {
-        updateOne: {
-          filter: { lessonId: lessonPgId, wordId: new PgId(item.wordId) },
-          update: updatePayload } };
-    });
-
-    if (operations.length > 0) {
-      await this.lessonWordModel.bulkWrite(operations);
-    }
+    if (!items.length) return;
+    const unique = [
+      ...new Map(items.map((item) => [item.wordId, item])).values(),
+    ].map((item) => ({
+      word_id: item.wordId,
+      order: item.order,
+      section_id: item.sectionId || null,
+      change_section: item.sectionId !== undefined,
+    }));
+    await rows(
+      this.repository.connection,
+      sql`UPDATE public.lessonwords lw SET "order" = input."order",
+      section_id = CASE WHEN input.change_section THEN input.section_id ELSE lw.section_id END,
+      payload = lw.payload - 'order' - CASE WHEN input.change_section THEN 'sectionId' ELSE 'order' END
+      FROM jsonb_to_recordset(${JSON.stringify(unique)}::jsonb) AS input(word_id uuid, "order" double precision, section_id uuid, change_section boolean)
+      WHERE lw.lesson_id = ${lessonId}::uuid AND lw.word_id = input.word_id`,
+    );
   }
-
   async removeWordFromLesson(lessonId: string, wordId: string): Promise<void> {
-    const result = await this.lessonWordModel
-      .deleteOne({
-        lessonId: new PgId(lessonId),
-        wordId: new PgId(wordId) })
-      .exec();
-
-    if (result.deletedCount === 0) {
-      const lang = this.getLang();
-      throw new NotFoundException(
-        await this.i18n.t('lesson.WORD_NOT_IN_LESSON', { lang }),
-      );
-    }
+    const removed = await first(
+      this.repository.connection,
+      sql`DELETE FROM public.lessonwords WHERE lesson_id = ${lessonId}::uuid AND word_id = ${wordId}::uuid RETURNING id`,
+    );
+    if (!removed) return this.missing('WORD_NOT_IN_LESSON');
   }
 }
-

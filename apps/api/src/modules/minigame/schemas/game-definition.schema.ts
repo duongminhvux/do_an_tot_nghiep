@@ -2,11 +2,11 @@ import type {
   WordShooterSettings,
   MeaningTypingSettings,
   TypingRushSettings } from '../game-registry.js';
-import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
+import { PgField, PgSchemaFactory } from '../../../postgres/compat.js';
 export enum GameCategory {
   SOLO = 'SOLO',
   MULTIPLAYER = 'MULTIPLAYER' }
-@PgEntity({ timestamps: true, versionKey: false })
+
 export class GameDefinition {
   @PgField({ type: Object, default: null })
   settings:
@@ -30,4 +30,3 @@ export class GameDefinition {
 }
 export const GameDefinitionSchema =
   PgSchemaFactory.createForClass(GameDefinition);
-GameDefinitionSchema.index({ isActive: 1, order: 1, _id: 1 });

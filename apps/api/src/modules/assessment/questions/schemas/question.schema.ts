@@ -1,11 +1,10 @@
 import { PgId } from '../../../../postgres/compat.js';
-import { PgField, PgEntity, PgSchemaFactory } from '../../../../postgres/compat.js';
+import { PgField, PgSchemaFactory } from '../../../../postgres/compat.js';
 import { type PgDocument } from '../../../../postgres/compat.js';
 import { GeneratedAudioMetadata, GeneratedAudioMetadataSchema } from '../../../../common/media/generated-audio.schema.js';
 
 export type QuestionDocument = PgDocument<Question>;
 
-@PgEntity({ timestamps: true })
 export class Question {
   @PgField({
     type: PgId,
@@ -103,7 +102,3 @@ export class Question {
 }
 
 export const QuestionSchema = PgSchemaFactory.createForClass(Question);
-QuestionSchema.index(
-  { examId: 1, importBatchId: 1, importIndex: 1 },
-  { unique: true, partialFilterExpression: { importBatchId: { $type: 'string' } } },
-);

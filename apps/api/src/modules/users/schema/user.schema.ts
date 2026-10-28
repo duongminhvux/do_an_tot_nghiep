@@ -1,4 +1,4 @@
-import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
+import { PgField, PgSchemaFactory } from '../../../postgres/compat.js';
 import { IsEmail, IsEnum, IsOptional, IsUrl } from 'class-validator';
 import type { PgDocument } from '../../../postgres/compat.js';
 
@@ -8,7 +8,6 @@ export enum AuthProvider {
     LOCAL = 'local',
     GOOGLE = 'google' }
 
-@PgEntity({ timestamps: true })
 export class User {
     @IsEmail()
     @PgField({ unique: true, required: true, lowercase: true, trim: true })

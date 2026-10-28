@@ -1,10 +1,9 @@
 import { PgId } from '../../../postgres/compat.js';
-import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
+import { PgField, PgSchemaFactory } from '../../../postgres/compat.js';
 import { type PgDocument } from '../../../postgres/compat.js';
 
 export type ArenaProfileDocument = PgDocument<ArenaProfile>;
 
-@PgEntity({ timestamps: true })
 /** Hồ sơ xếp hạng và thống kê tích lũy của một người chơi Arena. */
 export class ArenaProfile {
   @PgField({

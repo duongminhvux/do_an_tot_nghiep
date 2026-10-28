@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { InjectPgConnection } from '../../postgres/compat.js';
+import { InjectPgConnection } from '../../postgres/connection.js';
 import {makePgModel,type PgConnection} from '../../postgres/compat.js';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';

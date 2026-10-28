@@ -1,4 +1,4 @@
-import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
+import { PgField, PgSchemaFactory } from '../../../postgres/compat.js';
 import type { PgDocument } from '../../../postgres/compat.js';
 import { GeneratedAudioMetadata, GeneratedAudioMetadataSchema } from '../../../common/media/generated-audio.schema.js';
 
@@ -7,7 +7,7 @@ export type WordDocument = PgDocument<Word>;
 /**
  * IPA
  */
-@PgEntity({ _id: false })
+
 export class WordIpa {
   @PgField()
   us?: string;
@@ -21,7 +21,7 @@ export const WordIpaSchema = PgSchemaFactory.createForClass(WordIpa);
 /**
  * Audio
  */
-@PgEntity({ _id: false })
+
 export class WordAudio {
   @PgField()
   us?: string;
@@ -31,7 +31,7 @@ export class WordAudio {
 }
 
 export const WordAudioSchema = PgSchemaFactory.createForClass(WordAudio);
-@PgEntity({ _id: false })
+
 export class WordAudioMetadata {
   @PgField({ type: GeneratedAudioMetadataSchema, default: {} })
   us?: GeneratedAudioMetadata;
@@ -42,11 +42,10 @@ export class WordAudioMetadata {
 
 export const WordAudioMetadataSchema = PgSchemaFactory.createForClass(WordAudioMetadata);
 
-
 /**
  * Example
  */
-@PgEntity({ _id: false })
+
 export class WordExample {
   @PgField({ default: '' })
   en?: string;
@@ -60,7 +59,7 @@ export const WordExampleSchema = PgSchemaFactory.createForClass(WordExample);
 /**
  * Meaning
  */
-@PgEntity({ _id: false })
+
 export class WordMeaning {
   @PgField({ default: '' })
   definition?: string;
@@ -85,7 +84,7 @@ export const WordMeaningSchema = PgSchemaFactory.createForClass(WordMeaning);
 /**
  * Part of speech
  */
-@PgEntity({ _id: false })
+
 export class WordPart {
   @PgField({ required: true })
   partOfSpeech: string;
@@ -101,8 +100,7 @@ export const WordPartSchema = PgSchemaFactory.createForClass(WordPart);
 /**
  * Word
  */
-@PgEntity({
-  timestamps: true })
+
 export class Word {
   @PgField({default:'DRAFT'}) publicationStatus: string;
   @PgField({default:1}) publicationRevision: number;

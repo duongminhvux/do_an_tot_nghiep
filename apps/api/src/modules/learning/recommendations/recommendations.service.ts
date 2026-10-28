@@ -8,7 +8,7 @@ import {
 import {
   InjectPgConnection,
   type PgConnection,
-} from '../../../postgres/compat.js';
+} from '../../../postgres/connection.js';
 import { serviceUrl } from '../../../postgres/ownership.js';
 import {mistakeSource} from '../mistakes/mistake-source-client.js';
 

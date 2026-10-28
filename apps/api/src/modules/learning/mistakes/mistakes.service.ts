@@ -8,7 +8,7 @@ import type {
 import {
   InjectPgConnection,
   type PgConnection,
-} from '../../../postgres/compat.js';
+} from '../../../postgres/connection.js';
 import { mistakeSource } from './mistake-source-client.js';
 import type { MistakesQueryDto } from './mistakes.dto.js';
 

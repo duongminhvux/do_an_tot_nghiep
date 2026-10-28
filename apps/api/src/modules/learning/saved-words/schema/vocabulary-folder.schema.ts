@@ -1,10 +1,9 @@
 import { PgId } from '../../../../postgres/compat.js';
-import { PgField, PgEntity, PgSchemaFactory } from '../../../../postgres/compat.js';
+import { PgField, PgSchemaFactory } from '../../../../postgres/compat.js';
 import { type PgDocument } from '../../../../postgres/compat.js';
 
 export type VocabularyFolderDocument = PgDocument<VocabularyFolder>;
 
-@PgEntity({ timestamps: true })
 export class VocabularyFolder {
   @PgField({
     type: PgId,
@@ -28,9 +27,3 @@ export class VocabularyFolder {
 
 export const VocabularyFolderSchema =
   PgSchemaFactory.createForClass(VocabularyFolder);
-
-VocabularyFolderSchema.index({ userId: 1, name: 1 }, { unique: true });
-VocabularyFolderSchema.index(
-  { userId: 1, slug: 1 },
-  { unique: true, sparse: true },
-);

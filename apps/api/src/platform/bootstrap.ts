@@ -14,7 +14,7 @@ import { RedisIoAdapter } from '../common/socket/redis-io.adapter.js';
 import { MediaStorageService } from '../common/media/media-storage.service.js';
 import { TransformInterceptor } from '../common/interceptors/transform.interceptor.js';
 import { HttpExceptionFilter } from '../common/filters/http-exception.filter.js';
-import { getConnectionToken,type PgConnection } from '../postgres/compat.js';
+import { getConnectionToken,type PgConnection } from '../postgres/connection.js';
 import { assertSchemaReady } from '../postgres/migrations.js';
 
 export async function bootstrapService(role:OwnedService,modules:Type<unknown>[]){

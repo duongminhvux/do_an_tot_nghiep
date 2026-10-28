@@ -1,5 +1,5 @@
 import { PgId } from '../../../postgres/compat.js';
-import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
+import { PgField, PgSchemaFactory } from '../../../postgres/compat.js';
 import { PgSchemaDefinition } from '../../../postgres/compat.js';
 import { LEARNING_MODULES } from '@repo/shared-types/learning-xp';
 import type { LearningModule } from '@repo/shared-types/learning-xp';
@@ -19,10 +19,7 @@ export type LearningActivityType = (typeof LEARNING_ACTIVITY_TYPES)[number];
  * One completed learning activity in any module. This is the single source for
  * the learner home page (XP, streak, heatmap, recent activity).
  */
-@PgEntity({
-  collection: 'learning_activities',
-  timestamps: { createdAt: true, updatedAt: false },
-  versionKey: false })
+
 export class LearningActivity {
   @PgField({ type: PgId, ref: 'User', required: true })
   userId: PgId;
@@ -60,6 +57,3 @@ export class LearningActivity {
 
 export const LearningActivitySchema =
   PgSchemaFactory.createForClass(LearningActivity);
-LearningActivitySchema.index({ userId: 1, sourceKey: 1 }, { unique: true });
-LearningActivitySchema.index({ userId: 1, occurredAt: -1 });
-LearningActivitySchema.index({ userId: 1, module: 1, occurredAt: -1 });

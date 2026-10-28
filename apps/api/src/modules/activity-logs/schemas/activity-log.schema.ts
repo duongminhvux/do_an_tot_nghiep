@@ -1,5 +1,5 @@
 import { PgId } from '../../../postgres/compat.js';
-import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
+import { PgField, PgSchemaFactory } from '../../../postgres/compat.js';
 import { type PgDocument, PgSchemaDefinition } from '../../../postgres/compat.js';
 import { User } from '../../users/schema/user.schema.js';
 
@@ -8,7 +8,6 @@ export type ActivityLogDocument = PgDocument<ActivityLog>;
 import { ActivityCategory } from '../../../common/contracts/activity.types.js';
 export { ActivityAction, ActivityCategory } from '../../../common/contracts/activity.types.js';
 
-@PgEntity({ timestamps: true })
 export class ActivityLog {
   @PgField({ type: PgId, ref: User.name, required: false, index: true })
   userId?: PgId;
@@ -58,11 +57,3 @@ export class ActivityLog {
 }
 
 export const ActivityLogSchema = PgSchemaFactory.createForClass(ActivityLog);
-
-// Compound indexes for fast admin querying and filtering
-ActivityLogSchema.index({ createdAt: -1 });
-ActivityLogSchema.index({ userId: 1, createdAt: -1 });
-ActivityLogSchema.index({ category: 1, createdAt: -1 });
-ActivityLogSchema.index({ action: 1, createdAt: -1 });
-ActivityLogSchema.index({ userEmail: 1, createdAt: -1 });
-ActivityLogSchema.index({ status: 1, createdAt: -1 });

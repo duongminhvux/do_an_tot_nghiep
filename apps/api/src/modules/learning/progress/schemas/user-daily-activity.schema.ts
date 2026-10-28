@@ -1,10 +1,9 @@
 import { PgId } from '../../../../postgres/compat.js';
-import { PgField, PgEntity, PgSchemaFactory } from '../../../../postgres/compat.js';
+import { PgField, PgSchemaFactory } from '../../../../postgres/compat.js';
 import { type PgDocument } from '../../../../postgres/compat.js';
 
 export type UserDailyActivityDocument = PgDocument<UserDailyActivity>;
 
-@PgEntity({ timestamps: true })
 export class UserDailyActivity {
   @PgField({
     type: PgId,
@@ -41,5 +40,3 @@ export class UserDailyActivity {
 
 export const UserDailyActivitySchema =
   PgSchemaFactory.createForClass(UserDailyActivity);
-
-UserDailyActivitySchema.index({ userId: 1, date: 1 }, { unique: true });

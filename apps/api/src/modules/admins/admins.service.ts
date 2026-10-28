@@ -1,44 +1,42 @@
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import {
-  Injectable,
-  UnauthorizedException } from '@nestjs/common';
-import { InjectPgModel } from '../../postgres/compat.js';
-import type { Model } from '../../postgres/compat.js';
-import { Admin, AdminDocument } from './schema/admin.schema.js';
+  InjectPgConnection,
+  type PgConnection,
+} from '../../postgres/connection.js';
+import { first, rowData, sql, type Sql } from '../../postgres/sql.js';
+import type { AdminRecord } from './admin.types.js';
 import { comparePassword } from '../../common/bcrypt.js';
 import { I18nService } from 'nestjs-i18n';
 
 @Injectable()
 export class AdminsService {
   constructor(
-    @InjectPgModel(Admin.name) private readonly adminModel: Model<Admin>,
+    @InjectPgConnection() private readonly connection: PgConnection,
     private readonly i18n: I18nService,
   ) {}
 
-  async findByEmail(email: string): Promise<AdminDocument | null> {
-    const admin = await this.adminModel.findOne({ email: email.toLowerCase() });
-    if (!admin) return null;
-    return admin.toObject() as AdminDocument;
+  private async read(where: Sql): Promise<AdminRecord | null> {
+    const row = await first(
+      this.connection,
+      sql`SELECT * FROM public.admins WHERE ${where} LIMIT 1`,
+    );
+    return row ? rowData<AdminRecord>(row) : null;
+  }
+  findByEmail(email: string) {
+    return this.read(sql`email = ${email.toLowerCase()}`);
+  }
+  findById(id: string) {
+    return this.read(sql`id = ${id}::uuid`);
+  }
+  findByUsername(username: string) {
+    return this.read(sql`username = ${username}`);
   }
 
-  async findById(id: string): Promise<AdminDocument | null> {
-    const admin = await this.adminModel.findById(id);
-    if (!admin) return null;
-    return admin.toObject() as AdminDocument;
-  }
-
-  async findByUsername(username: string): Promise<AdminDocument | null> {
-    const admin = await this.adminModel.findOne({ username });
-    if (!admin) return null;
-    return admin.toObject() as AdminDocument;
-  }
-
-  async validateAdmin(
-    identifier: string,
-    pass: string,
-  ): Promise<AdminDocument> {
+  async validateAdmin(identifier: string, pass: string): Promise<AdminRecord> {
     const trimmed = identifier.trim();
-    const admin = await this.adminModel.findOne({
-      $or: [{ email: trimmed.toLowerCase() }, { username: trimmed }] });
+    const admin = await this.read(
+      sql`email = ${trimmed.toLowerCase()} OR username = ${trimmed}`,
+    );
 
     if (!admin) {
       throw new UnauthorizedException(
@@ -59,7 +57,7 @@ export class AdminsService {
       );
     }
 
-    const { password: _password, ...safeAdmin } = admin.toObject();
-    return safeAdmin as AdminDocument;
+    const { password: _password, ...safeAdmin } = admin;
+    return safeAdmin as AdminRecord;
   }
 }

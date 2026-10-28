@@ -21,7 +21,7 @@ const nest={BadRequestException,ForbiddenException,UnprocessableEntityException,
   Global:emptyDecorator,Module:emptyDecorator};
 vm.runInNewContext(transpile('apps/api/src/postgres/compat.ts'),{
  module:pgCompat,exports:pgCompat.exports,process,Buffer,Date,RegExp,Intl,Map,Set,AbortSignal,
- require(id){if(id==='pg')return {default:{}};if(id==='@nestjs/common')return nest;
+ require(id){if(id==='./connection.js')return require('./helpers/load-typescript.cjs')(path.join(__dirname,'../apps/api/src/postgres/connection.ts'));if(id==='pg')return {default:{}};if(id==='@nestjs/common')return nest;
   if(id==='./session.js')return stub;if(id==='./ownership.js')return ownership.exports;
   if(id==='../modules/publication/publication-scope.js')return publication;
   return require(id);}

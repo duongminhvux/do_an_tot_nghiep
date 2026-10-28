@@ -1,10 +1,9 @@
 import { PgId } from '../../../../postgres/compat.js';
-import { PgField, PgEntity, PgSchemaFactory } from '../../../../postgres/compat.js';
+import { PgField, PgSchemaFactory } from '../../../../postgres/compat.js';
 import { type PgDocument } from '../../../../postgres/compat.js';
 
 export type ExamDocument = PgDocument<Exam>;
 
-@PgEntity({ timestamps: true })
 export class Exam {
   @PgField({default:'DRAFT'}) publicationStatus: string;
   @PgField({default:1}) publicationRevision: number;
@@ -63,14 +62,3 @@ export class Exam {
 }
 
 export const ExamSchema = PgSchemaFactory.createForClass(Exam);
-
-ExamSchema.index(
-  { name: 1 },
-  { unique: true, partialFilterExpression: { isDeleted: false } },
-);
-ExamSchema.index(
-  { slug: 1 },
-  { unique: true, partialFilterExpression: { isDeleted: false } },
-);
-ExamSchema.index({ groupId: 1 });
-ExamSchema.index({ groupId: 1, groupOrder: 1 });

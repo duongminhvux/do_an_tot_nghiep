@@ -1,11 +1,10 @@
 import { PgId } from '../../../postgres/compat.js';
-import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
+import { PgField, PgSchemaFactory } from '../../../postgres/compat.js';
 import { type PgDocument } from '../../../postgres/compat.js';
 import { Lesson } from './lesson.schema.js';
 
 export type SectionDocument = PgDocument<Section>;
 
-@PgEntity({ timestamps: true })
 export class Section {
   @PgField({ type: PgId, ref: Lesson.name, required: true, index: true })
   lessonId!: PgId;
@@ -21,6 +20,4 @@ export class Section {
 }
 
 export const SectionSchema = PgSchemaFactory.createForClass(Section);
-SectionSchema.index({ lessonId: 1, slug: 1 }, { unique: true });
-SectionSchema.index({ lessonId: 1, order: 1 });
 

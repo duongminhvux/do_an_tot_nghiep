@@ -1,8 +1,8 @@
-import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
+import { PgField, PgSchemaFactory } from '../../../postgres/compat.js';
 import {
   ARENA_DEFAULTS,
   type ArenaConfiguration } from './arena-settings.defaults.js';
-@PgEntity({ timestamps: true, versionKey: false })
+
 export class ArenaSettings {
   @PgField({ required: true, unique: true }) key: string;
   @PgField({ default: 0 }) revision: number;

@@ -1,6 +1,7 @@
 /**
- * PostgreSQL document repository used to preserve existing REST contracts while
- * the application moves to service-owned SQL schemas. No legacy document database driver is used.
+ * Legacy document-query bridge for services awaiting their SQL migration.
+ * New queries use connection.ts/sql.ts. See POSTGRES_NATIVE_REFACTOR_STATUS_VI.md
+ * for the remaining consumers. No legacy document database driver is used.
  * All durable state is stored in PostgreSQL; explicit SQL columns are generated
  * from database/postgres/01-init.sql, optional nested data lives in JSONB.
  *
@@ -8,9 +9,11 @@
  * no silent fallback to an absent SQL table, and no unsupported aggregation.
  */
 import pg from 'pg';
+import { getConnectionToken, type PgConnection } from './connection.js';
+export { createConnection, getConnectionToken, InjectPgConnection, getDb, type PgConnection } from './connection.js';
 import { sessionPool } from './session.js';
 import { randomInt, randomUUID } from 'node:crypto';
-import { Injectable, Inject, Module, Global, type DynamicModule } from '@nestjs/common';
+import { Inject, Module, Global, type DynamicModule } from '@nestjs/common';
 import { serviceRole, serviceUrl, tableOwner } from './ownership.js';
 import {publicationScope,PUBLICATION_TABLES,visiblePublicationRows} from '../modules/publication/publication-scope.js';
 
@@ -27,23 +30,17 @@ export class PgId extends String {
   toJSON() { return String(this); }
 }
 export const isValidPgId = PgId.isValid;
-export type ClientSession = { client?: pg.PoolClient };
-export type FilterQuery<T = any> = Record<string, any>;
+export type { ClientSession } from './connection.js';
 export type UpdateQuery<T = any> = Record<string, any>;
 export type PipelineStage = Record<string, any>;
 export type PgDocument<T = any> = T & { _id: PgId; id: string; createdAt: Date; updatedAt: Date;
   toObject: (options?: any) => any; save: () => Promise<any>;
   validate: () => Promise<void>; populate: (path: any) => Promise<any> };
-export type HydratedDocument<T = any> = PgDocument<T>;
 
-const modelMetadata = new Map<string, {collection?: string, fields: Record<string,any>, hooks: Record<string,Function[]>}>();
-const registeredTypes = new Map<string, Function>();
+const modelMetadata = new Map<string, {fields: Record<string,any>}>();
 function metadata(name: string) {
-  if (!modelMetadata.has(name)) modelMetadata.set(name, {fields:{},hooks:{}});
+  if (!modelMetadata.has(name)) modelMetadata.set(name, {fields:{}});
   return modelMetadata.get(name)!;
-}
-export function PgEntity(options: any = {}) {
-  return (target: Function) => { metadata(target.name).collection = options.collection; registeredTypes.set(target.name,target); };
 }
 export function PgField(options: any = {}) {
   return (target: any, property: string | symbol) => {
@@ -53,14 +50,9 @@ export function PgField(options: any = {}) {
 export class PgSchemaDefinition {
   static Types = { Mixed: Object, Uuid: PgId };
   constructor(public readonly className = '') { }
-  index(_fields: any, _options?: any): this { return this; } // indexes are defined by SQL bootstrap
-  pre(name: string, fn: Function): this { (metadata(this.className).hooks[name] ??= []).push(fn); return this; }
-  clone(): PgSchemaDefinition { return new PgSchemaDefinition(this.className); }
-  virtual(_field: string) { return {get(_fn:Function){},set(_fn:Function){}}; }
-  path(_path: string) { return { validate(_validator:any) {} }; }
 }
 export const PgSchemaFactory = { createForClass(ctor: Function) {
-  registeredTypes.set(ctor.name,ctor); return new PgSchemaDefinition(ctor.name);
+  return new PgSchemaDefinition(ctor.name);
 }};
 
 // JSONB round trips turn Date values into strings. Restore schema-declared
@@ -68,6 +60,11 @@ export const PgSchemaFactory = { createForClass(ctor: Function) {
 function restoreDocumentDates(value: Record<string, any>, fields: Record<string, any>): Record<string, any> {
   const result = { ...value };
   for (const [field, options] of Object.entries(fields)) {
+    // Native writers use the SQL columns without duplicating values in payload.
+    // Some frozen baseline array columns are TEXT containing JSON.
+    if (Array.isArray(options?.type) && typeof result[field] === 'string') {
+      try { const parsed=JSON.parse(result[field]); if(Array.isArray(parsed))result[field]=parsed; } catch { /* Preserve malformed legacy text. */ }
+    }
     const current = result[field];
     if ((options?.type === Date || options?.type?.name === 'Date') && current != null && !(current instanceof Date)) {
       const date = new Date(current);
@@ -99,12 +96,8 @@ export function sqlTable(name: string): string {
   return table;
 }
 const SQL_TABLES = new Set(["activitylogs", "admins", "arenainvitations", "arenamatches", "arenamatchplayers", "arenamatchquestions", "arenaplayeranswers", "arenaprofiles", "arenaratinghistories", "arenarooms", "arenasettings", "asr_jobs", "attemptanswers", "attempts", "audio_jobs", "collections", "dictationlessons", "dictationprogresses", "dictationsections", "dictationsegments", "dictationtopics", "examgroups", "exams", "friendrooms", "gamedefinitions", "learning_activities", "learningsessions", "learningsessionwords", "lessons", "lessonwords", "media_assets", "minigameresults", "notifications", "passagegroups", "passages", "pdf_ai_correction_events", "questions", "sections", "system_settings", "userdailyactivities", "userlessonprogresses", "userlessonwords", "users", "usersavedwords", "userwordreviews", "vocabularyfolders", "vocabularygroups", "words", "youtubelessons"]);
-const PG_POOL = Symbol('PG_POOL');
 const PG_UPDATE = Symbol('PG_UPDATE');
 const REMOVE_VALUE = Symbol('REMOVE_VALUE');
-let defaultPool: pg.Pool | null = null;
-export type PgConnection = { pool: pg.Pool; query: (sql:string, params?:any[])=>Promise<pg.QueryResult> };
-export function createConnection(pool: pg.Pool): PgConnection {return {pool,query:(sql,params)=>pool.query(sql,params)}};
 const safeName = (name: string) => {if (!/^[a-z_][a-z_0-9]*$/.test(name)) throw new Error('Unsafe SQL identifier: '+name);return `"${name}"`;};
 const snake = (s:string) => s.replace(/([a-z\d])([A-Z])/g,'$1_$2').toLowerCase();
 const camel = (s:string) => s.replace(/_([a-z])/g,(_,x)=>x.toUpperCase());
@@ -642,7 +635,6 @@ export function makePgModel<T=any>(name:string,pool:pg.Pool):PgModel<T> {
     const res=await pool.query(`INSERT INTO public.${safeName(table)} (${quoted}) VALUES (${params}) ON CONFLICT (id) DO UPDATE SET ${updates} RETURNING *`,vals);
     return hydrate(res.rows[0]);
   }
-  async function hooks(op:string,filter:any,updates:any){for(const h of (meta.hooks[op]??[]))await h.call({getUpdate:()=>updates,getFilter:()=>filter});}
   async function update(filter:any,updates:any,opts:any={},one:boolean){
     assertOwnedWrite(table);
     const lockRows=Array.isArray(updates)||['attempts','friendrooms','arenamatches','arenamatchplayers','arenamatchquestions'].includes(table);
@@ -656,7 +648,6 @@ export function makePgModel<T=any>(name:string,pool:pg.Pool):PgModel<T> {
         await client.query('COMMIT');return result;
       }catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();}
     }
-    await hooks(one?'findOneAndUpdate':'updateOne',filter,updates);
     const rows=await selected(filter);const targets=one?rows.slice(0,1):rows;let first=null;
     let matchedCount=0;
     for(let row of targets){
@@ -862,34 +853,11 @@ export async function runAggregation(pipeline: any[], initial: any[], pool?: pg.
 
 export function getModelToken(name:string){return `PG_MODEL_${name}`}
 export function InjectPgModel(name:string):ParameterDecorator{return Inject(getModelToken(name))}
-export function getConnectionToken(){return 'PG_CONNECTION'}
-export function InjectPgConnection():ParameterDecorator{return Inject(getConnectionToken())}
 @Global() @Module({})
 export class PgModelsModule {
-  static forRootAsync(_options:any={}):DynamicModule {
-    return {module:PgModelsModule,global:true,providers:[{
-      provide:getConnectionToken(),useFactory:()=>{
-        if (!defaultPool) {
-          const config=process.env.DATABASE_URL?{connectionString:process.env.DATABASE_URL}:
-            {host:process.env.PGHOST||'127.0.0.1',port:Number(process.env.PGPORT||5432),database:process.env.PGDATABASE,
-              user:process.env.PGUSER,password:process.env.PGPASSWORD};
-          if(!process.env.DATABASE_URL&&(!config.database||!config.user||!config.password))throw new Error('PostgreSQL role/database credentials must be provided');
-          defaultPool=new pg.Pool({...config,max:Number(process.env.PG_POOL_MAX||8),connectionTimeoutMillis:10000});
-        }
-        return createConnection(defaultPool);
-      },
-    }],exports:[getConnectionToken()]};
-  }
   static forFeature(models:{name:string,schema?:any}[]):DynamicModule {
     return {module:PgModelsModule,providers:models.map(x=>({provide:getModelToken(x.name),inject:[getConnectionToken()],
       useFactory:(conn:PgConnection)=>makePgModel(x.name,conn.pool)})),exports:models.map(x=>getModelToken(x.name))};
   }
 }
-export const Schema=PgSchemaDefinition;
-export const SchemaFactory=PgSchemaFactory;
-export const Prop=PgField;
-export const Model=undefined as unknown as PgModel;
-export const getDb = () => defaultPool;
-
 export type Model<T=any> = PgModel<T>;
-export type Connection = PgConnection;

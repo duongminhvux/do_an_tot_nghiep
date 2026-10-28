@@ -9,7 +9,7 @@ import {
 import { InjectPgModel } from '../../../postgres/compat.js';
 import { type Model } from '../../../postgres/compat.js';
 import { randomInt } from 'node:crypto';
-import { InjectPgConnection, type PgConnection } from '../../../postgres/compat.js';
+import { InjectPgConnection, type PgConnection } from '../../../postgres/connection.js';
 import { serviceUrl } from '../../../postgres/ownership.js';
 import { Collection } from '../../vocabulary/collections/collection.schema.js';
 import { Lesson } from '../../vocabulary/lessons/lesson.schema.js';

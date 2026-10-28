@@ -14,7 +14,7 @@ import {
 } from 'class-validator';
 import { timingSafeEqual } from 'node:crypto';
 import type { MistakeDetail, MistakeSource } from '@repo/shared-types/mistakes';
-import { InjectPgConnection, type PgConnection } from '../postgres/compat.js';
+import { InjectPgConnection, type PgConnection } from '../postgres/connection.js';
 import { serviceRole } from '../postgres/ownership.js';
 import { Public } from '../modules/auth/decorators/public.decorator.js';
 

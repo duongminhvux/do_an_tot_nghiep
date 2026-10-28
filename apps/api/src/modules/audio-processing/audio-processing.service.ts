@@ -13,6 +13,8 @@ import { PassageGroup, PassageGroupDocument } from '../assessment/questions/sche
 import { Passage, PassageDocument } from '../assessment/questions/schemas/passage.schema.js';
 import { Question, QuestionDocument } from '../assessment/questions/schemas/question.schema.js';
 import { serviceRole, serviceUrl } from '../../postgres/ownership.js';
+import { InjectPgConnection, type PgConnection } from '../../postgres/connection.js';
+import { updateAudio } from '../../common/media/audio-sql.js';
 
 export type VocabularyAccent = 'us' | 'uk';
 
@@ -35,6 +37,7 @@ export class AudioProcessingService {
     private readonly ttsService: TtsService,
     private readonly mediaStorage: MediaStorageService,
     private readonly configService: ConfigService,
+    @InjectPgConnection() private readonly connection: PgConnection,
   ) {}
 
   voices() {
@@ -42,10 +45,10 @@ export class AudioProcessingService {
   }
 
   /** Media workers submit narrow audio commands; only the owner writes business rows. */
-  private async writeAudio(resource:'words'|'questions'|'passages',id:unknown,update:{$set:Record<string,unknown>}) {
+  private async writeAudio(resource:'words'|'questions'|'passages',id:unknown,update:{fields:Record<string,unknown>}) {
     const owner=resource==='words'?'content':'assessment';
     const model=resource==='words'?this.wordModel:resource==='questions'?this.questionModel:this.passageModel;
-    if(serviceRole()===owner)return model.findByIdAndUpdate(id,update,{returnDocument:'after'}).lean().exec();
+    if(serviceRole()===owner)return updateAudio(this.connection,resource,String(id),update.fields);
     const token=this.configService.get<string>('INTERNAL_SERVICE_TOKEN');
     if(!token||token.length<24)throw new ServiceUnavailableException('Audio owner authentication not configured');
     const response=await fetch(`${serviceUrl(owner)}/api/_internal/${owner}/audio/${resource}/${String(id)}`,{
@@ -168,7 +171,7 @@ export class AudioProcessingService {
     const stored = await this.mediaStorage.saveBuffer(storageKey, file.buffer);
     const meta = this.uploadedMeta(storageKey, this.hash({ word: word.word, accent }));
     const updated = await this.writeAudio('words',word._id, {
-      $set: { [`audio.${accent}`]: stored.url, [`audioMeta.${accent}`]: meta } });
+      fields: { [`audio.${accent}`]: stored.url, [`audioMeta.${accent}`]: meta } });
     await this.cleanupReplacedLocalAudio(word.audio?.[accent], word.audioMeta?.[accent]?.storageKey, storageKey);
     return updated;
   }
@@ -182,7 +185,7 @@ export class AudioProcessingService {
     const storageKey = `toeic/questions/${question._id.toString()}/audio-${randomUUID()}.${ext}`;
     const stored = await this.mediaStorage.saveBuffer(storageKey, file.buffer);
     const meta = this.uploadedMeta(storageKey, this.hash({ part: question.part, content: question.content, options: question.options }));
-    const updated = await this.writeAudio('questions',question._id, { $set: { audioUrl: stored.url, audioMeta: meta } });
+    const updated = await this.writeAudio('questions',question._id, { fields: { audioUrl: stored.url, audioMeta: meta } });
     await this.cleanupReplacedLocalAudio(question.audioUrl, question.audioMeta?.storageKey, storageKey);
     return updated;
   }
@@ -197,7 +200,7 @@ export class AudioProcessingService {
     const storageKey = `toeic/passages/${passage._id.toString()}/audio-${randomUUID()}.${ext}`;
     const stored = await this.mediaStorage.saveBuffer(storageKey, file.buffer);
     const meta = this.uploadedMeta(storageKey, this.hash({ part: group.part, content: passage.content || '' }));
-    const updated = await this.writeAudio('passages',passage._id, { $set: { audioUrl: stored.url, audioMeta: meta } });
+    const updated = await this.writeAudio('passages',passage._id, { fields: { audioUrl: stored.url, audioMeta: meta } });
     await this.cleanupReplacedLocalAudio(passage.audioUrl, passage.audioMeta?.storageKey, storageKey);
     return updated;
   }
@@ -216,7 +219,7 @@ export class AudioProcessingService {
     const metadataPath = `audioMeta.${accent}`;
 
     await this.writeAudio('words',word._id, {
-      $set: {
+      fields: {
         [`${metadataPath}.source`]: AudioSourceType.TTS,
         [`${metadataPath}.status`]: AudioGenerationStatus.PROCESSING,
         [`${metadataPath}.error`]: '' } });
@@ -229,14 +232,14 @@ export class AudioProcessingService {
       meta.segments = [{ text: script, speaker: '', voiceId, startMs: 0, endMs: Number(result.durationMs || 0) }];
 
       const updated = await this.writeAudio('words',word._id, {
-        $set: {
+        fields: {
           [`audio.${accent}`]: stored.url,
           [metadataPath]: meta } });
       await this.cleanupReplacedLocalAudio(word.audio?.[accent], word.audioMeta?.[accent]?.storageKey, storageKey);
       return updated;
     } catch (error) {
       await this.writeAudio('words',word._id, {
-        $set: {
+        fields: {
           [`${metadataPath}.status`]: AudioGenerationStatus.FAILED,
           [`${metadataPath}.error`]: error instanceof Error ? error.message : String(error) } });
       throw error;
@@ -303,7 +306,7 @@ export class AudioProcessingService {
     const sequence = this.part12Sequence(question, primaryVoice, secondaryVoice);
     const scriptHash = this.hash({ part: question.part, sequence });
     await this.writeAudio('questions',question._id, {
-      $set: { 'audioMeta.source': AudioSourceType.TTS, 'audioMeta.status': AudioGenerationStatus.PROCESSING, 'audioMeta.error': '' } });
+      fields: { 'audioMeta.source': AudioSourceType.TTS, 'audioMeta.status': AudioGenerationStatus.PROCESSING, 'audioMeta.error': '' } });
 
     try {
       const result = await this.ttsService.synthesizeSequence({
@@ -314,11 +317,11 @@ export class AudioProcessingService {
       const storageKey = `toeic/questions/${question._id.toString()}/audio-${randomUUID()}.wav`;
       const stored = await this.mediaStorage.saveBuffer(storageKey, result.audio);
       const meta = this.audioMeta(storageKey, 'en-US', [...new Set(sequence.map((item) => item.voiceId))], sequence[0]!.speed, scriptHash, result, sequence);
-      const updated = await this.writeAudio('questions',question._id, { $set: { audioUrl: stored.url, audioMeta: meta } });
+      const updated = await this.writeAudio('questions',question._id, { fields: { audioUrl: stored.url, audioMeta: meta } });
       await this.cleanupReplacedLocalAudio(question.audioUrl, question.audioMeta?.storageKey, storageKey);
       return updated;
     } catch (error) {
-      await this.writeAudio('questions',question._id, { $set: { 'audioMeta.status': AudioGenerationStatus.FAILED, 'audioMeta.error': error instanceof Error ? error.message : String(error) } });
+      await this.writeAudio('questions',question._id, { fields: { 'audioMeta.status': AudioGenerationStatus.FAILED, 'audioMeta.error': error instanceof Error ? error.message : String(error) } });
       throw error;
     }
   }
@@ -386,7 +389,7 @@ export class AudioProcessingService {
 
     const scriptHash = this.hash({ part: group.part, sequence });
     await this.writeAudio('passages',passage._id, {
-      $set: { 'audioMeta.source': AudioSourceType.TTS, 'audioMeta.status': AudioGenerationStatus.PROCESSING, 'audioMeta.error': '' } });
+      fields: { 'audioMeta.source': AudioSourceType.TTS, 'audioMeta.status': AudioGenerationStatus.PROCESSING, 'audioMeta.error': '' } });
 
     try {
       const result = await this.ttsService.synthesizeSequence({
@@ -398,11 +401,11 @@ export class AudioProcessingService {
       const stored = await this.mediaStorage.saveBuffer(storageKey, result.audio);
       const voices = [...new Set(sequence.map((item) => item.voiceId))];
       const meta = this.audioMeta(storageKey, sequence[0]!.language, voices, sequence[0]!.speed, scriptHash, result, sequence);
-      const updated = await this.writeAudio('passages',passage._id, { $set: { audioUrl: stored.url, audioMeta: meta } });
+      const updated = await this.writeAudio('passages',passage._id, { fields: { audioUrl: stored.url, audioMeta: meta } });
       await this.cleanupReplacedLocalAudio(passage.audioUrl, passage.audioMeta?.storageKey, storageKey);
       return updated;
     } catch (error) {
-      await this.writeAudio('passages',passage._id, { $set: { 'audioMeta.status': AudioGenerationStatus.FAILED, 'audioMeta.error': error instanceof Error ? error.message : String(error) } });
+      await this.writeAudio('passages',passage._id, { fields: { 'audioMeta.status': AudioGenerationStatus.FAILED, 'audioMeta.error': error instanceof Error ? error.message : String(error) } });
       throw error;
     }
   }

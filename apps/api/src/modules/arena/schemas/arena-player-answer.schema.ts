@@ -1,10 +1,9 @@
 import { PgId } from '../../../postgres/compat.js';
-import { PgField, PgEntity, PgSchemaFactory } from '../../../postgres/compat.js';
+import { PgField, PgSchemaFactory } from '../../../postgres/compat.js';
 import { type PgDocument } from '../../../postgres/compat.js';
 
 export type ArenaPlayerAnswerDocument = PgDocument<ArenaPlayerAnswer>;
 
-@PgEntity({ timestamps: true })
 /** Lưu các lần trả lời và điểm nhận được của người chơi cho từng câu. */
 export class ArenaPlayerAnswer {
   @PgField({
@@ -54,7 +53,3 @@ export class ArenaPlayerAnswer {
 
 export const ArenaPlayerAnswerSchema =
   PgSchemaFactory.createForClass(ArenaPlayerAnswer);
-ArenaPlayerAnswerSchema.index(
-  { matchId: 1, matchQuestionId: 1, userId: 1 },
-  { unique: true },
-);

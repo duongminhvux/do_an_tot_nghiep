@@ -7,7 +7,7 @@ import {
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { timingSafeEqual } from 'node:crypto';
-import { InjectPgConnection, type PgConnection } from '../postgres/compat.js';
+import { InjectPgConnection, type PgConnection } from '../postgres/connection.js';
 import { serviceRole } from '../postgres/ownership.js';
 import { Public } from '../modules/auth/decorators/public.decorator.js';
 import { readRecommendationRules } from '../modules/learning/recommendations/recommendation-settings.js';
