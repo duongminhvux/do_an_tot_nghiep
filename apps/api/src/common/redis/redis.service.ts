@@ -1,9 +1,10 @@
 import {
-    Injectable,
-    OnModuleDestroy,
-    OnModuleInit } from '@nestjs/common';
+Injectable,
+OnModuleDestroy,
+OnModuleInit
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createClient, RedisClientType } from 'redis';
+import { createClient,RedisClientType } from 'redis';
 
 @Injectable()
 export class RedisService

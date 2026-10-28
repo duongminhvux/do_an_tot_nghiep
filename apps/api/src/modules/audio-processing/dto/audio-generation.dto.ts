@@ -1,4 +1,4 @@
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsIn, IsOptional, IsString } from 'class-validator';
+import { ArrayMaxSize,ArrayMinSize,IsArray,IsIn,IsOptional,IsString } from 'class-validator';
 
 export class GenerateVocabularyAudioDto {
   @IsOptional()

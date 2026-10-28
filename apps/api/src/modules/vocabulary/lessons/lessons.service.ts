@@ -1,21 +1,20 @@
-﻿import { Injectable, NotFoundException } from '@nestjs/common';
-import { I18nContext, I18nService } from 'nestjs-i18n';
-import { ContentSqlRepository } from '../content-sql.repository.js';
+﻿import { Injectable,NotFoundException } from '@nestjs/common';
+import { I18nContext,I18nService } from 'nestjs-i18n';
 import {
-  first,
-  joinSql,
-  literal,
-  rowData,
-  rows,
-  sql,
-  type Sql,
+first,
+literal,
+rowData,
+rows,
+sql,
+type Sql
 } from '../../../postgres/sql.js';
-import { CreateLessonDto } from './dto/create-lesson.dto.js';
-import { UpdateLessonDto } from './dto/update-lesson.dto.js';
-import { CreateSectionDto } from './dto/create-section.dto.js';
-import { UpdateSectionDto } from './dto/update-section.dto.js';
-import { UpdateLessonWordDto } from './dto/update-lesson-word.dto.js';
 import { publicationScope } from '../../publication/publication-scope.js';
+import { ContentSqlRepository } from '../content-sql.repository.js';
+import { CreateLessonDto } from './dto/create-lesson.dto.js';
+import { CreateSectionDto } from './dto/create-section.dto.js';
+import { UpdateLessonWordDto } from './dto/update-lesson-word.dto.js';
+import { UpdateLessonDto } from './dto/update-lesson.dto.js';
+import { UpdateSectionDto } from './dto/update-section.dto.js';
 
 const validUuid = (value: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);

@@ -1,13 +1,14 @@
-import {
-  IsBoolean,
-  IsInt,
-  IsUUID,
-  IsOptional,
-  IsString,
-  MaxLength,
-  Min,
-  MinLength } from 'class-validator';
 import { Type } from 'class-transformer';
+import {
+IsBoolean,
+IsInt,
+IsOptional,
+IsString,
+IsUUID,
+MaxLength,
+Min,
+MinLength
+} from 'class-validator';
 
 export class CreateDictationTopicDto {
   @IsString()

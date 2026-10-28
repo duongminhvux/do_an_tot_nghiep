@@ -1,7 +1,7 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, Min } from 'class-validator';
-import { Transform, Type } from 'class-transformer';
+import { Transform,Type } from 'class-transformer';
+import { IsBoolean,IsNumber,IsOptional,IsString,Min } from 'class-validator';
 
-import {PublicationFilterDto} from '../../../publication/publication.dto.js';
+import { PublicationFilterDto } from '../../../publication/publication.dto.js';
 export class QueryWordDto extends PublicationFilterDto {
   @IsString()
   @IsOptional()

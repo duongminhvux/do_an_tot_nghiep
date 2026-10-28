@@ -1,14 +1,15 @@
 import {
-  IsEnum,
-  IsInt,
-  Min,
-  Max,
-  IsUUID,
-  IsOptional,
-  IsString,
-  MaxLength,
-  MinLength } from 'class-validator';
-import { ArenaFriendMode } from '../schemas/arena-match.schema.js';
+IsEnum,
+IsInt,
+IsOptional,
+IsString,
+IsUUID,
+Max,
+MaxLength,
+Min,
+MinLength
+} from 'class-validator';
+import { ArenaFriendMode } from '../rows/arena-match.row.js';
 
 export class CreateFriendMatchDto {
   @IsOptional()

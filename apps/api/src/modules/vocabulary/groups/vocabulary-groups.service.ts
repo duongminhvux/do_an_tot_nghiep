@@ -1,15 +1,15 @@
 import {
-  Injectable,
-  NotFoundException,
-  ConflictException,
+ConflictException,
+Injectable,
+NotFoundException,
 } from '@nestjs/common';
-import { I18nContext, I18nService } from 'nestjs-i18n';
-import { ContentSqlRepository } from '../content-sql.repository.js';
+import { I18nContext,I18nService } from 'nestjs-i18n';
 import { sql } from '../../../postgres/sql.js';
-import { CreateVocabularyGroupDto } from './dto/create-vocabulary-group.dto.js';
-import { UpdateVocabularyGroupDto } from './dto/update-vocabulary-group.dto.js';
-import { QueryVocabularyGroupDto } from './dto/query-vocabulary-group.dto.js';
 import { publicationScope } from '../../publication/publication-scope.js';
+import { ContentSqlRepository } from '../content-sql.repository.js';
+import { CreateVocabularyGroupDto } from './dto/create-vocabulary-group.dto.js';
+import { QueryVocabularyGroupDto } from './dto/query-vocabulary-group.dto.js';
+import { UpdateVocabularyGroupDto } from './dto/update-vocabulary-group.dto.js';
 
 @Injectable()
 export class VocabularyGroupsService {

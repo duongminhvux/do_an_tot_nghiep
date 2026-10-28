@@ -1,17 +1,18 @@
-import { GameCatalogService } from './services/game-catalog.service.js';
 import {
-  BadRequestException,
-  Body,
-  Controller,
-  Get,
-  Param,
-  Post,
-  Req } from '@nestjs/common';
-import { MiniGameWordSourceService } from './services/minigame-word-source.service.js';
-import { MiniGameResultService } from './services/minigame-result.service.js';
-import { StartTypingRushDto } from './dto/start-typing-rush.dto.js';
+BadRequestException,
+Body,
+Controller,
+Get,
+Param,
+Post,
+Req
+} from '@nestjs/common';
 import { CreateMiniGameResultDto } from './dto/create-minigame-result.dto.js';
+import { StartTypingRushDto } from './dto/start-typing-rush.dto.js';
 import { MiniGameType } from './minigame.types.js';
+import { GameCatalogService } from './services/game-catalog.service.js';
+import { MiniGameResultService } from './services/minigame-result.service.js';
+import { MiniGameWordSourceService } from './services/minigame-word-source.service.js';
 type UserRequest = { user: { _id: string } };
 @Controller('minigames')
 export class MiniGameController {

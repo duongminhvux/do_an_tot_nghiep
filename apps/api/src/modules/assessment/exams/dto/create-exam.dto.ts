@@ -1,11 +1,12 @@
 import {
-  IsBoolean,
-  IsEnum,
-  IsInt,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  Min } from 'class-validator';
+IsBoolean,
+IsEnum,
+IsInt,
+IsNotEmpty,
+IsOptional,
+IsString,
+Min
+} from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
 
 export enum ExamType {

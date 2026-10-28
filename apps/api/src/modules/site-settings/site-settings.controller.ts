@@ -1,23 +1,23 @@
 import {
-  Body,
-  Controller,
-  Get,
-  Inject,
-  Post,
-  Put,
-  Query,
+Body,
+Controller,
+Get,
+Inject,
+Post,
+Put,
+Query,
 } from '@nestjs/common';
-import { IsIn } from 'class-validator';
 import {
-  buildRecommendations,
-  recommendationScenario,
+buildRecommendations,
+recommendationScenario,
 } from '@repo/shared-types/recommendations';
+import { IsIn } from 'class-validator';
+import { AdminController } from '../auth/decorators/admin-controller.decorator.js';
+import { Public } from '../auth/decorators/public.decorator.js';
 import { RecommendationRulesDto } from '../learning/recommendations/recommendation-rules.dto.js';
 import { RecommendationLanguageDto } from '../learning/recommendations/recommendations.controller.js';
-import { Public } from '../auth/decorators/public.decorator.js';
-import { AdminController } from '../auth/decorators/admin-controller.decorator.js';
-import { SiteSettingsService } from './site-settings.service.js';
 import { UpdateSiteSettingsDto } from './site-settings.dto.js';
+import { SiteSettingsService } from './site-settings.service.js';
 
 export class RecommendationPreviewQueryDto extends RecommendationLanguageDto {
   @IsIn(['new', 'little', 'progress']) scenario: 'new' | 'little' | 'progress';

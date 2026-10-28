@@ -1,17 +1,16 @@
-import { ArenaSettingsService } from '../admin/arena-settings.service.js';
-import { ARENA_DEFAULTS } from '../admin/arena-settings.defaults.js';
-import { Injectable, Optional } from '@nestjs/common';
+import { Injectable,Optional } from '@nestjs/common';
 import { WsException } from '@nestjs/websockets';
-import { InjectPgModel } from '../../../postgres/compat.js';
-import type { Model } from '../../../postgres/compat.js';
+import { InjectPgConnection,type PgConnection } from '../../../postgres/connection.js';
+import { rowData,rows,sql } from '../../../postgres/sql.js';
+import { ARENA_DEFAULTS } from '../admin/arena-settings.defaults.js';
+import { ArenaSettingsService } from '../admin/arena-settings.service.js';
 
+import { randomUUID } from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
 import { RedisService } from '../../../common/redis/redis.service.js';
 import { ArenaService } from '../arena.service.js';
 import { ArenaMatchService } from '../matches/arena-match.service.js';
-import { User } from '../../users/schema/user.schema.js';
 import { ArenaPresenceService } from '../presence/arena-presence.service.js';
-import { randomUUID } from 'node:crypto';
-import { setTimeout as delay } from 'node:timers/promises';
 
 export type RankedPlayer = {
   userId: string;
@@ -37,8 +36,7 @@ export class ArenaMatchmakingService {
     private readonly redisService: RedisService,
     private readonly arenaProfileService: ArenaService,
     private readonly arenaMatchService: ArenaMatchService,
-    @InjectPgModel(User.name)
-    private readonly userModel: Model<User>,
+    @InjectPgConnection() private readonly db:PgConnection,
     @Optional() private readonly settings?: ArenaSettingsService,
   ) {}
 
@@ -106,13 +104,8 @@ export class ArenaMatchmakingService {
         rating };
     }
 
-    const users = await this.userModel
-      .find({
-        _id: { $in: [userId, opponent.userId] },
-        isDeleted: { $ne: true },
-        isBanned: { $ne: true } })
-      .select('_id username avatarUrl')
-      .lean();
+    const users=(await rows(this.db,sql`SELECT id,username,avatar_url,is_deleted,is_banned FROM public.identity_profiles
+      WHERE id=ANY(${[userId,opponent.userId]}::uuid[]) AND is_deleted IS NOT TRUE AND is_banned IS NOT TRUE`)).map(row=>rowData<any>(row));
     const userById = new Map(users.map((user) => [String(user._id), user]));
     const playerA = userById.get(userId);
     const playerB = userById.get(opponent.userId);

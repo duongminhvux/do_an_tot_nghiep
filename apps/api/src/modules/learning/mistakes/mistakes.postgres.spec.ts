@@ -4,20 +4,20 @@ import { Pool } from 'pg';
 import { randomUUID } from 'node:crypto';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from '@nestjs/common';
-import { createConnection, makePgModel } from '../../../postgres/compat.js';
+import {createConnection} from '../../../postgres/connection.js';
 import { DomainOutboxService } from '../../../common/events/domain-outbox.service.js';
-import { Attempt } from '../../assessment/attempts/schemas/attempt.schema.js';
-import { Exam } from '../../assessment/exams/schemas/exam.schema.js';
-import { Question } from '../../assessment/questions/schemas/question.schema.js';
-import { Passage } from '../../assessment/questions/schemas/passage.schema.js';
+import { Attempt } from '../../assessment/attempts/rows/attempt.row.js';
+import { Exam } from '../../assessment/exams/rows/exam.row.js';
+import { Question } from '../../assessment/questions/rows/question.row.js';
+import { Passage } from '../../assessment/questions/rows/passage.row.js';
 import { AttemptsService } from '../../assessment/attempts/attempts.service.js';
 import { DictationService } from '../../dictation/dictation.service.js';
-import { DictationLesson } from '../../dictation/schemas/dictation-lesson.schema.js';
-import { DictationSegment } from '../../dictation/schemas/dictation-segment.schema.js';
-import { DictationProgress } from '../../dictation/schemas/dictation-progress.schema.js';
+import { DictationLesson } from '../../dictation/rows/dictation-lesson.row.js';
+import { DictationSegment } from '../../dictation/rows/dictation-segment.row.js';
+import { DictationProgress } from '../../dictation/rows/dictation-progress.row.js';
 import { ReviewsService } from '../reviews/reviews.service.js';
-import { UserWordReview } from '../reviews/schemas/user-word-review.schema.js';
-import { Word } from '../../vocabulary/words/word.schema.js';
+import { UserWordReview } from '../reviews/rows/user-word-review.row.js';
+import { Word } from '../../vocabulary/words/word.row.js';
 import { LearningActivityService } from '../../learning-activity/learning-activity.service.js';
 import { MistakesService } from './mistakes.service.js';
 import { MistakesQueryDto } from './mistakes.dto.js';
@@ -41,8 +41,7 @@ describe.runIf(
     word = randomUUID();
   let mistakes: MistakesService, activities: LearningActivityService;
   const db = (role: string) => pools.get(role)!;
-  const model = <T>(role: string, name: string) =>
-    makePgModel<T>(name, db(role));
+  
   beforeAll(async () => {
     for (const role of roles)
       pools.set(
@@ -53,11 +52,7 @@ describe.runIf(
         }),
       );
     mistakes = new MistakesService(createConnection(db('learning')));
-    activities = new LearningActivityService(
-      {} as never,
-      createConnection(db('learning')),
-      {} as never,
-    );
+    activities = new LearningActivityService(createConnection(db('learning')),{} as never);
     await db('assessment').query(
       `INSERT INTO public.examgroups(id,name,slug,is_active) VALUES($1,$2,$2,true)`,
       [group, `f02-${group}`],
@@ -168,14 +163,7 @@ describe.runIf(
         sourceRefId: attemptId,
       }),
     ).toEqual({ available: false });
-    const service = new AttemptsService(
-      model('assessment', Attempt.name),
-      model('assessment', Exam.name),
-      model('assessment', Question.name),
-      model('assessment', Passage.name),
-      undefined,
-      new DomainOutboxService(createConnection(db('assessment'))),
-    );
+    const service = new AttemptsService(createConnection(db('assessment')),undefined,new DomainOutboxService(createConnection(db('assessment'))));
     await service.submit(user, attemptId);
     await service.submit(user, attemptId);
     expect(await deliver('assessment')).toHaveLength(1);
@@ -206,20 +194,7 @@ describe.runIf(
   });
   it('records Dictation only when complete and reuses the canonical segment in the retry URL', async () => {
     vi.stubEnv('SERVICE_ROLE', 'content');
-    const service = new DictationService(
-      model('content', DictationLesson.name),
-      model('content', DictationSegment.name),
-      model('content', DictationProgress.name),
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      new ConfigService(),
-      undefined,
-      new DomainOutboxService(createConnection(db('content'))),
-    );
+    const service = new DictationService(createConnection(db('content')),{} as never,{} as never,{} as never,{} as never,new ConfigService(),undefined,new DomainOutboxService(createConnection(db('content'))));
     await service.recordAttempt(user, lesson, 0, false);
     expect(await deliver('content')).toHaveLength(0);
     await service.recordAttempt(user, lesson, 0, false);
@@ -245,11 +220,7 @@ describe.runIf(
   });
   it('records SRS AGAIN in the same transaction, and supplies one word to the existing review engine', async () => {
     vi.stubEnv('SERVICE_ROLE', 'learning');
-    const service = new ReviewsService(
-      model('learning', UserWordReview.name),
-      model('content', Word.name),
-      new DomainOutboxService(createConnection(db('learning'))),
-    );
+    const service = new ReviewsService(createConnection(db('learning')),new DomainOutboxService(createConnection(db('learning'))));
     await service.recordReview(user, word, 'AGAIN');
     const list = await mistakes.list(user, new MistakesQueryDto());
     expect(new Set(list.items.map((row) => row.sourceType)).size).toBe(3);

@@ -1,10 +1,10 @@
-import { httpPolicy } from '../../platform/http-policy.js';
-import { IoAdapter } from '@nestjs/platform-socket.io';
 import { INestApplicationContext } from '@nestjs/common';
-import { ServerOptions } from 'socket.io';
+import { ConfigService } from '@nestjs/config';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
 import { createClient } from 'redis';
-import { ConfigService } from '@nestjs/config';
+import { ServerOptions } from 'socket.io';
+import { httpPolicy } from '../../platform/http-policy.js';
 
 export class RedisIoAdapter extends IoAdapter {
   private adapterConstructor: ReturnType<typeof createAdapter>;

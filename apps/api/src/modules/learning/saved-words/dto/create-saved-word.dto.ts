@@ -1,4 +1,4 @@
-import { IsUUID, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty,IsOptional,IsString,IsUUID } from 'class-validator';
 
 export class CreateSavedWordDto {
   @IsNotEmpty()

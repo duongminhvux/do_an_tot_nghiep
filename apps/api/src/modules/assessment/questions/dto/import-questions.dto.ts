@@ -1,5 +1,5 @@
-import { IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
+import { IsBoolean,IsEnum,IsNotEmpty,IsNumber,IsOptional,IsString,ValidateNested } from 'class-validator';
 import { QuestionOptionDto } from './create-question.dto.js';
 
 export class ImportPassageDto {

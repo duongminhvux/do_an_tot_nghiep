@@ -10,4 +10,4 @@ const comparePassword = async (rawPassword: string, hash: string): Promise<boole
   return await bcrypt.compare(rawPassword, hash);
 }
 
-export { hashPassword, comparePassword };
+export { comparePassword,hashPassword };

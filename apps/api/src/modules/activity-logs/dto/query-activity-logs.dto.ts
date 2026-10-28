@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsDateString, IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsDateString,IsIn,IsInt,IsOptional,IsString,Max,Min } from 'class-validator';
 
 export class QueryActivityLogsDto {
   @IsOptional()

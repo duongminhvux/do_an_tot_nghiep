@@ -1,17 +1,17 @@
-import {
-  ArrayMaxSize,
-  ArrayUnique,
-  IsArray,
-  IsBoolean,
-  IsIn,
-  IsInt,
-  Max,
-  Min,
-} from 'class-validator';
 import type {
-  RecommendationRules,
-  RecommendationSource,
+RecommendationRules,
+RecommendationSource,
 } from '@repo/shared-types/recommendations';
+import {
+ArrayMaxSize,
+ArrayUnique,
+IsArray,
+IsBoolean,
+IsIn,
+IsInt,
+Max,
+Min,
+} from 'class-validator';
 
 export class RecommendationRulesDto implements RecommendationRules {
   @IsBoolean() enabled: boolean;

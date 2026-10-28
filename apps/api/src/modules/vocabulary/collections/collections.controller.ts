@@ -1,11 +1,10 @@
-import {UseGuards} from '@nestjs/common';
-import {RolesGuard} from '../../auth/guards/roles.guard.js';
-import {Roles} from '../../auth/decorators/roles.decorator.js';
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
+import { Body,Controller,Delete,Get,Param,Patch,Post,Query,UseGuards } from '@nestjs/common';
+import { Roles } from '../../auth/decorators/roles.decorator.js';
+import { RolesGuard } from '../../auth/guards/roles.guard.js';
 import { CollectionsService } from './collections.service.js';
 import { CreateCollectionDto } from './dto/create-collection.dto.js';
-import { UpdateCollectionDto } from './dto/update-collection.dto.js';
 import { QueryCollectionDto } from './dto/query-collection.dto.js';
+import { UpdateCollectionDto } from './dto/update-collection.dto.js';
 
 @Controller('collections')
 @UseGuards(RolesGuard)

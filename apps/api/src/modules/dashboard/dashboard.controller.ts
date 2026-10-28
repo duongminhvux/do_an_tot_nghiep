@@ -1,4 +1,4 @@
-import { Get, Query } from '@nestjs/common';
+import { Get,Query } from '@nestjs/common';
 import { AdminController } from '../auth/decorators/admin-controller.decorator.js';
 import { DashboardService } from './dashboard.service.js';
 

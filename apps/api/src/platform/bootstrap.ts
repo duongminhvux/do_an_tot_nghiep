@@ -1,21 +1,21 @@
-import { httpPolicy } from './http-policy.js';
-import {learnerPublicationRequest} from '../modules/publication/publication-scope.js';
-import { refreshCookieOptions } from '../modules/auth/refresh-cookie.js';
-import { NestFactory } from '@nestjs/core';
 import type { Type } from '@nestjs/common';
-import type { NestExpressApplication } from '@nestjs/platform-express';
-import { json,urlencoded } from 'express';
-import cookieParser from 'cookie-parser';
-import { Readable } from 'node:stream';
 import { ConfigService } from '@nestjs/config';
-import { I18nService,I18nValidationPipe,I18nValidationExceptionFilter } from 'nestjs-i18n';
-import { PlatformModule,DATABASE_NAMES,type OwnedService } from './platform.module.js';
-import { RedisIoAdapter } from '../common/socket/redis-io.adapter.js';
-import { MediaStorageService } from '../common/media/media-storage.service.js';
-import { TransformInterceptor } from '../common/interceptors/transform.interceptor.js';
+import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
+import cookieParser from 'cookie-parser';
+import { json,urlencoded } from 'express';
+import { I18nService,I18nValidationExceptionFilter,I18nValidationPipe } from 'nestjs-i18n';
+import { Readable } from 'node:stream';
 import { HttpExceptionFilter } from '../common/filters/http-exception.filter.js';
+import { TransformInterceptor } from '../common/interceptors/transform.interceptor.js';
+import { MediaStorageService } from '../common/media/media-storage.service.js';
+import { RedisIoAdapter } from '../common/socket/redis-io.adapter.js';
+import { refreshCookieOptions } from '../modules/auth/refresh-cookie.js';
+import { learnerPublicationRequest } from '../modules/publication/publication-scope.js';
 import { getConnectionToken,type PgConnection } from '../postgres/connection.js';
 import { assertSchemaReady } from '../postgres/migrations.js';
+import { httpPolicy } from './http-policy.js';
+import { DATABASE_NAMES,PlatformModule,type OwnedService } from './platform.module.js';
 
 export async function bootstrapService(role:OwnedService,modules:Type<unknown>[]){
   const app=await NestFactory.create<NestExpressApplication>(PlatformModule.forService(role,modules));

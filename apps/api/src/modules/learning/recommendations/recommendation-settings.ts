@@ -1,8 +1,8 @@
 import {
-  normalizeRecommendationRules,
-  RECOMMENDATION_RULES_ID,
+normalizeRecommendationRules,
+RECOMMENDATION_RULES_ID,
 } from '@repo/shared-types/recommendations';
-import type { PgConnection } from '../../../postgres/compat.js';
+import type { PgConnection } from '../../../postgres/connection.js';
 
 /** Settings remain owned by Media, alongside the existing website settings. */
 export async function readRecommendationRules(db: PgConnection) {

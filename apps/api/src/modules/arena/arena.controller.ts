@@ -1,24 +1,26 @@
 import {
-  Body,
-  Controller,
-  Get,
-  Req,
-  Query,
-  DefaultValuePipe,
-  ParseIntPipe,
-  Post,
-  Param } from '@nestjs/common';
-import { ArenaService } from './arena.service.js';
-import { ArenaFriendlyService } from './friendly/arena-friendly.service.js';
-import { ArenaFriendMode } from './schemas/arena-match.schema.js';
+Body,
+Controller,
+DefaultValuePipe,
+Get,
+Param,
+ParseIntPipe,
+Post,
+Query,
+Req
+} from '@nestjs/common';
 import { ArenaReadService } from './arena-read.service.js';
-import { ArenaGateway } from './gateways/arena.gateway.js';
-import { ArenaRoomService } from './rooms/arena-room.service.js';
-import { ArenaPresenceService } from './presence/arena-presence.service.js';
+import { ArenaService } from './arena.service.js';
 import {
-  CreateArenaRoomDto,
-  CreateFriendMatchDto,
-  JoinArenaRoomDto } from './dto/arena-match.dto.js';
+CreateArenaRoomDto,
+CreateFriendMatchDto,
+JoinArenaRoomDto
+} from './dto/arena-match.dto.js';
+import { ArenaFriendlyService } from './friendly/arena-friendly.service.js';
+import { ArenaGateway } from './gateways/arena.gateway.js';
+import { ArenaPresenceService } from './presence/arena-presence.service.js';
+import { ArenaRoomService } from './rooms/arena-room.service.js';
+import { ArenaFriendMode } from './rows/arena-match.row.js';
 
 type ArenaRequest = { user: { _id: string } };
 

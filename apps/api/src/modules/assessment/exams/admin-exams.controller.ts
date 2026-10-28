@@ -1,9 +1,9 @@
-import { Body, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body,Delete,Get,Param,Patch,Post,Query } from '@nestjs/common';
 import { AdminController } from '../../auth/decorators/admin-controller.decorator.js';
-import { ExamsService } from './exams.service.js';
 import { CreateExamDto } from './dto/create-exam.dto.js';
-import { UpdateExamDto } from './dto/update-exam.dto.js';
 import { QueryExamDto } from './dto/query-exam.dto.js';
+import { UpdateExamDto } from './dto/update-exam.dto.js';
+import { ExamsService } from './exams.service.js';
 
 @AdminController('exams')
 export class AdminExamsController {

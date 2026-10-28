@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
-import { readFile, readdir } from 'node:fs/promises';
-import { resolve } from 'node:path';
 import { existsSync } from 'node:fs';
-import type { Pool, PoolClient } from 'pg';
+import { readFile,readdir } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import type { Pool,PoolClient } from 'pg';
 
 export const DATABASES: Record<string, string> = {
   identity: 'identity_db', content: 'content_db', assessment: 'assessment_db', arena: 'arena_db',

@@ -1,23 +1,24 @@
 import { PartialType } from '@nestjs/mapped-types';
-import { Transform, Type } from 'class-transformer';
+import { Transform,Type } from 'class-transformer';
 import {
-  ArrayMaxSize,
-  ArrayUnique,
-  IsArray,
-  IsBoolean,
-  IsEnum,
-  IsInt,
-  IsIn,
-  IsUUID,
-  IsNotEmpty,
-  ValidateIf,
-  IsString,
-  Matches,
-  Max,
-  MaxLength,
-  Min,
-  ValidateNested } from 'class-validator';
-import { GameCategory } from '../schemas/game-definition.schema.js';
+ArrayMaxSize,
+ArrayUnique,
+IsArray,
+IsBoolean,
+IsEnum,
+IsIn,
+IsInt,
+IsNotEmpty,
+IsString,
+IsUUID,
+Matches,
+Max,
+MaxLength,
+Min,
+ValidateIf,
+ValidateNested
+} from 'class-validator';
+import { GameCategory } from '../rows/game-definition.row.js';
 const trim = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim() : value;
 class GameMetadataDto {

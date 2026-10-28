@@ -1,20 +1,23 @@
-import { PgId } from '../../../postgres/compat.js';
+import {learnerExamVisibility} from './exam-visibility.js';
+import { InjectPgConnection,withPgTransaction,type PgConnection } from '../../../postgres/connection.js';
+import { isUuid } from '../../../postgres/ids.js';
+import { SqlRecords,newSqlRow } from '../../../postgres/records.js';
+import { rows,sql } from '../../../postgres/sql.js';
+
 import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  NotFoundException,
-  Optional } from '@nestjs/common';
-import { InjectPgModel } from '../../../postgres/compat.js';
-import { type Model,  type PipelineStage } from '../../../postgres/compat.js';
-import { ExamGroup, ExamGroupDocument } from './schemas/exam-group.schema.js';
-import { Exam, ExamDocument } from './schemas/exam.schema.js';
-import { CreateExamGroupDto } from './dto/create-exam-group.dto.js';
-import { UpdateExamGroupDto } from './dto/update-exam-group.dto.js';
-import { QueryExamGroupDto } from './dto/query-exam-group.dto.js';
-import { Attempt } from '../attempts/schemas/attempt.schema.js';
+BadRequestException,
+ConflictException,
+Injectable,
+NotFoundException
+} from '@nestjs/common';
+
+
 import { withAttemptCounts } from '../attempts/exam-attempt-counts.js';
-import { GROUP_EXAM_SORT, nextGroupOrder } from './group-order.js';
+import { CreateExamGroupDto } from './dto/create-exam-group.dto.js';
+import { QueryExamGroupDto } from './dto/query-exam-group.dto.js';
+import { UpdateExamGroupDto } from './dto/update-exam-group.dto.js';
+import { GROUP_EXAM_SORT,nextGroupOrder } from './group-order.js';
+import { ExamGroup } from './rows/exam-group.row.js';
 
 @Injectable()
 export class ExamGroupsService {
@@ -22,29 +25,18 @@ export class ExamGroupsService {
     groups: T[],
   ) {
     if (!groups.length) return groups;
-    const exams = await this.examModel
-      .find({
-        groupId: {
-          $in: groups.map((group) => new PgId(String(group._id))) },
-        isDeleted: { $ne: true } })
-      .select('_id groupId')
-      .lean()
-      .exec();
-    const counted = await withAttemptCounts(this.attempts, exams);
+    const exams = await this.examModel.select(sql`${learnerExamVisibility()} AND ("group_id"=ANY(${groups.map((group) => String(String(group._id)))}::uuid[])) AND ("is_deleted" IS DISTINCT FROM ${true})`);
+    const counted = await withAttemptCounts(this.nativeDb, exams);
     return groups.map((group) => ({
       ...group,
       totalAttempts: counted
         .filter((exam) => String(exam.groupId) === String(group._id))
         .reduce((sum, exam) => sum + exam.totalAttempts, 0) }));
   }
-  constructor(
-    @InjectPgModel(ExamGroup.name)
-    private readonly examGroupModel: Model<ExamGroupDocument>,
-    @InjectPgModel(Exam.name)
-    private readonly examModel: Model<ExamDocument>,
-    @Optional()
-    @InjectPgModel(Attempt.name)
-    private readonly attempts?: Model<Attempt>,
+  private get examGroupModel(){return new SqlRecords(this.nativeDb,'examgroups');}
+private get examModel(){return new SqlRecords(this.nativeDb,'exams');}
+constructor(
+@InjectPgConnection() private readonly nativeDb:PgConnection,
   ) {}
 
   private generateSlug(text: string): string {
@@ -64,9 +56,7 @@ export class ExamGroupsService {
     const trimmedName = dto.name.trim();
     const escapedName = trimmedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-    const existing = await this.examGroupModel.findOne({
-      name: { $regex: new RegExp(`^${escapedName}$`, 'i') },
-      isDeleted: { $ne: true } });
+    const existing=await this.examGroupModel.one(sql`lower(name)=lower(${trimmedName}) AND is_deleted IS NOT TRUE`);
 
     if (existing) {
       throw new ConflictException('Exam group with this name already exists');
@@ -77,19 +67,18 @@ export class ExamGroupsService {
     let slug = baseSlug;
     let counter = 1;
     while (
-      await this.examGroupModel.exists({ slug, isDeleted: { $ne: true } })
+      await this.examGroupModel.one(sql`("slug" = ${slug}) AND ("is_deleted" IS DISTINCT FROM ${true})`)
     ) {
       slug = `${baseSlug}-${counter++}`;
     }
 
     let order = dto.order;
     if (order === undefined || order === null || order < 0) {
-      const count = await this.examGroupModel.countDocuments({
-        isDeleted: { $ne: true } });
+      const count = await this.examGroupModel.count(sql`("is_deleted" IS DISTINCT FROM ${true})`);
       order = count + 1;
     }
 
-    const created = new this.examGroupModel({
+    const created = newSqlRow('examgroups',{
       ...dto,
       name: trimmedName,
       slug,
@@ -97,59 +86,17 @@ export class ExamGroupsService {
       isActive: dto.isActive ?? true,
       isDeleted: false });
 
-    return created.save();
+    return this.examGroupModel.insert(created);
   }
 
   async findAll(
     query: QueryExamGroupDto,
   ): Promise<{ data: any[]; total: number; page: number; limit: number }> {
     const { search, q, isActive, page = 1, limit = 20 } = query;
-    const matchStage: Record<string, any> = { isDeleted: { $ne: true } };
-
-    const searchTerm = q || search;
-    if (searchTerm) {
-      matchStage.$or = [
-        { name: { $regex: searchTerm, $options: 'i' } },
-        { slug: { $regex: searchTerm, $options: 'i' } },
-        { description: { $regex: searchTerm, $options: 'i' } },
-      ];
-    }
-
-    if (isActive !== undefined) {
-      matchStage.isActive = isActive;
-    }
-
-    const skip = (page - 1) * limit;
-
-    const pipeline: PipelineStage[] = [
-      { $match: matchStage },
-      {
-        $lookup: {
-          from: 'exams',
-          let: { groupId: '$_id' },
-          pipeline: [
-            {
-              $match: {
-                $expr: { $eq: ['$groupId', '$$groupId'] },
-                isDeleted: { $ne: true } } },
-            { $count: 'count' },
-          ],
-          as: 'examCountObj' } },
-      {
-        $addFields: {
-          examCount: {
-            $ifNull: [{ $arrayElemAt: ['$examCountObj.count', 0] }, 0] } } },
-      { $project: { examCountObj: 0 } },
-      { $sort: { order: 1, createdAt: -1 } },
-      { $skip: skip },
-      { $limit: limit },
-    ];
-
-    const [data, total] = await Promise.all([
-      this.examGroupModel.aggregate(pipeline).exec(),
-      this.examGroupModel.countDocuments(matchStage).exec(),
-    ]);
-
+    const term=q||search||'';
+    const filter=sql`is_deleted IS NOT TRUE AND (${term}='' OR position(lower(${term}) in lower(name||' '||COALESCE(slug,'')||' '||COALESCE(description,'')))>0) AND (${isActive??null}::boolean IS NULL OR is_active=${isActive??null}::boolean)`;
+    const [data,total]=await Promise.all([this.examGroupModel.select(filter,sql`ORDER BY "order",created_at DESC LIMIT ${limit} OFFSET ${(page-1)*limit}`),this.examGroupModel.count(filter)]);
+    const counts=await rows(this.nativeDb,sql`SELECT group_id,COUNT(*)::int count FROM exams WHERE ${learnerExamVisibility()} AND group_id=ANY(${data.map(row=>row._id)}::uuid[]) AND is_deleted IS NOT TRUE GROUP BY group_id`);const map=new Map(counts.map(row=>[row.group_id,row.count]));for(const group of data)group.examCount=map.get(group._id)??0;
     return {
       data: await this.withGroupAttemptCounts(data),
       total,
@@ -158,21 +105,12 @@ export class ExamGroupsService {
   }
 
   async findOne(idOrSlug: string): Promise<any> {
-    const query: Record<string, any> = { isDeleted: { $ne: true } };
-    if (PgId.isValid(idOrSlug)) {
-      query._id = new PgId(idOrSlug);
-    } else {
-      query.slug = idOrSlug;
-    }
-
-    const group = await this.examGroupModel.findOne(query).lean().exec();
+    const group=await this.examGroupModel.one(sql`is_deleted IS NOT TRUE AND ${isUuid(idOrSlug)?sql`id=${idOrSlug}::uuid`:sql`slug=${idOrSlug}`}`);
     if (!group) {
       throw new NotFoundException('Exam group not found');
     }
 
-    const examCount = await this.examModel.countDocuments({
-      groupId: group._id,
-      isDeleted: { $ne: true } });
+    const examCount = await this.examModel.count(sql`${learnerExamVisibility()} AND ("group_id" = ${group._id}) AND ("is_deleted" IS DISTINCT FROM ${true})`);
 
     const [countedGroup] = await this.withGroupAttemptCounts([group]);
     return {
@@ -181,13 +119,11 @@ export class ExamGroupsService {
   }
 
   async update(id: string, dto: UpdateExamGroupDto): Promise<ExamGroup> {
-    if (!PgId.isValid(id)) {
+    if (!isUuid(id)) {
       throw new NotFoundException('Exam group not found');
     }
 
-    const currentGroup = await this.examGroupModel.findOne({
-      _id: new PgId(id),
-      isDeleted: { $ne: true } });
+    const currentGroup = await this.examGroupModel.one(sql`("id" = ${String(id)}) AND ("is_deleted" IS DISTINCT FROM ${true})`);
 
     if (!currentGroup) {
       throw new NotFoundException('Exam group not found');
@@ -199,10 +135,7 @@ export class ExamGroupsService {
       const trimmedName = dto.name.trim();
       if (trimmedName.toLowerCase() !== currentGroup.name.toLowerCase()) {
         const escapedName = trimmedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const existing = await this.examGroupModel.findOne({
-          _id: { $ne: new PgId(id) },
-          name: { $regex: new RegExp(`^${escapedName}$`, 'i') },
-          isDeleted: { $ne: true } });
+        const existing=await this.examGroupModel.one(sql`id<>${id}::uuid AND lower(name)=lower(${trimmedName}) AND is_deleted IS NOT TRUE`);
 
         if (existing) {
           throw new ConflictException(
@@ -218,10 +151,7 @@ export class ExamGroupsService {
         let slug = baseSlug;
         let counter = 1;
         while (
-          await this.examGroupModel.exists({
-            _id: { $ne: new PgId(id) },
-            slug,
-            isDeleted: { $ne: true } })
+          await this.examGroupModel.one(sql`("id" IS DISTINCT FROM ${String(id)}) AND ("slug" = ${slug}) AND ("is_deleted" IS DISTINCT FROM ${true})`)
         ) {
           slug = `${baseSlug}-${counter++}`;
         }
@@ -233,10 +163,7 @@ export class ExamGroupsService {
         let slug = baseSlug;
         let counter = 1;
         while (
-          await this.examGroupModel.exists({
-            _id: { $ne: new PgId(id) },
-            slug,
-            isDeleted: { $ne: true } })
+          await this.examGroupModel.one(sql`("id" IS DISTINCT FROM ${String(id)}) AND ("slug" = ${slug}) AND ("is_deleted" IS DISTINCT FROM ${true})`)
         ) {
           slug = `${baseSlug}-${counter++}`;
         }
@@ -248,10 +175,7 @@ export class ExamGroupsService {
       let slug = baseSlug;
       let counter = 1;
       while (
-        await this.examGroupModel.exists({
-          _id: { $ne: new PgId(id) },
-          slug,
-          isDeleted: { $ne: true } })
+        await this.examGroupModel.one(sql`("id" IS DISTINCT FROM ${String(id)}) AND ("slug" = ${slug}) AND ("is_deleted" IS DISTINCT FROM ${true})`)
       ) {
         slug = `${baseSlug}-${counter++}`;
       }
@@ -270,13 +194,7 @@ export class ExamGroupsService {
       updateData.isActive = dto.isActive;
     }
 
-    const updated = await this.examGroupModel
-      .findOneAndUpdate(
-        { _id: new PgId(id), isDeleted: { $ne: true } },
-        { $set: updateData },
-        { returnDocument: 'after' },
-      )
-      .exec();
+    const updated = await this.examGroupModel.patch(sql`("id" = ${String(id)}) AND ("is_deleted" IS DISTINCT FROM ${true})`,updateData);
 
     if (!updated) {
       throw new NotFoundException('Exam group not found');
@@ -289,13 +207,7 @@ export class ExamGroupsService {
     const group = await this.findOne(id);
     const nextActive = isActive ?? !group.isActive;
 
-    const updated = await this.examGroupModel
-      .findByIdAndUpdate(
-        id,
-        { isActive: nextActive },
-        { returnDocument: 'after' },
-      )
-      .exec();
+    const updated = await this.examGroupModel.patch(sql`id=${id}::uuid`,{ isActive: nextActive });
 
     if (!updated) {
       throw new NotFoundException('Exam group not found');
@@ -305,101 +217,75 @@ export class ExamGroupsService {
   }
 
   async remove(id: string): Promise<ExamGroup> {
-    if (!PgId.isValid(id)) {
+    return withPgTransaction(this.nativeDb,async()=>{await rows(this.nativeDb,sql`SELECT pg_advisory_xact_lock(hashtextextended('assessment-exam-order',0))`);
+
+    if (!isUuid(id)) {
       throw new NotFoundException('Exam group not found');
     }
 
-    const group = await this.examGroupModel
-      .findOneAndUpdate(
-        { _id: id, isDeleted: { $ne: true } },
-        { isDeleted: true },
-        { returnDocument: 'after' },
-      )
-      .exec();
+    const group = await this.examGroupModel.patch(sql`("id" = ${id}) AND ("is_deleted" IS DISTINCT FROM ${true})`,{ isDeleted: true });
 
     if (!group) {
       throw new NotFoundException('Exam group not found');
     }
 
     // Unset groupId from associated exams
-    await this.examModel.updateMany(
-      { groupId: new PgId(id) },
-      { $set: { groupId: null, groupOrder: 0 } },
-    );
+    await this.examModel.patch(sql`("group_id" = ${String(id)})`,{ groupId: null, groupOrder: 0 });
 
     return group;
+  
+    });
   }
 
   async getExams(groupIdOrSlug: string, query?: any): Promise<any[]> {
-    let groupPgId: PgId;
-    if (PgId.isValid(groupIdOrSlug)) {
-      groupPgId = new PgId(groupIdOrSlug);
+    let groupPgId: string;
+    if (isUuid(groupIdOrSlug)) {
+      groupPgId = String(groupIdOrSlug);
     } else {
-      const group = await this.examGroupModel
-        .findOne({ slug: groupIdOrSlug, isDeleted: { $ne: true } })
-        .lean()
-        .exec();
+      const group = await this.examGroupModel.one(sql`("slug" = ${groupIdOrSlug}) AND ("is_deleted" IS DISTINCT FROM ${true})`);
       if (!group) {
         throw new NotFoundException('Exam group not found');
       }
-      groupPgId = group._id as PgId;
+      groupPgId = group._id as string;
     }
 
-    const exams = await this.examModel
-      .find({
-        groupId: groupPgId,
-        isDeleted: { $ne: true } })
-      .sort(GROUP_EXAM_SORT)
-      .lean()
-      .exec();
-    return withAttemptCounts(this.attempts, exams);
+    const exams=await this.examModel.select(sql`${learnerExamVisibility()} AND group_id=${groupPgId}::uuid AND is_deleted IS NOT TRUE`,sql`ORDER BY ${GROUP_EXAM_SORT}`);
+    return withAttemptCounts(this.nativeDb, exams);
   }
 
   async addExams(
     groupId: string,
     examIds: string[],
   ): Promise<{ updatedCount: number }> {
+    return withPgTransaction(this.nativeDb,async()=>{await rows(this.nativeDb,sql`SELECT pg_advisory_xact_lock(hashtextextended('assessment-exam-order',0))`);
+
     await this.findOne(groupId);
     if (!examIds || !examIds.length) {
       return { updatedCount: 0 };
     }
 
     const uuids = examIds
-      .filter((id) => PgId.isValid(id))
-      .map((id) => new PgId(id));
+      .filter((id) => isUuid(id))
+      .map((id) => String(id));
 
-    const group = new PgId(groupId);
+    const group = String(groupId);
     // Newly added exams go to the end of the group, in the order given.
-    const incoming = await this.examModel
-      .find({
-        _id: { $in: uuids },
-        isDeleted: { $ne: true },
-        groupId: { $ne: group } })
-      .select('_id')
-      .lean()
-      .exec();
+    const incoming = await this.examModel.select(sql`${learnerExamVisibility()} AND ("id"=ANY(${uuids}::uuid[])) AND ("is_deleted" IS DISTINCT FROM ${true}) AND ("group_id" IS DISTINCT FROM ${group})`);
     const ids = uuids.filter((id) =>
       incoming.some((exam) => String(exam._id) === String(id)),
     );
     if (!ids.length) return { updatedCount: 0 };
     const start = await nextGroupOrder(this.examModel, group);
-    const result = await this.examModel.bulkWrite(
-      ids.map((id, index) => ({
-        updateOne: {
-          filter: { _id: id },
-          update: { $set: { groupId: group, groupOrder: start + index } } } })),
-    );
-
-    return { updatedCount: result.modifiedCount };
+    let updatedCount=0;for(const [index,id]of ids.entries()){const row=await this.examModel.patch(sql`id=${id}::uuid`,{groupId:group,groupOrder:start+index});if(row)updatedCount++;}return {updatedCount};
+  
+    });
   }
 
   async reorderExams(groupId: string, examIds: string[]) {
+    return withPgTransaction(this.nativeDb,async()=>{await rows(this.nativeDb,sql`SELECT pg_advisory_xact_lock(hashtextextended('assessment-exam-order',0))`);
+
     const group = await this.findOne(groupId);
-    const current = await this.examModel
-      .find({ groupId: group._id, isDeleted: { $ne: true } })
-      .select('_id')
-      .lean()
-      .exec();
+    const current = await this.examModel.select(sql`${learnerExamVisibility()} AND ("group_id" = ${group._id}) AND ("is_deleted" IS DISTINCT FROM ${true})`);
     const currentIds = new Set(current.map((exam) => String(exam._id)));
     if (
       examIds.length !== currentIds.size ||
@@ -409,30 +295,27 @@ export class ExamGroupsService {
       throw new BadRequestException(
         'examIds must list every exam of the group exactly once',
       );
-    if (examIds.length)
-      await this.examModel.bulkWrite(
-        examIds.map((id, index) => ({
-          updateOne: {
-            filter: { _id: new PgId(id), groupId: group._id },
-            update: { $set: { groupOrder: index + 1 } } } })),
-      );
+    for(const [index,id]of examIds.entries())await this.examModel.patch(sql`id=${id}::uuid AND group_id=${group._id}::uuid`,{groupOrder:index+1});
     return this.getExams(groupId);
+  
+    });
   }
 
   async removeExam(
     groupId: string,
     examId: string,
   ): Promise<{ success: boolean }> {
+    return withPgTransaction(this.nativeDb,async()=>{await rows(this.nativeDb,sql`SELECT pg_advisory_xact_lock(hashtextextended('assessment-exam-order',0))`);
+
     await this.findOne(groupId);
-    if (!PgId.isValid(examId)) {
+    if (!isUuid(examId)) {
       throw new NotFoundException('Exam not found');
     }
 
-    await this.examModel.updateOne(
-      { _id: new PgId(examId), groupId: new PgId(groupId) },
-      { $set: { groupId: null, groupOrder: 0 } },
-    );
+    await this.examModel.patch(sql`("id" = ${String(examId)}) AND ("group_id" = ${String(groupId)})`,{ groupId: null, groupOrder: 0 });
 
     return { success: true };
+  
+    });
   }
 }

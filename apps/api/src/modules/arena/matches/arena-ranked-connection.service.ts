@@ -1,16 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { WsException } from '@nestjs/websockets';
-import { InjectPgModel, PgId, type Model } from '../../../postgres/compat.js';
+import { InjectPgConnection,type PgConnection } from '../../../postgres/connection.js';
+import { SqlRecords } from '../../../postgres/records.js';
+import { sql } from '../../../postgres/sql.js';
+
 import { ARENA_DEFAULTS } from '../admin/arena-settings.defaults.js';
-import { ArenaMatch, ArenaMatchStatus as Status, ArenaMatchType, ArenaMatchFinishReason } from '../schemas/arena-match.schema.js';
-import { ArenaMatchPlayer } from '../schemas/arena-match-player.schema.js';
-import { ArenaMatchQuestion } from '../schemas/arena-match-question.schema.js';
-import { ArenaPlayerAnswer } from '../schemas/arena-player-answer.schema.js';
 import { ArenaPresenceService } from '../presence/arena-presence.service.js';
-import { ArenaRoundService, type ArenaRoundEvent } from '../question/arena-round.service.js';
-import { arenaHintLetters, maskArenaAnswer } from '../question/arena-round.utils.js';
-import { ArenaMatchService } from './arena-match.service.js';
+import { ArenaRoundService,type ArenaRoundEvent } from '../question/arena-round.service.js';
+import { arenaHintLetters,maskArenaAnswer } from '../question/arena-round.utils.js';
+import { ArenaMatch,ArenaMatchFinishReason,ArenaMatchType,ArenaMatchStatus as Status } from '../rows/arena-match.row.js';
 import { ArenaMatchTransactions } from './arena-match-transactions.js';
+import { ArenaMatchService } from './arena-match.service.js';
 
 type Connection = { disconnectedAt: number | null; deadlineAt: number | null; pauseStartedAt: number | null; pausedMs: number; pauseCount: number; synced: boolean };
 export type RankedConnectionState = {
@@ -22,20 +22,20 @@ export type RankedConnectionState = {
 const live = [Status.PLAYING, Status.PAUSED, Status.RESUMING];
 @Injectable()
 export class ArenaRankedConnectionService {
-  constructor(
-    @InjectPgModel(ArenaMatch.name) private readonly matches: Model<ArenaMatch>,
-    @InjectPgModel(ArenaMatchPlayer.name) private readonly players: Model<ArenaMatchPlayer>,
-    @InjectPgModel(ArenaMatchQuestion.name) private readonly questions: Model<ArenaMatchQuestion>,
-    @InjectPgModel(ArenaPlayerAnswer.name) private readonly answers: Model<ArenaPlayerAnswer>,
-    private readonly presence: ArenaPresenceService,
-    private readonly rounds: ArenaRoundService,
-    private readonly matchService: ArenaMatchService,
-    private readonly transactions: ArenaMatchTransactions,
+  private get matches(){return new SqlRecords(this.nativeDb,'arenamatches');}
+private get players(){return new SqlRecords(this.nativeDb,'arenamatchplayers');}
+private get questions(){return new SqlRecords(this.nativeDb,'arenamatchquestions');}
+private get answers(){return new SqlRecords(this.nativeDb,'arenaplayeranswers');}
+constructor(
+@InjectPgConnection() private readonly nativeDb:PgConnection,private readonly presence: ArenaPresenceService,
+private readonly rounds: ArenaRoundService,
+private readonly matchService: ArenaMatchService,
+private readonly transactions: ArenaMatchTransactions
   ) {}
   private async state(match: ArenaMatch): Promise<RankedConnectionState> {
     if (match.rankedState) return structuredClone(match.rankedState);
     const members: Record<string, Connection> = {};
-    for (const player of await this.players.find({ matchId: (match as any)._id })) members[String(player.userId)] = {
+    for (const player of await this.players.select(sql`("match_id" = ${(match as any)._id})`)) members[String(player.userId)] = {
       disconnectedAt: player.disconnectedAt?.getTime() ?? null, deadlineAt: null, pauseStartedAt: null, pausedMs: 0, pauseCount: 0, synced: true,
     };
     return { version: 0, frozenAt: null, resumeAt: null, phase: 'QUESTION_ACTIVE', remainingQuestionMs: 0, remainingTransitionMs: 0, members };
@@ -48,23 +48,23 @@ export class ArenaRankedConnectionService {
   }
   private async save(matchId: string, state: RankedConnectionState, status?: Status) {
     state.version++;
-    await this.matches.updateOne({ _id: new PgId(matchId) }, { $set: { rankedState: state, ...(status ? { status } : {}) } });
+    await this.matches.patch(sql`("id" = ${String(matchId)})`,{ rankedState: state, ...(status ? { status } : {}) });
   }
   async disconnected(matchId: string, userId: string, at = Date.now()) {
     return this.transactions.run(matchId, async () => {
-      const match = await this.matches.findById(matchId);
+      const match = await this.matches.one(sql`id=${matchId}::uuid`);
       if (!match || match.type !== ArenaMatchType.RANK || !live.includes(match.status) || await this.online(userId, matchId)) return;
       const state = await this.state(match), member = state.members[userId];
       if (!member || member.disconnectedAt !== null) return;
       member.disconnectedAt = at; member.synced = false;
-      await this.players.updateOne({ matchId: match._id, userId: new PgId(userId) }, { $set: { status: 'DISCONNECTED', disconnectedAt: new Date(at) } });
+      await this.players.patch(sql`("match_id" = ${match._id}) AND ("user_id" = ${String(userId)})`,{ status: 'DISCONNECTED', disconnectedAt: new Date(at) });
       await this.save(matchId, state);
     });
   }
   async restore(matchId: string, userId: string, at = Date.now()) {
     return this.transactions.run(matchId, async () => {
       await this.process(matchId, at);
-      const match = await this.matches.findById(matchId);
+      const match = await this.matches.one(sql`id=${matchId}::uuid`);
       if (!match || match.type !== ArenaMatchType.RANK) return;
       const state = await this.state(match), member = state.members[userId];
       if (!member) throw new WsException('You are not a player in this match');
@@ -75,36 +75,36 @@ export class ArenaRankedConnectionService {
         if (member.pauseStartedAt !== null) member.pausedMs += Math.max(0, at-member.pauseStartedAt);
         member.disconnectedAt = null; member.deadlineAt = null; member.pauseStartedAt = null;
         member.synced = match.status === Status.PLAYING;
-        await this.players.updateOne({ matchId: match._id, userId: new PgId(userId) }, { $set: { status: 'PLAYING', disconnectedAt: null } });
+        await this.players.patch(sql`("match_id" = ${match._id}) AND ("user_id" = ${String(userId)})`,{ status: 'PLAYING', disconnectedAt: null });
         await this.save(matchId, state);
       }
     });
   }
   async acknowledge(matchId: string, userId: string, version: number) {
     return this.transactions.run(matchId, async () => {
-      const match = await this.matches.findById(matchId);
+      const match = await this.matches.one(sql`id=${matchId}::uuid`);
       if (!match || match.type !== ArenaMatchType.RANK || !live.includes(match.status)) return;
       const state = await this.state(match), member = state.members[userId];
       if (!member || version !== state.version || member.disconnectedAt !== null || !await this.online(userId, matchId)) return;
       member.synced = true;
       // Acknowledgements do not change the public state version.
-      await this.matches.updateOne({ _id: match._id }, { $set: { rankedState: state } });
+      await this.matches.patch(sql`("id" = ${match._id})`,{ rankedState: state });
     });
   }
   async snapshot(matchId: string, userId?: string): Promise<Record<string, any>> {
     return this.transactions.run(matchId, () => this.snapshotLocked(matchId, userId));
   }
   private async snapshotLocked(matchId: string, userId?: string): Promise<Record<string, any>> {
-    const match = await this.matches.findById(matchId);
+    const match = await this.matches.one(sql`id=${matchId}::uuid`);
     if (!match || match.type !== ArenaMatchType.RANK) throw new WsException('Ranked match not found');
     const state = await this.state(match);
     if (userId && !state.members[userId]) throw new WsException('You are not a player in this match');
-    const question = await this.questions.findOne({ matchId: match._id, order: match.currentQuestionIndex });
+    const question = await this.questions.one(sql`("match_id" = ${match._id}) AND ("order" = ${match.currentQuestionIndex})`);
     const now = Date.now(), frozenNow = state.frozenAt ?? now;
     const elapsed = question?.startedAt ? Math.max(0, frozenNow-question.startedAt.getTime()) : 0;
-    const answer = userId && question ? await this.answers.findOne({ matchId: match._id, userId: new PgId(userId), matchQuestionId: question._id }) : null;
+    const answer = userId && question ? await this.answers.one(sql`("match_id" = ${match._id}) AND ("user_id" = ${String(userId)}) AND ("match_question_id" = ${question._id})`) : null;
     const history: { questionId: string; order: number; correct: boolean }[] = [];
-    if (userId) for (const resolved of await this.questions.find({ matchId: match._id, resolvedAt: { $ne: null } }).sort({ order: 1 }))
+    if (userId) for (const resolved of await this.questions.select(sql`("match_id" = ${match._id}) AND ("resolved_at" IS DISTINCT FROM ${null})`, sql`ORDER BY "order" ASC NULLS FIRST`))
       history.push({ questionId: String(resolved._id), order: resolved.order, correct: String(resolved.winnerId) === userId });
     return {
       matchId, version: state.version, status: match.status, phase: state.phase, serverNow: now,
@@ -123,12 +123,12 @@ export class ArenaRankedConnectionService {
         example: question.example, translation: question.translation, type: question.wordType,
       } : null,
       ...(userId ? { history, submitted: answer ? { answer: answer.selectedAnswer, attempts: answer.attempts, earnedScore: answer.earnedScore } : null } : {}),
-      players: (await this.players.find({ matchId: match._id })).map(p => ({ userId: String(p.userId), score: p.score, streak: p.currentStreak })),
+      players: (await this.players.select(sql`("match_id" = ${match._id})`)).map(p => ({ userId: String(p.userId), score: p.score, streak: p.currentStreak })),
     };
   }
   async tick(now = Date.now()) {
     const batches: { matchId: string; events: ArenaRoundEvent[] }[] = [];
-    const matches = await this.matches.find({ type: ArenaMatchType.RANK, status: { $in: live } });
+    const matches = await this.matches.select(sql`("type" = ${ArenaMatchType.RANK}) AND ("status"=ANY(${live}::text[]))`);
     for (const match of matches) {
       const matchId = String(match._id);
       const events = await this.transactions.run(matchId, () => this.process(matchId, now));
@@ -137,7 +137,7 @@ export class ArenaRankedConnectionService {
     return batches;
   }
   private async process(matchId: string, now: number): Promise<ArenaRoundEvent[]> {
-    let match = await this.matches.findById(matchId);
+    let match = await this.matches.one(sql`id=${matchId}::uuid`);
     if (!match || !live.includes(match.status)) return [];
     const rules = this.rules(match), state = await this.state(match), events: ArenaRoundEvent[] = [];
     let changed = false;
@@ -147,7 +147,7 @@ export class ArenaRankedConnectionService {
       online.set(id, await this.online(id, matchId));
       if (!online.get(id) && member.disconnectedAt === null) {
         member.disconnectedAt = now; member.synced = false; changed = true;
-        await this.players.updateOne({ matchId: match._id, userId: new PgId(id) }, { $set: { status: 'DISCONNECTED', disconnectedAt: new Date(now) } });
+        await this.players.patch(sql`("match_id" = ${match._id}) AND ("user_id" = ${String(id)})`,{ status: 'DISCONNECTED', disconnectedAt: new Date(now) });
       }
     }
     const absent = Object.entries(state.members).filter(([,m]) => m.disconnectedAt !== null);
@@ -156,9 +156,9 @@ export class ArenaRankedConnectionService {
       if (state.frozenAt === null) {
         const freezeAt = Math.min(...overdueGrace.map(([,m]) => m.disconnectedAt!+rules.reloadGraceSeconds*1000));
         events.push(...await this.rounds.advanceTo(matchId, freezeAt));
-        match = await this.matches.findById(matchId);
+        match = await this.matches.one(sql`id=${matchId}::uuid`);
         if (!match || match.status !== Status.PLAYING) return events;
-        const question = await this.questions.findOne({ matchId: match._id, order: match.currentQuestionIndex });
+        const question = await this.questions.one(sql`("match_id" = ${match._id}) AND ("order" = ${match.currentQuestionIndex})`);
         state.frozenAt = freezeAt;
         state.phase = question?.resolvedAt ? 'QUESTION_RESOLVED_TRANSITION' : 'QUESTION_ACTIVE';
         state.remainingQuestionMs = question?.startedAt ? Math.max(0, match.secondsPerQuestion*1000-(freezeAt-question.startedAt.getTime())) : match.secondsPerQuestion*1000;
@@ -188,8 +188,8 @@ export class ArenaRankedConnectionService {
       if (!allAbsent || expired.length === absent.length) {
         await this.save(matchId, state);
         if (allAbsent) {
-          await this.matches.updateOne({ _id: match._id }, { $set: { status: Status.CANCELLED, cancelReason: 'BOTH_DISCONNECTED', finishReason: ArenaMatchFinishReason.BOTH_DISCONNECTED, finishedAt: new Date(now) } });
-          await this.players.updateMany({ matchId: match._id }, { $set: { status: 'LEFT' } });
+          await this.matches.patch(sql`("id" = ${match._id})`,{ status: Status.CANCELLED, cancelReason: 'BOTH_DISCONNECTED', finishReason: ArenaMatchFinishReason.BOTH_DISCONNECTED, finishedAt: new Date(now) });
+          await this.players.patch(sql`("match_id" = ${match._id})`,{ status: 'LEFT' });
         } else {
           const winner = Object.keys(state.members).find(id => !absent.some(([absentId]) => absentId === id));
           await this.matchService.finishMatch(matchId, ArenaMatchFinishReason.DISCONNECT_FORFEIT, winner);
@@ -205,11 +205,11 @@ export class ArenaRankedConnectionService {
     }
     if (!absent.length && match.status === Status.RESUMING && state.resumeAt !== null && now >= state.resumeAt) {
       const shift = Math.max(0, now-state.frozenAt!);
-      const question = await this.questions.findOne({ matchId: match._id, order: match.currentQuestionIndex });
-      if (question) await this.questions.updateOne({ _id: question._id }, { $set: {
+      const question = await this.questions.one(sql`("match_id" = ${match._id}) AND ("order" = ${match.currentQuestionIndex})`);
+      if (question) await this.questions.patch(sql`("id" = ${question._id})`,{
         ...(question.startedAt ? { startedAt: new Date(question.startedAt.getTime()+shift) } : {}),
         ...(question.resolvedAt ? { resolvedAt: new Date(question.resolvedAt.getTime()+shift) } : {}),
-      } });
+      });
       state.frozenAt = null; state.resumeAt = null;
       await this.save(matchId, state, Status.PLAYING); changed = true;
       events.push({ event: 'arena:match-resumed', data: { matchId, version: state.version } });
@@ -217,7 +217,7 @@ export class ArenaRankedConnectionService {
     if (changed) {
       if (state.version === initialVersion) await this.save(matchId, state);
       // Persist connection-only changes even when no public phase changed.
-      await this.matches.updateOne({ _id: match._id }, { $set: { rankedState: state } });
+      await this.matches.patch(sql`("id" = ${match._id})`,{ rankedState: state });
       events.push({ event: 'arena:match-sync', data: await this.snapshot(matchId) });
     }
     return events;

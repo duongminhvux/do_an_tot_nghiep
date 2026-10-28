@@ -1,22 +1,24 @@
-import {
-  ArrayMaxSize,
-  ArrayMinSize,
-  IsArray,
-  IsEnum,
-  IsIn,
-  IsInt,
-  IsUUID,
-  IsNumber,
-  IsOptional,
-  IsString,
-  Max,
-  MaxLength,
-  Min,
-  MinLength } from 'class-validator';
 import { Type } from 'class-transformer';
 import {
-  DictationAudioSource,
-  DictationLevel } from '../schemas/dictation-lesson.schema.js';
+ArrayMaxSize,
+ArrayMinSize,
+IsArray,
+IsEnum,
+IsIn,
+IsInt,
+IsNumber,
+IsOptional,
+IsString,
+IsUUID,
+Max,
+MaxLength,
+Min,
+MinLength
+} from 'class-validator';
+import {
+DictationAudioSource,
+DictationLevel
+} from '../rows/dictation-lesson.row.js';
 
 export class CreateDictationDto {
   @IsString()

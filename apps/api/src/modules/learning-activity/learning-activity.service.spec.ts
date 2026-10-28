@@ -13,7 +13,7 @@ it('home uses only active website time, without turning time-only days into lear
       durationSec: 259200,
     },
   ];
-  const model = { aggregate: () => ({ exec: async () => rows }) };
+  const model = {query:async()=>({rows})};
   const activeTime = {
     daily: async () =>
       new Map([
@@ -24,7 +24,6 @@ it('home uses only active website time, without turning time-only days into lear
   };
   const service = new LearningActivityService(
     model as never,
-    {} as never,
     activeTime as never,
   );
   const home = await service.home(
@@ -42,21 +41,16 @@ it('home uses only active website time, without turning time-only days into lear
   expect(home.heatmap[0].durationSec).toBe(20);
 });
 it('does not reuse historical elapsed test durations when active-time records are absent', async () => {
-  const model = {
-    aggregate: () => ({
-      exec: async () => [
+  const model={query:async()=>({rows:[
         {
           _id: { day: '2026-10-25', module: 'TOEIC' },
           xp: 10,
           count: 1,
           durationSec: 259200,
         },
-      ],
-    }),
-  };
+      ]})};
   const service = new LearningActivityService(
     model as never,
-    {} as never,
     { daily: async () => new Map() } as never,
   );
   const home = await service.home(

@@ -1,16 +1,17 @@
-import {
-  ArrayMaxSize,
-  ArrayMinSize,
-  IsArray,
-  IsInt,
-  IsNumber,
-  IsOptional,
-  IsString,
-  MaxLength,
-  Min,
-  MinLength,
-  ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
+import {
+ArrayMaxSize,
+ArrayMinSize,
+IsArray,
+IsInt,
+IsNumber,
+IsOptional,
+IsString,
+MaxLength,
+Min,
+MinLength,
+ValidateNested
+} from 'class-validator';
 
 export class DictationSegmentEditDto {
   @Type(() => Number)

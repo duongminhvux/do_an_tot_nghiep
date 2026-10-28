@@ -1,11 +1,11 @@
-import { Module, Controller, Post, Body, Headers, ForbiddenException, BadRequestException } from '@nestjs/common';
-import { Public } from '../modules/auth/decorators/public.decorator.js';
+import { BadRequestException,Body,Controller,ForbiddenException,Headers,Module,Post } from '@nestjs/common';
 import { timingSafeEqual } from 'node:crypto';
-import { GmailModule } from '../modules/gmail/gmail.module.js';
-import { GmailService } from '../modules/gmail/gmail.service.js';
 import { ActivityLogsModule } from '../modules/activity-logs/activity-logs.module.js';
 import { ActivityLogsService } from '../modules/activity-logs/activity-logs.service.js';
 import type { CreateActivityLogDto } from '../modules/activity-logs/dto/create-activity-log.dto.js';
+import { Public } from '../modules/auth/decorators/public.decorator.js';
+import { GmailModule } from '../modules/gmail/gmail.module.js';
+import { GmailService } from '../modules/gmail/gmail.service.js';
 function verify(token:string) {
   const expected=process.env.INTERNAL_SERVICE_TOKEN||'';
   if(expected.length<24||!token||token.length!==expected.length||

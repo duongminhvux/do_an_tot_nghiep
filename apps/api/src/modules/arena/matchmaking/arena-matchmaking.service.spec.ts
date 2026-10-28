@@ -1,7 +1,7 @@
 vi.mock('../matches/arena-match.service.js', () => ({
   ArenaMatchService: class {} }));
 import { ArenaMatchmakingService } from './arena-matchmaking.service.js';
-vi.mock('../../users/schema/user.schema.js', () => ({ User: class {} }));
+vi.mock('../../users/rows/user.row.js', () => ({ User: class {} }));
 
 function fixture() {
   const queue = new Map<string, number>();
@@ -62,11 +62,7 @@ function fixture() {
       active.add(b);
       return { match: { _id: 'match-1' } };
     }) };
-  const users = {
-    find: vi.fn((filter: { _id: { $in: string[] } }) => ({
-      select: () => ({
-        lean: async () =>
-          filter._id.$in.map((id) => ({ _id: id, username: id })) }) })) };
+  const users={query:vi.fn(async(_text:string,params:any[])=>({rows:(params[0]??[]).map((id:string)=>({id,username:id,is_deleted:false,is_banned:false}))}))};
   const deps = [
     presence,
     { getClient: () => redis },

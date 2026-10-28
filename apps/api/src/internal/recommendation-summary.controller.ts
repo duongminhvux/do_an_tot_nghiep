@@ -1,16 +1,16 @@
 import {
-  Controller,
-  ForbiddenException,
-  Get,
-  Headers,
-  Param,
-  ParseUUIDPipe,
+Controller,
+ForbiddenException,
+Get,
+Headers,
+Param,
+ParseUUIDPipe,
 } from '@nestjs/common';
 import { timingSafeEqual } from 'node:crypto';
-import { InjectPgConnection, type PgConnection } from '../postgres/connection.js';
-import { serviceRole } from '../postgres/ownership.js';
 import { Public } from '../modules/auth/decorators/public.decorator.js';
 import { readRecommendationRules } from '../modules/learning/recommendations/recommendation-settings.js';
+import { InjectPgConnection,type PgConnection } from '../postgres/connection.js';
+import { serviceRole } from '../postgres/ownership.js';
 
 export function authorizeRecommendationSummary(token: string, roles: string[]) {
   const expected = Buffer.from(process.env.INTERNAL_SERVICE_TOKEN ?? '');

@@ -1,22 +1,22 @@
 import {
-  Body,
-  Controller,
-  ForbiddenException,
-  Headers,
-  Post,
+Body,
+Controller,
+ForbiddenException,
+Headers,
+Post,
 } from '@nestjs/common';
+import type { MistakeDetail,MistakeSource } from '@repo/shared-types/mistakes';
 import {
-  ArrayMaxSize,
-  ArrayUnique,
-  IsArray,
-  IsIn,
-  IsUUID,
+ArrayMaxSize,
+ArrayUnique,
+IsArray,
+IsIn,
+IsUUID,
 } from 'class-validator';
 import { timingSafeEqual } from 'node:crypto';
-import type { MistakeDetail, MistakeSource } from '@repo/shared-types/mistakes';
-import { InjectPgConnection, type PgConnection } from '../postgres/connection.js';
-import { serviceRole } from '../postgres/ownership.js';
 import { Public } from '../modules/auth/decorators/public.decorator.js';
+import { InjectPgConnection,type PgConnection } from '../postgres/connection.js';
+import { serviceRole } from '../postgres/ownership.js';
 
 export class MistakeResolveDto {
   @IsUUID() userId: string;

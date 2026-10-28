@@ -1,19 +1,20 @@
 /// <reference types="multer" />
 import {
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-  Query,
-  UseInterceptors,
-  UploadedFile } from '@nestjs/common';
+Body,
+Delete,
+Get,
+Param,
+Patch,
+Post,
+Query,
+UploadedFile,
+UseInterceptors
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { QuestionsService } from './questions.service.js';
+import { AdminController } from '../../auth/decorators/admin-controller.decorator.js';
 import { CreateQuestionDto } from './dto/create-question.dto.js';
 import { UpdateQuestionDto } from './dto/update-question.dto.js';
-import { AdminController } from '../../auth/decorators/admin-controller.decorator.js';
+import { QuestionsService } from './questions.service.js';
 
 @AdminController('questions')
 export class QuestionsController {

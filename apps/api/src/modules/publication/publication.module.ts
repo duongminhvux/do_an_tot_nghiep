@@ -1,17 +1,17 @@
 import {
-  Global,
-  Get,
-  Header,
-  Inject,
-  Module,
-  Param,
-  ParseUUIDPipe,
-  Post,
-  Query,
-  Req,
+Get,
+Global,
+Header,
+Inject,
+Module,
+Param,
+ParseUUIDPipe,
+Post,
+Query,
+Req,
 } from '@nestjs/common';
-import { IsIn, IsOptional } from 'class-validator';
 import type { PublicationKind } from '@repo/shared-types/publication';
+import { IsIn,IsOptional } from 'class-validator';
 import { AdminController } from '../auth/decorators/admin-controller.decorator.js';
 import { PublicationService } from './publication.service.js';
 export class PublicationLanguageDto {

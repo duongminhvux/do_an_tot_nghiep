@@ -1,20 +1,22 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Query,
-  Req } from '@nestjs/common';
+Body,
+Controller,
+Get,
+Param,
+Patch,
+Post,
+Query,
+Req
+} from '@nestjs/common';
 import { AttemptsService } from './attempts.service.js';
-import { QueryAttemptDto } from './dto/query-attempt.dto.js';
 import { CreateAttemptDto } from './dto/create-attempt.dto.js';
+import { QueryAttemptDto } from './dto/query-attempt.dto.js';
 import {
-  CheckAnswerDto,
-  AudioPlayDto,
-  SaveAnswerDto,
-  UpdateAttemptDto } from './dto/update-attempt.dto.js';
+AudioPlayDto,
+CheckAnswerDto,
+SaveAnswerDto,
+UpdateAttemptDto
+} from './dto/update-attempt.dto.js';
 
 type UserRequest = { user: { _id: string } };
 

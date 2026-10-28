@@ -1,26 +1,26 @@
-import { PgId } from '../../../postgres/compat.js';
 import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-  ServiceUnavailableException } from '@nestjs/common';
+BadRequestException,
+Injectable,
+NotFoundException,
+ServiceUnavailableException
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectPgModel } from '../../../postgres/compat.js';
-import { type Model } from '../../../postgres/compat.js';
 import { validateImportDraft } from '@repo/shared-types/assessment-import';
-import { Exam, ExamDocument } from '../exams/schemas/exam.schema.js';
+import { InjectPgConnection,type PgConnection } from '../../../postgres/connection.js';
+import { isUuid } from '../../../postgres/ids.js';
+import { assessmentRows } from '../assessment-reader.js';
 
 @Injectable()
 export class PdfAiService {
   constructor(
     private readonly config: ConfigService,
-    @InjectPgModel(Exam.name) private readonly exams: Model<ExamDocument>,
+    @InjectPgConnection() private readonly db:PgConnection,
   ) {}
 
   private async checkExam(examId: string) {
-    if (!PgId.isValid(examId))
+    if (!isUuid(examId))
       throw new NotFoundException('Exam not found');
-    const exam = await this.exams.findById(examId).lean().exec();
+    const exam = (await assessmentRows(this.db,'exams',{ids:[examId],limit:1}))[0]??null;
     if (!exam || exam.isDeleted) throw new NotFoundException('Exam not found');
     if (exam.type !== 'TOEIC')
       throw new BadRequestException('AI PDF hiện hỗ trợ đề TOEIC.');

@@ -1,18 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import {
-  InjectPgConnection,
-  withPgTransaction,
-  type PgConnection,
+InjectPgConnection,
+withPgTransaction,
+type PgConnection,
 } from '../../postgres/connection.js';
 import {
-  first,
-  identifier,
-  literal,
-  rowData,
-  rows,
-  sql,
-  SqlTable,
-  type Sql,
+first,
+identifier,
+literal,
+rowData,
+rows,
+sql,
+SqlTable,
+type Sql,
 } from '../../postgres/sql.js';
 import { publicationScope } from '../publication/publication-scope.js';
 

@@ -1,4 +1,4 @@
-import type { WordGuessFeedback } from '../schemas/arena-match.schema.js';
+import type { WordGuessFeedback } from '../rows/arena-match.row.js';
 
 /** Consume exact matches first so repeated letters never get excess yellow tiles. */
 export function gradeWordGuess(

@@ -1,19 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import {
-  normalizeRecommendationRules,
-  RECOMMENDATION_RULES_ID,
-  type RecommendationRules,
+normalizeRecommendationRules,
+RECOMMENDATION_RULES_ID,
+type RecommendationRules,
 } from '@repo/shared-types/recommendations';
-import { readRecommendationRules } from '../learning/recommendations/recommendation-settings.js';
 import {
-  InjectPgConnection,
-  type PgConnection,
-} from '../../postgres/connection.js';
-import {
-  normalizeSiteSettings,
-  type SiteSettings,
-  type TimezoneOption,
+normalizeSiteSettings,
+type SiteSettings,
+type TimezoneOption,
 } from '@repo/shared-types/site-settings';
+import {
+InjectPgConnection,
+type PgConnection,
+} from '../../postgres/connection.js';
+import { readRecommendationRules } from '../learning/recommendations/recommendation-settings.js';
 
 export const SITE_SETTINGS_ID = '00000000-0000-4000-8000-000000000010';
 @Injectable()

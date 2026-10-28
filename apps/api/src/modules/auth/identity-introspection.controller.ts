@@ -1,10 +1,10 @@
-import { Body, Controller, ForbiddenException, Post, UnauthorizedException, Headers } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { Body,Controller,ForbiddenException,Headers,Post,UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { UsersService } from '../users/users.service.js';
-import { AdminsService } from '../admins/admins.service.js';
-import { Public } from './decorators/public.decorator.js';
+import { JwtService } from '@nestjs/jwt';
 import { timingSafeEqual } from 'node:crypto';
+import { AdminsService } from '../admins/admins.service.js';
+import { UsersService } from '../users/users.service.js';
+import { Public } from './decorators/public.decorator.js';
 
 // Only other trusted service containers can call this endpoint. Gateway never
 // exposes /api/_internal; callers also need a signed user access token.

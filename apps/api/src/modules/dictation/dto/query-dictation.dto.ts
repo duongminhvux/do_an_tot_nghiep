@@ -1,7 +1,7 @@
-import { IsEnum, IsOptional, IsString } from 'class-validator';
-import { DictationLevel, DictationStatus } from '../schemas/dictation-lesson.schema.js';
+import { IsEnum,IsOptional,IsString } from 'class-validator';
+import { DictationLevel,DictationStatus } from '../rows/dictation-lesson.row.js';
 
-import {PublicationFilterDto} from '../../publication/publication.dto.js';
+import { PublicationFilterDto } from '../../publication/publication.dto.js';
 export class QueryDictationDto extends PublicationFilterDto {
   @IsOptional()
   @IsString()

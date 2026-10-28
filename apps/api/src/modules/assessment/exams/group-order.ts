@@ -1,23 +1,7 @@
-import { PgId } from '../../../postgres/compat.js';
-import type { Model } from '../../../postgres/compat.js';
-
-/** Position for an exam appended to the end of a group (1-based). */
-export async function nextGroupOrder(
-  exams: Model<any>,
-  groupId: PgId,
-): Promise<number> {
-  const last = await exams
-    .findOne({ groupId, isDeleted: { $ne: true } })
-    .sort({ groupOrder: -1 })
-    .select('groupOrder')
-    .lean()
-    .exec();
-  return (last?.groupOrder ?? 0) + 1;
+import type { SqlRecords } from '../../../postgres/records.js';
+import { sql } from '../../../postgres/sql.js';
+export async function nextGroupOrder(exams:SqlRecords,groupId:string):Promise<number>{
+ const last=await exams.one(sql`group_id=${groupId}::uuid AND is_deleted IS NOT TRUE`,sql`ORDER BY group_order DESC NULLS LAST`);
+ return Number(last?.groupOrder??0)+1;
 }
-
-// Exams placed in a group before `groupOrder` existed keep their global order.
-export const GROUP_EXAM_SORT = {
-  groupOrder: 1,
-  order: 1,
-  createdAt: -1,
-  _id: 1 } as const;
+export const GROUP_EXAM_SORT=sql`group_order ASC NULLS FIRST,"order" ASC NULLS FIRST,created_at DESC,id ASC`;

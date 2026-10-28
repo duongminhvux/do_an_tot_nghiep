@@ -1,26 +1,28 @@
+import { Transform,Type } from 'class-transformer';
+import {
+IsBoolean,
+IsDateString,
+IsDefined,
+IsEnum,
+IsIn,
+IsInt,
+IsNotEmpty,
+IsOptional,
+IsString,
+IsUUID,
+Max,
+MaxLength,
+Min,
+ValidateNested
+} from 'class-validator';
 import { GameAudioSettingsDto } from '../../minigame/dto/game-audio-settings.dto.js';
-import { Type, Transform } from 'class-transformer';
 import {
-  IsBoolean,
-  IsDateString,
-  IsEnum,
-  IsIn,
-  IsInt,
-  IsUUID,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  Max,
-  MaxLength,
-  Min,
-  ValidateNested,
-  IsDefined } from 'class-validator';
-import {
-  ArenaFriendMode,
-  ArenaMatchFinishReason,
-  ArenaMatchStatus,
-  ArenaMatchType,
-  ArenaQuestionMode } from '../schemas/arena-match.schema.js';
+ArenaFriendMode,
+ArenaMatchFinishReason,
+ArenaMatchStatus,
+ArenaMatchType,
+ArenaQuestionMode
+} from '../rows/arena-match.row.js';
 export class ArenaAdminQuery {
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) page = 1;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) limit = 20;

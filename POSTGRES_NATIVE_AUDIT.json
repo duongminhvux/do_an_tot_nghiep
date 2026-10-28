@@ -1,0 +1,16 @@
+{
+  "complete": true,
+  "scannedFiles": 332,
+  "scope": "All runtime TypeScript in apps/api/src; specs, comments and SQL parameter strings excluded.",
+  "bridgePresent": false,
+  "totals": {
+    "compatImports": 0,
+    "modelInjections": 0,
+    "operators": 0,
+    "methods": 0,
+    "legacyDeclarations": 0,
+    "legacySchemas": 0
+  },
+  "filesRemaining": 0,
+  "findings": []
+}

@@ -1,6 +1,6 @@
-import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, IsUrl, MinLength, ValidateIf } from 'class-validator';
-import { AuthProvider } from '../schema/user.schema.js';
+import { IsEmail,IsEnum,IsNotEmpty,IsOptional,IsString,IsUrl,MinLength,ValidateIf } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
+import { AuthProvider } from '../rows/user.row.js';
 
 export class CreateUserDto {
 	@IsNotEmpty({ message: i18nValidationMessage('auth.EMAIL_REQUIRED') })

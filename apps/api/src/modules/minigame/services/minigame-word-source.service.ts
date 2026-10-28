@@ -1,28 +1,24 @@
-import { PgId } from '../../../postgres/compat.js';
 import {
-  TYPING_RUSH_DEFAULT_SETTINGS,
-  type TypingRushSettings } from '../game-registry.js';
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException } from '@nestjs/common';
-import { InjectPgModel } from '../../../postgres/compat.js';
-import { type Model } from '../../../postgres/compat.js';
+BadRequestException,
+Injectable,
+NotFoundException
+} from '@nestjs/common';
 import { randomInt } from 'node:crypto';
-import { InjectPgConnection, type PgConnection } from '../../../postgres/connection.js';
+import { InjectPgConnection,type PgConnection } from '../../../postgres/connection.js';
+import { isUuid } from '../../../postgres/ids.js';
 import { serviceUrl } from '../../../postgres/ownership.js';
-import { Collection } from '../../vocabulary/collections/collection.schema.js';
-import { Lesson } from '../../vocabulary/lessons/lesson.schema.js';
-import { LessonWord } from '../../vocabulary/lessons/lesson-word.schema.js';
-import { Word } from '../../vocabulary/words/word.schema.js';
-import { VocabularyFolder } from '../../learning/saved-words/schema/vocabulary-folder.schema.js';
-import { UserSavedWord } from '../../learning/saved-words/schema/saved-word.schema.js';
-import {
-  MiniGameSourceType,
-  type GameWord,
-  type VocabularySource } from '../minigame.types.js';
+import { rows,sql } from '../../../postgres/sql.js';
+import { contentBatches,contentRows } from '../../vocabulary/content-reader.js';
 import type { MiniGameSourceDto } from '../dto/start-typing-rush.dto.js';
-const available = { isActive: true, isDeleted: { $ne: true } };
+import {
+TYPING_RUSH_DEFAULT_SETTINGS,
+type TypingRushSettings
+} from '../game-registry.js';
+import {
+MiniGameSourceType,
+type GameWord,
+type VocabularySource
+} from '../minigame.types.js';
 export function uniqueGameWords(words: GameWord[]): GameWord[] {
   const seenIds = new Set<string>(),
     seenText = new Set<string>();
@@ -45,66 +41,31 @@ export function uniqueGameWords(words: GameWord[]): GameWord[] {
 export class MiniGameWordSourceService {
   constructor(
     @InjectPgConnection() private readonly database: PgConnection,
-    @InjectPgModel(Collection.name)
-    private readonly collections: Model<Collection>,
-    @InjectPgModel(Lesson.name) private readonly lessons: Model<Lesson>,
-    @InjectPgModel(LessonWord.name) private readonly links: Model<LessonWord>,
-    @InjectPgModel(Word.name) private readonly words: Model<Word>,
-    @InjectPgModel(VocabularyFolder.name)
-    private readonly folders: Model<VocabularyFolder>,
-    @InjectPgModel(UserSavedWord.name)
-    private readonly saved: Model<UserSavedWord>,
   ) {}
   private async groups(
     userId: string,
-    systemIds: PgId[],
-    userIds: PgId[],
+    systemIds: string[],
+    userIds: string[],
   ) {
-    const lessons = systemIds.length
-      ? await this.lessons
-          .find({ ...available, publicationStatus:'PUBLISHED', collectionId: { $in: systemIds } })
-          .select('_id collectionId')
-          .lean()
-      : [];
-    const [links, saved] = await Promise.all([
-      lessons.length
-        ? this.links
-            .find({ lessonId: { $in: lessons.map((l) => l._id) } })
-            .select('lessonId wordId')
-            .lean()
-        : [],
-      userIds.length
-        ? this.saved
-            .find({
-              userId: new PgId(userId),
-              folderId: { $in: userIds } })
-            .select('folderId wordId')
-            .lean()
-        : [],
+    const lessons=await contentBatches(this.database,'lessons',{collectionIds:systemIds,publishedOnly:true,activeOnly:true},'collectionIds');
+    const [links,saved]=await Promise.all([
+      contentBatches(this.database,'lessonwords',{lessonIds:lessons.map(l=>l._id)},'lessonIds'),
+      rows(this.database,sql`SELECT folder_id AS "folderId",word_id AS "wordId" FROM public.usersavedwords WHERE user_id=${userId}::uuid AND folder_id=ANY(${userIds}::uuid[])`),
     ]);
-    const ids = [
-      ...new Set([...links, ...saved].map((item) => String(item.wordId))),
-    ];
-    const words = ids.length
-      ? await this.words
-          .find({
-            ...available, publicationStatus:'PUBLISHED',
-            _id: { $in: ids.map((id) => new PgId(id)) } })
-          .select('_id word parts')
-          .lean()
-      : [];
+    const ids=[...new Set([...links,...saved].map(item=>String(item.wordId)))];
+    const words=await contentBatches(this.database,'words',{ids,publishedOnly:true,activeOnly:true});
     const byId = new Map(
       words.map((w) => {
         const meanings = (w.parts ?? []).flatMap(
-          (part) => part.meanings ?? [],
+          (part:any) => part.meanings ?? [],
         );
         const firstVietnameseMeaning = meanings
-          .flatMap((meaning) => meaning.translation ?? [])
-          .map((value) => value.trim())
+          .flatMap((meaning:any) => meaning.translation ?? [])
+          .map((value:string) => value.trim())
           .find(Boolean);
         const firstDefinition = meanings
-          .map((meaning) => meaning.definition?.trim())
-          .find((value): value is string => Boolean(value));
+          .map((meaning:any) => meaning.definition?.trim())
+          .find((value:any): value is string => Boolean(value));
         const meaning = (firstVietnameseMeaning || firstDefinition || '')
           .split(/[;,]/, 1)[0]
           ?.trim();
@@ -180,7 +141,7 @@ export class MiniGameWordSourceService {
       sources.length > 50 ||
       sources.some(
         (s) =>
-          !PgId.isValid(s.id) ||
+          !isUuid(s.id) ||
           !Object.values(MiniGameSourceType).includes(s.type),
       )
     )
@@ -191,21 +152,15 @@ export class MiniGameWordSourceService {
           .filter((s) => s.type === 'SYSTEM')
           .map((s) => s.id.toLowerCase()),
       ),
-    ].map((id) => new PgId(id));
+    ];
     const userIds = [
       ...new Set(
         sources.filter((s) => s.type === 'USER').map((s) => s.id.toLowerCase()),
       ),
-    ].map((id) => new PgId(id));
-    const [system, personal] = await Promise.all([
-      this.collections
-        .find({ ...available, _id: { $in: systemIds } })
-        .select('_id')
-        .lean(),
-      this.folders
-        .find({ _id: { $in: userIds }, userId: new PgId(userId) })
-        .select('_id')
-        .lean(),
+    ];
+    const [system,personal]=await Promise.all([
+      contentRows(this.database,'collections',{ids:systemIds,activeOnly:true,limit:50}),
+      rows(this.database,sql`SELECT id AS "_id" FROM public.vocabularyfolders WHERE id=ANY(${userIds}::uuid[]) AND user_id=${userId}::uuid`),
     ]);
     if (
       system.length !== systemIds.length ||

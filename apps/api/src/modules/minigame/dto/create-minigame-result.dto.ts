@@ -1,4 +1,4 @@
-import { IsEnum, IsInt, Max, Min } from 'class-validator';
+import { IsEnum,IsInt,Max,Min } from 'class-validator';
 import { MiniGameType } from '../minigame.types.js';
 export class CreateMiniGameResultDto {
   @IsEnum(MiniGameType) gameType: MiniGameType;

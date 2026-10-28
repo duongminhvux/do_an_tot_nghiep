@@ -1,17 +1,18 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  UseGuards,
-  Req } from '@nestjs/common';
-import { SessionsService } from './sessions.service.js';
+Body,
+Controller,
+Get,
+Param,
+Patch,
+Post,
+Req,
+UseGuards
+} from '@nestjs/common';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { CompleteSessionDto } from './dto/complete-session.dto.js';
 import { CreateSessionDto } from './dto/create-session.dto.js';
 import { RecordActionDto } from './dto/record-action.dto.js';
-import { CompleteSessionDto } from './dto/complete-session.dto.js';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { SessionsService } from './sessions.service.js';
 
 @Controller('learning/sessions')
 @UseGuards(JwtAuthGuard)

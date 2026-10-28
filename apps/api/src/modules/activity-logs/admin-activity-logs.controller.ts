@@ -1,9 +1,10 @@
-import { I18nService, I18nContext } from 'nestjs-i18n';
 import {
-  Get,
-  NotFoundException,
-  Param,
-  Query } from '@nestjs/common';
+Get,
+NotFoundException,
+Param,
+Query
+} from '@nestjs/common';
+import { I18nContext,I18nService } from 'nestjs-i18n';
 import { AdminController } from '../auth/decorators/admin-controller.decorator.js';
 import { ActivityLogsService } from './activity-logs.service.js';
 import { QueryActivityLogsDto } from './dto/query-activity-logs.dto.js';

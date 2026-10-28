@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { SiteSettingsService } from './site-settings.service.js';
 import {
-  AdminSiteSettingsController,
-  PublicSiteSettingsController,
+AdminSiteSettingsController,
+PublicSiteSettingsController,
 } from './site-settings.controller.js';
+import { SiteSettingsService } from './site-settings.service.js';
 @Module({
   providers: [SiteSettingsService],
   controllers: [AdminSiteSettingsController, PublicSiteSettingsController],

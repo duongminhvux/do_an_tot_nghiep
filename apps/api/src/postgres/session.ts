@@ -1,7 +1,8 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import type { Pool, PoolClient } from 'pg';
+import type { Pool,PoolClient } from 'pg';
 
 const sessions = new AsyncLocalStorage<{ pool: Pool; client: PoolClient; matchId: string }>();
+export function runPgSession<T>(pool:Pool,client:PoolClient,work:()=>Promise<T>){return sessions.run({pool,client,matchId:''},work);}
 export function currentPgSession(pool: Pool) {
   const session = sessions.getStore();
   return session?.pool === pool ? session.client : undefined;
@@ -17,7 +18,8 @@ export function sessionPool(pool: Pool): Pool {
 export async function withMatchTransaction<T>(pool: Pool, matchId: string, work: () => Promise<T>): Promise<T> {
   const active = sessions.getStore();
   if (active?.pool === pool) {
-    if (active.matchId !== matchId) throw new Error('Cannot lock a second match in the same transaction');
+    if (active.matchId && active.matchId !== matchId) throw new Error('Cannot lock a second match in the same transaction');
+    if(!active.matchId){active.matchId=matchId;await active.client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',[`arena:ranked:${matchId}`]);}
     return work();
   }
   const client = await pool.connect();

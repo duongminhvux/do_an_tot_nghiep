@@ -1,15 +1,16 @@
+import { Transform,Type } from 'class-transformer';
 import {
-  IsBoolean,
-  IsEnum,
-  IsNumber,
-  IsOptional,
-  IsString,
-  Min,
-  IsIn } from 'class-validator';
-import { Transform, Type } from 'class-transformer';
+IsBoolean,
+IsEnum,
+IsIn,
+IsNumber,
+IsOptional,
+IsString,
+Min
+} from 'class-validator';
 import { ExamType } from './create-exam.dto.js';
 
-import {PublicationFilterDto} from '../../../publication/publication.dto.js';
+import { PublicationFilterDto } from '../../../publication/publication.dto.js';
 export class QueryExamDto extends PublicationFilterDto {
   @IsOptional()
   @IsIn(['name', 'totalQuestions', 'durationMinutes', 'order', 'isActive'])

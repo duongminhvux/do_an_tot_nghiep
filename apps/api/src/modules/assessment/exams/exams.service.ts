@@ -1,40 +1,40 @@
-import { PgId } from '../../../postgres/compat.js';
+import {learnerExamVisibility} from './exam-visibility.js';
+import { InjectPgConnection,type PgConnection } from '../../../postgres/connection.js';
+import { isUuid } from '../../../postgres/ids.js';
+import { SqlRecords,newSqlRow } from '../../../postgres/records.js';
+import { identifier,rows,sql } from '../../../postgres/sql.js';
+
 import {
-  ConflictException,
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-  Optional } from '@nestjs/common';
-import { InjectPgModel } from '../../../postgres/compat.js';
-import { type Model } from '../../../postgres/compat.js';
-import { I18nContext, I18nService } from 'nestjs-i18n';
-import { Exam, ExamDocument } from './schemas/exam.schema.js';
-import { CreateExamDto } from './dto/create-exam.dto.js';
-import { makePgModel } from '../../../postgres/compat.js';
+BadRequestException,
+ConflictException,
+Injectable,
+NotFoundException,
+Optional
+} from '@nestjs/common';
+
+
+import { I18nContext,I18nService } from 'nestjs-i18n';
 import { DomainOutboxService } from '../../../common/events/domain-outbox.service.js';
-import { UpdateExamDto } from './dto/update-exam.dto.js';
-import { QueryExamDto } from './dto/query-exam.dto.js';
-import { Attempt } from '../attempts/schemas/attempt.schema.js';
+import { createConnection,withPgTransaction } from '../../../postgres/connection.js';
 import { withAttemptCounts } from '../attempts/exam-attempt-counts.js';
-import { GROUP_EXAM_SORT, nextGroupOrder } from './group-order.js';
+import { CreateExamDto } from './dto/create-exam.dto.js';
+import { QueryExamDto } from './dto/query-exam.dto.js';
+import { UpdateExamDto } from './dto/update-exam.dto.js';
+import { GROUP_EXAM_SORT,nextGroupOrder } from './group-order.js';
+import { Exam } from './rows/exam.row.js';
 
 @Injectable()
 export class ExamsService {
   private orderQueue: Promise<unknown> = Promise.resolve();
 
   private ordered<T>(work: () => Promise<T>): Promise<T> {
-    const pending = this.orderQueue.then(work);
+    const pending = this.orderQueue.then(()=>withPgTransaction(this.nativeDb,async()=>{await rows(this.nativeDb,sql`SELECT pg_advisory_xact_lock(hashtextextended('assessment-exam-order',0))`);return work();}));
     this.orderQueue = pending.catch(() => undefined);
     return pending;
   }
 
   private async normalizeOrders(moveId?: string, position?: number) {
-    const rows = await this.examModel
-      .find({ isDeleted: { $ne: true } })
-      .sort({ order: 1, createdAt: -1, _id: 1 })
-      .select('_id order')
-      .lean()
-      .exec();
+    const rows = await this.examModel.select(sql`("is_deleted" IS DISTINCT FROM ${true})`, sql`ORDER BY "order" ASC NULLS FIRST,"created_at" DESC NULLS LAST,"id" ASC NULLS FIRST`);
     if (moveId) {
       const index = rows.findIndex((row) => String(row._id) === moveId);
       if (index < 0) throw new NotFoundException('Exam not found');
@@ -45,29 +45,15 @@ export class ExamsService {
         moved,
       );
     }
-    const operations = rows.flatMap((row, index) =>
-      row.order === index + 1
-        ? []
-        : [
-            {
-              updateOne: {
-                filter: { _id: row._id, isDeleted: { $ne: true } },
-                update: { $set: { order: index + 1 } } } },
-          ],
-    );
-    if (operations.length) await this.examModel.bulkWrite(operations);
+    for(const [index,row]of rows.entries())if(row.order!==index+1)await this.examModel.patch(sql`id=${row._id}::uuid AND is_deleted IS NOT TRUE`,{order:index+1});
     return rows.map((row, index) => ({
       id: String(row._id),
       order: index + 1 }));
   }
-  constructor(
-    @InjectPgModel(Exam.name)
-    private readonly examModel: Model<ExamDocument>,
-    private readonly i18n: I18nService,
-    @Optional() private readonly domainOutbox?: DomainOutboxService,
-    @Optional()
-    @InjectPgModel(Attempt.name)
-    private readonly attempts?: Model<Attempt>,
+  private get examModel(){return new SqlRecords(this.nativeDb,'exams');}
+constructor(
+@InjectPgConnection() private readonly nativeDb:PgConnection,private readonly i18n: I18nService,
+@Optional() private readonly domainOutbox?: DomainOutboxService
   ) {}
 
   private getLang(): string {
@@ -96,9 +82,7 @@ export class ExamsService {
     const trimmedName = createExamDto.name.trim();
 
     const escapedName = trimmedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const existing = await this.examModel.findOne({
-      name: { $regex: new RegExp(`^${escapedName}$`, 'i') },
-      isDeleted: { $ne: true } });
+    const existing=await this.examModel.one(sql`lower(name)=lower(${trimmedName}) AND is_deleted IS NOT TRUE`);
 
     if (existing) {
       throw new ConflictException(
@@ -110,18 +94,13 @@ export class ExamsService {
     const baseSlug = this.generateSlug(rawSlug) || 'exam';
     let slug = baseSlug;
     let counter = 1;
-    while (await this.examModel.exists({ slug, isDeleted: { $ne: true } })) {
+    while (await this.examModel.one(sql`("slug" = ${slug}) AND ("is_deleted" IS DISTINCT FROM ${true})`)) {
       slug = `${baseSlug}-${counter++}`;
     }
 
     let order = createExamDto.order;
     if (order === undefined || order === null || order <= 0) {
-      const highest = await this.examModel
-        .findOne({ isDeleted: { $ne: true } })
-        .sort({ order: -1 })
-        .select('order')
-        .lean()
-        .exec();
+      const highest = await this.examModel.one(sql`("is_deleted" IS DISTINCT FROM ${true})`, sql`ORDER BY "order" DESC NULLS LAST`);
       order = (highest?.order || 0) + 1;
     }
 
@@ -138,11 +117,11 @@ export class ExamsService {
 
     const isActive = createExamDto.isActive ?? true;
     const groupId =
-      createExamDto.groupId && PgId.isValid(createExamDto.groupId)
-        ? new PgId(createExamDto.groupId)
+      createExamDto.groupId && isUuid(createExamDto.groupId)
+        ? String(createExamDto.groupId)
         : null;
 
-    const createdExam = new this.examModel({
+    const createdExam = newSqlRow('exams',{
       ...createExamDto,
       name: trimmedName,
       slug,
@@ -155,10 +134,7 @@ export class ExamsService {
 
     if (!this.domainOutbox) throw new Error('Transactional outbox not configured');
     const saved = await this.domainOutbox.withTransaction(async (session) => {
-      // The document constructed above is NOT bound to this transaction.
-      // Rebind the model to the pg client before writing to guarantee atomicity.
-      const model = makePgModel<Exam>(Exam.name, session.client as any);
-      const created = await model.create(createdExam.toObject());
+      const created=await new SqlRecords(createConnection(session.client as any),'exams').insert(createdExam);
       await this.domainOutbox!.enqueue('assessment.exam.created.v1', String(created._id), {
         examId: String(created._id), type: created.type,
       }, session);
@@ -177,81 +153,22 @@ export class ExamsService {
     query: QueryExamDto,
   ): Promise<{ data: Exam[]; total: number; page: number; limit: number }> {
     const { search, q, type, isActive, groupId, page = 1, limit = 10 } = query;
-    const filter: Record<string, any> = { isDeleted: { $ne: true } };
-    if(query.publicationStatus)filter.publicationStatus=query.publicationStatus;
-
-    const searchTerm = q || search;
-    if (searchTerm) {
-      filter.$or = [
-        { name: { $regex: searchTerm, $options: 'i' } },
-        { slug: { $regex: searchTerm, $options: 'i' } },
-        { description: { $regex: searchTerm, $options: 'i' } },
-      ];
-    }
-
-    if (type) {
-      filter.type = type;
-    }
-
-    if (groupId) {
-      if (
-        groupId === 'null' ||
-        groupId === 'none' ||
-        groupId === 'unassigned'
-      ) {
-        filter.groupId = { $in: [null, undefined] };
-      } else if (PgId.isValid(groupId)) {
-        filter.groupId = new PgId(groupId);
-      }
-    }
-
-    if (isActive !== undefined) {
-      filter.$and = [
-        {
-          $or: [
-            { isActive },
-            {
-              isActive: { $exists: false },
-              status: {
-                $in: isActive ? ['ACTIVE', null] : ['INACTIVE', 'ARCHIVED'] } },
-          ] },
-      ];
-    }
-
-    const skip = (page - 1) * limit;
-    const sortable = [
-      'name',
-      'totalQuestions',
-      'durationMinutes',
-      'order',
-      'isActive',
-    ];
-    const field =
-      query.sortBy && sortable.includes(query.sortBy)
-        ? query.sortBy
-        : undefined;
-    const sort: Record<string, 1 | -1> = field
-      ? { [field]: query.sortOrder === 'desc' ? -1 : 1, _id: 1 }
-      : filter.groupId instanceof PgId
-        ? { ...GROUP_EXAM_SORT }
-        : { order: 1, createdAt: -1, _id: 1 };
-
-    const [data, total] = await Promise.all([
-      this.examModel
-        .find(filter)
-        .populate('groupId', 'name slug')
-        .collation({ locale: 'vi', numericOrdering: true })
-        .sort(sort)
-        .skip(skip)
-        .limit(limit)
-        .lean()
-        .exec(),
-      this.examModel.countDocuments(filter).exec(),
-    ]);
-
+    const term=q||search||'';
+    const noGroup=['null','none','unassigned'].includes(groupId??'');
+    const filter=sql`${learnerExamVisibility()} AND is_deleted IS NOT TRUE AND (${term}='' OR position(lower(${term}) in lower(name||' '||COALESCE(slug,'')||' '||COALESCE(description,'')))>0)
+      AND (${query.publicationStatus??null}::text IS NULL OR publication_status=${query.publicationStatus??null})
+      AND (${type??null}::text IS NULL OR type=${type??null})
+      AND (${isActive??null}::boolean IS NULL OR COALESCE(is_active,payload->>'status' IS NULL OR payload->>'status'='ACTIVE')=${isActive??null}::boolean)
+      AND (NOT ${noGroup} OR group_id IS NULL)
+      AND (${isUuid(groupId??'')?groupId:null}::uuid IS NULL OR group_id=${isUuid(groupId??'')?groupId:null}::uuid)`;
+    const columns:Record<string,string>={name:'name',totalQuestions:'total_questions',durationMinutes:'duration_minutes',order:'order',isActive:'is_active'};
+    const sorting=query.sortBy&&columns[query.sortBy]?sql`${identifier(columns[query.sortBy])} ${query.sortOrder==='desc'?sql`DESC`:sql`ASC`},id ASC`:isUuid(groupId??'')?GROUP_EXAM_SORT:sql`"order",created_at DESC,id`;
+    const [data,total]=await Promise.all([this.examModel.select(filter,sql`ORDER BY ${sorting} LIMIT ${limit} OFFSET ${(page-1)*limit}`),this.examModel.count(filter)]);
+    const groups=await new SqlRecords(this.nativeDb,'examgroups').select(sql`id=ANY(${data.map(row=>row.groupId).filter(Boolean)}::uuid[])`);const map=new Map(groups.map(row=>[row._id,{_id:row._id,name:row.name,slug:row.slug}]));
+    for(const exam of data)exam.groupId=map.get(exam.groupId)??null;
     return {
       data: await withAttemptCounts(
-        this.attempts,
+        this.nativeDb,
         data.map((exam) => ({
           ...exam,
           isActive: exam.isActive ?? ('status' in exam ? exam.status === 'ACTIVE' : true) })),
@@ -263,15 +180,7 @@ export class ExamsService {
 
   async findOne(idOrSlug: string): Promise<Exam> {
     const lang = this.getLang();
-    const query: Record<string, any> = { isDeleted: { $ne: true } };
-
-    if (PgId.isValid(idOrSlug)) {
-      query._id = idOrSlug;
-    } else {
-      query.slug = idOrSlug;
-    }
-
-    const exam = await this.examModel.findOne(query).lean().exec();
+    const exam=await this.examModel.one(sql`${learnerExamVisibility()} AND is_deleted IS NOT TRUE AND ${isUuid(idOrSlug)?sql`id=${idOrSlug}::uuid`:sql`slug=${idOrSlug}`}`);
 
     if (!exam) {
       throw new NotFoundException(
@@ -280,7 +189,7 @@ export class ExamsService {
     }
 
     const legacyStatus = (exam as any).status;
-    const [result] = await withAttemptCounts(this.attempts, [exam]);
+    const [result] = await withAttemptCounts(this.nativeDb, [exam]);
     return {
       ...result,
       isActive:
@@ -296,7 +205,7 @@ export class ExamsService {
     updateExamDto: UpdateExamDto,
   ): Promise<Exam> {
     const lang = this.getLang();
-    if (!PgId.isValid(id)) {
+    if (!isUuid(id)) {
       throw new NotFoundException(
         await this.i18n.t('exam.EXAM_NOT_FOUND', { lang }),
       );
@@ -308,10 +217,7 @@ export class ExamsService {
     if (updateExamDto.name) {
       const trimmedName = updateExamDto.name.trim();
       const escapedName = trimmedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const existing = await this.examModel.findOne({
-        _id: { $ne: id },
-        name: { $regex: new RegExp(`^${escapedName}$`, 'i') },
-        isDeleted: { $ne: true } });
+      const existing=await this.examModel.one(sql`lower(name)=lower(${trimmedName}) AND id<>${id}::uuid AND is_deleted IS NOT TRUE`);
 
       if (existing) {
         throw new ConflictException(
@@ -328,10 +234,7 @@ export class ExamsService {
         let slug = baseSlug;
         let counter = 1;
         while (
-          await this.examModel.exists({
-            _id: { $ne: id },
-            slug,
-            isDeleted: { $ne: true } })
+          await this.examModel.one(sql`("id" IS DISTINCT FROM ${id}) AND ("slug" = ${slug}) AND ("is_deleted" IS DISTINCT FROM ${true})`)
         ) {
           slug = `${baseSlug}-${counter++}`;
         }
@@ -341,15 +244,13 @@ export class ExamsService {
 
     if (updateExamDto.groupId !== undefined) {
       updateData.groupId =
-        updateExamDto.groupId && PgId.isValid(updateExamDto.groupId)
-          ? (new PgId(updateExamDto.groupId) as any)
+        updateExamDto.groupId && isUuid(updateExamDto.groupId)
+          ? (String(updateExamDto.groupId) as any)
           : null;
       // Moving to another group appends the exam at the end of that group.
       if (!updateData.groupId) updateData.groupOrder = 0;
       else if (
-        !(await this.examModel.exists({
-          _id: id,
-          groupId: updateData.groupId }))
+        !(await this.examModel.one(sql`("id" = ${id}) AND ("group_id" = ${updateData.groupId})`))
       )
         updateData.groupOrder = await nextGroupOrder(
           this.examModel,
@@ -357,10 +258,7 @@ export class ExamsService {
         );
     }
 
-    const updatedExam = await this.examModel
-      .findOneAndUpdate({ _id: id, isDeleted: { $ne: true } }, updateData, {
-        returnDocument: 'after' })
-      .exec();
+    const updatedExam=await this.examModel.patch(sql`id=${id}::uuid AND is_deleted IS NOT TRUE`,updateData);
 
     if (!updatedExam) {
       throw new NotFoundException(
@@ -380,13 +278,7 @@ export class ExamsService {
     const exam = await this.findOne(id);
     const nextActive = isActive ?? !exam.isActive;
 
-    const updated = await this.examModel
-      .findOneAndUpdate(
-        { _id: id, isDeleted: { $ne: true } },
-        { isActive: nextActive },
-        { returnDocument: 'after' },
-      )
-      .exec();
+    const updated = await this.examModel.patch(sql`("id" = ${id}) AND ("is_deleted" IS DISTINCT FROM ${true})`,{ isActive: nextActive });
 
     if (!updated) {
       throw new NotFoundException(
@@ -403,29 +295,21 @@ export class ExamsService {
 
   private async removeOrdered(id: string): Promise<Exam> {
     const lang = this.getLang();
-    if (!PgId.isValid(id)) {
+    if (!isUuid(id)) {
       throw new NotFoundException(
         await this.i18n.t('exam.EXAM_NOT_FOUND', { lang }),
       );
     }
 
-    const exam = await this.examModel.findOne({
-      _id: id,
-      isDeleted: { $ne: true } });
+    const exam = await this.examModel.one(sql`("id" = ${id}) AND ("is_deleted" IS DISTINCT FROM ${true})`);
     if (!exam) {
       throw new NotFoundException(
         await this.i18n.t('exam.EXAM_NOT_FOUND', { lang }),
       );
     }
 
-    const deletedExam = await this.examModel
-      .findByIdAndUpdate(
-        id,
-        {
-          isDeleted: true },
-        { returnDocument: 'after' },
-      )
-      .exec();
+    const deletedExam = await this.examModel.patch(sql`id=${id}::uuid`,{
+          isDeleted: true });
 
     await this.normalizeOrders();
     return deletedExam!;
@@ -437,19 +321,13 @@ export class ExamsService {
 
   private async restoreOrdered(id: string): Promise<Exam> {
     const lang = this.getLang();
-    if (!PgId.isValid(id)) {
+    if (!isUuid(id)) {
       throw new NotFoundException(
         await this.i18n.t('exam.EXAM_NOT_FOUND', { lang }),
       );
     }
 
-    const restored = await this.examModel
-      .findOneAndUpdate(
-        { _id: id },
-        { isDeleted: false },
-        { returnDocument: 'after' },
-      )
-      .exec();
+    const restored = await this.examModel.patch(sql`("id" = ${id})`,{ isDeleted: false });
 
     if (!restored) {
       throw new NotFoundException(
@@ -470,11 +348,7 @@ export class ExamsService {
         await this.normalizeOrders();
         return;
       }
-      const rows = await this.examModel
-        .find({ isDeleted: { $ne: true } })
-        .select('_id')
-        .lean()
-        .exec();
+      const rows = await this.examModel.select(sql`("is_deleted" IS DISTINCT FROM ${true})`);
       const ids = new Set(rows.map((row) => String(row._id)));
       if (
         items.length !== ids.size ||
@@ -492,14 +366,7 @@ export class ExamsService {
           'Cần đầy đủ các đề với thứ tự 1 đến tổng số đề, không trùng vị trí.',
         );
       }
-      await this.examModel.bulkWrite(
-        items.map((item) => ({
-          updateOne: {
-            filter: {
-              _id: new PgId(item.id),
-              isDeleted: { $ne: true } },
-            update: { $set: { order: item.order } } } })),
-      );
+      for(const item of items)await this.examModel.patch(sql`id=${item.id}::uuid AND is_deleted IS NOT TRUE`,{order:item.order});
     });
   }
 }

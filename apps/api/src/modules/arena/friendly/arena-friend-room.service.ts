@@ -1,29 +1,32 @@
-import { PgId } from '../../../postgres/compat.js';
-import { ArenaSettingsService } from '../admin/arena-settings.service.js';
+import { InjectPgConnection,type PgConnection } from '../../../postgres/connection.js';
+import { SqlRecords } from '../../../postgres/records.js';
+import { sql } from '../../../postgres/sql.js';
+import { sampleContentWords } from '../../vocabulary/content-reader.js';
+
+import { Injectable,Optional } from '@nestjs/common';
 import { ARENA_DEFAULTS } from '../admin/arena-settings.defaults.js';
-import { Word } from '../../vocabulary/words/word.schema.js';
-import { Injectable, Optional } from '@nestjs/common';
-import { InjectPgModel } from '../../../postgres/compat.js';
+import { ArenaSettingsService } from '../admin/arena-settings.service.js';
+
 import { WsException } from '@nestjs/websockets';
-import { type Model } from '../../../postgres/compat.js';
-import { randomInt, randomUUID } from 'node:crypto';
-import {
-  FriendRoom,
-  FriendRoomSettings,
-  FriendRoomStatus } from '../schemas/friend-room.schema.js';
-import {
-  ArenaFriendMode,
-  ArenaMatch,
-  ArenaMatchStatus,
-  ArenaMatchFinishReason,
-  ArenaMatchType,
-  ArenaQuestionMode } from '../schemas/arena-match.schema.js';
-import { User } from '../../users/schema/user.schema.js';
+
+import { randomInt,randomUUID } from 'node:crypto';
+import { RedisService } from '../../../common/redis/redis.service.js';
+import { ArenaService } from '../arena.service.js';
 import { ArenaMatchService } from '../matches/arena-match.service.js';
 import { ArenaPresenceService } from '../presence/arena-presence.service.js';
 import { ArenaQuestionService } from '../question/arena-question.service.js';
-import { ArenaService } from '../arena.service.js';
-import { RedisService } from '../../../common/redis/redis.service.js';
+import {
+ArenaFriendMode,
+ArenaMatchFinishReason,
+ArenaMatchStatus,
+ArenaMatchType,
+ArenaQuestionMode
+} from '../rows/arena-match.row.js';
+import {
+FriendRoom,
+FriendRoomSettings,
+FriendRoomStatus
+} from '../rows/friend-room.row.js';
 
 export function validateFriendSettings(
   mode: ArenaFriendMode,
@@ -72,29 +75,28 @@ export function validateFriendSettings(
 
 @Injectable()
 export class ArenaFriendRoomService {
-  constructor(
-    @InjectPgModel(FriendRoom.name) readonly rooms: Model<FriendRoom>,
-    @InjectPgModel(ArenaMatch.name) private readonly matches: Model<ArenaMatch>,
-    @InjectPgModel(User.name) private readonly users: Model<User>,
-    private readonly matchService: ArenaMatchService,
-    private readonly presence: ArenaPresenceService,
-    private readonly questions: ArenaQuestionService,
-    private readonly arena: ArenaService,
-    private readonly redis: RedisService,
-    @InjectPgModel(Word.name) private readonly words: Model<Word>,
-    @Optional() private readonly settings?: ArenaSettingsService,
+  private get rooms(){return new SqlRecords(this.nativeDb,'friendrooms');}
+private get matches(){return new SqlRecords(this.nativeDb,'arenamatches');}
+private get users(){return new SqlRecords(this.nativeDb,'identity_profiles');}
+constructor(
+@InjectPgConnection() private readonly nativeDb:PgConnection,private readonly matchService: ArenaMatchService,
+private readonly presence: ArenaPresenceService,
+private readonly questions: ArenaQuestionService,
+private readonly arena: ArenaService,
+private readonly redis: RedisService,
+@Optional() private readonly settings?: ArenaSettingsService
   ) {}
 
   id(value: string) {
     if (typeof value !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value))
       throw new WsException('Invalid ID');
-    return new PgId(value);
+    return String(value);
   }
   participants(room: FriendRoom) {
     return [
       String(room.hostId),
       ...(room.maxPlayers > 2
-        ? (room.members ?? []).map((m) => String(m.userId))
+        ? (room.members ?? []).map((m:any) => String(m.userId))
         : room.guestId
           ? [String(room.guestId)]
           : []),
@@ -104,12 +106,8 @@ export class ArenaFriendRoomService {
     return this.participants(room).length >= (room.maxPlayers ?? 2);
   }
   async active(userId: string) {
-    return this.rooms.findOne({
-      $or: [
-        { hostId: this.id(userId) },
-        { guestId: this.id(userId) },
-        { 'members.userId': this.id(userId) },
-      ] });
+    const id=this.id(userId);
+    return this.rooms.one(sql`host_id=${id}::uuid OR guest_id=${id}::uuid OR members @> ${JSON.stringify([{userId:id}])}::jsonb`);
   }
   // Use the same per-user reservation as match creation to exclude concurrent joins/ranked starts.
   private async reserve<T>(userId: string, action: () => Promise<T>) {
@@ -158,7 +156,7 @@ export class ArenaFriendRoomService {
           () => chars[randomInt(chars.length)],
         ).join('');
         try {
-          const room = await this.rooms.create({
+          const room = await this.rooms.insert({
             code,
             hostId: this.id(userId),
             mode,
@@ -172,14 +170,14 @@ export class ArenaFriendRoomService {
             members: [] });
           return this.snapshot(String(room._id), userId);
         } catch (e) {
-          if ((e as { code?: number }).code !== 11000) throw e;
+          if ((e as {code?:string}).code !== '23505') throw e;
         }
       }
       throw new WsException('Unable to generate room code');
     });
   }
   async member(roomId: string, userId: string) {
-    const room = await this.rooms.findById(this.id(roomId));
+    const room = await this.rooms.one(sql`id=${this.id(roomId)}::uuid`);
     if (!room || room.status === FriendRoomStatus.CLOSED)
       throw new WsException('ROOM_NOT_FOUND');
     if (!this.participants(room).includes(userId))
@@ -188,9 +186,7 @@ export class ArenaFriendRoomService {
   }
   async snapshot(roomId: string, userId: string) {
     const room = await this.member(roomId, userId);
-    const users = await this.users
-      .find({ _id: { $in: this.participants(room).map((id) => this.id(id)) } })
-      .select('username avatarUrl');
+    const users=await this.users.select(sql`id=ANY(${this.participants(room)}::uuid[])`);
     return {
       roomId: String(room._id),
       code: room.code,
@@ -211,7 +207,7 @@ export class ArenaFriendRoomService {
           avatarUrl: u?.avatarUrl,
           isReady:
             room.maxPlayers > 2
-              ? !!room.members.find((m) => String(m.userId) === id)?.isReady
+              ? !!room.members.find((m:any) => String(m.userId) === id)?.isReady
               : id === String(room.guestId) && room.guestReady };
       }),
       serverNow: new Date().toISOString() };
@@ -223,8 +219,7 @@ export class ArenaFriendRoomService {
       throw new WsException('ROOM_NOT_FOUND');
     return this.reserve(userId, async () => {
       await this.available(userId);
-      const room = await this.rooms.findOne({
-        code: code.trim().toUpperCase() });
+      const room = await this.rooms.one(sql`("code" = ${code.trim().toUpperCase()})`);
       if (!room) throw new WsException('ROOM_NOT_FOUND');
       if (roomType && (room.maxPlayers > 2 ? 'ROOM' : 'FRIEND') !== roomType)
         throw new WsException('ROOM_TYPE_MISMATCH');
@@ -232,43 +227,28 @@ export class ArenaFriendRoomService {
         throw new WsException('ROOM_IN_MATCH');
       if (room.maxPlayers > 2) {
         for (let attempt = 0; attempt < 8; attempt++) {
-          const current = await this.rooms.findById(room._id);
+          const current = await this.rooms.one(sql`id=${room._id}::uuid`);
           if (!current) throw new WsException('ROOM_NOT_FOUND');
           if (current.status !== FriendRoomStatus.WAITING)
             throw new WsException('ROOM_IN_MATCH');
           if (this.isFull(current)) throw new WsException('ROOM_FULL');
-          const joined = await this.rooms.findOneAndUpdate(
-            {
-              _id: current._id,
-              status: FriendRoomStatus.WAITING,
-              revision: current.revision },
-            {
-              $set: {
+          const joined = await this.rooms.patch(sql`("id" = ${current._id}) AND ("status" = ${FriendRoomStatus.WAITING}) AND ("revision" = ${current.revision})`,{
                 members: [
                   ...current.members,
                   {
                     userId: this.id(userId),
                     isReady: false,
                     disconnectedAt: null },
-                ] },
-              $inc: { revision: 1 } },
-            { returnDocument: 'after' },
-          );
+                ] },{"revision":sql`COALESCE("revision",0)+${1}`});
           if (joined) return this.snapshot(String(room._id), userId);
         }
         throw new WsException('ROOM_FULL');
       }
       if (room.guestId) throw new WsException('ROOM_FULL');
-      const joined = await this.rooms.findOneAndUpdate(
-        { _id: room._id, status: FriendRoomStatus.WAITING, guestId: null },
-        {
-          $set: {
+      const joined = await this.rooms.patch(sql`("id" = ${room._id}) AND ("status" = ${FriendRoomStatus.WAITING}) AND ("guest_id" IS NULL)`,{
             guestId: this.id(userId),
             guestReady: false,
-            guestDisconnectedAt: null },
-          $inc: { revision: 1 } },
-        { returnDocument: 'after' },
-      );
+            guestDisconnectedAt: null },{"revision":sql`COALESCE("revision",0)+${1}`});
       if (!joined) throw new WsException('ROOM_FULL');
       return this.snapshot(String(room._id), userId);
     });
@@ -302,27 +282,11 @@ export class ArenaFriendRoomService {
       JSON.stringify(room.settings) === JSON.stringify(validated)
     )
       return this.snapshot(roomId, userId);
-    const changed = await this.rooms.updateOne(
-      {
-        _id: room._id,
-        status: FriendRoomStatus.WAITING,
-        revision: room.revision },
-      {
-        $set: {
-          mode,
-          maxPlayers: capacity,
-          settings: validated,
-          guestReady: false,
-          ...(room.maxPlayers > 2
-            ? {
-                members: room.members.map((m) => ({
-                  userId: m.userId,
-                  disconnectedAt: m.disconnectedAt,
-                  isReady: false })) }
-            : {}) },
-        $inc: { revision: 1 } },
-    );
-    if (!changed.modifiedCount) throw new WsException('ROOM_IN_MATCH');
+    const changed=await this.rooms.patch(sql`id=${room._id}::uuid AND status=${FriendRoomStatus.WAITING} AND revision=${room.revision}`,{
+      mode,maxPlayers:capacity,settings:validated,guestReady:false,
+      ...(room.maxPlayers>2?{members:room.members.map((m:any)=>({userId:m.userId,disconnectedAt:m.disconnectedAt,isReady:false}))}:{}),
+    },{revision:sql`COALESCE(revision,0)+1`});
+    if (!changed) throw new WsException('ROOM_IN_MATCH');
     return this.snapshot(roomId, userId);
   }
   async ready(roomId: string, userId: string, ready: boolean) {
@@ -330,24 +294,16 @@ export class ArenaFriendRoomService {
       throw new WsException('INVALID_ROOM_SETTINGS');
     const room = await this.member(roomId, userId);
     if (room.maxPlayers > 2) {
-      const changed = await this.rooms.updateOne(
-        {
-          _id: room._id,
-          status: FriendRoomStatus.WAITING,
-          'members.userId': this.id(userId) },
-        { $set: { 'members.$.isReady': ready }, $inc: { revision: 1 } },
-      );
-      if (!changed.modifiedCount) throw new WsException('NOT_ROOM_GUEST');
+      const changed=await this.rooms.patch(sql`id=${room._id}::uuid AND status=${FriendRoomStatus.WAITING} AND members @> ${JSON.stringify([{userId:this.id(userId)}])}::jsonb`,{}, {
+        revision:sql`COALESCE(revision,0)+1`,members:sql`(SELECT COALESCE(jsonb_agg(CASE WHEN m->>'userId'=${userId} THEN m||jsonb_build_object('isReady',${ready}::boolean) ELSE m END ORDER BY ordinality),'[]'::jsonb)
+          FROM jsonb_array_elements(COALESCE(members,'[]'::jsonb)) WITH ORDINALITY entry(m,ordinality))`,
+      });
+      if (!changed) throw new WsException('NOT_ROOM_GUEST');
       return this.snapshot(roomId, userId);
     }
-    const changed = await this.rooms.updateOne(
-      {
-        _id: this.id(roomId),
-        guestId: this.id(userId),
-        status: FriendRoomStatus.WAITING },
-      { $set: { guestReady: ready }, $inc: { revision: 1 } },
-    );
-    if (!changed.modifiedCount) throw new WsException('NOT_ROOM_GUEST');
+    const changed=await this.rooms.patch(sql`id=${this.id(roomId)}::uuid AND guest_id=${this.id(userId)}::uuid AND status=${FriendRoomStatus.WAITING}`,
+      {guestReady:ready},{revision:sql`COALESCE(revision,0)+1`});
+    if (!changed) throw new WsException('NOT_ROOM_GUEST');
     return this.snapshot(roomId, userId);
   }
   async start(roomId: string, userId: string) {
@@ -360,7 +316,7 @@ export class ArenaFriendRoomService {
     const userIds = this.participants(room);
     if (
       room.maxPlayers > 2
-        ? userIds.length < 3 || room.members.some((m) => !m.isReady)
+        ? userIds.length < 3 || room.members.some((m:any) => !m.isReady)
         : !room.guestId || !room.guestReady
     )
       throw new WsException('GUEST_NOT_READY');
@@ -371,20 +327,10 @@ export class ArenaFriendRoomService {
       )
     )
       throw new WsException('Player is offline');
-    const locked = await this.rooms.findOneAndUpdate(
-      {
-        _id: room._id,
-        status: FriendRoomStatus.WAITING,
-        revision: room.revision,
-        ...(room.maxPlayers > 2
-          ? {}
-          : { guestId: room.guestId, guestReady: true }),
-        currentMatchId: null },
-      { $set: { status: FriendRoomStatus.IN_MATCH } },
-      { returnDocument: 'after' },
-    );
+    const locked=await this.rooms.patch(sql`id=${room._id}::uuid AND status=${FriendRoomStatus.WAITING} AND revision=${room.revision}
+      AND current_match_id IS NULL AND (${room.maxPlayers>2}::boolean OR (guest_id=${room.guestId??null}::uuid AND guest_ready IS TRUE))`,{status:FriendRoomStatus.IN_MATCH});
     if (!locked) throw new WsException('MATCH_ALREADY_STARTED');
-    let matchId: PgId | undefined;
+    let matchId: string | undefined;
     try {
       await Promise.all(userIds.map((id) => this.arena.getOrCreateProfile(id)));
       const { match } = await this.matchService.createMatch(
@@ -409,25 +355,13 @@ export class ArenaFriendRoomService {
       );
       matchId = match._id;
       if (room.mode === ArenaFriendMode.WORD_GUESS) {
-        const [selected] = await this.words.aggregate<{ word: string }>([
-          {
-            $match: {
-              word: { $regex: '^[a-zA-Z]{5}$' },
-              isActive: true,
-              isDeleted: { $ne: true } } },
-          { $sample: { size: 1 } },
-          { $project: { word: 1 } },
-        ]);
+        const [selected]=await sampleContentWords(this.nativeDb,{count:1,fiveLettersOnly:true});
         if (!selected) throw new WsException('NO_FIVE_LETTER_WORDS');
-        await this.matches.updateOne(
-          { _id: match._id, status: ArenaMatchStatus.COUNTDOWN },
-          {
-            $set: {
+        await this.matches.patch(sql`("id" = ${match._id}) AND ("status" = ${ArenaMatchStatus.COUNTDOWN})`,{
               wordGuessAnswer: selected.word.toLowerCase(),
               wordGuessAttempts: [],
               wordGuessRevision: 0,
-              wordGuessSolvedBy: null } },
-        );
+              wordGuessSolvedBy: null });
       }
       if (room.mode === ArenaFriendMode.CLASSIC)
         await this.questions.createRankedQuestions(
@@ -435,30 +369,15 @@ export class ArenaFriendRoomService {
           settings.questionCount!,
         );
       const now = new Date();
-      const attached = await this.rooms.updateOne(
-        {
-          _id: room._id,
-          status: FriendRoomStatus.IN_MATCH,
-          revision: room.revision },
-        { $set: { currentMatchId: match._id }, $inc: { matchCount: 1 } },
-      );
-      if (!attached.modifiedCount) throw new WsException('ROOM_CLOSED');
-      const started = await this.matches.updateOne(
-        { _id: match._id, status: ArenaMatchStatus.COUNTDOWN },
-        {
-          $set: {
-            status: ArenaMatchStatus.PLAYING,
-            startedAt: now,
-            ...(room.mode === ArenaFriendMode.WORD_CHAIN
-              ? {
-                  currentTurnUserId: room.hostId,
-                  turnStartedAt: now,
-                  turnDeadline: new Date(
-                    now.getTime() + settings.turnTime! * 1000,
-                  ) }
-              : {}) } },
-      );
-      if (!started.modifiedCount) throw new WsException('ROOM_CLOSED');
+      const attached=await this.rooms.patch(sql`id=${room._id}::uuid AND status=${FriendRoomStatus.IN_MATCH} AND revision=${room.revision}`,
+        {currentMatchId:match._id},{matchCount:sql`COALESCE(match_count,0)+1`});
+      if (!attached) throw new WsException('ROOM_CLOSED');
+      const started=await this.matches.patch(sql`id=${match._id}::uuid AND status=${ArenaMatchStatus.COUNTDOWN}`,{
+        status:ArenaMatchStatus.PLAYING,startedAt:now,...(room.mode===ArenaFriendMode.WORD_CHAIN?{
+          currentTurnUserId:room.hostId,turnStartedAt:now,turnDeadline:new Date(now.getTime()+settings.turnTime!*1000),
+        }:{}),
+      });
+      if (!started) throw new WsException('ROOM_CLOSED');
       return {
         matchId: String(match._id),
         roomId,
@@ -466,42 +385,27 @@ export class ArenaFriendRoomService {
         users: userIds };
     } catch (error) {
       if (matchId)
-        await this.matches.updateOne(
-          {
-            _id: matchId,
-            status: {
-              $in: [ArenaMatchStatus.COUNTDOWN, ArenaMatchStatus.WAITING] } },
-          {
-            $set: {
+        await this.matches.patch(sql`("id" = ${matchId}) AND ("status"=ANY(${[ArenaMatchStatus.COUNTDOWN, ArenaMatchStatus.WAITING]}::text[]))`,{
               status: ArenaMatchStatus.CANCELLED,
-              cancelReason: 'Room start failed' } },
-        );
-      await this.rooms.updateOne(
-        {
-          _id: room._id,
-          status: FriendRoomStatus.IN_MATCH,
-          revision: room.revision },
-        {
-          $set: {
+              cancelReason: 'Room start failed' });
+      await this.rooms.patch(sql`("id" = ${room._id}) AND ("status" = ${FriendRoomStatus.IN_MATCH}) AND ("revision" = ${room.revision})`,{
             status: FriendRoomStatus.WAITING,
             currentMatchId: null,
             guestReady: false,
             ...(room.maxPlayers > 2
               ? {
-                  members: room.members.map((m) => ({
+                  members: room.members.map((m:any) => ({
                     userId: m.userId,
                     disconnectedAt: m.disconnectedAt,
                     isReady: false })) }
-              : {}) },
-          $inc: { revision: 1 } },
-      );
+              : {}) },{"revision":sql`COALESCE("revision",0)+${1}`});
       throw error;
     }
   }
   async leave(roomId: string, userId: string) {
     const room = await this.member(roomId, userId);
     if (room.currentMatchId) {
-      const match = await this.matches.findById(room.currentMatchId);
+      const match = await this.matches.one(sql`id=${room.currentMatchId}::uuid`);
       if (
         match?.status === ArenaMatchStatus.PLAYING &&
         match.type === ArenaMatchType.ROOM
@@ -530,16 +434,12 @@ export class ArenaFriendRoomService {
           ArenaMatchFinishReason.PLAYER_LEFT,
         );
       else if (match?.status === ArenaMatchStatus.COUNTDOWN)
-        await this.matches.updateOne(
-          { _id: match._id, status: ArenaMatchStatus.COUNTDOWN },
-          {
-            $set: {
+        await this.matches.patch(sql`("id" = ${match._id}) AND ("status" = ${ArenaMatchStatus.COUNTDOWN})`,{
               status: ArenaMatchStatus.CANCELLED,
-              cancelReason: 'Player left room' } },
-        );
+              cancelReason: 'Player left room' });
     }
     if (String(room.hostId) === userId) {
-      const deleted = await this.rooms.findOneAndDelete({ _id: room._id });
+      const deleted = await this.rooms.remove(sql`("id" = ${room._id})`).then(records=>records[0]??null);
       if (!deleted) throw new WsException('ROOM_IN_MATCH');
       return {
         users: this.participants(deleted),
@@ -551,32 +451,19 @@ export class ArenaFriendRoomService {
           reason: 'HOST_LEFT' } };
     }
     if (room.maxPlayers > 2) {
-      await this.rooms.updateOne(
-        { _id: room._id },
-        {
-          $pull: { members: { userId: this.id(userId) } },
-          $inc: { revision: 1 },
-          ...(!room.currentMatchId
-            ? { $set: { status: FriendRoomStatus.WAITING } }
-            : {}) },
-      );
+      await this.rooms.patch(sql`id=${room._id}::uuid`,{...(!room.currentMatchId?{status:FriendRoomStatus.WAITING}:{})},{
+        revision:sql`COALESCE(revision,0)+1`,members:sql`(SELECT COALESCE(jsonb_agg(m ORDER BY ordinality),'[]'::jsonb)
+          FROM jsonb_array_elements(COALESCE(members,'[]'::jsonb)) WITH ORDINALITY entry(m,ordinality) WHERE m->>'userId'<>${this.id(userId)})`,
+      });
       return {
         users: this.participants(room),
         event: 'friend-room:update',
         data: await this.snapshot(roomId, String(room.hostId)) };
     }
-    const changed = await this.rooms.updateOne(
-      { _id: room._id, guestId: this.id(userId) },
-      {
-        $set: {
-          guestId: null,
-          guestReady: false,
-          guestDisconnectedAt: null,
-          status: FriendRoomStatus.WAITING,
-          currentMatchId: null },
-        $inc: { revision: 1 } },
-    );
-    if (!changed.modifiedCount) throw new WsException('ROOM_IN_MATCH');
+    const changed=await this.rooms.patch(sql`id=${room._id}::uuid AND guest_id=${this.id(userId)}::uuid`,{
+      guestId:null,guestReady:false,guestDisconnectedAt:null,status:FriendRoomStatus.WAITING,currentMatchId:null,
+    },{revision:sql`COALESCE(revision,0)+1`});
+    if (!changed) throw new WsException('ROOM_IN_MATCH');
     return {
       users: [String(room.hostId), userId],
       event: 'friend-room:update',
@@ -587,11 +474,8 @@ export class ArenaFriendRoomService {
     reason = 'ADMIN_CLOSED',
     expectedUpdatedAt?: Date,
   ) {
-    const room = await this.rooms.findOneAndDelete({
-      _id: this.id(roomId),
-      status: FriendRoomStatus.WAITING,
-      currentMatchId: null,
-      ...(expectedUpdatedAt ? { updatedAt: expectedUpdatedAt } : {}) });
+    const [room]=await this.rooms.remove(sql`id=${this.id(roomId)}::uuid AND status=${FriendRoomStatus.WAITING} AND current_match_id IS NULL
+      AND (${expectedUpdatedAt??null}::timestamptz IS NULL OR updated_at=${expectedUpdatedAt??null})`);
     if (!room) return null;
     return {
       users: this.participants(room),
@@ -605,7 +489,7 @@ export class ArenaFriendRoomService {
       String(room.hostId) === userId
         ? room.hostDisconnectedAt
         : room.maxPlayers > 2
-          ? room.members.find((m) => String(m.userId) === userId)
+          ? room.members.find((m:any) => String(m.userId) === userId)
               ?.disconnectedAt
           : room.guestDisconnectedAt;
     if (
@@ -619,20 +503,13 @@ export class ArenaFriendRoomService {
   async connection(userId: string, connected: boolean) {
     const room = await this.active(userId);
     if (!room) return null;
-    const field =
-      room.maxPlayers > 2 && String(room.hostId) !== userId
-        ? 'members.$.disconnectedAt'
-        : String(room.hostId) === userId
-          ? 'hostDisconnectedAt'
-          : 'guestDisconnectedAt';
-    await this.rooms.updateOne(
-      {
-        _id: room._id,
-        ...(field.startsWith('members.')
-          ? { 'members.userId': this.id(userId) }
-          : {}) },
-      { $set: { [field]: connected ? null : new Date() } },
-    );
+    const disconnectedAt=connected?null:new Date();
+    if(room.maxPlayers>2&&String(room.hostId)!==userId){
+      await this.rooms.patch(sql`id=${room._id}::uuid AND members @> ${JSON.stringify([{userId:this.id(userId)}])}::jsonb`,{}, {
+        members:sql`(SELECT COALESCE(jsonb_agg(CASE WHEN m->>'userId'=${userId} THEN m||jsonb_build_object('disconnectedAt',${disconnectedAt}::timestamptz) ELSE m END ORDER BY ordinality),'[]'::jsonb)
+          FROM jsonb_array_elements(COALESCE(members,'[]'::jsonb)) WITH ORDINALITY entry(m,ordinality))`,
+      });
+    }else await this.rooms.patch(sql`id=${room._id}::uuid`,{[String(room.hostId)===userId?'hostDisconnectedAt':'guestDisconnectedAt']:disconnectedAt});
     return connected ? this.snapshot(String(room._id), userId) : null;
   }
   async tick() {
@@ -642,8 +519,7 @@ export class ArenaFriendRoomService {
       data: Record<string, unknown>;
     }[] = [];
 
-    for (const room of await this.rooms.find({
-      status: FriendRoomStatus.WAITING })) {
+    for (const room of await this.rooms.select(sql`("status" = ${FriendRoomStatus.WAITING})`)) {
       const deadline = new Date(
         Date.now() - (room.runtimePolicy?.reconnectGrace ?? 20) * 1000,
       );
@@ -664,7 +540,7 @@ export class ArenaFriendRoomService {
       for (const [userId, disconnected] of [
         [room.hostId, room.hostDisconnectedAt],
         ...(room.maxPlayers > 2
-          ? room.members.map((m) => [m.userId, m.disconnectedAt] as const)
+          ? room.members.map((m:any) => [m.userId, m.disconnectedAt] as const)
           : [[room.guestId, room.guestDisconnectedAt] as const]),
       ] as const) {
         if (

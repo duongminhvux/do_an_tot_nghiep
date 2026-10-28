@@ -1,5 +1,5 @@
-import { IsEnum, IsNumber, IsObject, IsOptional, IsString, Matches, MaxLength, ValidateIf } from 'class-validator';
-import { ActivityCategory } from '../schemas/activity-log.schema.js';
+import { IsEnum,IsNumber,IsObject,IsOptional,IsString,Matches,MaxLength,ValidateIf } from 'class-validator';
+import { ActivityCategory } from '../rows/activity-log.row.js';
 
 export class CreateActivityLogDto {
   @IsOptional()

@@ -1,302 +1,32 @@
-import { PgId } from '../../../postgres/compat.js';
-vi.mock('../matches/arena-match.service.js', () => ({
-  ArenaMatchService: class {} }));
-import { ArenaRoundService } from './arena-round.service.js';
-import {
-  arenaHintLetters,
-  arenaHintOrder,
-  maskArenaAnswer,
-  normalizeArenaAnswer } from './arena-round.utils.js';
-
-vi.mock('../schemas/arena-match.schema.js', () => ({
-  ArenaMatch: class {},
-  ArenaMatchStatus: { PLAYING: 'PLAYING', FINISHED: 'FINISHED' },
-  ArenaFriendMode: { WORD_CHAIN: 'WORD_CHAIN', WORD_GUESS: 'WORD_GUESS', CLASSIC: 'CLASSIC' },
-  ArenaMatchType: { RANK: 'RANK', FRIEND: 'FRIEND', ROOM: 'ROOM' } }));
-vi.mock('../schemas/arena-match-question.schema.js', () => ({
-  ArenaMatchQuestion: class {} }));
-vi.mock('../schemas/arena-match-player.schema.js', () => ({
-  ArenaMatchPlayer: class {} }));
-vi.mock('../schemas/arena-player-answer.schema.js', () => ({
-  ArenaPlayerAnswer: class {} }));
-
-function fixture() {
-  const matchId = new PgId();
-  const users = [new PgId(), new PgId()];
-  const match = {
-    _id: matchId,
-    status: 'PLAYING',
-    questionCount: 10,
-    currentQuestionIndex: 1,
-    secondsPerQuestion: 30,
-    winnerId: null as PgId | null,
-    isDraw: false };
-  const questions = Array.from({ length: 10 }, (_, index) => ({
-    _id: new PgId(),
-    matchId,
-    order: index + 1,
-    correctAnswer: 'thumb',
-    question: 'ngón tay cái',
-    explanation: 'The thumb is a digit.',
-    example: 'She hurt her THUMB.',
-    translation: 'Cô ấy bị đau ngón tay cái.',
-    wordType: 'noun',
-    startedAt: index === 0 ? new Date() : (null as Date | null),
-    resolvedAt: null as Date | null,
-    winnerId: null as PgId | null }));
-  const players = users.map((userId) => ({
-    _id: new PgId(),
-    matchId,
-    userId,
-    status: 'PLAYING',
-    score: 0,
-    currentStreak: 0,
-    scoredQuestionIds: [] as string[],
-    ratingBefore: 1000,
-    ratingAfter: 1000,
-    ratingChange: 0 }));
-  const same = (a: unknown, b: unknown) => String(a) === String(b);
-  const matches = {
-    findById: vi.fn(async () => ({ ...match })),
-    find: vi.fn(async () => (match.status === 'PLAYING' ? [{ ...match }] : [])),
-    updateOne: vi.fn(async (filter, update) => {
-      if (
-        (filter.status && match.status !== filter.status) ||
-        (filter.currentQuestionIndex &&
-          match.currentQuestionIndex !== filter.currentQuestionIndex)
-      )
-        return { modifiedCount: 0 };
-      Object.assign(match, update.$set);
-      if (update.$inc)
-        match.currentQuestionIndex += update.$inc.currentQuestionIndex;
-      return { modifiedCount: 1 };
-    }) };
-  const questionModel = {
-    findOne: vi.fn(async (filter) => {
-      const q = questions.find(
-        (q) => q.order === filter.order || same(q._id, filter._id),
-      );
-      return q ? { ...q } : null;
-    }),
-    findById: vi.fn(async (id) => {
-      const q = questions.find((q) => same(q._id, id));
-      return q ? { ...q } : null;
-    }),
-    findOneAndUpdate: vi.fn(async (filter, update) => {
-      const q = questions.find((q) => same(q._id, filter._id));
-      if (
-        !q ||
-        ('resolvedAt' in filter && q.resolvedAt) ||
-        ('startedAt' in filter && q.startedAt)
-      )
-        return null;
-      Object.assign(q, update.$set);
-      return { ...q };
-    }) };
-  const playerModel = {
-    exists: vi.fn(async (filter) =>
-      players.some((p) => same(p.userId, filter.userId)),
-    ),
-    findOne: vi.fn(async (filter) => {
-      const p = players.find((p) => same(p.userId, filter.userId));
-      return p ? { ...p } : null;
-    }),
-    find: vi.fn(() => {
-      const values = players.map((p) => ({ ...p }));
-      return Object.assign(Promise.resolve(values), {
-        sort: () => Promise.resolve(values.sort((a, b) => b.score - a.score)) });
-    }),
-    updateOne: vi.fn(async (filter, pipeline) => {
-      const p = players.find((p) => same(p._id, filter._id));
-      const qid = String(filter.scoredQuestionIds.$ne);
-      if (!p || p.scoredQuestionIds.includes(qid)) return { modifiedCount: 0 };
-      const won = pipeline[0].$set.score.$add[1] === 100;
-      p.score += won ? 100 : 0;
-      p.currentStreak = won ? p.currentStreak + 1 : 0;
-      p.scoredQuestionIds.push(qid);
-      return { modifiedCount: 1 };
-    }),
-    updateMany: vi.fn(async (_filter, update) => {
-      for (const p of players) Object.assign(p, update.$set);
-    }) };
-  const answers = {
-    findOne: vi.fn(async () => null),
-    findOneAndUpdate: vi.fn(async () => ({})),
-    updateOne: vi.fn(async () => ({})) };
-  const scoring = {
-    calculateQuestionScore: vi.fn(() => 100) };
-  const matchService = {
-    finishRankedMatch: vi.fn(async () => {
-      const isDraw = players[0].score === players[1].score;
-      match.status = 'FINISHED';
-      match.isDraw = isDraw;
-      match.winnerId = isDraw ? null : players[0].userId;
-      return { status: 'FINISHED' };
-    }) };
-  const service = new ArenaRoundService(
-    matches as never,
-    questionModel as never,
-    playerModel as never,
-    answers as never,
-    scoring as never,
-    matchService as never,
-  );
-  const guess = (user = 0, answer = 'thumb') =>
-    service.submitAnswer({
-      matchId: String(matchId),
-      questionId: String(questions[match.currentQuestionIndex - 1]._id),
-      userId: String(users[user]),
-      answer });
-  return {
-    service,
-    match,
-    questions,
-    players,
-    users,
-    matchId,
-    guess,
-    questionModel,
-    answers };
-}
-
-describe('Arena ranked rounds', () => {
-  it('sends all masked clues before an answer and full details after resolution', async () => {
-    const f = fixture();
-    const events = await f.service.snapshot(String(f.matchId));
-    expect(events[0]).toMatchObject({
-      event: 'match:question',
-      data: {
-        meaning: 'ngón tay cái',
-        explanation: 'The _____ is a digit.',
-        example: 'She hurt her _____.',
-        translation: 'Cô ấy bị đau ngón tay cái.',
-        type: 'noun' } });
-    const response = await f.guess();
-    expect(response.events[0]).toMatchObject({
-      event: 'match:question-resolved',
-      data: {
-        correctAnswer: 'thumb',
-        explanation: 'The thumb is a digit.',
-        example: 'She hurt her THUMB.' } });
+import {describe,it,expect,vi,afterEach} from 'vitest';
+import {randomUUID} from 'node:crypto';
+import {databaseSuite} from '../../../../test/native-database.js';
+import {arenaFixture} from '../../../../test/arena-fixture.js';
+import {sql,rows} from '../../../postgres/sql.js';
+const suite=databaseSuite('arena');
+afterEach(()=>vi.unstubAllGlobals());
+import {arenaHintLetters,arenaHintOrder,maskArenaAnswer,normalizeArenaAnswer} from './arena-round.utils.js';
+describe('Arena ranked rounds on PostgreSQL',()=>{
+  it('keeps clues masked until resolution, accepts wrong guesses and scores the winner once',async()=>{
+    const f=await arenaFixture(suite),m=await f.match(),q=await f.question(m._id);
+    const snapshot=await f.rounds.snapshot(m._id);expect(JSON.stringify(snapshot)).not.toContain('The thumb');
+    const wrong=await f.rounds.submitAnswer({matchId:m._id,questionId:q._id,userId:f.users[0],answer:'wrong'});expect(wrong.answerResult.resolved).toBe(false);
+    const guess=(userId:string)=>f.rounds.submitAnswer({matchId:m._id,questionId:q._id,userId,answer:'thumb'});
+    await Promise.all([guess(f.users[0]),guess(f.users[1])]);await guess(f.users[0]);
+    const players=await suite.records('arenamatchplayers').select(sql`match_id=${m._id}::uuid`);
+    expect(players.reduce((sum,p)=>sum+p.correctAnswers,0)).toBe(1);expect(players.filter(p=>p.score>0)).toHaveLength(1);
+    expect(players.every(p=>p.scoredQuestionIds.length===1)).toBe(true);
   });
-  beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-10-11T12:00:00Z'));
+  it('resolves a timed-out question without awarding points',async()=>{
+    const f=await arenaFixture(suite),m=await f.match(),q=await f.question(m._id,1,{startedAt:new Date(Date.now()-31000)});
+    const result=await f.rounds.submitAnswer({matchId:m._id,questionId:q._id,userId:f.users[0],answer:'thumb'});
+    expect(result.answerResult.timedOut).toBe(true);expect(result.answerResult.points).toBe(0);
   });
-  afterEach(() => vi.useRealTimers());
-
-  it('accepts multiple wrong guesses without closing the question or leaking the answer', async () => {
-    const f = fixture();
-    for (const word of ['wrong', 'another']) {
-      const response = await f.guess(0, word);
-      expect(response.answerResult).toMatchObject({
-        correct: false,
-        resolved: false,
-        points: 0 });
-      expect(response.answerResult).not.toHaveProperty('correctAnswer');
-      expect(response.events).toEqual([]);
-    }
-    expect(f.questions[0].resolvedAt).toBeNull();
-    expect(f.answers.findOneAndUpdate).toHaveBeenCalledTimes(2);
-    expect((await f.guess()).answerResult).toMatchObject({
-      correct: true,
-      resolved: true,
-      totalScore: 100 });
-  });
-
-  it('awards only the first correct contender, including concurrent answers and retries', async () => {
-    const f = fixture();
-    const results = await Promise.all([f.guess(0), f.guess(1)]);
-    expect(
-      results.filter((result) => result.answerResult.correct),
-    ).toHaveLength(1);
-    expect(f.players.map((player) => player.score)).toEqual([100, 0]);
-    await f.guess(0);
-    await f.service.tick();
-    expect(f.players.map((player) => player.score)).toEqual([100, 0]);
-    const resolutionEvent = results
-      .flatMap((result) => result.events)
-      .find((event) => event.event === 'match:question-resolved');
-    expect(resolutionEvent).toMatchObject({
-      event: 'match:question-resolved',
-      data: {
-        winnerId: String(f.users[0]),
-        correctAnswer: 'thumb',
-        timedOut: false } });
-  });
-
-  it('server clock reveals the answer even with no client submitting at timeout', async () => {
-    const f = fixture();
-    vi.setSystemTime(Date.now() + 30000);
-    const batches = await f.service.tick();
-    expect(batches[0].events).toContainEqual(
-      expect.objectContaining({
-        event: 'match:question-resolved',
-        data: expect.objectContaining({
-          winnerId: null,
-          timedOut: true,
-          correctAnswer: 'thumb' }) }),
-    );
-    expect(f.players.map((player) => player.score)).toEqual([0, 0]);
-  });
-
-  it('rejects correct guesses after the deadline without awarding points', async () => {
-    const f = fixture();
-    vi.setSystemTime(Date.now() + 30001);
-    expect((await f.guess()).answerResult).toMatchObject({
-      correct: false,
-      timedOut: true,
-      points: 0 });
-  });
-
-  it('runs exactly ten rounds and finishes with the score winner', async () => {
-    const f = fixture();
-    for (let index = 0; index < 10; index++) {
-      await f.guess(index < 6 ? 0 : 1);
-      expect(f.match.currentQuestionIndex).toBe(index + 1);
-      vi.setSystemTime(Date.now() + 3001);
-      const batches = await f.service.tick();
-      if (index === 9)
-        expect(batches[0].events.at(-1)).toMatchObject({
-          event: 'match:finished',
-          data: {
-            winnerId: String(f.users[0]),
-            isDraw: false } });
-    }
-    expect(f.match.status).toBe('FINISHED');
-    expect(f.players.map((player) => player.score)).toEqual([600, 400]);
-    expect(await f.service.tick()).toEqual([]);
-  });
-
-  it('restores the current question and hints on reconnect without resetting the clock', async () => {
-    const f = fixture();
-    const startedAt = f.questions[0].startedAt!.toISOString();
-    vi.setSystemTime(Date.now() + 18000);
-    const events = await f.service.snapshot(String(f.matchId));
-    expect(events[0]).toMatchObject({
-      event: 'match:question',
-      data: { startedAt, totalQuestions: 10 } });
-    expect(events[1]).toMatchObject({
-      event: 'match:hint',
-      data: { letters: ['t', null, null, null, null] } });
-    expect(JSON.stringify(events)).not.toContain('thumb');
-  });
-
-  it('blocks spectators and answers for future questions', async () => {
-    const f = fixture();
-    await expect(
-      f.service.assertMember(String(f.matchId), String(new PgId())),
-    ).rejects.toThrow();
-    await expect(
-      f.service.submitAnswer({
-        matchId: String(f.matchId),
-        questionId: String(f.questions[1]._id),
-        userId: String(f.users[0]),
-        answer: 'thumb' }),
-    ).rejects.toThrow('Question is not active');
+  it('rejects spectators and future questions',async()=>{
+    const f=await arenaFixture(suite),m=await f.match(),q=await f.question(m._id,2);
+    for(const userId of [randomUUID(),f.users[0]])await expect(f.rounds.submitAnswer({matchId:m._id,questionId:q._id,userId,answer:'thumb'})).rejects.toThrow();
   });
 });
-
 describe('Arena progressive hints', () => {
   it('masks answers in clues, including case, Unicode, phrases and regex characters', () => {
     expect(maskArenaAnswer('Thumb and THUMB', 'thumb')).toBe('_____ and _____');

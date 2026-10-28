@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsUrl } from 'class-validator';
+import { IsOptional,IsString,IsUrl } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
 
 export class UpdateProfileDto {

@@ -1,14 +1,14 @@
+import type { MistakeSource } from '@repo/shared-types/mistakes';
 import { Type } from 'class-transformer';
 import {
-  IsIn,
-  IsInt,
-  IsOptional,
-  IsString,
-  Max,
-  MaxLength,
-  Min,
+IsIn,
+IsInt,
+IsOptional,
+IsString,
+Max,
+MaxLength,
+Min,
 } from 'class-validator';
-import type { MistakeSource } from '@repo/shared-types/mistakes';
 export class MistakesQueryDto {
   @IsOptional()
   @IsIn(['TOEIC', 'DICTATION', 'VOCABULARY'])

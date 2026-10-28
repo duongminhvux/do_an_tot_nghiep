@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { AsrService } from './asr.service.js';
 import { AsrController } from './asr.controller.js';
+import { AsrService } from './asr.service.js';
 
 @Module({
   controllers: [AsrController],

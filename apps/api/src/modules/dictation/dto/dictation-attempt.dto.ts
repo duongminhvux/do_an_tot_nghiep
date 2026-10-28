@@ -1,5 +1,5 @@
-import { IsBoolean, IsInt, Min } from 'class-validator';
 import { Type } from 'class-transformer';
+import { IsBoolean,IsInt,Min } from 'class-validator';
 
 export class DictationAttemptDto {
   @Type(() => Number)

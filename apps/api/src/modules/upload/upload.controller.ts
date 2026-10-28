@@ -1,16 +1,17 @@
 /// <reference types="multer" />
 import {
-  Controller,
-  Post,
-  UploadedFile,
-  UseInterceptors,
-  BadRequestException,
-  Body } from '@nestjs/common';
+BadRequestException,
+Body,
+Controller,
+Post,
+UploadedFile,
+UseGuards,
+UseInterceptors
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ManagedMediaService } from './managed-media.service.js';
 import { Roles } from '../auth/decorators/roles.decorator.js';
 import { RolesGuard } from '../auth/guards/roles.guard.js';
-import { UseGuards } from '@nestjs/common';
+import { ManagedMediaService } from './managed-media.service.js';
 
 @UseGuards(RolesGuard)
 @Roles('ADMIN')

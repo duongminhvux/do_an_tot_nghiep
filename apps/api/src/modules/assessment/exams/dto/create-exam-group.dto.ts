@@ -1,10 +1,11 @@
 import {
-  IsBoolean,
-  IsInt,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  Min } from 'class-validator';
+IsBoolean,
+IsInt,
+IsNotEmpty,
+IsOptional,
+IsString,
+Min
+} from 'class-validator';
 
 export class CreateExamGroupDto {
   @IsNotEmpty()

@@ -1,20 +1,16 @@
-import { PgId } from '../../postgres/compat.js';
+import { assessmentRows } from '../assessment/assessment-reader.js';
+import { contentRows } from '../vocabulary/content-reader.js';
 /// <reference types="multer" />
-import { BadRequestException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException,Injectable,NotFoundException,ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectPgModel } from '../../postgres/compat.js';
-import { createHash, randomUUID } from 'node:crypto';
-import { type Model } from '../../postgres/compat.js';
-import { AudioGenerationStatus, AudioSourceType, GeneratedAudioMetadata } from '../../common/media/generated-audio.schema.js';
-import { MediaStorageService } from '../../common/media/media-storage.service.js';
-import { TtsService } from '../tts/tts.service.js';
-import { Word, WordDocument } from '../vocabulary/words/word.schema.js';
-import { PassageGroup, PassageGroupDocument } from '../assessment/questions/schemas/passage-group.schema.js';
-import { Passage, PassageDocument } from '../assessment/questions/schemas/passage.schema.js';
-import { Question, QuestionDocument } from '../assessment/questions/schemas/question.schema.js';
-import { serviceRole, serviceUrl } from '../../postgres/ownership.js';
-import { InjectPgConnection, type PgConnection } from '../../postgres/connection.js';
+import { createHash,randomUUID } from 'node:crypto';
 import { updateAudio } from '../../common/media/audio-sql.js';
+import { AudioGenerationStatus,AudioSourceType,GeneratedAudioMetadata } from '../../common/media/generated-audio.row.js';
+import { MediaStorageService } from '../../common/media/media-storage.service.js';
+import { InjectPgConnection,type PgConnection } from '../../postgres/connection.js';
+import { serviceRole,serviceUrl } from '../../postgres/ownership.js';
+import { QuestionRow } from '../assessment/questions/rows/question.row.js';
+import { TtsService } from '../tts/tts.service.js';
 
 export type VocabularyAccent = 'us' | 'uk';
 
@@ -30,10 +26,6 @@ interface SequenceSegmentInput {
 @Injectable()
 export class AudioProcessingService {
   constructor(
-    @InjectPgModel(Word.name) private readonly wordModel: Model<WordDocument>,
-    @InjectPgModel(Question.name) private readonly questionModel: Model<QuestionDocument>,
-    @InjectPgModel(Passage.name) private readonly passageModel: Model<PassageDocument>,
-    @InjectPgModel(PassageGroup.name) private readonly passageGroupModel: Model<PassageGroupDocument>,
     private readonly ttsService: TtsService,
     private readonly mediaStorage: MediaStorageService,
     private readonly configService: ConfigService,
@@ -47,7 +39,6 @@ export class AudioProcessingService {
   /** Media workers submit narrow audio commands; only the owner writes business rows. */
   private async writeAudio(resource:'words'|'questions'|'passages',id:unknown,update:{fields:Record<string,unknown>}) {
     const owner=resource==='words'?'content':'assessment';
-    const model=resource==='words'?this.wordModel:resource==='questions'?this.questionModel:this.passageModel;
     if(serviceRole()===owner)return updateAudio(this.connection,resource,String(id),update.fields);
     const token=this.configService.get<string>('INTERNAL_SERVICE_TOKEN');
     if(!token||token.length<24)throw new ServiceUnavailableException('Audio owner authentication not configured');
@@ -57,7 +48,7 @@ export class AudioProcessingService {
     });
     if(response.status===404)throw new NotFoundException('Audio owner record missing');
     if(!response.ok)throw new ServiceUnavailableException(`Audio owner ${owner} rejected update (${response.status})`);
-    return model.findById(id).lean().exec();
+    return (resource==='words'?await contentRows(this.connection,'words',{ids:[String(id)],limit:1}):await assessmentRows(this.connection,resource,{ids:[String(id)],limit:1}))[0]??null;
   }
 
   private envNumber(key: string, fallback: number): number {
@@ -163,7 +154,7 @@ export class AudioProcessingService {
   }
 
   async uploadVocabularyAudio(wordId: string, accent: VocabularyAccent, file: Express.Multer.File) {
-    const word = await this.wordModel.findOne({ _id: wordId, isDeleted: { $ne: true } }).exec();
+    const word = await contentRows(this.connection,'words',{ids:[String(wordId)],limit:1}).then(records=>records[0]??null);
     if (!word) throw new NotFoundException('Vocabulary word not found.');
     if (!file?.buffer?.length) throw new BadRequestException('Audio file is required.');
     const ext = this.extensionFromFile(file);
@@ -177,7 +168,7 @@ export class AudioProcessingService {
   }
 
   async uploadToeicQuestionAudio(questionId: string, file: Express.Multer.File) {
-    const question = await this.questionModel.findById(questionId).exec();
+    const question = await assessmentRows(this.connection,'questions',{ids:[String(questionId)],limit:1}).then(records=>records[0]??null);
     if (!question) throw new NotFoundException('TOEIC question not found.');
     if (![1, 2].includes(Number(question.part))) throw new BadRequestException('Question audio upload is only supported for Part 1 and Part 2.');
     if (!file?.buffer?.length) throw new BadRequestException('Audio file is required.');
@@ -191,9 +182,9 @@ export class AudioProcessingService {
   }
 
   async uploadToeicPassageAudio(passageId: string, file: Express.Multer.File) {
-    const passage = await this.passageModel.findById(passageId).exec();
+    const passage = await assessmentRows(this.connection,'passages',{ids:[String(passageId)],limit:1}).then(records=>records[0]??null);
     if (!passage) throw new NotFoundException('TOEIC passage not found.');
-    const group = await this.passageGroupModel.findById(passage.passageGroupId).exec();
+    const group = await assessmentRows(this.connection,'passagegroups',{ids:[String(passage.passageGroupId)],limit:1}).then(records=>records[0]??null);
     if (!group || ![3, 4].includes(Number(group.part))) throw new BadRequestException('Passage audio upload is only supported for Part 3 and Part 4.');
     if (!file?.buffer?.length) throw new BadRequestException('Audio file is required.');
     const ext = this.extensionFromFile(file);
@@ -206,7 +197,7 @@ export class AudioProcessingService {
   }
 
   async generateVocabularyAudio(wordId: string, accent: VocabularyAccent, voiceOverride?: string) {
-    const word = await this.wordModel.findOne({ _id: wordId, isDeleted: { $ne: true } }).exec();
+    const word = await contentRows(this.connection,'words',{ids:[String(wordId)],limit:1}).then(records=>records[0]??null);
     if (!word) throw new NotFoundException('Vocabulary word not found.');
 
     const isUk = accent === 'uk';
@@ -246,7 +237,7 @@ export class AudioProcessingService {
     }
   }
 
-  private part12Sequence(question: QuestionDocument, primaryVoice?: string, secondaryVoice?: string): SequenceSegmentInput[] {
+  private part12Sequence(question: QuestionRow, primaryVoice?: string, secondaryVoice?: string): SequenceSegmentInput[] {
     const part = Number(question.part);
     const speed = this.envNumber('TOEIC_TTS_SPEED', 1);
     const pause = Math.max(0, this.envNumber('TOEIC_TTS_OPTION_PAUSE_MS', 650));
@@ -297,7 +288,7 @@ export class AudioProcessingService {
   }
 
   async generateToeicQuestionAudio(questionId: string, primaryVoice?: string, secondaryVoice?: string) {
-    const question = await this.questionModel.findById(questionId).exec();
+    const question = await assessmentRows(this.connection,'questions',{ids:[String(questionId)],limit:1}).then(records=>records[0]??null);
     if (!question) throw new NotFoundException('TOEIC question not found.');
     if (![1, 2].includes(Number(question.part))) {
       throw new BadRequestException('Question-level TTS only supports TOEIC Part 1 and Part 2.');
@@ -375,9 +366,9 @@ export class AudioProcessingService {
   }
 
   async generateToeicPassageAudio(passageId: string, primaryVoice?: string, secondaryVoice?: string) {
-    const passage = await this.passageModel.findById(passageId).exec();
+    const passage = await assessmentRows(this.connection,'passages',{ids:[String(passageId)],limit:1}).then(records=>records[0]??null);
     if (!passage) throw new NotFoundException('TOEIC passage not found.');
-    const group = await this.passageGroupModel.findById(passage.passageGroupId).exec();
+    const group = await assessmentRows(this.connection,'passagegroups',{ids:[String(passage.passageGroupId)],limit:1}).then(records=>records[0]??null);
     if (!group) throw new NotFoundException('Passage group not found.');
     if (![3, 4].includes(Number(group.part))) throw new BadRequestException('Passage TTS only supports TOEIC Part 3 and Part 4.');
     if (!passage.content?.trim()) throw new BadRequestException('Transcript is empty.');
@@ -434,13 +425,13 @@ export class AudioProcessingService {
   async generateToeicExamBatch(examId: string, parts: number[] = [1, 2, 3, 4], onProgress?: (progress: any) => Promise<void> | void) {
     const normalizedParts = [...new Set(parts.map(Number).filter((part) => [1, 2, 3, 4].includes(part)))];
     const questions = normalizedParts.some((p) => [1, 2].includes(p))
-      ? await this.questionModel.find({ examId: new PgId(examId), part: { $in: normalizedParts.filter((p) => [1, 2].includes(p)) } }).sort({ order: 1 }).lean().exec()
+      ? await assessmentRows(this.connection,'questions',{examIds:[examId],parts:normalizedParts.filter(p=>[1,2].includes(p)),orderBy:'order',limit:2000})
       : [];
     const groups = normalizedParts.some((p) => [3, 4].includes(p))
-      ? await this.passageGroupModel.find({ examId: new PgId(examId), part: { $in: normalizedParts.filter((p) => [3, 4].includes(p)) } }).lean().exec()
+      ? await assessmentRows(this.connection,'passagegroups',{examIds:[examId],parts:normalizedParts.filter(p=>[3,4].includes(p)),limit:2000})
       : [];
     const passages = groups.length
-      ? await this.passageModel.find({ passageGroupId: { $in: groups.map((g) => g._id) } }).sort({ order: 1 }).lean().exec()
+      ? await assessmentRows(this.connection,'passages',{passageGroupIds:groups.map(g=>g._id),orderBy:'order',limit:2000})
       : [];
     // Batch generation intentionally preserves existing ready/manual audio.
     // It only fills missing audio or regenerates TTS items that were marked stale/failed.

@@ -1,13 +1,14 @@
 import { Type } from 'class-transformer';
 import {
-  IsIn,
-  IsInt,
-  IsUUID,
-  IsOptional,
-  IsString,
-  IsTimeZone,
-  Max,
-  Min } from 'class-validator';
+IsIn,
+IsInt,
+IsOptional,
+IsString,
+IsTimeZone,
+IsUUID,
+Max,
+Min
+} from 'class-validator';
 
 export class QueryAttemptDto {
   @IsOptional() @IsString() examId?: string;

@@ -1,15 +1,16 @@
 import {
-  Body,
-  Controller,
-  Headers,
-  HttpCode,
-  HttpStatus,
-  Ip,
-  Post,
-  Req } from '@nestjs/common';
+Body,
+Controller,
+Headers,
+HttpCode,
+HttpStatus,
+Ip,
+Post,
+Req
+} from '@nestjs/common';
+import { Public } from '../auth/decorators/public.decorator.js';
 import { ActivityLogsService } from './activity-logs.service.js';
 import { CreateActivityLogDto } from './dto/create-activity-log.dto.js';
-import { Public } from '../auth/decorators/public.decorator.js';
 
 @Controller('activity-logs')
 export class ActivityLogsController {

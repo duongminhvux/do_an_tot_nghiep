@@ -1,4 +1,4 @@
-import { ArrayUnique, IsArray, IsUUID } from 'class-validator';
+import { ArrayUnique,IsArray,IsUUID } from 'class-validator';
 
 export class ReorderGroupExamsDto {
   /** Every exam of the group, in the new display order. */

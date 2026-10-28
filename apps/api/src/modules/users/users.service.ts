@@ -1,109 +1,51 @@
-import { formatVietnamDate, formatVietnamTime, formatVietnamLastActive, formatRelativeTime } from './admin-user-time.js';
-import { PgId } from '../../postgres/compat.js';
-import { BadRequestException, Injectable, Logger, Optional } from '@nestjs/common';
-import { CreateUserDto } from './dto/create-user.dto.js';
-import { UpdateProfileDto } from './dto/update-profile.dto.js';
-import { InjectPgModel } from '../../postgres/compat.js';
-import { AuthProvider, User, UserDocument } from './schema/user.schema.js';
-import { type Model, type UpdateQuery, isValidPgId } from '../../postgres/compat.js';
+import { BadRequestException,Injectable,Logger,Optional } from '@nestjs/common';
 import { I18nService } from 'nestjs-i18n';
-import { QueryAdminUserDto } from './dto/query-admin-user.dto.js';
-import { CreateAdminUserDto, UpdateAdminUserDto } from './dto/create-admin-user.dto.js';
-import { UserLessonWord } from '../learning/progress/schemas/user-lesson-word.schema.js';
-import { UserLessonProgress } from '../learning/progress/schemas/user-lesson-progress.schema.js';
-import { LearningSession } from '../learning/sessions/schemas/learning-session.schema.js';
-import { UserWordReview } from '../learning/reviews/schemas/user-word-review.schema.js';
-import { Lesson } from '../vocabulary/lessons/lesson.schema.js';
-import { LessonWord } from '../vocabulary/lessons/lesson-word.schema.js';
-import { Word } from '../vocabulary/words/word.schema.js';
-import { Collection } from '../vocabulary/collections/collection.schema.js';
-import { UserDailyActivity } from '../learning/progress/schemas/user-daily-activity.schema.js';
-
-import { makePgModel } from '../../postgres/compat.js';
 import { DomainOutboxService } from '../../common/events/domain-outbox.service.js';
-
+import { InjectPgConnection,createConnection,type PgConnection } from '../../postgres/connection.js';
+import { SqlRecords } from '../../postgres/records.js';
+import { first,joinSql,literal,sql,type Sql } from '../../postgres/sql.js';
+import { learnedCounts,learningSnapshot } from '../learning/learning-reader.js';
+import { contentBatches } from '../vocabulary/content-reader.js';
+import { formatRelativeTime,formatVietnamDate,formatVietnamLastActive } from './admin-user-time.js';
+import { CreateAdminUserDto,UpdateAdminUserDto } from './dto/create-admin-user.dto.js';
+import { CreateUserDto } from './dto/create-user.dto.js';
+import { QueryAdminUserDto } from './dto/query-admin-user.dto.js';
+import { UpdateProfileDto } from './dto/update-profile.dto.js';
+import { AuthProvider,type UserRow } from './rows/user.row.js';
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
 
-  constructor(
-    @InjectPgModel(User.name) private readonly userModel: Model<User>,
-    @InjectPgModel(UserLessonWord.name)
-    private readonly userLessonWordModel: Model<UserLessonWord>,
-    @InjectPgModel(UserLessonProgress.name)
-    private readonly userLessonProgressModel: Model<UserLessonProgress>,
-    @InjectPgModel(LearningSession.name)
-    private readonly learningSessionModel: Model<LearningSession>,
-    @InjectPgModel(UserWordReview.name)
-    private readonly userWordReviewModel: Model<UserWordReview>,
-    @InjectPgModel(Lesson.name)
-    private readonly lessonModel: Model<Lesson>,
-    @InjectPgModel(LessonWord.name)
-    private readonly lessonWordModel: Model<LessonWord>,
-    @InjectPgModel(Word.name)
-    private readonly wordModel: Model<Word>,
-    @InjectPgModel(Collection.name)
-    private readonly collectionModel: Model<Collection>,
-    @InjectPgModel(UserDailyActivity.name)
-    private readonly userDailyActivityModel: Model<UserDailyActivity>,
-    private readonly i18n: I18nService,
-    @Optional() private readonly domainOutbox?: DomainOutboxService,
-  ) {}
-
-  async isExistingEmail(email: string) {
-    return !!(await this.userModel.exists({ email }));
-  }
-
-  async create(data: CreateUserDto) {
-    if (!this.domainOutbox) throw new Error('Transactional outbox not configured');
-    return this.domainOutbox.withTransaction(async (session) => {
-      const model = makePgModel<User>(User.name, session.client as any);
-      const created = await model.create({ ...data });
-      await this.domainOutbox!.enqueue('identity.user.created.v1', String(created._id), {
-        userId: String(created._id),
-        username: created.username ?? null,
-        avatarUrl: created.avatarUrl ?? null,
-        isBanned: created.isBanned ?? false,
-        sourceVersion: new Date(created.updatedAt).getTime(),
-      }, session);
-      return created;
+  constructor(@InjectPgConnection() private readonly db:PgConnection,private readonly i18n:I18nService,
+    @Optional() private readonly domainOutbox?:DomainOutboxService) {}
+  private get users(){return new SqlRecords(this.db,'users');}
+  private async requireUser(id:string){const user=await this.users.one(sql`id=${id}::uuid AND is_deleted IS NOT TRUE`);
+    if(!user)throw new BadRequestException(await this.i18n.t('user.USER_NOT_FOUND'));return user;}
+  async isExistingEmail(email:string){return !!await this.users.one(sql`email=${email}`);}
+  async create(data:CreateUserDto|Record<string,unknown>){
+    if(!this.domainOutbox)throw new Error('Transactional outbox not configured');
+    return this.domainOutbox.withTransaction(async session=>{
+      const created=await new SqlRecords(createConnection(session.client as any),'users').insert({...data});
+      await this.domainOutbox!.enqueue('identity.user.created.v1',String(created._id),{
+        userId:String(created._id),username:created.username??null,avatarUrl:created.avatarUrl??null,
+        isBanned:created.isBanned??false,isDeleted:created.isDeleted??false,sourceVersion:new Date(created.updatedAt).getTime(),
+      },session);return created;
     });
   }
-
-  async findByEmail(email: string): Promise<UserDocument | null> {
-    const user = await this.userModel.findOne({ email });
-    if (!user) {
-      return null;
-    }
-    return user.toObject() as UserDocument;
-  }
-
-  async findById(id: string): Promise<UserDocument | null> {
-    const user = await this.userModel.findById(id);
-    if (!user) {
-      return null;
-    }
-    return user.toObject() as UserDocument;
-  }
-
-  async update(id: string, data: UpdateQuery<User>): Promise<UserDocument | null> {
-    if (!this.domainOutbox) throw new Error('Transactional outbox not configured');
-    return this.domainOutbox.withTransaction(async (session) => {
-      const model = makePgModel<User>(User.name, session.client as any);
-      const updated = await model.findByIdAndUpdate(id, data, { returnDocument: 'after' });
-      if (updated) await this.domainOutbox!.enqueue('identity.user.updated.v1', String(updated._id), {
-        userId: String(updated._id),username:updated.username ?? null,
-        avatarUrl:updated.avatarUrl ?? null,isBanned:updated.isBanned ?? false,
-        sourceVersion: new Date(updated.updatedAt).getTime(),
-      }, session);
-      return updated;
+  findByEmail(email:string):Promise<UserRow|null>{return this.users.one(sql`email=${email}`);}
+  findById(id:string):Promise<UserRow|null>{return this.users.one(sql`id=${id}::uuid`);}
+  async update(id:string,data:Record<string,any>):Promise<any>{
+    if(!this.domainOutbox)throw new Error('Transactional outbox not configured');
+    return this.domainOutbox.withTransaction(async session=>{
+      const updated=await new SqlRecords(createConnection(session.client as any),'users').patch(sql`id=${id}::uuid`,data);
+      if(updated)await this.domainOutbox!.enqueue('identity.user.updated.v1',String(updated._id),{
+        userId:String(updated._id),username:updated.username??null,avatarUrl:updated.avatarUrl??null,
+        isBanned:updated.isBanned??false,isDeleted:updated.isDeleted??false,sourceVersion:new Date(updated.updatedAt).getTime(),
+      },session);return updated;
     });
   }
-
   async updateProfile(id: string, updateProfileDto: UpdateProfileDto) {
-    const updatedUser = await this.update(id, {
-      $set: {...updateProfileDto, profileUpdatedAt: new Date()},
-    });
+    const updatedUser=await this.update(id,{...updateProfileDto,profileUpdatedAt:new Date()});
 
     if (!updatedUser) {
       throw new BadRequestException(await this.i18n.t('auth.USER_NOT_FOUND'));
@@ -123,80 +65,26 @@ export class UsersService {
   // ADMIN USER MANAGEMENT METHODS (REAL DB ONLY)
   // ==========================================
   async findAllAdmin(query: QueryAdminUserDto) {
-    const filter: Record<string, any> = {
-      isDeleted: { $ne: true } };
-
-    if (query.search) {
-      const q = query.search.trim();
-      filter.$or = [
-        { username: { $regex: q, $options: 'i' } },
-        { email: { $regex: q, $options: 'i' } },
-      ];
-    }
-
-    if (query.status) {
-      const statusLower = query.status.trim().toLowerCase();
-      if (statusLower !== 'all' && statusLower !== 'tất cả') {
-        const isBanned = statusLower === 'banned' || statusLower === 'bị khóa';
-        filter.isBanned = isBanned ? true : { $ne: true };
-      }
-    }
-
-    if (query.dateRange && query.dateRange !== 'all') {
-      const now = new Date();
-      if (query.dateRange === 'today') {
-        const vnDateString = new Intl.DateTimeFormat('en-CA', {
-          timeZone: 'Asia/Ho_Chi_Minh',
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit' }).format(now);
-        const startOfDayVN = new Date(`${vnDateString}T00:00:00+07:00`);
-        filter.createdAt = { $gte: startOfDayVN };
-      } else if (query.dateRange === '7days') {
-        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        filter.createdAt = { $gte: sevenDaysAgo };
-      } else if (query.dateRange === '30days') {
-        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-        filter.createdAt = { $gte: thirtyDaysAgo };
-      } else if (query.dateRange === 'year') {
-        const vnYear = new Intl.DateTimeFormat('en-CA', {
-          timeZone: 'Asia/Ho_Chi_Minh',
-          year: 'numeric' }).format(now);
-        const startOfYearVN = new Date(`${vnYear}-01-01T00:00:00+07:00`);
-        filter.createdAt = { $gte: startOfYearVN };
-      }
-    }
-
-    const page = Math.max(1, query.page || 1);
-    const limit = Math.max(1, query.limit || 10);
-    const skip = (page - 1) * limit;
-
-    const [rawUsers, totalMatched, totalUsers, activeUsers, bannedUsers] =
-      await Promise.all([
-        this.userModel
-          .find(filter)
-          .sort({ createdAt: -1 })
-          .skip(skip)
-          .limit(limit)
-          .lean()
-          .exec(),
-        this.userModel.countDocuments(filter),
-        this.userModel.countDocuments({ isDeleted: { $ne: true } }),
-        this.userModel.countDocuments({ isDeleted: { $ne: true }, isBanned: { $ne: true } }),
-        this.userModel.countDocuments({ isDeleted: { $ne: true }, isBanned: true }),
-      ]);
-
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const newUsers7d = await this.userModel.countDocuments({
-      isDeleted: { $ne: true },
-      createdAt: { $gte: sevenDaysAgo } });
-
-    const userIds = rawUsers.map((u: any) => u._id);
-    const wordCounts = await this.userLessonWordModel.aggregate([
-      { $match: { userId: { $in: userIds } } },
-      { $group: { _id: '$userId', count: { $sum: 1 } } },
+    const page=Math.max(1,Math.floor(query.page||1)),limit=Math.min(100,Math.max(1,Math.floor(query.limit||10))),skip=(page-1)*limit;
+    const conditions:Sql[]=[literal('is_deleted IS NOT TRUE')];
+    if(query.search?.trim())conditions.push(sql`(username ILIKE '%'||${query.search.trim()}||'%' OR email ILIKE '%'||${query.search.trim()}||'%')`);
+    const status=query.status?.trim().toLowerCase();
+    if(status&&status!=='all'&&status!=='tất cả')conditions.push(status==='banned'||status==='bị khóa'?literal('is_banned IS TRUE'):literal('is_banned IS NOT TRUE'));
+    let from:Date|null=null;const now=new Date();
+    if(query.dateRange==='today')from=new Date(`${new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh'}).format(now)}T00:00:00+07:00`);
+    else if(query.dateRange==='7days')from=new Date(Date.now()-7*86400000);
+    else if(query.dateRange==='30days')from=new Date(Date.now()-30*86400000);
+    else if(query.dateRange==='year')from=new Date(`${new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric'}).format(now)}-01-01T00:00:00+07:00`);
+    if(from)conditions.push(sql`created_at>=${from}`);const where=joinSql(conditions,' AND ');
+    const [rawUsers,totalMatched,summary]=await Promise.all([
+      this.users.select(where,sql`ORDER BY created_at DESC,id LIMIT ${limit} OFFSET ${skip}`),this.users.count(where),
+      first(this.db,sql`SELECT COUNT(*)::integer AS total,COUNT(*) FILTER(WHERE is_banned IS NOT TRUE)::integer AS active,
+        COUNT(*) FILTER(WHERE is_banned IS TRUE)::integer AS banned,COUNT(*) FILTER(WHERE created_at>=${new Date(Date.now()-7*86400000)})::integer AS recent
+        FROM public.users WHERE is_deleted IS NOT TRUE`),
     ]);
-    const wordCountMap = new Map(wordCounts.map((w: any) => [String(w._id), w.count]));
+    const totalUsers=Number(summary?.total??0),activeUsers=Number(summary?.active??0),bannedUsers=Number(summary?.banned??0),newUsers7d=Number(summary?.recent??0);
+    const wordCounts=await learnedCounts(this.db,rawUsers.map(user=>String(user._id)));
+    const wordCountMap=new Map(wordCounts.map(word=>[String(word._id),word.count]));
 
     const items = rawUsers.map((user: any, index: number) => {
       const createdDate = user.createdAt ? new Date(user.createdAt) : new Date();
@@ -262,17 +150,7 @@ export class UsersService {
   }
 
   async findOneAdmin(id: string) {
-    const filter: Record<string, any> = { isDeleted: false };
-    if (isValidPgId(id)) {
-      filter._id = id;
-    } else {
-      filter._id = id;
-    }
-
-    const user: any = await this.userModel.findOne(filter).lean().exec();
-    if (!user) {
-      throw new BadRequestException(await this.i18n.t('user.USER_NOT_FOUND'));
-    }
+    const user=await this.requireUser(id);
 
     const createdDate = user.createdAt ? new Date(user.createdAt) : new Date();
     const lastActiveDate = user.lastActive
@@ -282,21 +160,20 @@ export class UsersService {
     const formattedLastActive = formatVietnamLastActive(lastActiveDate, user.isBanned, this.i18n);
     const registrationAgo = formatRelativeTime(createdDate, this.i18n);
 
-    // 1. Query real count of learned words
-    const wordsLearned = await this.userLessonWordModel.countDocuments({
-      userId: user._id });
-
-    // 2. Query real completed lessons count
-    const completedLessonsCount = await this.userLessonProgressModel.countDocuments({
-      userId: user._id,
-      status: 'COMPLETED' });
-
-    // 3. Query study sessions to calculate real study time
-    const sessions = await this.learningSessionModel
-      .find({ userId: user._id })
-      .lean()
-      .exec();
-
+    const snapshot=await learningSnapshot(this.db,String(user._id));
+    const wordsLearned=Number(snapshot.summary.learned??snapshot.words.length),completedLessonsCount=snapshot.progress.filter(row=>row.status==='COMPLETED').length;
+    const sessions=snapshot.sessions;
+    const allLessons=await contentBatches(this.db,'lessons',{ids:[...new Set(snapshot.progress.map(row=>String(row.lessonId)))]});
+    const lessonsById=new Map(allLessons.map(lesson=>[String(lesson._id),lesson]));
+    const collectionIds=[...new Set(allLessons.map(lesson=>String(lesson.collectionId)).filter(Boolean))];
+    const collections=await contentBatches(this.db,'collections',{ids:collectionIds});
+    const collectionsById=new Map(collections.map(collection=>[String(collection._id),collection]));
+    const catalogLessons=await contentBatches(this.db,'lessons',{collectionIds,activeOnly:true},'collectionIds');
+    const recentWords=snapshot.words.slice(0,6);
+    const links=await contentBatches(this.db,'lessonwords',{ids:recentWords.map(word=>String(word.lessonWordId))});
+    const linksById=new Map(links.map(link=>[String(link._id),link]));
+    const vocabulary=await contentBatches(this.db,'words',{ids:links.map(link=>String(link.wordId))});
+    const wordsById=new Map(vocabulary.map(word=>[String(word._id),word]));
     let totalStudyTimeMinutes = 0;
     sessions.forEach((s) => {
       if (s.startedAt && s.endedAt) {
@@ -306,10 +183,7 @@ export class UsersService {
     });
 
     // 4. Query word reviews to calculate real accuracy
-    const reviews = await this.userWordReviewModel
-      .find({ userId: user._id })
-      .lean()
-      .exec();
+    const reviews=snapshot.reviews;
 
     let correctCount = 0;
     let incorrectCount = 0;
@@ -324,13 +198,7 @@ export class UsersService {
       totalReviews > 0 ? Math.round((correctCount / totalReviews) * 10 * 10) / 10 : 0;
 
     // 5. Query user lesson progresses and aggregate by collection
-    const allUserLessonProgresses = await this.userLessonProgressModel
-      .find({ userId: user._id })
-      .sort({ updatedAt: -1 })
-      .populate('lessonId')
-      .lean()
-      .exec();
-
+    const allUserLessonProgresses=snapshot.progress.map(row=>({...row,lessonId:lessonsById.get(String(row.lessonId))??null}));
     // Group by collectionId
     const colProgressMap = new Map<string, any[]>();
     for (const lp of allUserLessonProgresses) {
@@ -355,15 +223,8 @@ export class UsersService {
     const courses: any[] = [];
     for (const [colId, userLps] of colProgressMap.entries()) {
       if (colId !== 'other') {
-        const col = await this.collectionModel
-          .findById(colId)
-          .select('name slug')
-          .lean()
-          .exec();
-        const totalLessons = await this.lessonModel.countDocuments({
-          collectionId: new PgId(colId),
-          isActive: true,
-          isDeleted: false });
+        const col=collectionsById.get(colId)??null;
+        const totalLessons=catalogLessons.filter(lesson=>String(lesson.collectionId)===colId).length;
 
         const completedLessons = userLps.filter(
           (p: any) => p.status === 'COMPLETED',
@@ -426,11 +287,7 @@ export class UsersService {
         let colName = '';
         const lessonObj: any = lp.lessonId;
         if (lessonObj?.collectionId) {
-          const col = await this.collectionModel
-            .findById(lessonObj.collectionId)
-            .select('name')
-            .lean()
-            .exec();
+          const col=collectionsById.get(String(lessonObj.collectionId));
           if (col?.name) colName = col.name;
         }
         const lessonTitle = lessonObj?.title || 'Bài học';
@@ -448,24 +305,10 @@ export class UsersService {
     }
 
     // Word activities: "Học từ mới: <word>"
-    const recentWords = await this.userLessonWordModel
-      .find({ userId: user._id })
-      .sort({ learnedAt: -1, createdAt: -1 })
-      .limit(6)
-      .lean()
-      .exec();
-
     for (const rw of recentWords) {
-      const lw: any = await this.lessonWordModel
-        .findById(rw.lessonWordId)
-        .lean()
-        .exec();
+      const lw=linksById.get(String(rw.lessonWordId));
       if (lw?.wordId) {
-        const w: any = await this.wordModel
-          .findById(lw.wordId)
-          .select('word')
-          .lean()
-          .exec();
+        const w=wordsById.get(String(lw.wordId));
         if (w?.word) {
           const time = rw.learnedAt || (rw as any).createdAt;
           recentActivities.push({
@@ -547,30 +390,10 @@ export class UsersService {
         dailyGoalStreak: streakDays } };
   }
 
-  async updateNotes(id: string, notes: string) {
-    const filter: Record<string, any> = { isDeleted: false };
-    if (isValidPgId(id)) {
-      filter._id = id;
-    } else {
-      filter._id = id;
-    }
-
-    const user = await this.userModel.findOne(filter);
-    if (!user) {
-      throw new BadRequestException('User not found');
-    }
-    user.notes = notes;
-    await user.save();
-    return { success: true, notes: user.notes };
-  }
-
-  async createAdmin(data: CreateAdminUserDto) {
-    const isExist = await this.isExistingEmail(data.email);
-    if (isExist) {
-      throw new BadRequestException('Email already exists');
-    }
-
-    const created = await this.userModel.create({
+  async updateNotes(id:string,notes:string){await this.requireUser(id);await this.update(id,{notes});return {success:true,notes};}
+  async createAdmin(data:CreateAdminUserDto){
+    if(await this.isExistingEmail(data.email))throw new BadRequestException('Email already exists');
+    const created = await this.create({
       email: data.email.toLowerCase().trim(),
       username: data.name.trim(),
       phone: data.phone?.trim(),
@@ -583,136 +406,35 @@ export class UsersService {
 
     return created;
   }
-
-  async updateAdmin(id: string, data: UpdateAdminUserDto) {
-    const user = await this.userModel.findById(id);
-    if (!user || user.isDeleted) {
-      throw new BadRequestException('User not found');
-    }
-
-    if (data.email && data.email !== user.email) {
-      const isExist = await this.isExistingEmail(data.email);
-      if (isExist) {
-        throw new BadRequestException('Email already exists');
-      }
-      user.email = data.email.toLowerCase().trim();
-    }
-
-    if (data.name) user.username = data.name.trim();
-    if (data.phone !== undefined) user.phone = data.phone?.trim();
-    if (data.avatarUrl !== undefined) user.avatarUrl = data.avatarUrl;
-    if (data.status) {
-      user.isBanned = data.status === 'banned';
-    }
-
-    await user.save();
-    return user;
+  async updateAdmin(id:string,data:UpdateAdminUserDto){
+    const user=await this.requireUser(id);const changes:Record<string,any>={};
+    if(data.email&&data.email!==user.email){if(await this.isExistingEmail(data.email))throw new BadRequestException('Email already exists');changes.email=data.email.toLowerCase().trim();}
+    if(data.name)changes.username=data.name.trim();if(data.phone!==undefined)changes.phone=data.phone?.trim();
+    if(data.avatarUrl!==undefined)changes.avatarUrl=data.avatarUrl;if(data.status)changes.isBanned=data.status==='banned';
+    return this.update(id,changes);
   }
-
-  async toggleBan(id: string) {
-    const user = await this.userModel.findById(id);
-    if (!user || user.isDeleted) {
-      throw new BadRequestException('User not found');
-    }
-
-    user.isBanned = !user.isBanned;
-    await user.save();
-
-    return {
-      _id: String(user._id),
-      isBanned: user.isBanned,
-      status: user.isBanned ? 'banned' : 'active' };
+  async toggleBan(id:string){await this.requireUser(id);
+    if(!this.domainOutbox)throw new Error('Transactional outbox not configured');
+    return this.domainOutbox.withTransaction(async session=>{
+      const db=createConnection(session.client as any),updated=await new SqlRecords(db,'users').patch(sql`id=${id}::uuid AND is_deleted IS NOT TRUE`,{}, {isBanned:sql`NOT COALESCE(is_banned,false)`});
+      if(!updated)throw new BadRequestException('User not found');
+      await this.domainOutbox!.enqueue('identity.user.updated.v1',id,{userId:id,username:updated.username??null,avatarUrl:updated.avatarUrl??null,
+        isBanned:updated.isBanned??false,isDeleted:updated.isDeleted??false,sourceVersion:new Date(updated.updatedAt).getTime()},session);
+      return {_id:String(updated._id),isBanned:updated.isBanned,status:updated.isBanned?'banned':'active'};
+    });
   }
-
-  async removeAdmin(id: string) {
-    const user = await this.userModel.findById(id);
-    if (!user || user.isDeleted) {
-      throw new BadRequestException(await this.i18n.t('user.USER_NOT_FOUND'));
-    }
-
-    user.isDeleted = true;
-    user.deletedAt = new Date();
-    await user.save();
-
-    return { success: true };
-  }
+  async removeAdmin(id:string){await this.requireUser(id);await this.update(id,{isDeleted:true,deletedAt:new Date()});return {success:true};}
 
   /**
    * GET /admin/users/:userId/overview
    */
   async getUserOverviewAdmin(userId: string) {
-    const filter: Record<string, any> = { isDeleted: false };
-    if (isValidPgId(userId)) {
-      filter._id = userId;
-    } else {
-      filter._id = userId;
-    }
-    const user = await this.userModel.findOne(filter).lean();
-    if (!user) {
-      throw new BadRequestException(await this.i18n.t('user.USER_NOT_FOUND'));
-    }
-
-    const userObjId = new PgId(String(user._id));
-
-    // 1. Tổng từ đã học
-    const [totalUserLessonWords, totalReviewedWords] = await Promise.all([
-      this.userLessonWordModel.countDocuments({ userId: userObjId }),
-      this.userWordReviewModel.countDocuments({ userId: userObjId }),
-    ]);
-    const totalWordsLearned = Math.max(totalUserLessonWords, totalReviewedWords);
-
-    // 2. Tổng từ đã ôn
-    const reviewAgg = await this.userWordReviewModel.aggregate([
-      { $match: { userId: userObjId } },
-      { $group: { _id: null, total: { $sum: '$reviewCount' } } },
-    ]);
-    const totalWordsReviewed = reviewAgg[0]?.total || 0;
-
-    // 3. Tổng thời gian học
-    const dailyAgg = await this.userDailyActivityModel.aggregate([
-      { $match: { userId: userObjId } },
-      { $group: { _id: null, total: { $sum: '$studyMinutes' } } },
-    ]);
-    const dailyMinutes = dailyAgg[0]?.total || 0;
-
-    const sessionAgg = await this.learningSessionModel.aggregate([
-      {
-        $match: {
-          userId: userObjId,
-          startedAt: { $exists: true },
-          endedAt: { $exists: true } } },
-      {
-        $project: {
-          durationMinutes: {
-            $divide: [{ $subtract: ['$endedAt', '$startedAt'] }, 60000] } } },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: '$durationMinutes' } } },
-    ]);
-    const sessionMinutes = Math.round(sessionAgg[0]?.total || 0);
-    const studyMinutes = Math.max(dailyMinutes, sessionMinutes);
-
-    // 4. Streak
-    const [dailyActivities, sessions, reviews, progresses] = await Promise.all([
-      this.userDailyActivityModel
-        .find({ userId: userObjId })
-        .select('date')
-        .lean(),
-      this.learningSessionModel
-        .find({ userId: userObjId })
-        .select('startedAt')
-        .lean(),
-      this.userWordReviewModel
-        .find({ userId: userObjId, lastReviewedAt: { $exists: true } })
-        .select('lastReviewedAt')
-        .lean(),
-      this.userLessonProgressModel
-        .find({ userId: userObjId, lastStudiedAt: { $exists: true } })
-        .select('lastStudiedAt')
-        .lean(),
-    ]);
-
+    const user=await this.requireUser(userId);
+    const snapshot=await learningSnapshot(this.db,String(user._id));
+    const totalWordsLearned=Math.max(Number(snapshot.summary.learned??0),Number(snapshot.summary.reviewed??0));
+    const totalWordsReviewed=Number(snapshot.summary.reviewCount??0);
+    const studyMinutes=Math.max(Number(snapshot.summary.dailyMinutes??0),Math.round(Number(snapshot.summary.sessionMinutes??0)));
+    const [dailyActivities,sessions,reviews,progresses]=[snapshot.daily,snapshot.sessions,snapshot.reviews,snapshot.progress];
     const studyDates = new Set<string>();
     dailyActivities.forEach((d) => {
       if (d.date) studyDates.add(new Date(d.date).toISOString().slice(0, 10));
@@ -790,59 +512,22 @@ export class UsersService {
    * Tiến độ vocabulary của user theo Collection/Lesson
    */
   async getUserProgressAdmin(userId: string) {
-    const filter: Record<string, any> = { isDeleted: false };
-    if (isValidPgId(userId)) {
-      filter._id = userId;
-    } else {
-      filter._id = userId;
-    }
-    const user = await this.userModel.findOne(filter).lean();
-    if (!user) {
-      throw new BadRequestException(await this.i18n.t('user.USER_NOT_FOUND'));
-    }
-
-    const userObjId = new PgId(String(user._id));
-
-    const collections = await this.collectionModel
-      .find({ isActive: true, isDeleted: false })
-      .sort({ order: 1 })
-      .lean();
-
+    const user=await this.requireUser(userId);
+    const snapshot=await learningSnapshot(this.db,String(user._id));
+    const learnedIds=new Set(snapshot.words.map(word=>String(word.lessonWordId)));
+    const collections=await contentBatches(this.db,'collections',{activeOnly:true,orderBy:'order'});
     const result = [];
 
     for (const col of collections) {
-      const lessons = await this.lessonModel
-        .find({
-          collectionId: col._id,
-          isActive: true,
-          isDeleted: false })
-        .sort({ order: 1 })
-        .lean();
-
-      const lessonIds = lessons.map((l) => l._id);
-
-      const [userProgresses, allLessonWords] = await Promise.all([
-        this.userLessonProgressModel
-          .find({
-            userId: userObjId,
-            lessonId: { $in: lessonIds } })
-          .lean(),
-        this.lessonWordModel
-          .find({
-            lessonId: { $in: lessonIds } })
-          .select('_id lessonId')
-          .lean(),
-      ]);
-
+      const lessons=await contentBatches(this.db,'lessons',{collectionIds:[String(col._id)],activeOnly:true,orderBy:'order'},'collectionIds');
+      const lessonIds=lessons.map(lesson=>String(lesson._id)),lessonSet=new Set(lessonIds);
+      const userProgresses=snapshot.progress.filter(row=>lessonSet.has(String(row.lessonId)));
+      const allLessonWords=await contentBatches(this.db,'lessonwords',{lessonIds},'lessonIds');
       const progressMap = new Map(
         userProgresses.map((p) => [String(p.lessonId), p]),
       );
 
-      const allLwIds = allLessonWords.map((lw) => lw._id);
-      const learnedWordsCount = await this.userLessonWordModel.countDocuments({
-        userId: userObjId,
-        lessonWordId: { $in: allLwIds } });
-
+      const learnedWordsCount=allLessonWords.filter(word=>learnedIds.has(String(word._id))).length;
       const totalWords = allLessonWords.length;
       let completedLessons = 0;
 
@@ -887,40 +572,15 @@ export class UsersService {
    * Hoạt động học của user
    */
   async getUserActivityAdmin(userId: string) {
-    const filter: Record<string, any> = { isDeleted: false };
-    if (isValidPgId(userId)) {
-      filter._id = userId;
-    } else {
-      filter._id = userId;
-    }
-    const user = await this.userModel.findOne(filter).lean();
-    if (!user) {
-      throw new BadRequestException(await this.i18n.t('user.USER_NOT_FOUND'));
-    }
-
-    const userObjId = new PgId(String(user._id));
-
-    const [recentProgresses, recentSessions, dailyActivities] =
-      await Promise.all([
-        this.userLessonProgressModel
-          .find({ userId: userObjId })
-          .sort({ lastStudiedAt: -1, updatedAt: -1 })
-          .limit(10)
-          .populate('lessonId')
-          .lean(),
-        this.learningSessionModel
-          .find({ userId: userObjId })
-          .sort({ startedAt: -1 })
-          .limit(10)
-          .populate('lessonId')
-          .lean(),
-        this.userDailyActivityModel
-          .find({ userId: userObjId })
-          .sort({ date: -1 })
-          .limit(30)
-          .lean(),
-      ]);
-
+    const user=await this.requireUser(userId);
+    const snapshot=await learningSnapshot(this.db,String(user._id));
+    const progress=snapshot.progress.slice().sort((a,b)=>new Date(b.lastStudiedAt??b.updatedAt).getTime()-new Date(a.lastStudiedAt??a.updatedAt).getTime()).slice(0,10);
+    const sessions=snapshot.sessions.slice(0,10);
+    const lessons=await contentBatches(this.db,'lessons',{ids:[...new Set([...progress,...sessions].map(row=>String(row.lessonId)).filter(id=>id&&id!=='null'&&id!=='undefined'))]});
+    const lessonMap=new Map(lessons.map(lesson=>[String(lesson._id),lesson]));
+    const recentProgresses=progress.map(row=>({...row,lessonId:lessonMap.get(String(row.lessonId))??null}));
+    const recentSessions=sessions.map(row=>({...row,lessonId:lessonMap.get(String(row.lessonId))??null}));
+    const dailyActivities=snapshot.daily.slice(0,30);
     const recentActivities: any[] = [];
 
     for (const lp of recentProgresses) {

@@ -1,10 +1,10 @@
 import { Transform } from 'class-transformer';
 import {
-  IsBoolean,
-  IsString,
-  Matches,
-  MaxLength,
-  ValidateIf,
+IsBoolean,
+IsString,
+Matches,
+MaxLength,
+ValidateIf,
 } from 'class-validator';
 
 export class GameAudioSettingsDto {

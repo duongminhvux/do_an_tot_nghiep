@@ -1,12 +1,13 @@
 import {
-  ArrayNotEmpty,
-  ArrayUnique,
-  IsArray,
-  IsEnum,
-  IsInt,
-  IsUUID,
-  Max,
-  Min } from 'class-validator';
+ArrayNotEmpty,
+ArrayUnique,
+IsArray,
+IsEnum,
+IsInt,
+IsUUID,
+Max,
+Min
+} from 'class-validator';
 import { ExamMode } from '../attempt.types.js';
 
 export class CreateAttemptDto {

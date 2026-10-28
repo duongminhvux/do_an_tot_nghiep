@@ -1,20 +1,22 @@
-import { PgId } from '../../../postgres/compat.js';
-import { Injectable, NotFoundException, BadRequestException, Logger, Optional } from '@nestjs/common';
-import { InjectPgModel } from '../../../postgres/compat.js';
-import { type Model } from '../../../postgres/compat.js';
-import { parseOffice } from 'officeparser';
+import { InjectPgConnection,withPgTransaction,type PgConnection } from '../../../postgres/connection.js';
+import { isUuid,newId } from '../../../postgres/ids.js';
+import { SqlRecords,newSqlRow } from '../../../postgres/records.js';
+import { rows,sql } from '../../../postgres/sql.js';
+
+import { BadRequestException,Injectable,Logger,NotFoundException,Optional } from '@nestjs/common';
+
+
+import { parseImportText,validateImportDraft } from '@repo/shared-types/assessment-import';
 import { createHash } from 'node:crypto';
-import { parseImportText, validateImportDraft } from '@repo/shared-types/assessment-import';
-import { Exam, ExamDocument } from '../exams/schemas/exam.schema.js';
-import { Question, QuestionDocument } from './schemas/question.schema.js';
-import { PassageGroup, PassageGroupDocument } from './schemas/passage-group.schema.js';
-import { Passage, PassageDocument } from './schemas/passage.schema.js';
+import { parseOffice } from 'officeparser';
+import { AudioGenerationStatus } from '../../../common/media/generated-audio.row.js';
+import { MediaStorageService } from '../../../common/media/media-storage.service.js';
+import { ManagedMediaService } from '../../upload/managed-media.service.js';
 import { CreateQuestionDto } from './dto/create-question.dto.js';
 import { UpdateQuestionDto } from './dto/update-question.dto.js';
-import { ManagedMediaService } from '../../upload/managed-media.service.js';
-import { AudioGenerationStatus } from '../../../common/media/generated-audio.schema.js';
-import { MediaStorageService } from '../../../common/media/media-storage.service.js';
 import { PdfAiLearningService } from './pdf-ai-learning.service.js';
+import { PassageGroup } from './rows/passage-group.row.js';
+import { Question } from './rows/question.row.js';
 
 @Injectable()
 export class QuestionsService {
@@ -25,11 +27,11 @@ export class QuestionsService {
   private async captureGroupEdit(id: string, before: any) {
     if (!this.learning) return undefined;
     try {
-      const linked = await this.questionModel.find({ passageGroupId: new PgId(id) }).sort({ order: 1 }).lean().exec();
+      const linked = await this.questionModel.select(sql`("passage_group_id" = ${String(id)})`, sql`ORDER BY "order" ASC NULLS FIRST`);
       const source = linked.find(q => this.learning!.sourceJob(q.importBatchId));
       if (!source) return undefined;
-      const group = await this.passageGroupModel.findById(id).lean().exec();
-      const passages = await this.passageModel.find({ passageGroupId: new PgId(id) }).sort({ order: 1 }).lean().exec();
+      const group = await this.passageGroupModel.one(sql`id=${id}::uuid`);
+      const passages = await this.passageModel.select(sql`("passage_group_id" = ${String(id)})`, sql`ORDER BY "order" ASC NULLS FIRST`);
       return this.learning.enqueue({ kind: 'group', jobId: this.learning.sourceJob(source.importBatchId), examId: String(source.examId),
         number: source.sourceOrder ?? source.order, part: source.part, before, after: { ...group, passages }, reason: 'saved-passage-edit' });
     } catch (error) {
@@ -38,20 +40,24 @@ export class QuestionsService {
     }
   }
 
-  constructor(
-    @InjectPgModel(Question.name)
-    private readonly questionModel: Model<QuestionDocument>,
-    @InjectPgModel(PassageGroup.name)
-    private readonly passageGroupModel: Model<PassageGroupDocument>,
-    @InjectPgModel(Passage.name)
-    private readonly passageModel: Model<PassageDocument>,
-    private readonly mediaUploadService: ManagedMediaService,
-    private readonly mediaStorage: MediaStorageService,
-    @InjectPgModel(Exam.name)
-    private readonly examModel?: Model<ExamDocument>,
-    @Optional() private readonly learning?: PdfAiLearningService,
+  private get questionModel(){return new SqlRecords(this.nativeDb,'questions');}
+private get passageGroupModel(){return new SqlRecords(this.nativeDb,'passagegroups');}
+private get passageModel(){return new SqlRecords(this.nativeDb,'passages');}
+private get examModel(){return new SqlRecords(this.nativeDb,'exams');}
+constructor(
+@InjectPgConnection() private readonly nativeDb:PgConnection,private readonly mediaUploadService: ManagedMediaService,
+private readonly mediaStorage: MediaStorageService,
+@Optional() private readonly learning?: PdfAiLearningService
   ) {}
 
+  private validateQuestion(question:any){
+    if(!isUuid(String(question.examId))||!['LISTENING','READING'].includes(question.section)||!Number.isInteger(Number(question.part))||question.part<1||question.part>7)throw new BadRequestException('Invalid question exam, section or part');
+    if(!String(question.content??'').trim()&&!([6,7].includes(Number(question.part))&&/^https?:\/\//i.test(question.imageUrl??'')))throw new BadRequestException('Question content is required');
+    if(!Array.isArray(question.options)||!question.options.length||question.options.some((option:any)=>!['A','B','C','D'].includes(option.key)||(![1,2].includes(Number(question.part))&&!String(option.text??'').trim()))||!['A','B','C','D'].includes(question.correctAnswer))throw new BadRequestException('Invalid question options or correct answer');
+  }
+  private async withPassageGroups(pending:Promise<any[]>){
+    const questions=await pending;const groups=await this.passageGroupModel.select(sql`id=ANY(${questions.map(row=>row.passageGroupId).filter(Boolean)}::uuid[])`);const map=new Map(groups.map(row=>[String(row._id),row]));return questions.map(row=>({...row,passageGroupId:map.get(String(row.passageGroupId))??null}));
+  }
   private async deleteLocalAudio(url?: string, storageKey?: string) {
     const key = storageKey || this.mediaStorage.storageKeyFromPublicUrl(url);
     if (!key) return;
@@ -64,8 +70,8 @@ export class QuestionsService {
     if (!url || !this.mediaUploadService.isManagedUrl(url)) return;
     try {
       const [question, passage] = await Promise.all([
-        this.questionModel.exists({ imageUrl: url }),
-        this.passageModel.exists({ imageUrl: url }),
+        this.questionModel.one(sql`("image_url" = ${url})`),
+        this.passageModel.one(sql`("image_url" = ${url})`),
       ]);
       if (!question && !passage) await this.mediaUploadService.deleteFile(url);
     } catch (error) {
@@ -74,17 +80,14 @@ export class QuestionsService {
   }
 
   async create(createQuestionDto: CreateQuestionDto): Promise<Question> {
+    return withPgTransaction(this.nativeDb,async()=>{await rows(this.nativeDb,sql`SELECT pg_advisory_xact_lock(hashtextextended(${"assessment-questions:"+createQuestionDto.examId},0))`);
+
     const { examId, passageGroupId, passageId, order, ...rest } = createQuestionDto;
     const effectivePassageGroupId = passageGroupId || passageId;
 
     let targetOrder = order;
     if (targetOrder === undefined || targetOrder === null) {
-      const highest = await this.questionModel
-        .findOne({ examId: new PgId(examId) })
-        .sort({ order: -1 })
-        .select('order')
-        .lean()
-        .exec();
+      const highest = await this.questionModel.one(sql`("exam_id" = ${String(examId)})`, sql`ORDER BY "order" DESC NULLS LAST`);
       targetOrder = highest ? (highest.order || 0) + 1 : 1;
     }
 
@@ -95,34 +98,26 @@ export class QuestionsService {
     this.inFlightCreates.add(dedupeKey);
 
     try {
-      const created = new this.questionModel({
+      const created = newSqlRow('questions',{
         ...rest,
-        examId: new PgId(examId),
-        passageGroupId: effectivePassageGroupId ? new PgId(effectivePassageGroupId) : undefined,
+        examId: String(examId),
+        passageGroupId: effectivePassageGroupId ? String(effectivePassageGroupId) : undefined,
         order: targetOrder,
         isActive: createQuestionDto.isActive ?? true });
 
-      return await created.save();
+      this.validateQuestion(created);
+      return await this.questionModel.insert(created);
     } finally {
       setTimeout(() => {
         this.inFlightCreates.delete(dedupeKey);
       }, 1500);
     }
+  
+    });
   }
 
   async findByExam(examId: string, part?: number): Promise<Question[]> {
-    const filter: Record<string, any> = {
-      examId: PgId.isValid(examId) ? new PgId(examId) : examId };
-    if (part) {
-      filter.part = Number(part);
-    }
-
-    const questions = await this.questionModel
-      .find(filter)
-      .sort({ order: 1, createdAt: 1 })
-      .populate('passageGroupId')
-      .lean()
-      .exec();
+    const questions=await this.withPassageGroups(this.questionModel.select(sql`exam_id=${examId}::uuid AND (${part??null}::int IS NULL OR part=${part??null})`,sql`ORDER BY "order",created_at,id`));
 
     return questions.map((q: any) => ({
       ...q,
@@ -131,19 +126,11 @@ export class QuestionsService {
   }
 
   async findPassagesByExam(examId: string): Promise<any[]> {
-    const validExamId = PgId.isValid(examId) ? new PgId(examId) : examId;
-    const groups = await this.passageGroupModel
-      .find({ examId: validExamId })
-      .sort({ order: 1, createdAt: 1 })
-      .lean()
-      .exec();
+    const validExamId = isUuid(examId) ? String(examId) : examId;
+    const groups = await this.passageGroupModel.select(sql`("exam_id" = ${validExamId})`, sql`ORDER BY "order" ASC NULLS FIRST,"created_at" ASC NULLS FIRST`);
 
     const groupIds = groups.map((g) => g._id);
-    const passages = await this.passageModel
-      .find({ passageGroupId: { $in: groupIds } })
-      .sort({ order: 1, createdAt: 1 })
-      .lean()
-      .exec();
+    const passages = await this.passageModel.select(sql`("passage_group_id"=ANY(${groupIds}::uuid[]))`, sql`ORDER BY "order" ASC NULLS FIRST,"created_at" ASC NULLS FIRST`);
 
     return groups.map((g) => {
       const childPassages = passages.filter(
@@ -168,18 +155,20 @@ export class QuestionsService {
   }
 
   async createPassageGroup(data: any): Promise<PassageGroup> {
+    return withPgTransaction(this.nativeDb,async()=>{await rows(this.nativeDb,sql`SELECT pg_advisory_xact_lock(hashtextextended(${"assessment-questions:"+data.examId},0))`);
+
     for (const p of Array.isArray(data.passages) && data.passages.length ? data.passages : [data]) {
       this.validateReadingPassage(data.part, p);
     }
-    const created = new this.passageGroupModel({
+    const created = newSqlRow('passagegroups',{
       ...data,
-      examId: new PgId(data.examId) });
-    const savedGroup = await created.save();
+      examId: String(data.examId) });
+    const savedGroup = await this.passageGroupModel.insert(created);
 
     if (Array.isArray(data.passages) && data.passages.length > 0) {
       for (let i = 0; i < data.passages.length; i++) {
         const p = data.passages[i];
-        await this.passageModel.create({
+        await this.passageModel.insert({
           passageGroupId: savedGroup._id,
           type: p.type || 'TEXT',
           content: p.content,
@@ -188,7 +177,7 @@ export class QuestionsService {
           order: p.order !== undefined ? p.order : i + 1 });
       }
     } else if (data.content || data.audioUrl || data.imageUrl) {
-      await this.passageModel.create({
+      await this.passageModel.insert({
         passageGroupId: savedGroup._id,
         type: data.type || 'TEXT',
         content: data.content,
@@ -198,16 +187,18 @@ export class QuestionsService {
     }
 
     return savedGroup;
+  
+    });
   }
 
   async updatePassageGroup(id: string, data: any): Promise<PassageGroup> {
-    if (!PgId.isValid(id)) {
+    if (!isUuid(id)) {
       throw new NotFoundException('PassageGroup not found');
     }
     const { content, audioUrl, imageUrl, passages, ...groupFields } = data;
-    const existingGroup = await this.passageGroupModel.findById(id).exec();
+    const existingGroup = await this.passageGroupModel.one(sql`id=${id}::uuid`);
     if (!existingGroup) throw new NotFoundException('PassageGroup not found');
-    const previousPassages = await this.passageModel.find({ passageGroupId: new PgId(id) }).lean().exec();
+    const previousPassages = await this.passageModel.select(sql`("passage_group_id" = ${String(id)})`);
     const nextPart = data.part ?? existingGroup.part;
     if (Array.isArray(passages) && passages.length > 0) {
       for (const patch of passages) {
@@ -224,31 +215,28 @@ export class QuestionsService {
         ...(!hasPassagePatches && p === previousPassages[0] ? {
           content: content ?? p.content, imageUrl: imageUrl ?? p.imageUrl } : {}) });
     }
-    const updated = await this.passageGroupModel
-      .findByIdAndUpdate(id, { $set: groupFields }, { returnDocument: 'after' })
-      .lean()
-      .exec();
+    const updated = await this.passageGroupModel.patch(sql`id=${id}::uuid`,groupFields);
     if (!updated) {
       throw new NotFoundException('PassageGroup not found');
     }
 
-    const groupId = new PgId(id);
+    const groupId = String(id);
 
     if (Array.isArray(passages) && passages.length > 0) {
       for (const p of passages) {
-        if (p._id && PgId.isValid(p._id)) {
-          await this.passageModel.findByIdAndUpdate(p._id, { $set: p }, { returnDocument: 'after' }).exec();
+        if (p._id && isUuid(p._id)) {
+          await this.passageModel.patch(sql`id=${p._id}::uuid`,p);
         }
       }
     } else if (content !== undefined || audioUrl !== undefined || imageUrl !== undefined) {
-      const existingChild = await this.passageModel.findOne({ passageGroupId: groupId }).sort({ order: 1 }).exec();
+      const existingChild = await this.passageModel.one(sql`("passage_group_id" = ${groupId})`, sql`ORDER BY "order" ASC NULLS FIRST`);
       if (existingChild) {
         if (content !== undefined) existingChild.content = content;
         if (audioUrl !== undefined) existingChild.audioUrl = audioUrl;
         if (imageUrl !== undefined) existingChild.imageUrl = imageUrl;
-        await existingChild.save();
+        await this.passageModel.upsert(existingChild);
       } else {
-        await this.passageModel.create({
+        await this.passageModel.insert({
           passageGroupId: groupId,
           type: data.type || 'TEXT',
           content: content || '',
@@ -259,48 +247,47 @@ export class QuestionsService {
     }
 
     for (const passage of previousPassages) await this.deleteUnusedImage(passage.imageUrl);
-    const learning = await this.captureGroupEdit(id, { ...existingGroup.toObject(), passages: previousPassages });
+    const learning = await this.captureGroupEdit(id, { ...existingGroup, passages: previousPassages });
     return { ...updated, learning } as PassageGroup;
   }
 
   async removePassageGroup(id: string): Promise<{ deleted: boolean; deletedQuestionsCount: number }> {
-    if (!PgId.isValid(id)) {
+    if (!isUuid(id)) {
       throw new NotFoundException('PassageGroup not found');
     }
-    const groupId = new PgId(id);
-    const passagesToDelete = await this.passageModel.find({ passageGroupId: groupId }).lean().exec();
+    const groupId = String(id);
+    const passagesToDelete = await this.passageModel.select(sql`("passage_group_id" = ${groupId})`);
 
-    await this.passageModel.deleteMany({ passageGroupId: groupId }).exec();
-    const deletedQuestions = await this.questionModel.deleteMany({
-      passageGroupId: groupId }).exec();
+    await this.passageModel.remove(sql`("passage_group_id" = ${groupId})`);
+    const deletedQuestions = await this.questionModel.remove(sql`("passage_group_id" = ${groupId})`);
 
-    await this.passageGroupModel.findByIdAndDelete(id).exec();
+    await this.passageGroupModel.remove(sql`id=${id}::uuid`).then(records=>records[0]??null);
     await Promise.all(passagesToDelete.map((passage: any) => this.deleteLocalAudio(passage.audioUrl, passage.audioMeta?.storageKey)));
-    return { deleted: true, deletedQuestionsCount: deletedQuestions.deletedCount || 0 };
+    return { deleted: true, deletedQuestionsCount: deletedQuestions.length || 0 };
   }
 
   async createPassage(data: any): Promise<any> {
     if (data.passageGroupId) {
-      const group = await this.passageGroupModel.findById(data.passageGroupId).exec();
+      const group = await this.passageGroupModel.one(sql`id=${data.passageGroupId}::uuid`);
       if (!group) throw new NotFoundException('PassageGroup not found');
       this.validateReadingPassage(group.part, data);
-      const created = new this.passageModel({
+      const created = newSqlRow('passages',{
         ...data,
-        passageGroupId: new PgId(data.passageGroupId) });
-      return created.save();
+        passageGroupId: String(data.passageGroupId) });
+      return this.passageModel.insert(created);
     }
     return this.createPassageGroup(data);
   }
 
   async updatePassage(id: string, data: any): Promise<any> {
-    if (!PgId.isValid(id)) {
+    if (!isUuid(id)) {
       throw new NotFoundException('Passage not found');
     }
-    const isPassage = await this.passageModel.findById(id).exec();
+    const isPassage = await this.passageModel.one(sql`id=${id}::uuid`);
     if (isPassage) {
-      const group = await this.passageGroupModel.findById(isPassage.passageGroupId).exec();
-      const beforePassages = this.learning ? await this.passageModel.find({ passageGroupId: isPassage.passageGroupId }).sort({ order: 1 }).lean().exec() : [];
-      this.validateReadingPassage(group?.part, { ...isPassage.toObject(), ...data });
+      const group = await this.passageGroupModel.one(sql`id=${isPassage.passageGroupId}::uuid`);
+      const beforePassages = this.learning ? await this.passageModel.select(sql`("passage_group_id" = ${isPassage.passageGroupId})`, sql`ORDER BY "order" ASC NULLS FIRST`) : [];
+      this.validateReadingPassage(group?.part, { ...isPassage, ...data });
       const { title, ...passageFields } = data;
       if (
         [3, 4].includes(Number(group?.part)) &&
@@ -310,33 +297,26 @@ export class QuestionsService {
       ) {
         (passageFields as Record<string, any>)['audioMeta.status'] = AudioGenerationStatus.STALE;
       }
-      const updated = await this.passageModel
-        .findByIdAndUpdate(id, { $set: passageFields }, { returnDocument: 'after', runValidators: true })
-        .lean()
-        .exec();
+      const updated = await this.passageModel.patch(sql`id=${id}::uuid`,passageFields);
       if (title && isPassage.passageGroupId) {
-        await this.passageGroupModel.findByIdAndUpdate(
-          isPassage.passageGroupId,
-          { $set: { title } },
-          { returnDocument: 'after' }
-        ).exec();
+        await this.passageGroupModel.patch(sql`id=${isPassage.passageGroupId}::uuid`,{ title });
       }
       if (updated && data.imageUrl !== undefined && data.imageUrl !== isPassage.imageUrl) {
         await this.deleteUnusedImage(isPassage.imageUrl);
       }
-      const learning = group ? await this.captureGroupEdit(String(group._id), { ...group.toObject(), passages: beforePassages }) : undefined;
+      const learning = group ? await this.captureGroupEdit(String(group._id), { ...group, passages: beforePassages }) : undefined;
       return { ...updated, learning };
     }
     return this.updatePassageGroup(id, data);
   }
 
   async removePassage(id: string): Promise<{ deleted: boolean; deletedQuestionsCount: number }> {
-    if (!PgId.isValid(id)) {
+    if (!isUuid(id)) {
       throw new NotFoundException('Passage not found');
     }
-    const isPassage = await this.passageModel.findById(id).exec();
+    const isPassage = await this.passageModel.one(sql`id=${id}::uuid`);
     if (isPassage) {
-      await this.passageModel.findByIdAndDelete(id).exec();
+      await this.passageModel.remove(sql`id=${id}::uuid`).then(records=>records[0]??null);
       await this.deleteLocalAudio(isPassage.audioUrl, isPassage.audioMeta?.storageKey);
       return { deleted: true, deletedQuestionsCount: 0 };
     }
@@ -344,14 +324,10 @@ export class QuestionsService {
   }
 
   async findOne(id: string): Promise<Question> {
-    if (!PgId.isValid(id)) {
+    if (!isUuid(id)) {
       throw new NotFoundException('Question not found');
     }
-    const question = await this.questionModel
-      .findById(id)
-      .populate('passageGroupId')
-      .lean()
-      .exec();
+    const question=(await this.withPassageGroups(this.questionModel.select(sql`id=${id}::uuid`)))[0];
     if (!question) {
       throw new NotFoundException('Question not found');
     }
@@ -362,7 +338,7 @@ export class QuestionsService {
   }
 
   async update(id: string, updateQuestionDto: UpdateQuestionDto): Promise<Question> {
-    if (!PgId.isValid(id)) {
+    if (!isUuid(id)) {
       throw new NotFoundException('Question not found');
     }
 
@@ -371,7 +347,7 @@ export class QuestionsService {
       (updateQuestionDto as any).passageGroupId = (updateQuestionDto as any).passageId;
     }
 
-    const previous = await this.questionModel.findById(id).lean().exec();
+    const previous = await this.questionModel.one(sql`id=${id}::uuid`);
     const updatePayload: Record<string, any> = { ...updateQuestionDto };
     // Query validators need the effective Part when validating question script/options.
     if (previous) updatePayload.part = updateQuestionDto.part ?? previous.part;
@@ -387,12 +363,10 @@ export class QuestionsService {
       )
     );
     if (audioInputsChanged && previous?.audioMeta?.status === AudioGenerationStatus.READY) {
-      updatePayload['audioMeta.status'] = AudioGenerationStatus.STALE;
+      updatePayload.audioMeta = {...previous.audioMeta,status:AudioGenerationStatus.STALE};
     }
-    const updated = await this.questionModel
-      .findByIdAndUpdate(id, { $set: updatePayload }, { returnDocument: 'after', runValidators: true })
-      .lean()
-      .exec();
+    this.validateQuestion({...previous,...updatePayload});
+    const updated = await this.questionModel.patch(sql`id=${id}::uuid`,updatePayload);
 
     if (!updated) {
       throw new NotFoundException('Question not found');
@@ -412,10 +386,10 @@ export class QuestionsService {
   }
 
   async remove(id: string): Promise<{ deleted: boolean }> {
-    if (!PgId.isValid(id)) {
+    if (!isUuid(id)) {
       throw new NotFoundException('Question not found');
     }
-    const question = await this.questionModel.findByIdAndDelete(id).lean().exec();
+    const question = await this.questionModel.remove(sql`id=${id}::uuid`).then(records=>records[0]??null);
     if (question) await this.deleteLocalAudio(question.audioUrl, question.audioMeta?.storageKey);
     return { deleted: true };
   }
@@ -425,12 +399,12 @@ export class QuestionsService {
   }
 
   private async validateImportContext(examId: string, part: number, section?: string) {
-    if (!PgId.isValid(examId)) throw new NotFoundException('Exam not found');
+    if (!isUuid(examId)) throw new NotFoundException('Exam not found');
     if (!Number.isInteger(part) || part < 1 || part > 7) throw new BadRequestException('Part phải từ 1 đến 7.');
     const expectedSection = part >= 5 ? 'READING' : 'LISTENING';
     if (section && section !== expectedSection) throw new BadRequestException('Part không khớp với kỹ năng đã chọn.');
     if (this.examModel) {
-      const exam = await this.examModel.findById(examId).lean().exec();
+      const exam = await this.examModel.one(sql`id=${examId}::uuid`);
       if (!exam) throw new NotFoundException('Exam not found');
       if (exam.type !== 'TOEIC') throw new BadRequestException('Import hiện hỗ trợ đề TOEIC.');
     }
@@ -525,9 +499,11 @@ export class QuestionsService {
     }
     this.inFlightImports.add(importLockKey);
     try {
+      return await withPgTransaction(this.nativeDb,async()=>{await rows(this.nativeDb,sql`SELECT pg_advisory_xact_lock(hashtextextended(${"assessment-questions:"+examId},0))`);
+
       const findSavedBatch = async () => {
         if (!batchId) return null;
-        const saved = await this.questionModel.find({ examId: new PgId(examId), importBatchId: batchId }).sort({ importIndex: 1 }).lean().exec();
+        const saved = await this.questionModel.select(sql`("exam_id" = ${String(examId)}) AND ("import_batch_id" = ${batchId})`, sql`ORDER BY "import_index" ASC NULLS FIRST`);
         if (!saved.length) return null;
         if (saved.length !== questions.length || saved.some((q) => q.importFingerprint !== fingerprint)) throw new BadRequestException('Lượt import đã tồn tại với dữ liệu khác hoặc chưa hoàn tất. Hãy tải lại đề để kiểm tra.');
         return { importedCount: saved.length, passageGroupsCount: new Set(saved.map((q) => q.passageGroupId?.toString()).filter(Boolean)).size, data: saved };
@@ -538,59 +514,45 @@ export class QuestionsService {
         const learning = jobId ? await this.learning!.enqueue({ kind: 'part', jobId, examId, after: { part, groups, questions }, reason: 'saved-ai-import' }) : undefined;
         return { ...savedBatch, learning };
       }
-      if (preserveSourceOrder && await this.questionModel.findOne({ examId: new PgId(examId), order: { $in: questions.map((q: any) => q.order) } }).lean().exec()) {
+      if (preserveSourceOrder && await this.questionModel.one(sql`("exam_id" = ${String(examId)}) AND ("order"=ANY(${questions.map((q: any) => q.order)}::double precision[]))`)) {
         throw new BadRequestException('Đề đã có số câu trong Part này. Không thể ghi đè; hãy kiểm tra nội dung đã lưu.');
       }
       // Validate every document before writing groups, including PostgreSQL repository field constraints.
       for (const q of questions) {
-        await new this.questionModel({ ...q, examId: new PgId(examId), section, part }).validate();
+        this.validateQuestion({ ...q,examId,section,part });
       }
-      const highest = await this.questionModel.findOne({ examId: new PgId(examId) }).sort({ order: -1 }).select('order').lean().exec();
-      const highestGroup = groups.length ? await this.passageGroupModel.findOne({ examId: new PgId(examId) }).sort({ order: -1 }).select('order').lean().exec() : null;
-      const groupMap = new Map<string, PgId>();
-      const passageMap = new Map<string, PgId>();
-      const createdGroupIds: PgId[] = [];
-      const questionIds = questions.map(() => new PgId());
-      try {
+      const highest = await this.questionModel.one(sql`("exam_id" = ${String(examId)})`, sql`ORDER BY "order" DESC NULLS LAST`);
+      const highestGroup = groups.length ? await this.passageGroupModel.one(sql`("exam_id" = ${String(examId)})`, sql`ORDER BY "order" DESC NULLS LAST`) : null;
+      const groupMap = new Map<string, string>();
+      const passageMap = new Map<string, string>();
+      const createdGroupIds: string[] = [];
+      const questionIds = questions.map(() => newId());
+      {
         for (const [gi, g] of groups.entries()) {
-          const groupId = new PgId();
+          const groupId = newId();
           createdGroupIds.push(groupId);
-          await this.passageGroupModel.create({ _id: groupId, examId: new PgId(examId), part, section, title: g.title || `Part ${part} - Bài tập ${gi + 1}`, order: (highestGroup?.order || 0) + gi + 1 });
+          await this.passageGroupModel.insert({ _id: groupId, examId: String(examId), part, section, title: g.title || `Part ${part} - Bài tập ${gi + 1}`, order: (highestGroup?.order || 0) + gi + 1 });
           groupMap.set(g.id, groupId);
           for (const [pi, p] of g.passages.entries()) {
-            await this.passageModel.create({ passageGroupId: groupId, type: p.type, content: p.content.trim(), audioUrl: p.audioUrl?.trim(), imageUrl: p.imageUrl?.trim(), order: pi + 1 });
+            await this.passageModel.insert({ passageGroupId: groupId, type: p.type, content: p.content.trim(), audioUrl: p.audioUrl?.trim(), imageUrl: p.imageUrl?.trim(), order: pi + 1 });
             passageMap.set(p.id, groupId);
           }
         }
         const docs = questions.map((q: any, i: number) => ({
-          _id: questionIds[i], examId: new PgId(examId), section, part,
+          _id: questionIds[i], examId: String(examId), section, part,
           passageGroupId: groupMap.get(q.passageGroupTempId) || passageMap.get(q.passageTempId),
           content: q.content.trim(), options: q.options.map((o: any) => ({ key: o.key, text: o.text.trim() })), correctAnswer: q.correctAnswer,
           explanation: q.explanation?.trim() || '', imageUrl: q.imageUrl?.trim(), audioUrl: q.audioUrl?.trim(),
           order: preserveSourceOrder ? q.order : (highest?.order || 0) + i + 1, isActive: q.isActive ?? true,
           ...(batchId ? { importBatchId: batchId, importIndex: i, importFingerprint: fingerprint } : {}),
           ...(preserveSourceOrder ? { sourceOrder: q.order } : {}) }));
-        const inserted = await this.questionModel.insertMany(docs, { ordered: true });
+        const inserted=[];for(const doc of docs)inserted.push(await this.questionModel.insert(doc));
         const jobId = this.learning?.sourceJob(batchId);
         const learning = jobId ? await this.learning!.enqueue({ kind: 'part', jobId, examId, after: { part, groups, questions }, reason: 'saved-ai-import' }) : undefined;
         return { importedCount: inserted.length, passageGroupsCount: createdGroupIds.length, data: inserted, learning };
-      } catch (error) {
-        // Remove only IDs allocated by this request; no existing exam data is touched.
-        try {
-          await this.questionModel.deleteMany({ _id: { $in: questionIds } }).exec();
-          if (createdGroupIds.length) {
-            await this.passageModel.deleteMany({ passageGroupId: { $in: createdGroupIds } }).exec();
-            await this.passageGroupModel.deleteMany({ _id: { $in: createdGroupIds } }).exec();
-          }
-        } catch (cleanupError) {
-          this.logger.error('Import cleanup failed', cleanupError);
-          throw new BadRequestException('Lưu đề bị gián đoạn và chưa dọn sạch dữ liệu. Hãy tải lại đề để kiểm tra trước khi import lại.');
-        }
-        // A concurrent retry may have completed the same batch while this request was writing.
-        const completedBatch = await findSavedBatch();
-        if (completedBatch) return completedBatch;
-        throw error;
       }
+    
+      });
     } finally {
       this.inFlightImports.delete(importLockKey);
     }

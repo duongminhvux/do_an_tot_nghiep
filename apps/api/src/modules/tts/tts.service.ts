@@ -1,12 +1,14 @@
 import {
-  BadGatewayException,
-  GatewayTimeoutException,
-  Injectable,
-  ServiceUnavailableException } from '@nestjs/common';
+BadGatewayException,
+GatewayTimeoutException,
+Injectable,
+ServiceUnavailableException
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
-  SynthesizeSequenceTtsDto,
-  SynthesizeTtsDto } from './tts.dto.js';
+SynthesizeSequenceTtsDto,
+SynthesizeTtsDto
+} from './tts.dto.js';
 
 export interface TtsAudioResult {
   audio: Buffer;

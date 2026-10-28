@@ -1,13 +1,14 @@
-import { Transform, Type } from 'class-transformer';
+import { Transform,Type } from 'class-transformer';
 import {
-  IsDateString,
-  IsEnum,
-  IsInt,
-  IsUUID,
-  IsOptional,
-  IsString,
-  Max,
-  Min } from 'class-validator';
+IsDateString,
+IsEnum,
+IsInt,
+IsOptional,
+IsString,
+IsUUID,
+Max,
+Min
+} from 'class-validator';
 import { MiniGameType } from '../minigame.types.js';
 
 const trim = ({ value }: { value: unknown }) =>

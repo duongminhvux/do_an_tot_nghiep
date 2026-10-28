@@ -1,29 +1,31 @@
 import {
-  Body,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Query,
-  Req,
-  UploadedFile,
-  UseInterceptors } from '@nestjs/common';
+Body,
+Delete,
+Get,
+Param,
+Patch,
+Post,
+Query,
+Req,
+UploadedFile,
+UseInterceptors
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { AdminController } from '../auth/decorators/admin-controller.decorator.js';
-import { DictationService } from './dictation.service.js';
-import { TtsService } from '../tts/tts.service.js';
 import { AsrService } from '../asr/asr.service.js';
+import { AdminController } from '../auth/decorators/admin-controller.decorator.js';
+import { TtsService } from '../tts/tts.service.js';
+import { DictationService } from './dictation.service.js';
 import { CreateDictationDto } from './dto/create-dictation.dto.js';
-import { UpdateDictationDto } from './dto/update-dictation.dto.js';
-import { QueryDictationDto } from './dto/query-dictation.dto.js';
-import { PreviewSplitDto } from './dto/preview-split.dto.js';
-import { UpdateDictationSegmentsDto } from './dto/update-dictation-segments.dto.js';
 import {
-  CreateDictationSectionDto,
-  CreateDictationTopicDto,
-  UpdateDictationSectionDto,
-  UpdateDictationTopicDto } from './dto/dictation-hierarchy.dto.js';
+CreateDictationSectionDto,
+CreateDictationTopicDto,
+UpdateDictationSectionDto,
+UpdateDictationTopicDto
+} from './dto/dictation-hierarchy.dto.js';
+import { PreviewSplitDto } from './dto/preview-split.dto.js';
+import { QueryDictationDto } from './dto/query-dictation.dto.js';
+import { UpdateDictationSegmentsDto } from './dto/update-dictation-segments.dto.js';
+import { UpdateDictationDto } from './dto/update-dictation.dto.js';
 
 @AdminController('dictation')
 export class AdminDictationController {

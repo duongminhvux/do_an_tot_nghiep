@@ -1,18 +1,19 @@
 /// <reference types="multer" />
 import {
-  Get,
-  Param,
-  Post,
-  UploadedFiles,
-  UseInterceptors,
-  Body,
-  BadRequestException } from '@nestjs/common';
+BadRequestException,
+Body,
+Get,
+Param,
+Post,
+UploadedFiles,
+UseInterceptors
+} from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
-import { AdminController } from '../../auth/decorators/admin-controller.decorator.js';
-import { PdfAiService } from './pdf-ai.service.js';
 import { Type } from 'class-transformer';
-import { IsInt, Min, Max, IsIn, IsString, MinLength, MaxLength } from 'class-validator';
+import { IsIn,IsInt,IsString,Max,MaxLength,Min,MinLength } from 'class-validator';
+import { AdminController } from '../../auth/decorators/admin-controller.decorator.js';
 import { PdfAiLearningService } from './pdf-ai-learning.service.js';
+import { PdfAiService } from './pdf-ai.service.js';
 
 class ReviewCorrectionDto {
   @IsIn(['gold', 'rejected']) status: 'gold' | 'rejected';

@@ -1,40 +1,16 @@
-import { PgId } from '../../../postgres/compat.js';
+import { BadRequestException,ConflictException,Injectable,NotFoundException } from '@nestjs/common';
+import { NotificationClient } from '../../../common/clients/notification-client.js';
+import { InjectPgConnection,type PgConnection } from '../../../postgres/connection.js';
+import { isUuid } from '../../../postgres/ids.js';
+import { SqlRecords } from '../../../postgres/records.js';
+import { first,identifier,joinSql,literal,rows,sql,type Sql } from '../../../postgres/sql.js';
 import { ArenaReadService } from '../arena-read.service.js';
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  NotFoundException } from '@nestjs/common';
-import { InjectPgModel } from '../../../postgres/compat.js';
-import { type Model, type PipelineStage } from '../../../postgres/compat.js';
-import {
-  ArenaMatch,
-  ArenaMatchStatus,
-  ArenaMatchType } from '../schemas/arena-match.schema.js';
-import { ArenaMatchPlayer } from '../schemas/arena-match-player.schema.js';
-import { ArenaMatchQuestion } from '../schemas/arena-match-question.schema.js';
-import { ArenaPlayerAnswer } from '../schemas/arena-player-answer.schema.js';
-import { ArenaProfile } from '../schemas/arena-profile.schema.js';
-import { ArenaRatingHistory } from '../schemas/arena-rating-history.schema.js';
-import { FriendRoomStatus, FriendRoom } from '../schemas/friend-room.schema.js';
-import { User } from '../../users/schema/user.schema.js';
-import { ArenaPresenceService } from '../presence/arena-presence.service.js';
+import { arenaTodayRange } from '../arena.service.js';
 import { ArenaFriendRoomService } from '../friendly/arena-friend-room.service.js';
 import { ArenaGateway } from '../gateways/arena.gateway.js';
-import { NotificationClient } from '../../../common/clients/notification-client.js';
-import { arenaTodayRange } from '../arena.service.js';
-import {
-  ArenaAdminQuery,
-  ArenaDashboardQuery,
-  ArenaPlayerQuery,
-  ArenaRoomQuery,
-  UpdateArenaSettingsDto } from './arena-admin.dto.js';
+import { ArenaPresenceService } from '../presence/arena-presence.service.js';
+import { ArenaAdminQuery,ArenaDashboardQuery,ArenaPlayerQuery,ArenaRoomQuery,UpdateArenaSettingsDto } from './arena-admin.dto.js';
 import { ArenaSettingsService } from './arena-settings.service.js';
-const escapeRegex = (value: string) =>
-  Array.from(value, (char) =>
-    '[](){}.*+?^$|\\'.includes(char) ? '\\' + char : char,
-  ).join('');
-// PostgreSQL JSON payloads return timestamps as ISO strings.
 const timestamp = (value: Date | string | null | undefined): number =>
   value == null ? NaN : new Date(value).getTime();
 const matchDuration = (
@@ -44,427 +20,135 @@ const matchDuration = (
   const elapsed = timestamp(finishedAt) - timestamp(startedAt);
   return Number.isFinite(elapsed) ? Math.max(0, Math.round(elapsed / 1000)) : null;
 };
+
 @Injectable()
 export class ArenaAdminService {
-  constructor(
-    @InjectPgModel(ArenaMatch.name) private readonly matches: Model<ArenaMatch>,
-    @InjectPgModel(ArenaMatchPlayer.name)
-    private readonly participants: Model<ArenaMatchPlayer>,
-    @InjectPgModel(ArenaMatchQuestion.name)
-    private readonly questions: Model<ArenaMatchQuestion>,
-    @InjectPgModel(ArenaPlayerAnswer.name)
-    private readonly answers: Model<ArenaPlayerAnswer>,
-    @InjectPgModel(ArenaProfile.name)
-    private readonly profiles: Model<ArenaProfile>,
-    @InjectPgModel(ArenaRatingHistory.name)
-    private readonly ratings: Model<ArenaRatingHistory>,
-    @InjectPgModel(FriendRoom.name) private readonly rooms: Model<FriendRoom>,
-    @InjectPgModel(User.name) private readonly users: Model<User>,
-    private readonly presence: ArenaPresenceService,
-    private readonly friendRooms: ArenaFriendRoomService,
-    private readonly gateway: ArenaGateway,
-    private readonly settings: ArenaSettingsService,
-    private readonly logs: NotificationClient,
-    private readonly reads: ArenaReadService,
-  ) {}
-  private id(value: string) {
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value))
-      throw new BadRequestException('INVALID_ID');
-    return new PgId(value);
+  constructor(@InjectPgConnection() private readonly db:PgConnection,
+    private readonly presence:ArenaPresenceService,private readonly friendRooms:ArenaFriendRoomService,
+    private readonly gateway:ArenaGateway,private readonly settings:ArenaSettingsService,
+    private readonly logs:NotificationClient,private readonly reads:ArenaReadService) {}
+  private get matches(){return new SqlRecords(this.db,'arenamatches');}
+  private get participants(){return new SqlRecords(this.db,'arenamatchplayers');}
+  private get questions(){return new SqlRecords(this.db,'arenamatchquestions');}
+  private get answers(){return new SqlRecords(this.db,'arenaplayeranswers');}
+  private get profiles(){return new SqlRecords(this.db,'arenaprofiles');}
+  private get ratings(){return new SqlRecords(this.db,'arenaratinghistories');}
+  private get rooms(){return new SqlRecords(this.db,'friendrooms');}
+  private get users(){return new SqlRecords(this.db,'identity_profiles');}
+  private id(value:string){if(!isUuid(value))throw new BadRequestException('INVALID_ID');return value;}
+  private dates(from?:string,to?:string):Sql {
+    if(from&&to&&new Date(from)>new Date(to))throw new BadRequestException('INVALID_DATE_RANGE');
+    return sql`(${from?new Date(from):null}::timestamptz IS NULL OR created_at>=${from?new Date(from):null})
+      AND (${to?new Date(to):null}::timestamptz IS NULL OR created_at<=${to?new Date(to):null})`;
   }
-  private dates(from?: string, to?: string) {
-    if (from && to && new Date(from) > new Date(to))
-      throw new BadRequestException('INVALID_DATE_RANGE');
-    return from || to
-      ? {
-          createdAt: {
-            ...(from ? { $gte: new Date(from) } : {}),
-            ...(to ? { $lte: new Date(to) } : {}) } }
-      : {};
+  private async userMap(ids:unknown[]) {
+    const users=await this.users.select(sql`id=ANY(${[...new Set(ids.filter(Boolean).map(String))]}::uuid[])`);
+    return new Map<string,any>(users.map(user=>[String(user._id),user]));
   }
-  private async userMap(ids: unknown[]) {
-    const rows = await this.users
-      .find({ _id: { $in: [...new Set(ids.filter(Boolean).map(String))] } })
-      .select('_id username email avatarUrl isBanned isDeleted')
-      .lean();
-    return new Map(rows.map((row) => [String(row._id), row]));
+  private async enrichMatches(matches:any[]) {
+    const players=await this.participants.select(sql`match_id=ANY(${matches.map(match=>String(match._id))}::uuid[])`,literal('ORDER BY created_at,user_id'));
+    const users=await this.userMap(players.map(p=>p.userId));
+    return matches.map(match=>({...match,duration:matchDuration(match.startedAt,match.finishedAt),
+      players:players.filter(p=>p.matchId===match._id).map(p=>{
+        const {ratingBefore,ratingAfter,ratingChange,scoredQuestionIds,...rest}=p;
+        return {...rest,user:users.get(String(p.userId))??null,...(match.type==='RANK'?{ratingBefore,ratingAfter,ratingChange}:{})};
+      })}));
   }
-  private async enrichMatches(
-    rows: Awaited<ReturnType<ArenaAdminService['rawMatches']>>,
-  ) {
-    const ids = rows.map((row) => row._id);
-    const players = await this.participants
-      .find({ matchId: { $in: ids } })
-      .select('-scoredQuestionIds')
-      .sort({ createdAt: 1, userId: 1 })
-      .lean();
-    const users = await this.userMap(players.map((p) => p.userId));
-    return rows.map((match) => ({
-      ...match,
-      duration: matchDuration(match.startedAt, match.finishedAt),
-      players: players
-        .filter((p) => String(p.matchId) === String(match._id))
-        .map((p) => {
-          const { ratingBefore, ratingAfter, ratingChange, ...rest } = p;
-          return {
-            ...rest,
-            user: users.get(String(p.userId)) ?? null,
-            ...(match.type === ArenaMatchType.RANK
-              ? { ratingBefore, ratingAfter, ratingChange }
-              : {}) };
-        }) }));
+  private rawMatches(where:Sql,offset=0,limit=20){return this.matches.select(where,sql`ORDER BY created_at DESC,id DESC LIMIT ${limit} OFFSET ${offset}`);}
+  async matchList(query:ArenaAdminQuery) {
+    const conditions:Sql[]=[this.dates(query.from,query.to)];
+    if(query.type)conditions.push(sql`type=${query.type}`);
+    if(query.status)conditions.push(sql`status=${query.status}`);
+    if(query.winnerId)conditions.push(sql`winner_id=${this.id(query.winnerId)}::uuid`);
+    if(query.finishReason)conditions.push(sql`finish_reason #>> '{}'=${query.finishReason}`);
+    if(query.matchId)conditions.push(sql`id=${this.id(query.matchId)}::uuid`);
+    if(query.search){if(!isUuid(query.search))return {items:[],total:0,page:query.page,limit:query.limit};conditions.push(sql`id=${query.search}::uuid`);}
+    if(query.mode)conditions.push(sql`(friend_mode=${query.mode} OR question_mode #>> '{}'=${query.mode})`);
+    if(query.userId)conditions.push(sql`EXISTS(SELECT 1 FROM public.arenamatchplayers p WHERE p.match_id=arenamatches.id AND p.user_id=${this.id(query.userId)}::uuid)`);
+    const where=joinSql(conditions,' AND ');
+    const [matches,total]=await Promise.all([this.rawMatches(where,(query.page-1)*query.limit,query.limit),this.matches.count(where)]);
+    return {items:await this.enrichMatches(matches),total,page:query.page,limit:query.limit};
   }
-  private rawMatches(filter: Record<string, unknown>, skip = 0, limit = 20) {
-    return this.matches
-      .find(filter)
-      .sort({ createdAt: -1, _id: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean();
+  async matchDetail(id:string) {
+    const match=await this.matches.one(sql`id=${this.id(id)}::uuid`);if(!match)throw new NotFoundException('MATCH_NOT_FOUND');
+    const [questions,answers]=await Promise.all([this.questions.select(sql`match_id=${id}::uuid`,literal('ORDER BY "order"')),
+      this.answers.select(sql`match_id=${id}::uuid`,literal('ORDER BY answered_at LIMIT 10000'))]);
+    return {...(await this.enrichMatches([match]))[0],questions,answers};
   }
-  async matchList(query: ArenaAdminQuery) {
-    const filter: Record<string, unknown> = {
-      ...this.dates(query.from, query.to) };
-    for (const key of ['type', 'status', 'winnerId', 'finishReason'] as const)
-      if (query[key]) filter[key] = query[key];
-    if (query.matchId) filter._id = this.id(query.matchId);
-    if (query.search) {
-      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(query.search))
-        return { items: [], total: 0, page: query.page, limit: query.limit };
-      filter._id = this.id(query.search);
-    }
-    if (query.mode)
-      filter.$or = [{ friendMode: query.mode }, { questionMode: query.mode }];
-    if (query.userId)
-      filter._id = {
-        ...(filter._id ? { $eq: filter._id } : {}),
-        $in: await this.participants.distinct('matchId', {
-          userId: this.id(query.userId) }) };
-    const [rows, total] = await Promise.all([
-      this.rawMatches(filter, (query.page - 1) * query.limit, query.limit),
-      this.matches.countDocuments(filter),
+  async dashboard(query:ArenaDashboardQuery) {
+    const {start,end}=arenaTodayRange(),since=new Date(start.getTime()-(query.days-1)*86400000);
+    const [today,activeMatches,waitingRooms,online,daily,distribution,reasons,recent]=await Promise.all([
+      rows(this.db,sql`SELECT type AS "_id",COUNT(*)::integer AS count,COUNT(*) FILTER(WHERE status='CANCELLED')::integer AS cancelled
+        FROM public.arenamatches WHERE created_at>=${start} AND created_at<${end} GROUP BY type`),
+      this.matches.count(sql`status=ANY(${['COUNTDOWN','PLAYING','PAUSED','RESUMING','FINISHING']}::text[])`),
+      this.rooms.count(sql`status='WAITING'`),this.presence.overview().catch(()=>({onlineCount:null})),
+      rows(this.db,sql`SELECT TO_CHAR(created_at AT TIME ZONE 'Asia/Ho_Chi_Minh','YYYY-MM-DD') AS "_id",COUNT(*)::integer AS count
+        FROM public.arenamatches WHERE created_at>=${since} AND created_at<${end} GROUP BY 1 ORDER BY 1`),
+      rows(this.db,sql`SELECT type AS "_id",COUNT(*)::integer AS count FROM public.arenamatches WHERE created_at>=${since} AND created_at<${end} GROUP BY type`),
+      rows(this.db,sql`SELECT CASE WHEN status='CANCELLED' THEN 'CANCELLED' ELSE COALESCE(finish_reason #>> '{}','UNKNOWN') END AS "_id",COUNT(*)::integer AS count
+        FROM public.arenamatches WHERE created_at>=${since} AND created_at<${end} AND status IN('FINISHED','CANCELLED') GROUP BY 1`),
+      this.matchList(Object.assign(new ArenaAdminQuery(),{limit:8})),
     ]);
-    return {
-      items: await this.enrichMatches(rows),
-      total,
-      page: query.page,
-      limit: query.limit };
+    const counts=Object.fromEntries(today.map(row=>[row._id,row.count]));
+    return {matchesToday:today.reduce((n,r)=>n+r.count,0),rankedToday:counts.RANK??0,friendlyToday:counts.FRIEND??0,groupToday:counts.ROOM??0,
+      cancelledToday:today.reduce((n,r)=>n+r.cancelled,0),activeMatches,waitingRooms,onlineArenaUsers:online.onlineCount,daily,distribution,reasons,recent:recent.items,days:query.days};
   }
-  async matchDetail(id: string) {
-    const match = await this.matches.findById(this.id(id)).lean();
-    if (!match) throw new NotFoundException('MATCH_NOT_FOUND');
-    const [questionHistory, answerHistory] = await Promise.all([
-      this.questions.find({ matchId: match._id }).sort({ order: 1 }).lean(),
-      this.answers
-        .find({ matchId: match._id })
-        .sort({ answeredAt: 1 })
-        .limit(10000)
-        .lean(),
+  async playerList(query:ArenaPlayerQuery) {
+    if(query.minRating!==undefined&&query.maxRating!==undefined&&query.minRating>query.maxRating)throw new BadRequestException('INVALID_RATING_RANGE');
+    const conditions:Sql[]=[literal('TRUE')];
+    if(query.minRating!==undefined)conditions.push(sql`a.rating>=${query.minRating}`);
+    if(query.maxRating!==undefined)conditions.push(sql`a.rating<=${query.maxRating}`);
+    if(query.minMatches!==undefined)conditions.push(sql`a.ranked_matches>=${query.minMatches}`);
+    if(query.activeSince)conditions.push(sql`COALESCE(last.updated_at,a.updated_at)>=${new Date(query.activeSince)}`);
+    if(query.search)conditions.push(sql`(u.username ILIKE '%'||${query.search}||'%' OR a.user_id::text=${isUuid(query.search)?query.search:null})`);
+    const orders:Record<string,Sql>={rating:sql`a.rating`,rankedMatches:sql`a.ranked_matches`,winRate:sql`CASE WHEN a.ranked_matches>0 THEN a.ranked_wins/a.ranked_matches*100 ELSE 0 END`,lastActivity:sql`COALESCE(last.updated_at,a.updated_at)`};
+    const where=joinSql(conditions,' AND '),order=orders[query.sort]??orders.rating;
+    const querySql=sql`FROM public.arenaprofiles a LEFT JOIN public.identity_profiles u ON u.id=a.user_id
+      LEFT JOIN LATERAL(SELECT updated_at FROM public.arenamatchplayers p WHERE p.user_id=a.user_id ORDER BY created_at DESC,id DESC LIMIT 1) last ON true WHERE ${where}`;
+    const [items,count]=await Promise.all([
+      rows(this.db,sql`SELECT a.id AS "_id",a.user_id AS "userId",a.rating,a.ranked_matches AS "rankedMatches",a.ranked_wins AS "rankedWins",
+        a.ranked_losses AS "rankedLosses",a.ranked_draws AS "rankedDraws",a.current_win_streak AS "currentWinStreak",a.best_win_streak AS "bestWinStreak",
+        CASE WHEN a.ranked_matches>0 THEN a.ranked_wins/a.ranked_matches*100 ELSE 0 END AS "winRate",
+        COALESCE(last.updated_at,a.updated_at) AS "lastActivity",CASE WHEN u.id IS NULL THEN NULL ELSE jsonb_build_object('_id',u.id,'username',u.username,
+          'avatarUrl',u.avatar_url,'isBanned',u.is_banned,'isDeleted',u.is_deleted) END AS "user" ${querySql}
+        ORDER BY ${order} DESC,a.user_id LIMIT ${query.limit} OFFSET ${(query.page-1)*query.limit}`),
+      first(this.db,sql`SELECT COUNT(*)::integer AS count ${querySql}`),
     ]);
-    return {
-      ...(await this.enrichMatches([match]))[0],
-      questions: questionHistory,
-      answers: answerHistory };
+    return {items,total:Number(count?.count??0),page:query.page,limit:query.limit};
   }
-  async dashboard(query: ArenaDashboardQuery) {
-    const { start, end } = arenaTodayRange();
-    const since = new Date(start.getTime() - (query.days - 1) * 86400000);
-    const [
-      today,
-      activeMatches,
-      waitingRooms,
-      online,
-      daily,
-      distribution,
-      reasons,
-      recent,
-    ] = await Promise.all([
-      this.matches.aggregate([
-        { $match: { createdAt: { $gte: start, $lt: end } } },
-        {
-          $group: {
-            _id: '$type',
-            count: { $sum: 1 },
-            cancelled: {
-              $sum: { $cond: [{ $eq: ['$status', 'CANCELLED'] }, 1, 0] } } } },
-      ]),
-      this.matches.countDocuments({
-        status: {
-          $in: [
-            ArenaMatchStatus.COUNTDOWN,
-            ArenaMatchStatus.PLAYING,
-            ArenaMatchStatus.PAUSED,
-            ArenaMatchStatus.RESUMING,
-            ArenaMatchStatus.FINISHING,
-          ] } }),
-      this.rooms.countDocuments({ status: FriendRoomStatus.WAITING }),
-      this.presence.overview().catch(() => ({ onlineCount: null })),
-      this.matches.aggregate([
-        { $match: { createdAt: { $gte: since, $lt: end } } },
-        {
-          $group: {
-            _id: {
-              $dateToString: {
-                format: '%Y-%m-%d',
-                date: '$createdAt',
-                timezone: 'Asia/Ho_Chi_Minh' } },
-            count: { $sum: 1 } } },
-        { $sort: { _id: 1 } },
-      ]),
-      this.matches.aggregate([
-        { $match: { createdAt: { $gte: since, $lt: end } } },
-        { $group: { _id: '$type', count: { $sum: 1 } } },
-      ]),
-      this.matches.aggregate([
-        {
-          $match: {
-            createdAt: { $gte: since, $lt: end },
-            status: { $in: ['FINISHED', 'CANCELLED'] } } },
-        {
-          $group: {
-            _id: {
-              $cond: [
-                { $eq: ['$status', 'CANCELLED'] },
-                'CANCELLED',
-                { $ifNull: ['$finishReason', 'UNKNOWN'] },
-              ] },
-            count: { $sum: 1 } } },
-      ]),
-      this.matchList(Object.assign(new ArenaAdminQuery(), { limit: 8 })),
-    ]);
-    const counts = Object.fromEntries(today.map((row) => [row._id, row.count]));
-    return {
-      matchesToday: today.reduce((n, row) => n + row.count, 0),
-      rankedToday: counts.RANK ?? 0,
-      friendlyToday: counts.FRIEND ?? 0,
-      groupToday: counts.ROOM ?? 0,
-      cancelledToday: today.reduce((n, row) => n + row.cancelled, 0),
-      activeMatches,
-      waitingRooms,
-      onlineArenaUsers: online.onlineCount,
-      daily,
-      distribution,
-      reasons,
-      recent: recent.items,
-      days: query.days };
+  async playerDetail(userId:string) {
+    const id=this.id(userId);const [user,profile]=await Promise.all([this.users.one(sql`id=${id}::uuid`),this.profiles.one(sql`user_id=${id}::uuid`)]);
+    if(!user)throw new NotFoundException('PLAYER_NOT_FOUND');
+    const [position,history,ratingHistory]=await Promise.all([this.reads.getLeaderboard(userId,'all',1),
+      this.matchList(Object.assign(new ArenaAdminQuery(),{userId,limit:20})),this.ratingHistory(userId,Object.assign(new ArenaAdminQuery(),{limit:100}))]);
+    return {user,profile:profile?{...profile,position:position.me?.position??null,winRate:profile.rankedMatches?profile.rankedWins/profile.rankedMatches*100:0}:null,matches:history,ratingHistory};
   }
-  async playerList(query: ArenaPlayerQuery) {
-    if (
-      query.minRating !== undefined &&
-      query.maxRating !== undefined &&
-      query.minRating > query.maxRating
-    )
-      throw new BadRequestException('INVALID_RATING_RANGE');
-    const filter: Record<string, unknown> = {};
-    if (query.minRating !== undefined || query.maxRating !== undefined)
-      filter.rating = {
-        ...(query.minRating !== undefined ? { $gte: query.minRating } : {}),
-        ...(query.maxRating !== undefined ? { $lte: query.maxRating } : {}) };
-    if (query.minMatches !== undefined)
-      filter.rankedMatches = { $gte: query.minMatches };
-    const pipeline: PipelineStage[] = [
-      { $match: filter },
-      {
-        $lookup: {
-          from: this.users.collection.name,
-          localField: 'userId',
-          foreignField: '_id',
-          as: 'user' } },
-      { $set: { user: { $ifNull: [{ $arrayElemAt: ['$user', 0] }, null] } } },
-      {
-        $lookup: {
-          from: this.participants.collection.name,
-          let: { userId: '$userId' },
-          pipeline: [
-            { $match: { $expr: { $eq: ['$userId', '$$userId'] } } },
-            { $sort: { createdAt: -1 } },
-            { $limit: 1 },
-            { $project: { updatedAt: 1, createdAt: 1 } },
-          ],
-          as: 'lastMatch' } },
-      {
-        $addFields: {
-          winRate: {
-            $cond: [
-              { $gt: ['$rankedMatches', 0] },
-              {
-                $multiply: [
-                  { $divide: ['$rankedWins', '$rankedMatches'] },
-                  100,
-                ] },
-              0,
-            ] },
-          lastActivity: {
-            $ifNull: [
-              { $arrayElemAt: ['$lastMatch.updatedAt', 0] },
-              '$updatedAt',
-            ] } } },
-    ];
-    if (query.search) {
-      const regex = escapeRegex(query.search);
-      pipeline.push({
-        $match: {
-          $or: [
-            { 'user.username': { $regex: regex, $options: 'i' } },
-            { 'user.email': { $regex: regex, $options: 'i' } },
-            ...(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(query.search)
-              ? [{ userId: this.id(query.search) }]
-              : []),
-          ] } });
-    }
-    if (query.activeSince)
-      pipeline.push({
-        $match: { lastActivity: { $gte: new Date(query.activeSince) } } });
-    pipeline.push(
-      {
-        $project: {
-          userId: 1,
-          rating: 1,
-          rankedMatches: 1,
-          rankedWins: 1,
-          rankedLosses: 1,
-          rankedDraws: 1,
-          currentWinStreak: 1,
-          bestWinStreak: 1,
-          winRate: 1,
-          lastActivity: 1,
-          user: {
-            $cond: [
-              '$user._id',
-              {
-                _id: '$user._id',
-                username: '$user.username',
-                email: '$user.email',
-                avatarUrl: '$user.avatarUrl',
-                isBanned: '$user.isBanned',
-                isDeleted: '$user.isDeleted',
-              },
-              null,
-            ],
-          } } },
-      {
-        $facet: {
-          items: [
-            { $sort: { [query.sort]: -1, userId: 1 } },
-            { $skip: (query.page - 1) * query.limit },
-            { $limit: query.limit },
-          ],
-          count: [{ $count: 'total' }] } },
-    );
-    const [result] = await this.profiles.aggregate(pipeline);
-    return {
-      items: result?.items ?? [],
-      total: result?.count?.[0]?.total ?? 0,
-      page: query.page,
-      limit: query.limit };
+  async ratingHistory(userId:string,query:ArenaAdminQuery) {
+    const where=sql`user_id=${this.id(userId)}::uuid`;
+    const [items,total]=await Promise.all([this.ratings.select(where,sql`ORDER BY created_at DESC,id DESC LIMIT ${query.limit} OFFSET ${(query.page-1)*query.limit}`),this.ratings.count(where)]);
+    return {items,total,page:query.page,limit:query.limit};
   }
-  async playerDetail(userId: string) {
-    const id = this.id(userId);
-    const [user, profile] = await Promise.all([
-      this.users
-        .findById(id)
-        .select('_id username email avatarUrl isBanned isDeleted')
-        .lean(),
-      this.profiles.findOne({ userId: id }).lean(),
-    ]);
-    if (!user) throw new NotFoundException('PLAYER_NOT_FOUND');
-    const [position, history, ratingHistory] = await Promise.all([
-      this.reads.getLeaderboard(userId, 'all', 1),
-      this.matchList(
-        Object.assign(new ArenaAdminQuery(), { userId, limit: 20 }),
-      ),
-      this.ratingHistory(
-        userId,
-        Object.assign(new ArenaAdminQuery(), { limit: 100 }),
-      ),
-    ]);
-    return {
-      user,
-      profile: profile
-        ? {
-            ...profile,
-            position: position.me?.position ?? null,
-            winRate: profile.rankedMatches
-              ? (profile.rankedWins / profile.rankedMatches) * 100
-              : 0 }
-        : null,
-      matches: history,
-      ratingHistory };
+  private async enrichRooms(rooms:any[]) {
+    const users=await this.userMap(rooms.flatMap(room=>this.friendRooms.participants(room)));
+    return rooms.map(room=>({...room,type:room.maxPlayers>2?'ROOM':'FRIEND',host:users.get(String(room.hostId))??null,
+      players:this.friendRooms.participants(room).map(id=>({userId:id,user:users.get(id)??null,isReady:id===String(room.hostId)?true:
+        room.maxPlayers>2?room.members.find((m:any)=>String(m.userId)===id)?.isReady:room.guestReady})),
+      stale:room.status==='WAITING'&&!!room.updatedAt&&timestamp(room.updatedAt)<Date.now()-1800000}));
   }
-  async ratingHistory(userId: string, query: ArenaAdminQuery) {
-    const filter = { userId: this.id(userId) };
-    const [items, total] = await Promise.all([
-      this.ratings
-        .find(filter)
-        .sort({ createdAt: -1, _id: -1 })
-        .skip((query.page - 1) * query.limit)
-        .limit(query.limit)
-        .lean(),
-      this.ratings.countDocuments(filter),
-    ]);
-    return { items, total, page: query.page, limit: query.limit };
+  async roomList(query:ArenaRoomQuery) {
+    const conditions:Sql[]=[this.dates(query.from,query.to)];
+    if(query.type)conditions.push(query.type==='FRIEND'?sql`max_players=2`:sql`max_players>2`);
+    if(query.status)conditions.push(sql`status=${query.status}`);
+    if(query.mode)conditions.push(sql`mode=${query.mode}`);
+    if(query.hostId)conditions.push(sql`host_id=${this.id(query.hostId)}::uuid`);
+    if(query.search)conditions.push(sql`code ILIKE '%'||${query.search}||'%'`);
+    if(query.stale==='true')conditions.push(sql`status='WAITING' AND updated_at<${new Date(Date.now()-1800000)}`);
+    const where=joinSql(conditions,' AND ');
+    const [items,total]=await Promise.all([this.rooms.select(where,sql`ORDER BY updated_at DESC,id DESC LIMIT ${query.limit} OFFSET ${(query.page-1)*query.limit}`),this.rooms.count(where)]);
+    return {items:await this.enrichRooms(items),total,page:query.page,limit:query.limit};
   }
-  private async enrichRooms(
-    rows: (FriendRoom & {
-      _id: PgId;
-      createdAt?: Date;
-      updatedAt?: Date;
-    })[],
-  ) {
-    const users = await this.userMap(
-      rows.flatMap((room) => this.friendRooms.participants(room)),
-    );
-    return rows.map((room) => ({
-      ...room,
-      type: room.maxPlayers > 2 ? 'ROOM' : 'FRIEND',
-      host: users.get(String(room.hostId)) ?? null,
-      players: this.friendRooms.participants(room).map((id) => ({
-        userId: id,
-        user: users.get(id) ?? null,
-        isReady:
-          id === String(room.hostId)
-            ? true
-            : room.maxPlayers > 2
-              ? room.members.find((m) => String(m.userId) === id)?.isReady
-              : room.guestReady })),
-      stale:
-        room.status === 'WAITING' &&
-        !!room.updatedAt &&
-        timestamp(room.updatedAt) < Date.now() - 1800000 }));
-  }
-  async roomList(query: ArenaRoomQuery) {
-    const filter: Record<string, unknown> = {
-      ...this.dates(query.from, query.to) };
-    if (query.type)
-      filter.maxPlayers = query.type === 'FRIEND' ? 2 : { $gt: 2 };
-    if (query.status) filter.status = query.status;
-    if (query.mode) filter.mode = query.mode;
-    if (query.hostId) filter.hostId = this.id(query.hostId);
-    if (query.search)
-      filter.code = { $regex: escapeRegex(query.search), $options: 'i' };
-    if (query.stale === 'true') {
-      filter.status = 'WAITING';
-      filter.updatedAt = { $lt: new Date(Date.now() - 1800000) };
-    }
-    const [items, total] = await Promise.all([
-      this.rooms
-        .find(filter)
-        .sort({ updatedAt: -1, _id: -1 })
-        .skip((query.page - 1) * query.limit)
-        .limit(query.limit)
-        .lean(),
-      this.rooms.countDocuments(filter),
-    ]);
-    return {
-      items: await this.enrichRooms(items),
-      total,
-      page: query.page,
-      limit: query.limit };
-  }
-  async roomDetail(id: string) {
-    const room = await this.rooms.findById(this.id(id)).lean();
-    if (!room) throw new NotFoundException('ROOM_NOT_FOUND');
-    return (await this.enrichRooms([room]))[0];
+  async roomDetail(id:string) {
+    const room=await this.rooms.one(sql`id=${this.id(id)}::uuid`);if(!room)throw new NotFoundException('ROOM_NOT_FOUND');return (await this.enrichRooms([room]))[0];
   }
   async closeRoom(id: string, adminId: string, reason: string) {
     this.id(id);

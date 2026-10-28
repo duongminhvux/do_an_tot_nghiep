@@ -1,14 +1,15 @@
-import { Body, Get, Param, Post, Put, Query, Req } from '@nestjs/common';
+import { Body,Get,Param,Post,Put,Query,Req } from '@nestjs/common';
 import { AdminController } from '../../auth/decorators/admin-controller.decorator.js';
+import {
+AdminReasonDto,
+ArenaAdminQuery,
+ArenaDashboardQuery,
+ArenaPlayerQuery,
+ArenaRoomQuery,
+UpdateArenaSettingsDto
+} from './arena-admin.dto.js';
 import { ArenaAdminService } from './arena-admin.service.js';
 import { ArenaSettingsService } from './arena-settings.service.js';
-import {
-  AdminReasonDto,
-  ArenaAdminQuery,
-  ArenaDashboardQuery,
-  ArenaPlayerQuery,
-  ArenaRoomQuery,
-  UpdateArenaSettingsDto } from './arena-admin.dto.js';
 type AdminRequest = { user: { _id: string } };
 @AdminController('arena')
 export class ArenaAdminController {

@@ -1,16 +1,9 @@
-import { PgId } from '../../postgres/compat.js';
-import { ArenaSettingsService } from './admin/arena-settings.service.js';
+import { Injectable,Optional } from '@nestjs/common';
+import { InjectPgConnection,type PgConnection } from '../../postgres/connection.js';
+import { first,rowData,rows,sql } from '../../postgres/sql.js';
 import { ARENA_DEFAULTS } from './admin/arena-settings.defaults.js';
-import { Injectable, Optional } from '@nestjs/common';
-import { InjectPgModel } from '../../postgres/compat.js';
-import { type Model } from '../../postgres/compat.js';
+import { ArenaSettingsService } from './admin/arena-settings.service.js';
 import { ArenaReadService } from './arena-read.service.js';
-import {
-  ArenaProfile,
-  ArenaProfileDocument } from './schemas/arena-profile.schema.js';
-import {
-  ArenaRatingHistory,
-  ArenaRatingHistoryDocument } from './schemas/arena-rating-history.schema.js';
 
 export function arenaTodayRange(now = new Date()) {
   const local = new Date(now.getTime() + 7 * 3600000);
@@ -23,10 +16,7 @@ export function arenaTodayRange(now = new Date()) {
 export class ArenaService {
   constructor(
     private readonly arenaReadService: ArenaReadService,
-    @InjectPgModel(ArenaProfile.name)
-    private readonly arenaProfileModel: Model<ArenaProfileDocument>,
-    @InjectPgModel(ArenaRatingHistory.name)
-    private readonly ratingHistory: Model<ArenaRatingHistoryDocument>,
+    @InjectPgConnection() private readonly db: PgConnection,
     @Optional() private readonly settings?: ArenaSettingsService,
   ) {}
 
@@ -38,13 +28,8 @@ export class ArenaService {
     const [ranked, leaderboard, changes] = await Promise.all([
       this.arenaReadService.getRankedStatistics(userId),
       this.arenaReadService.getLeaderboard(userId, 'all', 1),
-      this.ratingHistory.aggregate<{ total: number }>([
-        {
-          $match: {
-            userId: new PgId(userId),
-            createdAt: { $gte: start, $lt: end } } },
-        { $group: { _id: null, total: { $sum: '$change' } } },
-      ]),
+      rows(this.db,sql`SELECT COALESCE(SUM(change),0) AS total FROM public.arenaratinghistories
+        WHERE user_id=${userId}::uuid AND created_at>=${start} AND created_at<${end}`),
     ]);
     return {
       userId: String(profile.userId),
@@ -67,36 +52,20 @@ export class ArenaService {
 
   /** Lấy profile có sẵn hoặc tạo profile Arena mặc định cho người dùng mới. */
   async getOrCreateProfile(userId: string) {
-    const objectUserId = new PgId(userId);
     const config = this.settings
       ? await this.settings.current()
       : ARENA_DEFAULTS;
 
-    return this.arenaProfileModel.findOneAndUpdate(
-      {
-        userId: objectUserId },
-      {
-        $setOnInsert: {
-          userId: objectUserId,
-
-          rating: config.ranked.defaultRating,
-
-          rankedMatches: 0,
-          rankedWins: 0,
-          rankedLosses: 0,
-          rankedDraws: 0,
-
-          currentWinStreak: 0,
-          bestWinStreak: 0 } },
-      {
-        returnDocument: 'after',
-        upsert: true },
-    );
+    const row=await first(this.db,sql`INSERT INTO public.arenaprofiles
+      (user_id,rating,ranked_matches,ranked_wins,ranked_losses,ranked_draws,current_win_streak,best_win_streak)
+      VALUES (${userId}::uuid,${config.ranked.defaultRating},0,0,0,0,0,0)
+      ON CONFLICT (user_id) DO UPDATE SET user_id=EXCLUDED.user_id RETURNING *`);
+    return rowData<any>(row!);
   }
 
   /** Lấy profile Arena thô theo user ID cho các service nội bộ. */
   async getProfile(userId: string) {
-    return this.arenaProfileModel.findOne({
-      userId });
+    const row=await first(this.db,sql`SELECT * FROM public.arenaprofiles WHERE user_id=${userId}::uuid`);
+    return row?rowData<any>(row):null;
   }
 }

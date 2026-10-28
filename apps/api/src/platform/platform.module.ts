@@ -1,20 +1,20 @@
-import { Controller, DynamicModule, Get, Module, Type, Optional, ServiceUnavailableException } from '@nestjs/common';
+import { Controller,DynamicModule,Get,Module,Optional,ServiceUnavailableException,Type } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { PgDatabaseModule, InjectPgConnection, type PgConnection } from '../postgres/connection.js';
-import { I18nModule, HeaderResolver, AcceptLanguageResolver } from 'nestjs-i18n';
+import { JwtModule } from '@nestjs/jwt';
+import { AcceptLanguageResolver,HeaderResolver,I18nModule } from 'nestjs-i18n';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { RedisModule } from '../common/redis/redis.module.js';
-import { RedisService } from '../common/redis/redis.service.js';
-import { NotificationClientModule } from '../common/clients/notification-client.js';
 import { LearningActivityClientModule } from '../common/clients/learning-activity-client.js';
+import { NotificationClientModule } from '../common/clients/notification-client.js';
+import { DomainEventsModule } from '../common/events/domain-events.module.js';
 import { MediaStorageModule } from '../common/media/media-storage.module.js';
 import { MediaStorageService } from '../common/media/media-storage.service.js';
-import { DomainEventsModule } from '../common/events/domain-events.module.js';
-import { JwtModule } from '@nestjs/jwt';
+import { RedisModule } from '../common/redis/redis.module.js';
+import { RedisService } from '../common/redis/redis.service.js';
+import { OwnerReadsModule } from '../internal/owner-reads.module.js';
 import { Public } from '../modules/auth/decorators/public.decorator.js';
-import { ReadModelsModule } from '../internal/read-models.module.js';
-import {PublicationModule} from '../modules/publication/publication.module.js';
+import { PublicationModule } from '../modules/publication/publication.module.js';
+import { InjectPgConnection,PgDatabaseModule,type PgConnection } from '../postgres/connection.js';
 
 export type OwnedService = 'identity'|'content'|'assessment'|'arena'|'learning'|'media-jobs'|'ai-import'|'notification';
 export const DATABASE_NAMES:Record<OwnedService,string> = Object.freeze({
@@ -73,7 +73,7 @@ export class PlatformModule {
         resolvers:[new HeaderResolver(['x-custom-lang']),AcceptLanguageResolver]}),
       PgDatabaseModule.forRootAsync(),
       ...(role==='arena'?[RedisModule]:[]),JwtModule.register({}),MediaStorageModule,
-      DomainEventsModule,NotificationClientModule,LearningActivityClientModule,ReadModelsModule,PublicationModule,...business,
+      DomainEventsModule,NotificationClientModule,LearningActivityClientModule,OwnerReadsModule,PublicationModule,...business,
     ],controllers:[HealthController]};
   }
 }

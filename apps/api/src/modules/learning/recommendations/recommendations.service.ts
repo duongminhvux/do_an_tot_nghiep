@@ -1,16 +1,16 @@
-import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { Injectable,ServiceUnavailableException } from '@nestjs/common';
 import {
-  buildRecommendations,
-  type RecommendationInput,
-  type RecommendationRules,
-  type RecommendationSource,
+buildRecommendations,
+type RecommendationInput,
+type RecommendationRules,
+type RecommendationSource,
 } from '@repo/shared-types/recommendations';
 import {
-  InjectPgConnection,
-  type PgConnection,
+InjectPgConnection,
+type PgConnection,
 } from '../../../postgres/connection.js';
 import { serviceUrl } from '../../../postgres/ownership.js';
-import {mistakeSource} from '../mistakes/mistake-source-client.js';
+import { mistakeSource } from '../mistakes/mistake-source-client.js';
 
 @Injectable()
 export class RecommendationsService {

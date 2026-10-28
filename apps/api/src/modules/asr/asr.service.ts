@@ -1,8 +1,9 @@
 import {
-  BadGatewayException,
-  GatewayTimeoutException,
-  Injectable,
-  ServiceUnavailableException } from '@nestjs/common';
+BadGatewayException,
+GatewayTimeoutException,
+Injectable,
+ServiceUnavailableException
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 export interface AsrWordTiming {

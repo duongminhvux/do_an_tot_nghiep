@@ -1,15 +1,16 @@
 import {
-  Body,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Query } from '@nestjs/common';
+Body,
+Delete,
+Get,
+Param,
+Patch,
+Post,
+Query
+} from '@nestjs/common';
 import { AdminController } from '../auth/decorators/admin-controller.decorator.js';
-import { UsersService } from './users.service.js';
+import { CreateAdminUserDto,UpdateAdminUserDto } from './dto/create-admin-user.dto.js';
 import { QueryAdminUserDto } from './dto/query-admin-user.dto.js';
-import { CreateAdminUserDto, UpdateAdminUserDto } from './dto/create-admin-user.dto.js';
+import { UsersService } from './users.service.js';
 
 @AdminController('users')
 export class AdminUsersController {

@@ -1,5 +1,5 @@
-import type { CookieOptions, Request, Response } from 'express';
-import ms, { type StringValue } from 'ms';
+import type { CookieOptions,Request,Response } from 'express';
+import ms,{ type StringValue } from 'ms';
 import type { HttpConfig } from '../../platform/http-policy.js';
 
 type Audience = 'user' | 'admin';

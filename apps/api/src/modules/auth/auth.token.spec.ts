@@ -5,15 +5,15 @@ import { JwtService } from '@nestjs/jwt';
 import { I18nService } from 'nestjs-i18n';
 import { AuthService } from './auth.service.js';
 import { UsersService } from '../users/users.service.js';
-import { GmailService } from '../gmail/gmail.service.js';
+import {NotificationClient} from '../../common/clients/notification-client.js';
 
 vi.mock('../users/users.service.js', () => ({ UsersService: class UsersService {} }));
-vi.mock('../users/schema/user.schema.js', () => ({
+vi.mock('../users/rows/user.row.js', () => ({
   AuthProvider: { LOCAL: 'local', GOOGLE: 'google' } }));
 
 describe('AuthService.verifyToken', () => {
   const secret = 'test-access-secret';
-  const payload = { _id: '507f1f77bcf86cd799439011', role: 'USER' };
+  const payload = { _id: '507f1f77-bcf8-4cd7-9943-901100000001', role: 'USER' };
   const jwt = new JwtService();
   const findById = vi.fn();
   let service: AuthService;
@@ -26,7 +26,7 @@ describe('AuthService.verifyToken', () => {
         { provide: UsersService, useValue: { findById } },
         { provide: JwtService, useValue: jwt },
         { provide: ConfigService, useValue: new ConfigService({ JWT_ACCESS_SECRET: secret }) },
-        { provide: GmailService, useValue: {} },
+        { provide: NotificationClient, useValue: {} },
         { provide: I18nService, useValue: {} },
       ] }).compile();
     service = module.get(AuthService);

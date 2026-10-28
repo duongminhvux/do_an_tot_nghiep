@@ -6,19 +6,18 @@ import { ConfigService } from '@nestjs/config';
 import { PdfAiService } from './pdf-ai.service.js';
 
 describe('PdfAiService', () => {
-  const examId = '507f1f77bcf86cd799439011';
+  const examId = '507f1f77-bcf8-4cd7-9943-901100000001';
   const jobId = '38b10029-2541-401c-bfa4-e9a16dac175e';
   const file = {
     buffer: Buffer.from('%PDF-1.7\nexample') } as Express.Multer.File;
-  const exams = { findById: vi.fn() };
+  const exams = {query:vi.fn()};
   const fetchMock = vi.fn();
   let service: PdfAiService;
 
   beforeEach(() => {
     vi.stubGlobal('fetch', fetchMock);
     fetchMock.mockReset();
-    exams.findById.mockReturnValue({
-      lean: () => ({ exec: async () => ({ type: 'TOEIC' }) }) });
+    vi.stubEnv('SERVICE_ROLE','assessment');exams.query.mockResolvedValue({rows:[{id:examId,type:'TOEIC'}]});
     service = new PdfAiService(
       new ConfigService({ PDF_AI_URL: 'http://pdf-ai:8003' }),
       exams as never,
@@ -45,7 +44,7 @@ describe('PdfAiService', () => {
     fetchMock.mockResolvedValue(
       new Response(JSON.stringify({ jobId }), { status: 202 }),
     );
-    exams.findById.mockClear();
+    exams.query.mockClear();
     await service.startBundle(1, {
       lc: [file],
       rc: [file],
@@ -56,7 +55,7 @@ describe('PdfAiService', () => {
     expect(init.body.get('test_number')).toBe('1');
     for (const role of ['lc', 'rc', 'lc_answers', 'rc_answers'])
       expect(await init.body.get(role).text()).toBe(file.buffer.toString());
-    expect(exams.findById).not.toHaveBeenCalled();
+    expect(exams.query).not.toHaveBeenCalled();
   });
 
   it('rejects invalid files before forwarding them', async () => {

@@ -1,10 +1,9 @@
-import { Global, Injectable, Module, UnauthorizedException, ServiceUnavailableException } from '@nestjs/common';
-import { PassportModule } from '@nestjs/passport';
-import { PassportStrategy } from '@nestjs/passport';
-import { JwtModule, JwtService } from '@nestjs/jwt';
+import { Global,Injectable,Module,ServiceUnavailableException,UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Strategy, ExtractJwt } from 'passport-jwt';
 import { APP_GUARD } from '@nestjs/core';
+import { JwtModule,JwtService } from '@nestjs/jwt';
+import { PassportModule,PassportStrategy } from '@nestjs/passport';
+import { ExtractJwt,Strategy } from 'passport-jwt';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 
 /** Thin auth client: no PostgreSQL repository User/Admin models in non-Identity services. */

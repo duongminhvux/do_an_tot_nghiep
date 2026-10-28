@@ -1,10 +1,10 @@
-import { Body, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body,Delete,Get,Param,Patch,Post,Query } from '@nestjs/common';
 import { AdminController } from '../../auth/decorators/admin-controller.decorator.js';
-import { ExamGroupsService } from './exam-groups.service.js';
 import { CreateExamGroupDto } from './dto/create-exam-group.dto.js';
-import { UpdateExamGroupDto } from './dto/update-exam-group.dto.js';
 import { QueryExamGroupDto } from './dto/query-exam-group.dto.js';
 import { ReorderGroupExamsDto } from './dto/reorder-group-exams.dto.js';
+import { UpdateExamGroupDto } from './dto/update-exam-group.dto.js';
+import { ExamGroupsService } from './exam-groups.service.js';
 
 @AdminController('exam-groups')
 export class AdminExamGroupsController {

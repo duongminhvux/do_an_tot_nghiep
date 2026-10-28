@@ -1,19 +1,20 @@
-import { PgId } from '../../postgres/compat.js';
 import {
-  BadRequestException,
-  Body,
-  Controller,
-  ForbiddenException,
-  Headers,
-  Post } from '@nestjs/common';
-import { timingSafeEqual } from 'node:crypto';
-import { Public } from '../auth/decorators/public.decorator.js';
-import { LEARNING_MODULES } from '@repo/shared-types/learning-xp';
+BadRequestException,
+Body,
+Controller,
+ForbiddenException,
+Headers,
+Post
+} from '@nestjs/common';
 import type { LearningModule } from '@repo/shared-types/learning-xp';
-import { LearningActivityService } from './learning-activity.service.js';
+import { LEARNING_MODULES } from '@repo/shared-types/learning-xp';
+import { timingSafeEqual } from 'node:crypto';
+import { isUuid } from '../../postgres/ids.js';
+import { Public } from '../auth/decorators/public.decorator.js';
 import type { RecordActivityInput } from './learning-activity.service.js';
-import { LEARNING_ACTIVITY_TYPES } from './schemas/learning-activity.schema.js';
-import type { LearningActivityType } from './schemas/learning-activity.schema.js';
+import { LearningActivityService } from './learning-activity.service.js';
+import type { LearningActivityType } from './rows/learning-activity.row.js';
+import { LEARNING_ACTIVITY_TYPES } from './rows/learning-activity.row.js';
 
 @Controller('_internal/learning')
 export class InternalLearningActivityController {
@@ -34,7 +35,7 @@ export class InternalLearningActivityController {
     if (!payload || typeof payload !== 'object' ||
       typeof payload.userId !== 'string' ||
       !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(payload.userId) ||
-      !PgId.isValid(payload.userId) ||
+      !isUuid(payload.userId) ||
       typeof payload.sourceKey !== 'string' ||
       payload.sourceKey.length < 1 || payload.sourceKey.length > 250 ||
       typeof payload.module !== 'string' ||

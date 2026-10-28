@@ -1,16 +1,17 @@
 import {
-  Body,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Query } from '@nestjs/common';
+Body,
+Delete,
+Get,
+Param,
+Patch,
+Post,
+Query
+} from '@nestjs/common';
 import { AdminController } from '../../auth/decorators/admin-controller.decorator.js';
 import { CollectionsService } from './collections.service.js';
 import { CreateCollectionDto } from './dto/create-collection.dto.js';
-import { UpdateCollectionDto } from './dto/update-collection.dto.js';
 import { QueryCollectionDto } from './dto/query-collection.dto.js';
+import { UpdateCollectionDto } from './dto/update-collection.dto.js';
 
 @AdminController('collections')
 export class AdminCollectionsController {

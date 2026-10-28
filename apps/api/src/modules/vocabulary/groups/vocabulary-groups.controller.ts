@@ -1,6 +1,6 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
-import { VocabularyGroupsService } from './vocabulary-groups.service.js';
+import { Controller,Get,Param,Query } from '@nestjs/common';
 import { QueryVocabularyGroupDto } from './dto/query-vocabulary-group.dto.js';
+import { VocabularyGroupsService } from './vocabulary-groups.service.js';
 
 @Controller('vocabulary-groups')
 export class VocabularyGroupsController {

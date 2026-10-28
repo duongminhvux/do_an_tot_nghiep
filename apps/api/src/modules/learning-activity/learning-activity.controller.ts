@@ -1,15 +1,16 @@
+import { Body,Controller,Get,Post,Query,Req } from '@nestjs/common';
 import { ACTIVE_TIME_MAX_SLICE_MS } from '@repo/shared-types/active-time';
-import { ActiveTimeService } from './active-time.service.js';
-import { Body, Controller, Get, Post, Query, Req } from '@nestjs/common';
 import { Type } from 'class-transformer';
 import {
-  IsDate,
-  IsInt,
-  IsOptional,
-  IsTimeZone,
-  IsUUID,
-  Max,
-  Min } from 'class-validator';
+IsDate,
+IsInt,
+IsOptional,
+IsTimeZone,
+IsUUID,
+Max,
+Min
+} from 'class-validator';
+import { ActiveTimeService } from './active-time.service.js';
 import { LearningActivityService } from './learning-activity.service.js';
 
 type UserRequest = { user: { _id: string } };

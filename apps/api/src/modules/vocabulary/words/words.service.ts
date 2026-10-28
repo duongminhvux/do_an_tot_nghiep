@@ -1,22 +1,22 @@
 ﻿import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
+BadRequestException,
+Injectable,
+NotFoundException,
 } from '@nestjs/common';
-import { I18nContext, I18nService } from 'nestjs-i18n';
-import { ContentSqlRepository } from '../content-sql.repository.js';
-import {
-  identifier,
-  joinSql,
-  literal,
-  rows,
-  sql,
-  type Sql,
-} from '../../../postgres/sql.js';
-import { CreateWordDto } from './dto/create-word.dto.js';
-import { UpdateWordDto } from './dto/update-word.dto.js';
-import { QueryWordDto } from './dto/query-word.dto.js';
+import { I18nContext,I18nService } from 'nestjs-i18n';
 import { AudioGenerationStatus } from '../../../common/media/audio.types.js';
+import {
+identifier,
+joinSql,
+literal,
+rows,
+sql,
+type Sql,
+} from '../../../postgres/sql.js';
+import { ContentSqlRepository } from '../content-sql.repository.js';
+import { CreateWordDto } from './dto/create-word.dto.js';
+import { QueryWordDto } from './dto/query-word.dto.js';
+import { UpdateWordDto } from './dto/update-word.dto.js';
 
 const SORT_COLUMNS: Record<string, string> = {
   _id: 'id',

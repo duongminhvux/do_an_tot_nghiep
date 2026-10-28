@@ -1,13 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable,NotFoundException } from '@nestjs/common';
 import type {
-  MistakeItem,
-  MistakeDetail,
-  MistakeList,
-  MistakeStatistic,
+MistakeDetail,
+MistakeItem,
+MistakeList,
+MistakeStatistic,
 } from '@repo/shared-types/mistakes';
 import {
-  InjectPgConnection,
-  type PgConnection,
+InjectPgConnection,
+type PgConnection,
 } from '../../../postgres/connection.js';
 import { mistakeSource } from './mistake-source-client.js';
 import type { MistakesQueryDto } from './mistakes.dto.js';

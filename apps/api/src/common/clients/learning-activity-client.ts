@@ -1,10 +1,10 @@
-import { Global, Injectable, Module } from '@nestjs/common';
-import { DomainOutboxService } from '../events/domain-outbox.service.js';
-import { serviceRole } from '../../postgres/ownership.js';
+import { Global,Injectable,Module } from '@nestjs/common';
 import type {
-  LearningActivityWriter,
-  RecordActivityInput,
+LearningActivityWriter,
+RecordActivityInput,
 } from '../../modules/learning-activity/learning-activity.service.js';
+import { serviceRole } from '../../postgres/ownership.js';
+import { DomainOutboxService } from '../events/domain-outbox.service.js';
 
 /**
  * Durable cross-owner learning credit delivery.

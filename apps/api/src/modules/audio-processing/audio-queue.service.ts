@@ -1,10 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { InjectPgConnection } from '../../postgres/connection.js';
-import {makePgModel,type PgConnection} from '../../postgres/compat.js';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
+import { InjectPgConnection,withPgTransaction,type PgConnection } from '../../postgres/connection.js';
+import { first,rows,sql } from '../../postgres/sql.js';
 import { AudioProcessingService } from './audio-processing.service.js';
-import type { AudioWorkerSettingsDocument } from '../../platform/database-documents.js';
 
 type AudioJobData =
   | { type: 'VOCAB_BULK'; ids: string[]; accent: 'us' | 'uk' | 'both' }
@@ -37,15 +36,15 @@ export class AudioQueueService {
     @InjectPgConnection() private readonly connection: PgConnection,
   ) {}
 
-  private jobs() {
-    return makePgModel('AudioJob',this.connection.pool);
+  private async job(id:string):Promise<StoredAudioJob|null>{
+    const result=await first(this.connection,sql`SELECT payload||jsonb_build_object('id',id::text,'state',state) AS job FROM audio_jobs WHERE id=${id}::uuid`);return result?.job??null;
   }
 
   private async enqueue(name:string,data:AudioJobData) {
     const id=randomUUID();
     const job:StoredAudioJob = {id,name,data,state:'waiting',createdAt:new Date().toISOString(),
       progress:{processed:0,total:0,succeeded:0,failed:0}};
-    await this.jobs().create({...job});
+    await rows(this.connection,sql`INSERT INTO audio_jobs(id,state,payload) VALUES(${id}::uuid,'waiting',${JSON.stringify(job)}::jsonb)`);
     // Publishing can time out after broker accepted a message. If that happens,
     // keep a retryable job, never silently delete it from PostgreSQL.
     const url=this.config.get<string>('RABBIT_JOB_BROKER_URL')||'http://job-broker:8020';
@@ -57,8 +56,7 @@ export class AudioQueueService {
         body:JSON.stringify({jobId:id,name}),signal:AbortSignal.timeout(10000)});
       if(!response.ok) throw new Error(`RabbitMQ publish rejected: ${response.status}`);
     } catch(error) {
-      await this.jobs().updateOne({id},{$set:{
-        failedReason:`Publisher state uncertain: ${String(error)}`}});
+      await rows(this.connection,sql`UPDATE audio_jobs SET payload=payload||jsonb_build_object('failedReason',${'Publisher state uncertain: '+String(error)}::text) WHERE id=${id}::uuid`);
       throw error;
     }
     return {jobId:id};
@@ -113,7 +111,7 @@ export class AudioQueueService {
     const owner = randomUUID();
     const lease = await this.claimJob(jobId, owner);
     if (!lease) {
-      const existing = await this.jobs().findOne({id:jobId});
+      const existing = await this.job(jobId);
       if (!existing) throw new Error(`Unknown audio job: ${jobId}`);
       if (existing.state === 'completed') return existing.result;
       throw new Error(`Job ${jobId} busy, delayed or exhausted retries`);
@@ -170,7 +168,7 @@ export class AudioQueueService {
   }
 
   async workerConfig() {
-    const config=await makePgModel('SystemSetting',this.connection.pool).findOne({key:'audio_worker'});
+    const config=(await first(this.connection,sql`SELECT payload FROM system_settings WHERE payload->>'key'='audio_worker' ORDER BY updated_at DESC,id LIMIT 1`))?.payload;
     return {maxWorkers:config?.maxWorkers===2?2:1,backlogThreshold:config?.backlogThreshold||10,
       note:'Worker count is provisioned by Docker/operations; no GPU autoscaler is enabled.'};
   }
@@ -178,8 +176,11 @@ export class AudioQueueService {
     const maxWorkers=Number(input?.maxWorkers),backlogThreshold=Number(input?.backlogThreshold);
     if(![1,2].includes(maxWorkers)||!Number.isInteger(backlogThreshold)||backlogThreshold<1||backlogThreshold>1000)
       throw new Error('Invalid worker settings');
-    await makePgModel('SystemSetting',this.connection.pool).updateOne({key:'audio_worker'},
-      {$set:{maxWorkers,backlogThreshold}},{upsert:true});
+    await withPgTransaction(this.connection,async tx=>{
+      await rows(tx,sql`SELECT pg_advisory_xact_lock(hashtextextended('audio-worker-settings',0))`);
+      await rows(tx,sql`WITH updated AS(UPDATE system_settings SET payload=payload||${JSON.stringify({maxWorkers,backlogThreshold})}::jsonb WHERE payload->>'key'='audio_worker' RETURNING id)
+        INSERT INTO system_settings(payload) SELECT ${JSON.stringify({key:'audio_worker',maxWorkers,backlogThreshold})}::jsonb WHERE NOT EXISTS(SELECT 1 FROM updated)`);
+    });
     return this.workerConfig();
   }
   async queueMetrics() {
@@ -190,7 +191,7 @@ export class AudioQueueService {
     return {backend:'rabbitmq',...(await response.json() as object)};
   }
   async status(jobId:string) {
-    const job=await this.jobs().findOne({id:jobId});
+    const job=await this.job(jobId);
     if(!job)return null;
     return {id:job.id,name:job.name,state:job.state,progress:job.progress,result:job.result,
       failedReason:job.failedReason||'',timestamp:job.createdAt,startedAt:job.startedAt,

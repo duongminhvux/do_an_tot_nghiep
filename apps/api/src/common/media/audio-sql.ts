@@ -1,11 +1,11 @@
 import { BadRequestException } from '@nestjs/common';
 import type { PgConnection } from '../../postgres/connection.js';
 import {
-  identifier,
-  joinSql,
-  sql,
-  SqlTable,
-  type Sql,
+identifier,
+joinSql,
+sql,
+SqlTable,
+type Sql,
 } from '../../postgres/sql.js';
 
 export type AudioResource = 'words' | 'questions' | 'passages';

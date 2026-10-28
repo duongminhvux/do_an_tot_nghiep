@@ -1,15 +1,16 @@
 import {
-  Body,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Query } from '@nestjs/common';
+Body,
+Delete,
+Get,
+Param,
+Patch,
+Post,
+Query
+} from '@nestjs/common';
 import { AdminController } from '../../auth/decorators/admin-controller.decorator.js';
 import { CreateWordDto } from './dto/create-word.dto.js';
-import { UpdateWordDto } from './dto/update-word.dto.js';
 import { QueryWordDto } from './dto/query-word.dto.js';
+import { UpdateWordDto } from './dto/update-word.dto.js';
 import { WordsService } from './words.service.js';
 
 @AdminController('words')

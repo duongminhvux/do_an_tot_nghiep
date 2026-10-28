@@ -1,11 +1,12 @@
 import {
-  ArrayUnique,
-  IsArray,
-  IsIn,
-  IsInt,
-  IsUUID,
-  IsOptional,
-  Min } from 'class-validator';
+ArrayUnique,
+IsArray,
+IsIn,
+IsInt,
+IsOptional,
+IsUUID,
+Min
+} from 'class-validator';
 
 export class SaveAnswerDto {
   @IsUUID('4')

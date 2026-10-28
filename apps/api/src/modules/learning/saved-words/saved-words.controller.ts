@@ -1,21 +1,22 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Delete,
-  Patch,
-  Body,
-  Param,
-  Query,
-  UseGuards,
-  Req } from '@nestjs/common';
-import { SavedWordsService } from './saved-words.service.js';
+Body,
+Controller,
+Delete,
+Get,
+Param,
+Patch,
+Post,
+Query,
+Req,
+UseGuards
+} from '@nestjs/common';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { CreateSavedWordDto } from './dto/create-saved-word.dto.js';
+import { CreateVocabularyFolderDto } from './dto/create-vocabulary-folder.dto.js';
 import { QuerySavedWordsDto } from './dto/query-saved-words.dto.js';
 import { UpdateSavedWordNoteDto } from './dto/update-saved-word.dto.js';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
-import { CreateVocabularyFolderDto } from './dto/create-vocabulary-folder.dto.js';
 import { UpdateVocabularyFolderDto } from './dto/update-vocabulary-folder.dto.js';
+import { SavedWordsService } from './saved-words.service.js';
 
 @Controller('learning/saved-words')
 @UseGuards(JwtAuthGuard)

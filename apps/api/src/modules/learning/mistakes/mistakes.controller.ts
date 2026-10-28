@@ -1,18 +1,18 @@
 import {
-  Body,
-  Controller,
-  Get,
-  Header,
-  Inject,
-  Param,
-  ParseUUIDPipe,
-  Patch,
-  Query,
-  Req,
+Body,
+Controller,
+Get,
+Header,
+Inject,
+Param,
+ParseUUIDPipe,
+Patch,
+Query,
+Req,
 } from '@nestjs/common';
 import { AdminController } from '../../auth/decorators/admin-controller.decorator.js';
+import { MistakesQueryDto,ReviewMistakeDto } from './mistakes.dto.js';
 import { MistakesService } from './mistakes.service.js';
-import { MistakesQueryDto, ReviewMistakeDto } from './mistakes.dto.js';
 type RequestUser = { user: { _id: string } };
 @Controller('learning/mistakes')
 export class MistakesController {

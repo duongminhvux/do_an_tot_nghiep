@@ -1,18 +1,19 @@
-import {
-  ArrayMaxSize,
-  ArrayMinSize,
-  IsArray,
-  IsIn,
-  IsInt,
-  IsNumber,
-  IsOptional,
-  IsString,
-  Max,
-  MaxLength,
-  Min,
-  MinLength,
-  ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
+import {
+ArrayMaxSize,
+ArrayMinSize,
+IsArray,
+IsIn,
+IsInt,
+IsNumber,
+IsOptional,
+IsString,
+Max,
+MaxLength,
+Min,
+MinLength,
+ValidateNested
+} from 'class-validator';
 
 export class SynthesizeTtsDto {
   @IsString()

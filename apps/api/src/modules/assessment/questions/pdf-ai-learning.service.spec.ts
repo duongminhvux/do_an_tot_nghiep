@@ -1,33 +1,17 @@
-import { PdfAiLearningService } from './pdf-ai-learning.service.js';
-
-describe('PDF correction outbox', () => {
-  const pending = { eventId: 'event', payload: { kind: 'part' } };
-  const exec = (value: any) => ({ exec: vi.fn().mockResolvedValue(value) });
-  function setup() {
-    const updateOne = vi.fn().mockReturnValue(exec({}));
-    const events = { updateOne, find: vi.fn().mockReturnValue({ sort: () => ({ limit: () => ({ lean: () => exec([pending]) }) }) }) };
-    const pdfAi = { learningRequest: vi.fn() };
-    const service = new PdfAiLearningService(events as never, pdfAi as never);
-    return { service, events, pdfAi };
-  }
-  it('retains the event for retry when PDF service is unavailable', async () => {
-    const { service, events, pdfAi } = setup();
-    pdfAi.learningRequest.mockRejectedValue(new Error('offline'));
-    await service.flush();
-    expect(events.updateOne).toHaveBeenCalledWith({ eventId: 'event' }, { $set: { lastError: 'Error: offline' } });
-    expect(events.updateOne.mock.calls.some(c => c[1].$set?.state === 'delivered')).toBe(false);
-    pdfAi.learningRequest.mockResolvedValue({ ids: [] });
-    await service.flush();
-    expect(events.updateOne).toHaveBeenLastCalledWith({ eventId: 'event' }, { $set: { state: 'delivered', lastError: '' } });
+import {describe,it,expect,vi} from 'vitest';
+import {databaseSuite} from '../../../../test/native-database.js';
+import {PdfAiLearningService} from './pdf-ai-learning.service.js';
+import {sql} from '../../../postgres/sql.js';
+const suite=databaseSuite('assessment');
+describe('native PDF correction outbox',()=>{
+  it('retains failed deliveries and marks successful retries without duplicate events',async()=>{
+    const pdf={learningRequest:vi.fn().mockRejectedValue(new Error('offline'))},service=new PdfAiLearningService(suite.db,pdf as never);
+    await suite.records('pdf_ai_correction_events').insert({eventId:'test-event',state:'pending',lastError:'',kind:'part'});
+    await service.flush();let event=await suite.records('pdf_ai_correction_events').one(sql`event_id='test-event'`);expect(event.state).toBe('pending');expect(event.lastError).toContain('offline');
+    pdf.learningRequest.mockResolvedValue({ids:[]});await service.flush();event=await suite.records('pdf_ai_correction_events').one(sql`event_id='test-event'`);expect(event.state).toBe('delivered');expect(event.lastError).toBe('');
   });
-  it('only recognizes source jobs from AI batch IDs', () => {
-    const { service } = setup();
-    expect(service.sourceJob('11111111-1111-4111-8111-111111111111-p2')).toBe('11111111-1111-4111-8111-111111111111');
-    expect(service.sourceJob('11111111-1111-4111-8111-111111111111')).toBeUndefined();
-  });
-  it('reports capture failure without throwing into exam save rollback', async () => {
-    const { service, events } = setup();
-    events.updateOne.mockReturnValue({ exec: vi.fn().mockRejectedValue(new Error('DB unavailable')) });
-    expect(await service.enqueue({ kind: 'part' })).toMatchObject({ status: 'failed' });
+  it('only recognizes source jobs from AI batch IDs and reports a persistence failure',async()=>{
+    const service=new PdfAiLearningService({query:vi.fn().mockRejectedValue(new Error('DB unavailable'))} as never,{} as never);
+    expect(service.sourceJob('11111111-1111-4111-8111-111111111111-p2')).toBe('11111111-1111-4111-8111-111111111111');expect(service.sourceJob('11111111-1111-4111-8111-111111111111')).toBeUndefined();expect(await service.enqueue({kind:'part'})).toMatchObject({status:'failed'});
   });
 });

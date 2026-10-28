@@ -1,6 +1,6 @@
-import { Get, Post, Param, UploadedFile, UseInterceptors, ServiceUnavailableException } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { Get,Param,Post,ServiceUnavailableException,UploadedFile,UseInterceptors } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { AdminController } from '../auth/decorators/admin-controller.decorator.js';
 import { AsrService } from './asr.service.js';
 

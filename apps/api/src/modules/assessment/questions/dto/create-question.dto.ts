@@ -1,5 +1,5 @@
-import { IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
+import { IsBoolean,IsEnum,IsNotEmpty,IsNumber,IsOptional,IsString,ValidateNested } from 'class-validator';
 
 export class QuestionOptionDto {
   @IsEnum(['A', 'B', 'C', 'D'])

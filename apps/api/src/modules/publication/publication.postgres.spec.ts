@@ -1,19 +1,21 @@
 import 'reflect-metadata';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { Pool } from 'pg';
-import { randomUUID } from 'node:crypto';
-import { createConnection, makePgModel } from '../../postgres/compat.js';
+import {createConnection} from '../../postgres/connection.js';
+import {SqlRecords} from '../../postgres/records.js';
+import {sql,rows} from '../../postgres/sql.js';
+import {randomUUID} from 'node:crypto';
 import { PublicationService } from './publication.service.js';
 import { publicationScope } from './publication-scope.js';
-import { Exam } from '../assessment/exams/schemas/exam.schema.js';
-import { Attempt } from '../assessment/attempts/schemas/attempt.schema.js';
-import { Question } from '../assessment/questions/schemas/question.schema.js';
-import { Passage } from '../assessment/questions/schemas/passage.schema.js';
+import { Exam } from '../assessment/exams/rows/exam.row.js';
+import { Attempt } from '../assessment/attempts/rows/attempt.row.js';
+import { Question } from '../assessment/questions/rows/question.row.js';
+import { Passage } from '../assessment/questions/rows/passage.row.js';
 import { AttemptsService } from '../assessment/attempts/attempts.service.js';
 import { DomainOutboxService } from '../../common/events/domain-outbox.service.js';
 import { ExamMode } from '../assessment/attempts/attempt.types.js';
-import { Word } from '../vocabulary/words/word.schema.js';
-import { Lesson } from '../vocabulary/lessons/lesson.schema.js';
+import { Word } from '../vocabulary/words/word.row.js';
+import { Lesson } from '../vocabulary/lessons/lesson.row.js';
 import { MistakeSourceController } from '../../internal/mistake-source.controller.js';
 
 describe.runIf(
@@ -69,14 +71,7 @@ describe.runIf(
       `INSERT INTO public.dictationsegments(id,lesson_id,"order",text,source,language,start_ms,end_ms,duration_ms) VALUES($1,$2,0,'A sentence.','TTS','en-US',0,2000,2000)`,
       [segment, dictation],
     );
-    attempts = new AttemptsService(
-      makePgModel(Attempt.name, assessment),
-      makePgModel(Exam.name, assessment),
-      makePgModel(Question.name, assessment),
-      makePgModel(Passage.name, assessment),
-      undefined,
-      new DomainOutboxService(createConnection(assessment)),
-    );
+    attempts = new AttemptsService(createConnection(assessment),undefined,new DomainOutboxService(createConnection(assessment)));
   });
   afterAll(async () => {
     await Promise.all([assessment.end(), content.end()]);
@@ -87,7 +82,7 @@ describe.runIf(
     expect((await exams.info('exams', exam)).publicationStatus).toBe('DRAFT');
     expect(
       await publicationScope.run(true, () =>
-        makePgModel(Exam.name, assessment).findById(exam).lean().exec(),
+        new SqlRecords<any>(createConnection(assessment),'exams').one(sql`id=${exam}::uuid AND publication_status='PUBLISHED'`),
       ),
     ).toBeNull();
     await expect(
@@ -162,13 +157,10 @@ describe.runIf(
     expect((await exams.info('exams', exam)).publicationStatus).toBe('DRAFT');
     expect(
       await publicationScope.run(true, () =>
-        makePgModel(Exam.name, assessment).findById(exam).lean().exec(),
+        new SqlRecords<any>(createConnection(assessment),'exams').one(sql`id=${exam}::uuid AND publication_status='PUBLISHED'`),
       ),
     ).toBeNull();
-    const doc = await makePgModel<any>(Exam.name, assessment)
-      .findById(exam)
-      .lean()
-      .exec();
+    const doc=await new SqlRecords(createConnection(assessment),'exams').one(sql`id=${exam}::uuid`);
     expect(doc.publicationStatus).toBe('DRAFT');
   });
   it('preview uses the existing unfinished-TOEIC projection and has no scoring side effects', async () => {
@@ -219,7 +211,7 @@ describe.runIf(
     await contents.publish('lessons', lesson, actor, 'en');
     expect(
       await publicationScope.run(true, () =>
-        makePgModel(Lesson.name, content).findById(lesson).lean().exec(),
+        new SqlRecords<any>(createConnection(content),'lessons').one(sql`id=${lesson}::uuid AND publication_status='PUBLISHED'`),
       ),
     ).not.toBeNull();
     await content.query(`UPDATE public.words SET parts='[]' WHERE id=$1`, [
@@ -233,7 +225,7 @@ describe.runIf(
     );
     expect(
       await publicationScope.run(true, () =>
-        makePgModel(Word.name, content).findById(word).lean().exec(),
+        new SqlRecords<any>(createConnection(content),'words').one(sql`id=${word}::uuid AND publication_status='PUBLISHED'`),
       ),
     ).toBeNull();
     vi.stubEnv('INTERNAL_SERVICE_TOKEN', 'f10-internal-token-'.repeat(2));
@@ -301,13 +293,12 @@ describe.runIf(
   it('rejects a new TOEIC snapshot if content changes between its read and insertion',async()=>{
     vi.stubEnv('SERVICE_ROLE','assessment');
     await exams.validate('exams',exam,actor,'en');await exams.publish('exams',exam,actor,'en');
-    const attemptModel=makePgModel(Attempt.name,assessment);
-    const original=attemptModel.create.bind(attemptModel);
-    const spy=vi.spyOn(attemptModel,'create').mockImplementationOnce(async(value:any)=>{
-      await assessment.query('UPDATE public.questions SET content=$2 WHERE id=$1',[question,'A racing edit']);
-      return original(value);
+    const original=SqlRecords.prototype.insert;
+    const spy=vi.spyOn(SqlRecords.prototype,'insert').mockImplementation(async function(this:SqlRecords,value:any,columns:any){
+      if(this.table==='attempts')await assessment.query('UPDATE public.questions SET content=$2 WHERE id=$1',[question,'A racing edit']);
+      return original.call(this,value,columns);
     });
-    const service=new AttemptsService(attemptModel,makePgModel(Exam.name,assessment),makePgModel(Question.name,assessment),makePgModel(Passage.name,assessment));
+    const service=new AttemptsService(createConnection(assessment));
     const before=(await assessment.query('SELECT COUNT(*)::int AS count FROM public.attempts WHERE user_id=$1',[user])).rows[0].count;
     try { await expect(service.create(user,{examId:exam,mode:ExamMode.PRACTICE,selectedParts:[5]})).rejects.toMatchObject({status:409}); }
     finally {spy.mockRestore();}

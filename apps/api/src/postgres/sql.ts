@@ -1,5 +1,5 @@
 import type { PgConnection } from './connection.js';
-import { serviceRole, tableOwner } from './ownership.js';
+import { serviceRole,tableOwner } from './ownership.js';
 
 /** Parameters can be composed without interpolating user input into SQL. */
 const SQL_FRAGMENT = Symbol('SQL_FRAGMENT');

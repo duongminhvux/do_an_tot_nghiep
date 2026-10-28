@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength } from "class-validator";
+import { IsEmail,IsNotEmpty,IsString,MinLength } from "class-validator";
 import { i18nValidationMessage } from "nestjs-i18n";
 
 export class LocalLoginAuthDto {

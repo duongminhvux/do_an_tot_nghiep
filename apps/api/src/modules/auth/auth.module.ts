@@ -1,18 +1,18 @@
 import { Module } from '@nestjs/common';
-import { AuthService } from './auth.service.js';
-import { AuthController } from './auth.controller.js';
-import { AdminAuthController } from './admin-auth.controller.js';
-import { IdentityIntrospectionController } from './identity-introspection.controller.js';
-import { PassportModule } from '@nestjs/passport';
-import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { LocalStrategy } from './strategy/local.strategy.js';
-import { JwtStrategy } from './strategy/jwt.strategy.js';
-import { GoogleStrategy } from './strategy/google.strategy.js';
-import { UsersModule } from '../users/users.module.js';
-import { AdminsModule } from '../admins/admins.module.js';
 import { APP_GUARD } from '@nestjs/core';
+import { JwtModule } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
+import { AdminsModule } from '../admins/admins.module.js';
+import { UsersModule } from '../users/users.module.js';
+import { AdminAuthController } from './admin-auth.controller.js';
+import { AuthController } from './auth.controller.js';
+import { AuthService } from './auth.service.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
+import { IdentityIntrospectionController } from './identity-introspection.controller.js';
+import { GoogleStrategy } from './strategy/google.strategy.js';
+import { JwtStrategy } from './strategy/jwt.strategy.js';
+import { LocalStrategy } from './strategy/local.strategy.js';
 
 @Module({
   imports: [

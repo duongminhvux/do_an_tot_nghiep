@@ -1,17 +1,18 @@
-import { ActiveTimeService } from './active-time.service.js';
-import type { LearningOutcome } from '@repo/shared-types/mistakes';
-import { PgId, InjectPgConnection, type PgConnection } from '../../postgres/compat.js';
-import { randomUUID } from 'node:crypto';
-import { Injectable, Logger } from '@nestjs/common';
-import { InjectPgModel } from '../../postgres/compat.js';
-import type { Model } from '../../postgres/compat.js';
-import {
-  DAILY_GOAL_XP,
-  LEARNING_MODULES } from '@repo/shared-types/learning-xp';
+import { Injectable,Logger } from '@nestjs/common';
 import type { LearningModule } from '@repo/shared-types/learning-xp';
 import {
-  LearningActivity,
-  type LearningActivityType } from './schemas/learning-activity.schema.js';
+DAILY_GOAL_XP,
+LEARNING_MODULES
+} from '@repo/shared-types/learning-xp';
+import type { LearningOutcome } from '@repo/shared-types/mistakes';
+import { randomUUID } from 'node:crypto';
+import { InjectPgConnection,withPgTransaction,type PgConnection } from '../../postgres/connection.js';
+import { SqlRecords } from '../../postgres/records.js';
+import { rows as queryRows,sql } from '../../postgres/sql.js';
+import { ActiveTimeService } from './active-time.service.js';
+import {
+type LearningActivityType
+} from './rows/learning-activity.row.js';
 
 export const DEFAULT_TIMEZONE = process.env.APP_TIMEZONE || 'Asia/Ho_Chi_Minh';
 const HEATMAP_DAYS = 90;
@@ -21,7 +22,7 @@ const WORD_TYPES: LearningActivityType[] = ['WORD_LEARNED', 'WORD_REVIEWED'];
 const GROWTH_DAYS = 7;
 
 export interface RecordActivityInput {
-  userId: string | PgId;
+  userId: string;
   module: LearningModule;
   type: LearningActivityType;
   sourceKey: string;
@@ -67,8 +68,6 @@ export class LearningActivityService {
   private readonly logger = new Logger(LearningActivityService.name);
 
   constructor(
-    @InjectPgModel(LearningActivity.name)
-    private readonly activities: Model<LearningActivity>,
     @InjectPgConnection() private readonly connection: PgConnection,
     private readonly activeTime: ActiveTimeService,
   ) {}
@@ -82,15 +81,15 @@ export class LearningActivityService {
         !Number.isFinite(input.xp) || input.xp < 0) {
       throw new Error('Invalid learning credit');
     }
-    const client = await this.connection.pool.connect();
+
     const userId = String(input.userId);
     const activityId = randomUUID();
     const xp = Math.max(0, Math.round(input.xp));
     const occurredAt = input.occurredAt ?? new Date();
     const { outcomes, ...activityInput } = input;
     const payload = { ...activityInput, userId, occurredAt: occurredAt.toISOString(), xp };
-    try {
-      await client.query('BEGIN');
+    try {return await withPgTransaction(this.connection,async transaction=>{
+      const client=transaction.pool;
       const inserted = await client.query<{id:string}>(`INSERT INTO public.learning_activities
         (id,user_id,module,type,source_key,xp,occurred_at,title,ref_id,link,
          correct,total,score,duration_sec,metadata,payload)
@@ -110,42 +109,20 @@ export class LearningActivityService {
         await client.query('SELECT public.record_learning_outcomes($1,$2,$3,$4::jsonb)',
           [userId,input.sourceKey,occurredAt,JSON.stringify(outcomes)]);
       }
-      await client.query('COMMIT');
       return inserted.rows.length > 0;
+    });
     } catch (error) {
-      await client.query('ROLLBACK');
       this.logger.error(`Learning credit failed for ${input.sourceKey}`, (error as Error).stack);
       throw error;
-    } finally {
-      client.release();
     }
   }
 
   async home(userId: string, timezone = DEFAULT_TIMEZONE) {
     const activeByDay = await this.activeTime.daily(userId, timezone);
-    const rows = await this.activities
-      .aggregate<{
-        _id: { day: string; module: LearningModule };
-        xp: number;
-        count: number;
-        durationSec: number;
-      }>([
-        { $match: { userId: new PgId(userId) } },
-        {
-          $group: {
-            _id: {
-              day: {
-                $dateToString: {
-                  format: '%Y-%m-%d',
-                  date: '$occurredAt',
-                  timezone } },
-              module: '$module' },
-            xp: { $sum: '$xp' },
-            count: {
-              $sum: { $cond: [{ $in: ['$type', WORD_TYPES] }, 0, 1] } },
-            durationSec: { $sum: 0 } } },
-      ])
-      .exec();
+    const rows=await queryRows<{_id:{day:string;module:LearningModule};xp:number;count:number;durationSec:number}>(this.connection,sql`
+      SELECT jsonb_build_object('day',TO_CHAR(occurred_at AT TIME ZONE ${timezone},'YYYY-MM-DD'),'module',module) AS "_id",
+        COALESCE(SUM(xp),0)::integer AS xp,COUNT(*) FILTER(WHERE type<>ALL(${WORD_TYPES}::text[]))::integer AS count,0 AS "durationSec"
+      FROM public.learning_activities WHERE user_id=${userId}::uuid GROUP BY TO_CHAR(occurred_at AT TIME ZONE ${timezone},'YYYY-MM-DD'),module`);
 
     const days = new Map<
       string,
@@ -230,16 +207,8 @@ export class LearningActivityService {
   }
 
   async recent(userId: string, limit = 20, before?: Date) {
-    const rows = await this.activities
-      .find({
-        userId: new PgId(userId),
-        type: { $nin: WORD_TYPES },
-        ...(before ? { occurredAt: { $lt: before } } : {}) })
-      .sort({ occurredAt: -1, _id: -1 })
-      .limit(Math.max(1, Math.min(50, limit)))
-      .select('-userId -sourceKey')
-      .lean()
-      .exec();
-    return rows.map(({ _id, ...row }) => ({ ...row, id: String(_id) }));
+    const records=await new SqlRecords(this.connection,'learning_activities').select(sql`user_id=${userId}::uuid AND type<>ALL(${WORD_TYPES}::text[])
+      AND (${before??null}::timestamptz IS NULL OR occurred_at<${before??null})`,sql`ORDER BY occurred_at DESC,id DESC LIMIT ${Math.max(1,Math.min(50,limit))}`);
+    return records.map(({_id,userId:ignoredUser,sourceKey:ignoredSource,...row})=>({...row,id:String(_id)}));
   }
 }

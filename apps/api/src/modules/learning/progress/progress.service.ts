@@ -1,92 +1,61 @@
-import { PgId } from '../../../postgres/compat.js';
+import { InjectPgConnection,type PgConnection } from '../../../postgres/connection.js';
+import { SqlRecords } from '../../../postgres/records.js';
+import { rows,sql } from '../../../postgres/sql.js';
+import { allContentRows,contentBatches,contentRows } from '../../vocabulary/content-reader.js';
+
 import { Injectable,NotFoundException } from '@nestjs/common';
-import { InjectPgModel } from '../../../postgres/compat.js';
-import { type Model } from '../../../postgres/compat.js';
-import {
-  UserLessonProgress,
-  UserLessonProgressDocument } from './schemas/user-lesson-progress.schema.js';
-import {
-  UserLessonWord,
-  UserLessonWordDocument } from './schemas/user-lesson-word.schema.js';
-import {
-  UserWordReview,
-  UserWordReviewDocument } from '../reviews/schemas/user-word-review.schema.js';
-import {
-  Lesson,
-  LessonDocument } from '../../vocabulary/lessons/lesson.schema.js';
-import {
-  Section,
-  SectionDocument } from '../../vocabulary/lessons/section.schema.js';
-import {
-  LessonWord,
-  LessonWordDocument } from '../../vocabulary/lessons/lesson-word.schema.js';
-import {
-  LearningSession,
-  LearningSessionDocument } from '../sessions/schemas/learning-session.schema.js';
-import {
-  Collection,
-  CollectionDocument } from '../../vocabulary/collections/collection.schema.js';
-import {
-  UserDailyActivity,
-  UserDailyActivityDocument } from './schemas/user-daily-activity.schema.js';
+
+
 
 @Injectable()
 export class ProgressService {
-  constructor(
-    @InjectPgModel(UserLessonProgress.name)
-    private progressModel: Model<UserLessonProgressDocument>,
-    @InjectPgModel(UserLessonWord.name)
-    private userLessonWordModel: Model<UserLessonWordDocument>,
-    @InjectPgModel(UserWordReview.name)
-    private reviewModel: Model<UserWordReviewDocument>,
-    @InjectPgModel(Lesson.name)
-    private lessonModel: Model<LessonDocument>,
-    @InjectPgModel(Section.name)
-    private sectionModel: Model<SectionDocument>,
-    @InjectPgModel(LessonWord.name)
-    private lessonWordModel: Model<LessonWordDocument>,
-    @InjectPgModel(LearningSession.name)
-    private sessionModel: Model<LearningSessionDocument>,
-    @InjectPgModel(Collection.name)
-    private collectionModel: Model<CollectionDocument>,
-    @InjectPgModel(UserDailyActivity.name)
-    private dailyActivityModel: Model<UserDailyActivityDocument>,
+  private get progressModel(){return new SqlRecords(this.nativeDb,'userlessonprogresses');}
+private get userLessonWordModel(){return new SqlRecords(this.nativeDb,'userlessonwords');}
+private get reviewModel(){return new SqlRecords(this.nativeDb,'userwordreviews');}
+private get sessionModel(){return new SqlRecords(this.nativeDb,'learningsessions');}
+private get dailyActivityModel(){return new SqlRecords(this.nativeDb,'userdailyactivities');}
+constructor(
+@InjectPgConnection() private readonly nativeDb:PgConnection,
   ) {}
 
   /**
    * Lấy tiến độ học chi tiết của 1 Lesson bao gồm thống kê từ đã thuộc, cần ôn, chưa học và theo từng Section
    */
+  private async hydrateContent(value:Promise<any>,kind='progress'):Promise<any>{
+    const result=await value;const list:any[]=Array.isArray(result)?result:result?[result]:[];
+    if(kind==='lessonwords'){
+      const words=await contentBatches(this.nativeDb,'words',{ids:[...new Set(list.map(row=>String(row.wordId)))],publishedOnly:true,activeOnly:true},'ids');const map=new Map(words.map(word=>[String(word._id),word]));
+      for(const row of list)row.wordId=map.get(String(row.wordId))??null;
+    }else{
+      const lessons=kind==='lessons'?list:await contentBatches(this.nativeDb,'lessons',{ids:[...new Set(list.map(row=>String(row.lessonId)).filter(id=>id!=='null'))],publishedOnly:true,activeOnly:true},'ids');
+      const collections=await contentBatches(this.nativeDb,'collections',{ids:[...new Set(lessons.map(row=>String(row.collectionId)).filter(id=>id!=='null'))],publishedOnly:true,activeOnly:true},'ids');const collectionMap=new Map(collections.map(row=>[String(row._id),row]));
+      for(const lesson of lessons)lesson.collectionId=collectionMap.get(String(lesson.collectionId))??null;
+      const map=new Map(lessons.map(row=>[String(row._id),row]));if(kind!=='lessons')for(const row of list)row.lessonId=map.get(String(row.lessonId))??null;
+    }return Array.isArray(result)?list:list[0]??null;
+  }
   async getLessonProgress(userId: string, lessonId: string) {
-    if(!await this.lessonModel.exists({_id:lessonId,publicationStatus:'PUBLISHED',isActive:{$ne:false},isDeleted:{$ne:true}}))throw new NotFoundException('Published lesson not found');
-    const userObjId = new PgId(userId);
-    const lessonObjId = new PgId(lessonId);
+    if(!await (contentRows(this.nativeDb,'lessons',{ids:[String(lessonId)],publishedOnly:true,activeOnly:true,limit:1})).then(items=>items[0]??null))throw new NotFoundException('Published lesson not found');
+    const userObjId = String(userId);
+    const lessonObjId = String(lessonId);
 
-    const progress = await this.progressModel.findOne({
-      userId: userObjId,
-      lessonId: lessonObjId });
+    const progress = await this.progressModel.one(sql`("user_id" = ${userObjId}) AND ("lesson_id" = ${lessonObjId})`);
 
-    const lessonWords = await this.lessonWordModel
-      .find({ lessonId: lessonObjId })
-      .select('_id wordId sectionId order');
+    const lessonWords = await allContentRows(this.nativeDb,'lessonwords',{lessonIds:[String(lessonObjId)]});
 
     const lwMap = new Map(
       lessonWords.map((lw) => [String(lw._id), String(lw.wordId)]),
     );
-    const lwIds = Array.from(lwMap.keys()).map((id) => new PgId(id));
+    const lwIds = Array.from(lwMap.keys()).map((id) => String(id));
     const allWordIds = Array.from(
       new Set(lessonWords.map((lw) => String(lw.wordId))),
     );
-    const allWordObjIds = allWordIds.map((id) => new PgId(id));
+    const allWordObjIds = allWordIds.map((id) => String(id));
 
     // 1. Lấy dữ liệu user học từ trong lesson
-    const userWords = await this.userLessonWordModel.find({
-      userId: userObjId,
-      lessonWordId: { $in: lwIds } });
+    const userWords = await this.userLessonWordModel.select(sql`("user_id" = ${userObjId}) AND ("lesson_word_id"=ANY(${lwIds}::uuid[]))`);
 
     // 2. Lấy dữ liệu SRS Spaced Repetition reviews
-    const reviews = await this.reviewModel.find({
-      userId: userObjId,
-      wordId: { $in: allWordObjIds } });
+    const reviews = await this.reviewModel.select(sql`("user_id" = ${userObjId}) AND ("word_id"=ANY(${allWordObjIds}::uuid[]))`);
 
     const reviewMap = new Map(reviews.map((r) => [String(r.wordId), r]));
 
@@ -125,11 +94,7 @@ export class ProgressService {
     );
 
     // 3. Lấy thông tin các Sections trong bài học
-    const rawSections = await this.sectionModel
-      .find({ lessonId: lessonObjId })
-      .sort({ order: 1, createdAt: 1 })
-      .lean()
-      .exec();
+    const rawSections = await allContentRows(this.nativeDb,'sections',{lessonIds:[String(lessonObjId)],orderBy:"order",descending:false});
 
     // Thống kê theo từng Section/Part
     const sectionStatsMap: Record<
@@ -282,17 +247,11 @@ export class ProgressService {
     const learnedSet = new Set(lessonProgress.learnedWordIds);
     const masteredSet = new Set(lessonProgress.masteredWordIds);
 
-    const filter: any = { lessonId: new PgId(lessonId) };
-    if (sectionId && sectionId !== 'all') {
-      filter.sectionId = new PgId(sectionId);
-    }
 
-    const lessonWords = await this.lessonWordModel
-      .find(filter)
-      .populate('wordId')
-      .sort({ order: 1 });
 
-    const filteredWords = lessonWords.filter((lw) => {
+    const lessonWords = await this.hydrateContent(allContentRows(this.nativeDb,'lessonwords',{lessonIds:[lessonId],...(sectionId&&sectionId!=='all'?{sectionIds:[sectionId]}:{}),orderBy:"order",descending:false}),"lessonwords");
+
+    const filteredWords = lessonWords.filter((lw:any) => {
       if (!lw.wordId) return false;
       const wId = String((lw.wordId as any)._id || lw.wordId);
 
@@ -322,12 +281,10 @@ export class ProgressService {
    * Lấy tiến độ toàn bộ các bài học trong một Collection
    */
   async getCollectionProgress(userId: string, collectionId: string) {
-    const userObjId = new PgId(userId);
-    const collectionObjId = new PgId(collectionId);
+    const userObjId = String(userId);
+    const collectionObjId = String(collectionId);
 
-    const lessons = await this.lessonModel
-      .find({ collectionId: collectionObjId, isActive: true, isDeleted: false })
-      .sort({ order: 1 });
+    const lessons = await allContentRows(this.nativeDb,'lessons',{collectionIds:[String(collectionObjId)],activeOnly:true,publishedOnly:true,orderBy:"order",descending:false});
 
     if (!lessons.length) {
       return {
@@ -346,21 +303,9 @@ export class ProgressService {
     const lessonIds = lessons.map((l) => l._id);
 
     const [progressList, allLessonWords, sessions] = await Promise.all([
-      this.progressModel
-        .find({
-          userId: userObjId,
-          lessonId: { $in: lessonIds } })
-        .lean(),
-      this.lessonWordModel
-        .find({
-          lessonId: { $in: lessonIds } })
-        .select('_id wordId')
-        .lean(),
-      this.sessionModel
-        .find({
-          userId: userObjId,
-          lessonId: { $in: lessonIds } })
-        .lean(),
+      this.progressModel.select(sql`("user_id" = ${userObjId}) AND ("lesson_id"=ANY(${lessonIds}::uuid[]))`),
+      contentBatches(this.nativeDb,'lessonwords',{lessonIds:lessonIds},'lessonIds'),
+      this.sessionModel.select(sql`("user_id" = ${userObjId}) AND ("lesson_id"=ANY(${lessonIds}::uuid[]))`),
     ]);
 
     const progressMap = new Map(
@@ -394,16 +339,8 @@ export class ProgressService {
     const totalWordsCount = allLessonWords.length;
 
     const [userWords, reviews] = await Promise.all([
-      this.userLessonWordModel
-        .find({
-          userId: userObjId,
-          lessonWordId: { $in: allLwIds } })
-        .lean(),
-      this.reviewModel
-        .find({
-          userId: userObjId,
-          wordId: { $in: allWordIds } })
-        .lean(),
+      this.userLessonWordModel.select(sql`("user_id" = ${userObjId}) AND ("lesson_word_id"=ANY(${allLwIds}::uuid[]))`),
+      this.reviewModel.select(sql`("user_id" = ${userObjId}) AND ("word_id"=ANY(${allWordIds}::uuid[]))`),
     ]);
 
     let masteredWords = 0;
@@ -457,16 +394,14 @@ export class ProgressService {
    * Lấy tất cả tiến độ học của user
    */
   async getAllUserProgress(userId: string) {
-    return this.progressModel
-      .find({ userId: new PgId(userId) })
-      .sort({ lastStudiedAt: -1 });
+    return this.progressModel.select(sql`("user_id" = ${String(userId)})`, sql`ORDER BY "last_studied_at" DESC NULLS LAST`);
   }
 
   /**
    * Thống kê tổng quan cho Widget "Học hôm nay" và "Thành tích của bạn"
    */
   async getDashboardStats(userId: string, timezoneOffset?: string) {
-    const userObjId = new PgId(userId);
+    const userObjId = String(userId);
 
     // Tính toán thời gian theo múi giờ client (offset phút, mặc định -420 cho UTC+7)
     const offsetMinutes =
@@ -491,13 +426,9 @@ export class ProgressService {
     );
 
     // 1. Số từ học hôm nay
-    const todayReviewedWords = await this.reviewModel.countDocuments({
-      userId: userObjId,
-      lastReviewedAt: { $gte: startOfToday, $lte: endOfToday } });
+    const todayReviewedWords = await this.reviewModel.count(sql`("user_id" = ${userObjId}) AND ("last_reviewed_at" >= ${startOfToday}) AND ("last_reviewed_at" <= ${endOfToday})`);
 
-    const todayLearnedLessonWords = await this.userLessonWordModel.countDocuments({
-      userId: userObjId,
-      learnedAt: { $gte: startOfToday, $lte: endOfToday } });
+    const todayLearnedLessonWords = await this.userLessonWordModel.count(sql`("user_id" = ${userObjId}) AND ("learned_at" >= ${startOfToday}) AND ("learned_at" <= ${endOfToday})`);
 
     const todayLearnedCount = Math.max(todayReviewedWords, todayLearnedLessonWords);
     const dailyGoal = 20;
@@ -505,14 +436,10 @@ export class ProgressService {
     // 2. Tổng số từ đã học và từ đã ghi nhớ (Mastered)
     const [totalReviewedWords, totalMasteredWords, totalLessonWords, totalMasteredLessonWords] =
       await Promise.all([
-        this.reviewModel.countDocuments({ userId: userObjId }),
-        this.reviewModel.countDocuments({
-          userId: userObjId,
-          status: 'MASTERED' }),
-        this.userLessonWordModel.countDocuments({ userId: userObjId }),
-        this.userLessonWordModel.countDocuments({
-          userId: userObjId,
-          completedAt: { $exists: true, $ne: null } }),
+        this.reviewModel.count(sql`("user_id" = ${userObjId})`),
+        this.reviewModel.count(sql`("user_id" = ${userObjId}) AND ("status" = ${'MASTERED'})`),
+        this.userLessonWordModel.count(sql`("user_id" = ${userObjId})`),
+        this.userLessonWordModel.count(sql`("user_id" = ${userObjId}) AND ("completed_at" IS NOT NULL) AND ("completed_at" IS DISTINCT FROM ${null})`),
       ]);
 
     const totalLearnedWords = Math.max(totalReviewedWords, totalLessonWords);
@@ -520,18 +447,9 @@ export class ProgressService {
 
     // 3. Tính streak: Tìm các ngày có hoạt động học
     const [sessions, reviews, progresses] = await Promise.all([
-      this.sessionModel
-        .find({ userId: userObjId })
-        .select('startedAt')
-        .lean(),
-      this.reviewModel
-        .find({ userId: userObjId, lastReviewedAt: { $exists: true } })
-        .select('lastReviewedAt')
-        .lean(),
-      this.progressModel
-        .find({ userId: userObjId, lastStudiedAt: { $exists: true } })
-        .select('lastStudiedAt')
-        .lean(),
+      this.sessionModel.select(sql`("user_id" = ${userObjId})`),
+      this.reviewModel.select(sql`("user_id" = ${userObjId}) AND ("last_reviewed_at" IS NOT NULL)`),
+      this.progressModel.select(sql`("user_id" = ${userObjId}) AND ("last_studied_at" IS NOT NULL)`),
     ]);
 
     const toLocalDateStr = (d: Date) => {
@@ -575,10 +493,7 @@ export class ProgressService {
     }
 
     // 4. Tìm bài học đang học dở hoặc gần nhất để làm CTA
-    const lastProgress = await this.progressModel
-      .findOne({ userId: userObjId })
-      .sort({ lastStudiedAt: -1, updatedAt: -1 })
-      .populate('lessonId');
+    const lastProgress = await this.hydrateContent(this.progressModel.one(sql`("user_id" = ${userObjId})`, sql`ORDER BY "last_studied_at" DESC NULLS LAST,"updated_at" DESC NULLS LAST`));
 
     let continueLesson: {
       lessonId: string;
@@ -593,10 +508,8 @@ export class ProgressService {
       if (lessonObj && lessonObj.slug) {
         let colSlug = '';
         if (lessonObj.collectionId) {
-          const col = await this.collectionModel
-            .findById(lessonObj.collectionId)
-            .select('slug');
-          colSlug = col?.slug || String(lessonObj.collectionId);
+          const col = await (contentRows(this.nativeDb,'collections',{ids:[String(lessonObj.collectionId._id ?? lessonObj.collectionId)],publishedOnly:true,limit:1})).then(items=>items[0]??null);
+          colSlug = col?.slug || String(lessonObj.collectionId._id ?? lessonObj.collectionId);
         }
         continueLesson = {
           lessonId: String(lessonObj._id),
@@ -622,65 +535,33 @@ export class ProgressService {
    * Trả về: currentStreak, longestStreak, totalWordsLearned, totalWordsReviewed, totalStudyMinutes
    */
   async getOverview(userId: string) {
-    const userObjId = new PgId(userId);
+    const userObjId = String(userId);
 
     // 1. Tổng từ đã học
     const [totalUserLessonWords, totalReviewedWords] = await Promise.all([
-      this.userLessonWordModel.countDocuments({ userId: userObjId }),
-      this.reviewModel.countDocuments({ userId: userObjId }),
+      this.userLessonWordModel.count(sql`("user_id" = ${userObjId})`),
+      this.reviewModel.count(sql`("user_id" = ${userObjId})`),
     ]);
     const totalWordsLearned = Math.max(totalUserLessonWords, totalReviewedWords);
 
     // 2. Tổng từ đã ôn (tổng reviewCount)
-    const reviewAgg = await this.reviewModel.aggregate([
-      { $match: { userId: userObjId } },
-      { $group: { _id: null, total: { $sum: '$reviewCount' } } },
-    ]);
+    const reviewAgg=await rows(this.nativeDb,sql`SELECT COALESCE(SUM(review_count),0)::int total FROM userwordreviews WHERE user_id=${userObjId}::uuid`);
     const totalWordsReviewed = reviewAgg[0]?.total || 0;
 
     // 3. Tổng thời gian học (phút)
-    const dailyAgg = await this.dailyActivityModel.aggregate([
-      { $match: { userId: userObjId } },
-      { $group: { _id: null, total: { $sum: '$studyMinutes' } } },
-    ]);
+    const dailyAgg=await rows(this.nativeDb,sql`SELECT COALESCE(SUM(study_minutes),0)::int total FROM userdailyactivities WHERE user_id=${userObjId}::uuid`);
     const dailyMinutes = dailyAgg[0]?.total || 0;
 
-    const sessionAgg = await this.sessionModel.aggregate([
-      {
-        $match: {
-          userId: userObjId,
-          startedAt: { $exists: true },
-          endedAt: { $exists: true } } },
-      {
-        $project: {
-          durationMinutes: {
-            $divide: [{ $subtract: ['$endedAt', '$startedAt'] }, 60000] } } },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: '$durationMinutes' } } },
-    ]);
+    const sessionAgg=await rows(this.nativeDb,sql`SELECT COALESCE(SUM(EXTRACT(EPOCH FROM (ended_at-started_at))/60),0)::float8 total FROM learningsessions WHERE user_id=${userObjId}::uuid AND started_at IS NOT NULL AND ended_at IS NOT NULL`);
     const sessionMinutes = Math.round(sessionAgg[0]?.total || 0);
     const totalStudyMinutes = Math.max(dailyMinutes, sessionMinutes);
 
     // 4. Tính currentStreak & longestStreak
     const [dailyActivities, sessions, reviews, progresses] = await Promise.all([
-      this.dailyActivityModel
-        .find({ userId: userObjId })
-        .select('date')
-        .lean(),
-      this.sessionModel
-        .find({ userId: userObjId })
-        .select('startedAt')
-        .lean(),
-      this.reviewModel
-        .find({ userId: userObjId, lastReviewedAt: { $exists: true } })
-        .select('lastReviewedAt')
-        .lean(),
-      this.progressModel
-        .find({ userId: userObjId, lastStudiedAt: { $exists: true } })
-        .select('lastStudiedAt')
-        .lean(),
+      this.dailyActivityModel.select(sql`("user_id" = ${userObjId})`),
+      this.sessionModel.select(sql`("user_id" = ${userObjId})`),
+      this.reviewModel.select(sql`("user_id" = ${userObjId}) AND ("last_reviewed_at" IS NOT NULL)`),
+      this.progressModel.select(sql`("user_id" = ${userObjId}) AND ("last_studied_at" IS NOT NULL)`),
     ]);
 
     const studyDates = new Set<string>();
@@ -754,16 +635,8 @@ export class ProgressService {
     const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
 
     const [thisWeekActivities, lastWeekActivities] = await Promise.all([
-      this.dailyActivityModel
-        .find({
-          userId: userObjId,
-          date: { $gte: sevenDaysAgo } })
-        .lean(),
-      this.dailyActivityModel
-        .find({
-          userId: userObjId,
-          date: { $gte: fourteenDaysAgo, $lt: sevenDaysAgo } })
-        .lean(),
+      this.dailyActivityModel.select(sql`("user_id" = ${userObjId}) AND ("date" >= ${sevenDaysAgo})`),
+      this.dailyActivityModel.select(sql`("user_id" = ${userObjId}) AND ("date" >= ${fourteenDaysAgo}) AND ("date" < ${sevenDaysAgo})`),
     ]);
 
     const thisWeekWordsLearned = thisWeekActivities.reduce(
@@ -818,7 +691,7 @@ export class ProgressService {
     days: number = 90,
     timezoneOffset?: string,
   ) {
-    const userObjId = new PgId(userId);
+    const userObjId = String(userId);
     const limitDays = Math.max(1, Math.min(365, Number(days) || 90));
 
     const startDate = new Date();
@@ -826,26 +699,9 @@ export class ProgressService {
     startDate.setDate(startDate.getDate() - limitDays);
 
     const [dailyActivities, sessions, userWords] = await Promise.all([
-      this.dailyActivityModel
-        .find({
-          userId: userObjId,
-          date: { $gte: startDate } })
-        .sort({ date: 1 })
-        .lean(),
-      this.sessionModel
-        .find({
-          userId: userObjId,
-          startedAt: { $gte: startDate } })
-        .populate({
-          path: 'lessonId',
-          populate: { path: 'collectionId', select: 'name slug' } })
-        .sort({ startedAt: 1 })
-        .lean(),
-      this.userLessonWordModel
-        .find({
-          userId: userObjId,
-          createdAt: { $gte: startDate } })
-        .lean(),
+      this.dailyActivityModel.select(sql`("user_id" = ${userObjId}) AND ("date" >= ${startDate})`, sql`ORDER BY "date" ASC NULLS FIRST`),
+      this.hydrateContent(this.sessionModel.select(sql`("user_id" = ${userObjId}) AND ("started_at" >= ${startDate})`, sql`ORDER BY "started_at" ASC NULLS FIRST`)),
+      this.userLessonWordModel.select(sql`("user_id" = ${userObjId}) AND ("created_at" >= ${startDate})`),
     ]);
 
     // Offset in minutes: default -420 (Vietnam UTC+7) if not provided
@@ -954,23 +810,14 @@ export class ProgressService {
    * (CHỈ trả về các collection mà user ĐÃ học, bỏ qua collection chưa bắt đầu)
    */
   async getVocabularyProgress(userId: string) {
-    const userObjId = new PgId(userId);
+    const userObjId = String(userId);
 
-    const collections = await this.collectionModel
-      .find({ isActive: true, isDeleted: false })
-      .sort({ order: 1 })
-      .lean();
+    const collections = await allContentRows(this.nativeDb,'collections',{activeOnly:true,publishedOnly:true,orderBy:"order",descending:false});
 
     const results = [];
 
     for (const col of collections) {
-      const lessons = await this.lessonModel
-        .find({
-          collectionId: col._id,
-          isActive: true,
-          isDeleted: false })
-        .select('_id')
-        .lean();
+      const lessons = await allContentRows(this.nativeDb,'lessons',{collectionIds:[String(col._id)],activeOnly:true,publishedOnly:true});
 
       const lessonIds = lessons.map((l) => l._id);
 
@@ -980,23 +827,14 @@ export class ProgressService {
       }
 
       const [lessonWords, userProgresses] = await Promise.all([
-        this.lessonWordModel
-          .find({ lessonId: { $in: lessonIds } })
-          .select('_id')
-          .lean(),
-        this.progressModel
-          .find({
-            userId: userObjId,
-            lessonId: { $in: lessonIds } })
-          .lean(),
+        contentBatches(this.nativeDb,'lessonwords',{lessonIds:lessonIds},'lessonIds'),
+        this.progressModel.select(sql`("user_id" = ${userObjId}) AND ("lesson_id"=ANY(${lessonIds}::uuid[]))`),
       ]);
 
       const totalWords = lessonWords.length;
       const lwIds = lessonWords.map((lw) => lw._id);
 
-      const learnedWords = await this.userLessonWordModel.countDocuments({
-        userId: userObjId,
-        lessonWordId: { $in: lwIds } });
+      const learnedWords = await this.userLessonWordModel.count(sql`("user_id" = ${userObjId}) AND ("lesson_word_id"=ANY(${lwIds}::uuid[]))`);
 
       // 1. Tiến độ theo bài học (tương tự như logic admin)
       const totalLessons = lessons.length;
@@ -1062,20 +900,14 @@ export class ProgressService {
    * Trả về việc cần học hôm nay
    */
   async getTodayTasks(userId: string) {
-    const userObjId = new PgId(userId);
+    const userObjId = String(userId);
     const now = new Date();
 
     // 1. Số từ cần ôn hôm nay (SRS due)
-    const wordsToReview = await this.reviewModel.countDocuments({
-      userId: userObjId,
-      nextReviewAt: { $lte: now } });
+    const wordsToReview = await this.reviewModel.count(sql`("user_id" = ${userObjId}) AND ("next_review_at" <= ${now})`);
 
     // 2. Bài học đang học dở hoặc gần nhất
-    const lastProgress = await this.progressModel
-      .findOne({ userId: userObjId })
-      .sort({ lastStudiedAt: -1, updatedAt: -1 })
-      .populate('lessonId')
-      .lean();
+    const lastProgress = await this.hydrateContent(this.progressModel.one(sql`("user_id" = ${userObjId})`, sql`ORDER BY "last_studied_at" DESC NULLS LAST,"updated_at" DESC NULLS LAST`));
 
     let currentLesson: {
       lessonId: string;
@@ -1092,12 +924,9 @@ export class ProgressService {
         let colName = '';
         let colSlug = '';
         if (lessonObj.collectionId) {
-          const col = await this.collectionModel
-            .findById(lessonObj.collectionId)
-            .select('name slug')
-            .lean();
+          const col = await (contentRows(this.nativeDb,'collections',{ids:[String(lessonObj.collectionId._id ?? lessonObj.collectionId)],publishedOnly:true,limit:1})).then(items=>items[0]??null);
           colName = col?.name || '';
-          colSlug = col?.slug || String(lessonObj.collectionId);
+          colSlug = col?.slug || String(lessonObj.collectionId._id ?? lessonObj.collectionId);
         }
         currentLesson = {
           lessonId: String(lessonObj._id),
@@ -1110,11 +939,7 @@ export class ProgressService {
     }
 
     if (!currentLesson) {
-      const firstLesson = await this.lessonModel
-        .findOne({ isActive: true, isDeleted: false })
-        .sort({ order: 1, createdAt: 1 })
-        .populate('collectionId')
-        .lean();
+      const firstLesson = await this.hydrateContent((contentRows(this.nativeDb,'lessons',{activeOnly:true,publishedOnly:true,orderBy:"order",descending:false,limit:1})).then(items=>items[0]??null),"lessons");
 
       if (firstLesson) {
         const colObj = firstLesson.collectionId as any;
@@ -1133,9 +958,7 @@ export class ProgressService {
     const startOfToday = new Date(now);
     startOfToday.setUTCHours(0, 0, 0, 0);
 
-    const todayActivity = await this.dailyActivityModel.findOne({
-      userId: userObjId,
-      date: { $gte: startOfToday } });
+    const todayActivity = await this.dailyActivityModel.one(sql`("user_id" = ${userObjId}) AND ("date" >= ${startOfToday})`);
 
     const todayLearnedCount = todayActivity?.wordsLearned || 0;
     const newWordsCount = Math.max(0, dailyGoal - todayLearnedCount);
@@ -1155,21 +978,11 @@ export class ProgressService {
    * Trả về các hoạt động học gần đây
    */
   async getRecentActivities(userId: string) {
-    const userObjId = new PgId(userId);
+    const userObjId = String(userId);
 
     const [recentProgresses, recentSessions] = await Promise.all([
-      this.progressModel
-        .find({ userId: userObjId })
-        .sort({ lastStudiedAt: -1, updatedAt: -1 })
-        .limit(10)
-        .populate('lessonId')
-        .lean(),
-      this.sessionModel
-        .find({ userId: userObjId })
-        .sort({ startedAt: -1 })
-        .limit(10)
-        .populate('lessonId')
-        .lean(),
+      this.hydrateContent(this.progressModel.select(sql`("user_id" = ${userObjId})`, sql`ORDER BY "last_studied_at" DESC NULLS LAST,"updated_at" DESC NULLS LAST LIMIT ${10}`)),
+      this.hydrateContent(this.sessionModel.select(sql`("user_id" = ${userObjId})`, sql`ORDER BY "started_at" DESC NULLS LAST LIMIT ${10}`)),
     ]);
 
     const activities: Array<{

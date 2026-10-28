@@ -1,6 +1,6 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
-import { ExamsService } from './exams.service.js';
+import { Controller,Get,Param,Query } from '@nestjs/common';
 import { QueryExamDto } from './dto/query-exam.dto.js';
+import { ExamsService } from './exams.service.js';
 
 @Controller('exams')
 export class ExamsController {

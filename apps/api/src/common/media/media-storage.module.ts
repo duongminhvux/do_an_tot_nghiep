@@ -1,4 +1,4 @@
-import { Global, Module } from '@nestjs/common';
+import { Global,Module } from '@nestjs/common';
 import { MediaStorageService } from './media-storage.service.js';
 
 @Global()

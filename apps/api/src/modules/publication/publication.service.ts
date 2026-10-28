@@ -1,20 +1,20 @@
 import {
-  ConflictException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
+ConflictException,
+ForbiddenException,
+Injectable,
+NotFoundException,
 } from '@nestjs/common';
 import {
-  validatePublication,
-  type PublicationKind,
+validatePublication,
+type PublicationKind,
 } from '@repo/shared-types/publication';
 import {
-  InjectPgConnection,
-  type PgConnection,
+InjectPgConnection,
+type PgConnection,
 } from '../../postgres/connection.js';
 import { serviceRole } from '../../postgres/ownership.js';
-import { publicQuestion } from '../assessment/attempts/attempts.service.js';
 import type { SnapshotQuestion } from '../assessment/attempts/attempt.types.js';
+import { publicQuestion } from '../assessment/attempts/attempts.service.js';
 
 const definitions = {
   exams: { owner: 'assessment', table: 'exams' },

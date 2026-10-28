@@ -1,20 +1,21 @@
 import {
-  Body,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Query } from '@nestjs/common';
+Body,
+Delete,
+Get,
+Param,
+Patch,
+Post,
+Query
+} from '@nestjs/common';
 import { AdminController } from '../../auth/decorators/admin-controller.decorator.js';
-import { LessonsService } from './lessons.service.js';
-import { CreateLessonDto } from './dto/create-lesson.dto.js';
-import { UpdateLessonDto } from './dto/update-lesson.dto.js';
+import { LessonPublicationQueryDto } from '../../publication/publication.dto.js';
 import { AddWordsToLessonDto } from './dto/add-words-to-lesson.dto.js';
+import { CreateLessonDto } from './dto/create-lesson.dto.js';
 import { CreateSectionDto } from './dto/create-section.dto.js';
-import { UpdateSectionDto } from './dto/update-section.dto.js';
 import { UpdateLessonWordDto } from './dto/update-lesson-word.dto.js';
-import {LessonPublicationQueryDto} from '../../publication/publication.dto.js';
+import { UpdateLessonDto } from './dto/update-lesson.dto.js';
+import { UpdateSectionDto } from './dto/update-section.dto.js';
+import { LessonsService } from './lessons.service.js';
 
 @AdminController('lessons')
 export class AdminLessonsController {

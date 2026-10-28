@@ -12,11 +12,11 @@ vi.mock('../question/arena-round.service.js', () => ({
   ArenaRoundService: class {} }));
 vi.mock('../friendly/arena-friend-room.service.js', () => ({
   ArenaFriendRoomService: class {} }));
-vi.mock('../schemas/friend-room.schema.js', () => ({}));
+vi.mock('../rows/friend-room.row.js', () => ({}));
 vi.mock('../friendly/arena-friendly.service.js', () => ({
   ArenaFriendlyService: class {} }));
 
-vi.mock('../schemas/arena-match.schema.js', () => ({
+vi.mock('../rows/arena-match.row.js', () => ({
   ArenaMatchFinishReason: { PLAYER_LEFT: 'PLAYER_LEFT' },
   ArenaFriendMode: {
     CLASSIC: 'CLASSIC',

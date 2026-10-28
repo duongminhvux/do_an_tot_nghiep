@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { randomUUID } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
+import {resolve} from "node:path";
 import { fileURLToPath } from "node:url";
 import { readFile, writeFile } from "node:fs/promises";
 import assert from "node:assert/strict";
@@ -13,6 +14,7 @@ import {
 } from "../apps/api/src/postgres/migrations.ts";
 
 const cwd = fileURLToPath(new URL("..", import.meta.url));
+const includeArena=process.argv.includes('--arena');
 const includePublication=process.argv.includes('--publication');
 const includeMistakes = process.argv.includes("--mistakes");
 const { Pool } = createRequire(
@@ -64,7 +66,7 @@ try {
   }
   if (!ready) throw new Error("Test PostgreSQL did not become ready");
   const env = { ...process.env };
-  for (const role of ["learning", "assessment", "content", "media-jobs"]) {
+  for (const role of ["learning", "assessment", "content", "media-jobs",...(includeArena?["arena"]:[])]) {
     const database = DATABASES[role];
     await admin.query(`CREATE DATABASE ${database}`);
     const pool = new Pool({ connectionString: url(database) });
@@ -120,16 +122,17 @@ try {
     env[`F01_${role.replaceAll("-", "_").toUpperCase()}_TEST_DATABASE_URL`] =
       url(database);
   }
+  if(includeArena)env.ARENA_TEST_DATABASE_URL=env.F01_ARENA_TEST_DATABASE_URL;
   console.log(
     `${includePublication ? "F01/F02/F10" : includeMistakes ? "F01/F02" : "F01"} integration: four isolated owner databases; disposable fixtures`,
   );
   const result = spawnSync(
     process.execPath,
     [
-      fileURLToPath(
-        new URL("../apps/api/node_modules/vitest/vitest.mjs", import.meta.url),
-      ),
+      resolve(createRequire(new URL('../apps/api/package.json',import.meta.url)).resolve('vitest/package.json'),'../vitest.mjs'),
       "run",
+      "--maxWorkers=3",
+      ...(includeArena?["src/modules/arena"]:[]),
       "src/modules/learning/recommendations",
       ...(includeMistakes ? ["src/modules/learning/mistakes"] : []),
       ...(includePublication ? ["src/modules/publication"] : []),

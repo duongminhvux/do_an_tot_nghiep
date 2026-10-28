@@ -1,4 +1,4 @@
-import { Injectable, Logger, Module, Global } from '@nestjs/common';
+import { Global,Injectable,Logger,Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 /** HTTP client for Notification-owned email and activity logs.

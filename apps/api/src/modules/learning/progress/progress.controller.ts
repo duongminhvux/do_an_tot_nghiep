@@ -1,6 +1,6 @@
-import { Controller, Get, Param, Query, UseGuards, Req } from '@nestjs/common';
-import { ProgressService } from './progress.service.js';
+import { Controller,Get,Param,Query,Req,UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { ProgressService } from './progress.service.js';
 
 @Controller(['learning', 'progress', 'learning/progress'])
 @UseGuards(JwtAuthGuard)

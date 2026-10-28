@@ -1,12 +1,12 @@
-import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
-import { CreateUserDto } from '../users/dto/create-user.dto.js';
-import { AuthProvider, UserDocument } from '../users/schema/user.schema.js';
-import { UsersService } from '../users/users.service.js';
-import { comparePassword, hashPassword as hashPasswordHelper } from '../../common/bcrypt.js';
-import { JwtService } from '@nestjs/jwt';
+import { BadRequestException,Injectable,Logger,UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
+import { I18nContext,I18nService } from 'nestjs-i18n';
+import { comparePassword,hashPassword as hashPasswordHelper } from '../../common/bcrypt.js';
 import { NotificationClient } from '../../common/clients/notification-client.js';
-import { I18nContext, I18nService } from 'nestjs-i18n';
+import { CreateUserDto } from '../users/dto/create-user.dto.js';
+import { AuthProvider,UserRow } from '../users/rows/user.row.js';
+import { UsersService } from '../users/users.service.js';
 import { ChangePasswordDto } from './dto/change-password.dto.js';
 import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
@@ -170,7 +170,7 @@ export class AuthService {
   async validateUser(
     email: string,
     pass: string,
-  ): Promise<UserDocument | null> {
+  ): Promise<UserRow | null> {
     const user = await this.usersService.findByEmail(email);
     if (!user) {
       throw new UnauthorizedException(await this.i18n.t('auth.INVALID_CREDENTIALS'));
@@ -274,7 +274,7 @@ export class AuthService {
         ggId };
 
       const created = await this.usersService.create(newUserDto as any);
-      user = (created && typeof (created as any).toObject === 'function') ? (created as any).toObject() : created;
+      user = created;
     }
 
     const payload = {

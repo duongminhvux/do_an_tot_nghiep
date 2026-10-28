@@ -108,13 +108,7 @@ const { createConnection, withPgTransaction } = source(
     const dog = (await words.create({ word: "Dog", level: "A2" })).data;
     assert.deepEqual(cat.variations, ["cats"]);
     assert.deepEqual(cat.relatedWords, ["kitten"]);
-    source("modules/vocabulary/words/word.schema.ts");
-    const { makePgModel } = source("postgres/compat.ts");
-    const legacyWord = await makePgModel("Word", client)
-      .findById(cat._id)
-      .lean();
-    assert.deepEqual(legacyWord.variations, ["cats"]);
-    assert.deepEqual(legacyWord.relatedWords, ["kitten"]);
+
     await lessons.addWordsToLesson(
       lesson._id,
       [cat._id, dog._id, cat._id],

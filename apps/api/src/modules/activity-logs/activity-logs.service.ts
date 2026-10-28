@@ -1,33 +1,28 @@
-import { LearningActivity, LEARNING_ACTIVITY_TYPES } from '../learning-activity/schemas/learning-activity.schema.js';
-import { PgId } from '../../postgres/compat.js';
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { InjectPgModel } from '../../postgres/compat.js';
-import { type Model } from '../../postgres/compat.js';
-import {
-  ActivityAction,
-  ActivityCategory,
-  ActivityLog,
-  ActivityLogDocument } from './schemas/activity-log.schema.js';
+import { BadRequestException,Injectable,Logger } from '@nestjs/common';
+import { I18nContext,I18nService } from 'nestjs-i18n';
+import { InjectPgConnection,type PgConnection } from '../../postgres/connection.js';
+import { isUuid } from '../../postgres/ids.js';
+import { SqlRecords } from '../../postgres/records.js';
+import { first,joinSql,literal,rows,sql,type Sql } from '../../postgres/sql.js';
+import { LEARNING_ACTIVITY_TYPES } from '../learning-activity/rows/learning-activity.row.js';
+import { learningFeed } from '../learning/learning-reader.js';
 import { CreateActivityLogDto } from './dto/create-activity-log.dto.js';
 import { QueryActivityLogsDto } from './dto/query-activity-logs.dto.js';
 import { QueryActivityStatsDto } from './dto/query-activity-stats.dto.js';
-import { User, UserDocument } from '../users/schema/user.schema.js';
-import { I18nContext, I18nService } from 'nestjs-i18n';
+import {
+ActivityAction,
+ActivityCategory,
+ActivityLog,
+ActivityLogRow
+} from './rows/activity-log.row.js';
 
 @Injectable()
 export class ActivityLogsService {
   private readonly logger = new Logger(ActivityLogsService.name);
 
-  constructor(
-    @InjectPgModel(ActivityLog.name)
-    private readonly activityLogModel: Model<ActivityLogDocument>,
-    @InjectPgModel(User.name)
-    private readonly userModel: Model<UserDocument>,
-    private readonly i18n: I18nService,
-    @InjectPgModel(LearningActivity.name)
-    private readonly learningActivities: Model<LearningActivity>,
-  ) {}
-
+  constructor(@InjectPgConnection() private readonly db:PgConnection,private readonly i18n:I18nService){}
+  private get logs(){return new SqlRecords(this.db,'activitylogs');}
+  private get users(){return new SqlRecords(this.db,'identity_profiles');}
   private getLang(customLang?: string): string {
     const value = customLang || I18nContext.current()?.lang || 'vi';
     return value.toLowerCase().startsWith('en') ? 'en' : 'vi';
@@ -116,25 +111,22 @@ export class ActivityLogsService {
    * Safe asynchronous activity logging.
    * Will never throw an error to prevent disrupting primary business workflows.
    */
-  async log(dto: CreateActivityLogDto): Promise<ActivityLogDocument | null> {
+  async log(dto: CreateActivityLogDto): Promise<ActivityLogRow | null> {
     try {
-      let resolvedUserId: PgId | undefined;
+      let resolvedUserId:string|undefined;
       let userEmail = dto.userEmail;
       let userName = dto.userName;
 
-      if (dto.userId && PgId.isValid(dto.userId)) {
-        resolvedUserId = new PgId(dto.userId);
+      if (dto.userId && isUuid(dto.userId)) {
+        resolvedUserId = dto.userId;
 
         // Fetch user snapshot if email or name is missing
         if (!userEmail || !userName) {
           try {
-            const user = await this.userModel
-              .findById(resolvedUserId)
-              .select('email username role')
-              .lean();
+            const user=await this.users.one(sql`id=${resolvedUserId}::uuid`);
             if (user) {
               userEmail = userEmail || user.email;
-              userName = userName || user.username || user.email.split('@')[0];
+              userName = userName || user.username || user.email?.split('@')[0];
             }
           } catch {
             // Ignore user lookup failure
@@ -166,7 +158,7 @@ export class ActivityLogsService {
         }
       }
 
-      const created = await this.activityLogModel.create({
+      const created = await this.logs.insert({
         userId: resolvedUserId,
         userEmail: userEmail || undefined,
         userName: userName || undefined,
@@ -199,48 +191,16 @@ export class ActivityLogsService {
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
     const skip = (page - 1) * limit;
 
-    const filter: Record<string, any> = {};
-    if (query.userId && !PgId.isValid(query.userId))
-      throw new BadRequestException(await this.i18n.translate('activity-log.errors.INVALID_USER', { lang }));
-    if (query.includeLearning === 'true' && !query.userId)
-      throw new BadRequestException(await this.i18n.translate('activity-log.errors.USER_REQUIRED', { lang }));
-
-    if (query.category && query.category !== 'ALL') {
-      filter.category = query.category;
-    }
-
-    if (query.action && query.action !== 'ALL') {
-      filter.action = query.action;
-    }
-
-    if (query.status && query.status !== 'ALL') {
-      filter.status = query.status;
-    }
-
-    if (query.userId && PgId.isValid(query.userId)) {
-      filter.userId = new PgId(query.userId);
-    }
-
-    if (query.userEmail) {
-      filter.userEmail = { $regex: query.userEmail.trim(), $options: 'i' };
-    }
-
-    // Historical interactions may have an email snapshot but no user ID.
-    if (query.includeLearning === 'true' && query.userId) {
-      const user = await this.userModel.findById(query.userId).select('email').lean();
-      if (!user) throw new BadRequestException(await this.i18n.translate('activity-log.errors.INVALID_USER', { lang }));
-      // Public Identity projections intentionally omit email. Keep ID scoping when
-      // it is unavailable instead of crashing or broadening the history query.
-      const userEmail = typeof user.email === 'string' ? user.email.trim() : '';
-      if (userEmail) {
-        delete filter.userId;
-        const email = userEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        filter.$and = [{ $or: [
-          { userId: new PgId(query.userId) },
-          { $and: [{ $or: [{ userId: null }, { userId: { $exists: false } }] }, { userEmail: { $regex: `^${email}$`, $options: 'i' } }] },
-        ] }];
-      }
-    }
+    const conditions:Sql[]=[literal('TRUE')];
+    if(query.userId&&!isUuid(query.userId))throw new BadRequestException(await this.i18n.translate('activity-log.errors.INVALID_USER',{lang}));
+    if(query.includeLearning==='true'&&!query.userId)throw new BadRequestException(await this.i18n.translate('activity-log.errors.USER_REQUIRED',{lang}));
+    if(query.category&&query.category!=='ALL')conditions.push(sql`category=${JSON.stringify(query.category)}::jsonb`);
+    if(query.action&&query.action!=='ALL')conditions.push(sql`action=${query.action}`);
+    if(query.status&&query.status!=='ALL')conditions.push(sql`status=${query.status}`);
+    if(query.userId)conditions.push(sql`user_id=${query.userId}::uuid`);
+    if(query.userEmail)conditions.push(sql`user_email ILIKE '%'||${query.userEmail.trim()}||'%'`);
+    if(query.includeLearning==='true'&&query.userId&&!await this.users.one(sql`id=${query.userId}::uuid`))
+      throw new BadRequestException(await this.i18n.translate('activity-log.errors.INVALID_USER',{lang}));
     const matchedActions: string[] = [];
     if (query.search?.trim()) {
       const term = query.search.trim().toLocaleLowerCase();
@@ -251,56 +211,20 @@ export class ActivityLogsService {
         if (`${label} ${message}`.toLocaleLowerCase().includes(term)) matchedActions.push(action);
       }));
     }
-    // Date range filter
-    if (query.startDate || query.endDate) {
-      filter.createdAt = {};
-      if (query.startDate) {
-        const start = new Date(query.startDate.length === 10 ? `${query.startDate}T00:00:00+07:00` : query.startDate);
-        filter.createdAt.$gte = start;
-      }
-      if (query.endDate) {
-        const end = new Date(query.endDate.length === 10 ? `${query.endDate}T23:59:59.999+07:00` : query.endDate);
-        filter.createdAt.$lte = end;
-      }
-    }
 
-    // Text search query across email, username, description
-    if (query.search?.trim()) {
-      const regex = { $regex: query.search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
-      filter.$or = [
-        { userEmail: regex },
-        { userName: regex },
-        { description: regex },
-        { action: regex },
-        { action: { $in: matchedActions } },
-      ];
-    }
-
-    const includeLearning = query.includeLearning === 'true';
-    const learningFilter: Record<string, any> = { userId: query.userId ? new PgId(query.userId) : undefined };
-    if (query.category && query.category !== 'ALL') {
-      learningFilter.module = query.category === 'ASSESSMENT' ? 'TOEIC' : query.category;
-    }
-    if (query.action && query.action !== 'ALL') learningFilter.type = query.action;
-    if (query.status && query.status !== 'ALL' && query.status !== 'SUCCESS') learningFilter.type = { $in: [] };
-    if (filter.createdAt) learningFilter.occurredAt = filter.createdAt;
-    if (query.search?.trim()) {
-      const term = query.search.trim();
-      const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const matchedTypes = matchedActions.filter((action) => LEARNING_ACTIVITY_TYPES.includes(action as never));
-      learningFilter.$or = [{ title: { $regex: escaped, $options: 'i' } }, { type: { $regex: escaped, $options: 'i' } }, { 'metadata.gameType': { $regex: escaped, $options: 'i' } }, { type: { $in: matchedTypes } }];
-    }
-    const [rawItems, auditTotal, learningRows, learningTotal] = await Promise.all([
-      this.activityLogModel
-        .find(filter)
-        .sort({ createdAt: -1, _id: -1 })
-        .skip(includeLearning ? 0 : skip)
-        .limit(includeLearning ? skip + limit : limit)
-        .lean(),
-      this.activityLogModel.countDocuments(filter),
-      includeLearning ? this.learningActivities.find(learningFilter).sort({ occurredAt: -1, _id: -1 }).limit(skip + limit).lean() : Promise.resolve([]),
-      includeLearning ? this.learningActivities.countDocuments(learningFilter) : Promise.resolve(0),
+    const from=query.startDate?new Date(query.startDate.length===10?`${query.startDate}T00:00:00+07:00`:query.startDate):null;
+    const to=query.endDate?new Date(query.endDate.length===10?`${query.endDate}T23:59:59.999+07:00`:query.endDate):null;
+    if(from)conditions.push(sql`created_at>=${from}`);if(to)conditions.push(sql`created_at<=${to}`);
+    if(query.search?.trim())conditions.push(sql`(user_email ILIKE '%'||${query.search.trim()}||'%' OR user_name ILIKE '%'||${query.search.trim()}||'%'
+      OR description ILIKE '%'||${query.search.trim()}||'%' OR action ILIKE '%'||${query.search.trim()}||'%' OR action=ANY(${matchedActions}::text[]))`);
+    const includeLearning=query.includeLearning==='true',where=joinSql(conditions,' AND ');
+    const [rawItems,auditTotal,learning]=await Promise.all([
+      this.logs.select(where,sql`ORDER BY created_at DESC,id DESC LIMIT ${includeLearning?skip+limit:limit} OFFSET ${includeLearning?0:skip}`),this.logs.count(where),
+      includeLearning?learningFeed(this.db,{userId:query.userId!,module:query.category&&query.category!=='ALL'?(query.category==='ASSESSMENT'?'TOEIC':query.category):undefined,
+        type:query.action&&query.action!=='ALL'?query.action:undefined,disabled:!!query.status&&query.status!=='ALL'&&query.status!=='SUCCESS',
+        from:from?.toISOString(),to:to?.toISOString(),search:query.search?.trim(),matchedTypes:matchedActions.filter(action=>LEARNING_ACTIVITY_TYPES.includes(action as never)),limit:skip+limit}):Promise.resolve({items:[],total:0}),
     ]);
+    const learningRows=learning.items,learningTotal=learning.total;
     const learningItems = learningRows.map((row) => ({
       _id: `learning:${row._id}`, userId: row.userId, action: row.type,
       category: this.resolveCategory(row.type), status: 'SUCCESS',
@@ -343,10 +267,10 @@ export class ActivityLogsService {
    * View detail of a single activity log entry
    */
   async findById(id: string, customLang?: string) {
-    if (!PgId.isValid(id)) {
+    if (!isUuid(id)) {
       return null;
     }
-    const item = await this.activityLogModel.findById(id).lean();
+    const item = await this.logs.one(sql`id=${id}::uuid`);
     if (!item) return null;
 
     const lang = this.getLang(customLang);
@@ -371,8 +295,8 @@ export class ActivityLogsService {
     const lang = this.getLang(customLang);
 
     const [distinctCategories, distinctActions] = await Promise.all([
-      this.activityLogModel.distinct('category'),
-      this.activityLogModel.distinct('action'),
+      rows(this.db,sql`SELECT DISTINCT category AS value FROM public.activitylogs`).then(result=>result.map(row=>String(row.value))),
+      rows(this.db,sql`SELECT DISTINCT action AS value FROM public.activitylogs`).then(result=>result.map(row=>String(row.value))),
     ]);
 
     // Ensure all standard categories and actions are available
@@ -465,61 +389,19 @@ export class ActivityLogsService {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    const rangeFilter = { createdAt: { $gte: startDate, $lte: endDate } };
-
-    const [
-      totalActivities,
-      activitiesToday,
-      uniqueUsers,
-      categoryCounts,
-      actionCounts,
-      dailyTimeline,
-      topUsers,
-    ] = await Promise.all([
-      this.activityLogModel.countDocuments(rangeFilter),
-      this.activityLogModel.countDocuments({ createdAt: { $gte: todayStart } }),
-      this.activityLogModel.distinct('userId', rangeFilter).then((ids) => ids.filter(Boolean).length),
-      // Group by category
-      this.activityLogModel.aggregate([
-        { $match: rangeFilter },
-        { $group: { _id: '$category', count: { $sum: 1 } } },
-        { $sort: { count: -1 } },
-      ]),
-      // Top actions
-      this.activityLogModel.aggregate([
-        { $match: rangeFilter },
-        { $group: { _id: '$action', count: { $sum: 1 } } },
-        { $sort: { count: -1 } },
-        { $limit: 10 },
-      ]),
-      // Daily timeline
-      this.activityLogModel.aggregate([
-        { $match: rangeFilter },
-        {
-          $group: {
-            _id: {
-              $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
-            count: { $sum: 1 } } },
-        { $sort: { _id: 1 } },
-      ]),
-      // Top active users
-      this.activityLogModel.aggregate([
-        {
-          $match: {
-            ...rangeFilter,
-            userEmail: { $ne: null, $exists: true } } },
-        {
-          $group: {
-            _id: '$userEmail',
-            userName: { $first: '$userName' },
-            userId: { $first: '$userId' },
-            count: { $sum: 1 },
-            lastActive: { $max: '$createdAt' } } },
-        { $sort: { count: -1 } },
-        { $limit: 8 },
-      ]),
+    const range=sql`created_at>=${startDate} AND created_at<=${endDate}`;
+    const [summary,categoryCounts,actionCounts,dailyTimeline,topUsers]=await Promise.all([
+      first(this.db,sql`SELECT (SELECT COUNT(*)::integer FROM public.activitylogs WHERE ${range}) AS total,
+        (SELECT COUNT(*)::integer FROM public.activitylogs WHERE created_at>=${todayStart}) AS today,
+        (SELECT COUNT(DISTINCT user_id)::integer FROM public.activitylogs WHERE ${range}) AS users`),
+      rows(this.db,sql`SELECT category AS "_id",COUNT(*)::integer AS count FROM public.activitylogs WHERE ${range} GROUP BY category ORDER BY count DESC`),
+      rows(this.db,sql`SELECT action AS "_id",COUNT(*)::integer AS count FROM public.activitylogs WHERE ${range} GROUP BY action ORDER BY count DESC LIMIT 10`),
+      rows(this.db,sql`SELECT TO_CHAR(created_at AT TIME ZONE 'UTC','YYYY-MM-DD') AS "_id",COUNT(*)::integer AS count FROM public.activitylogs WHERE ${range} GROUP BY 1 ORDER BY 1`),
+      rows(this.db,sql`SELECT user_email AS "_id",(ARRAY_AGG(user_name ORDER BY created_at,id))[1] AS "userName",
+        (ARRAY_AGG(user_id ORDER BY created_at,id))[1] AS "userId",COUNT(*)::integer AS count,MAX(created_at) AS "lastActive"
+        FROM public.activitylogs WHERE ${range} AND user_email IS NOT NULL GROUP BY user_email ORDER BY count DESC LIMIT 8`),
     ]);
-
+    const totalActivities=Number(summary?.total??0),activitiesToday=Number(summary?.today??0),uniqueUsers=Number(summary?.users??0);
     const categoryBreakdown = await Promise.all(
       categoryCounts.map(async (c) => ({
         category: c._id,

@@ -1,20 +1,20 @@
 ﻿import {
-  Controller,
-  Module,
-  Post,
-  Body,
-  Param,
-  Headers,
-  ForbiddenException,
-  NotFoundException,
+Body,
+Controller,
+ForbiddenException,
+Headers,
+Module,
+NotFoundException,
+Param,
+Post,
 } from '@nestjs/common';
 import { timingSafeEqual } from 'node:crypto';
-import {
-  InjectPgConnection,
-  type PgConnection,
-} from '../postgres/connection.js';
-import { parseAudioFields, updateAudio } from '../common/media/audio-sql.js';
+import { parseAudioFields,updateAudio } from '../common/media/audio-sql.js';
 import { Public } from '../modules/auth/decorators/public.decorator.js';
+import {
+InjectPgConnection,
+type PgConnection,
+} from '../postgres/connection.js';
 
 function authorized(token?: string): void {
   const expected = process.env.INTERNAL_SERVICE_TOKEN || '';

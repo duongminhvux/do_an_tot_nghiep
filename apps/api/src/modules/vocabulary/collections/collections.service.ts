@@ -1,22 +1,22 @@
 ﻿import {
-  Injectable,
-  NotFoundException,
-  ConflictException,
+ConflictException,
+Injectable,
+NotFoundException,
 } from '@nestjs/common';
-import { I18nContext, I18nService } from 'nestjs-i18n';
-import { ContentSqlRepository } from '../content-sql.repository.js';
+import { I18nContext,I18nService } from 'nestjs-i18n';
 import {
-  first,
-  rows,
-  rowData,
-  sql,
-  literal,
-  type Sql,
+first,
+literal,
+rowData,
+rows,
+sql,
+type Sql,
 } from '../../../postgres/sql.js';
-import { CreateCollectionDto } from './dto/create-collection.dto.js';
-import { UpdateCollectionDto } from './dto/update-collection.dto.js';
-import { QueryCollectionDto } from './dto/query-collection.dto.js';
 import { publicationScope } from '../../publication/publication-scope.js';
+import { ContentSqlRepository } from '../content-sql.repository.js';
+import { CreateCollectionDto } from './dto/create-collection.dto.js';
+import { QueryCollectionDto } from './dto/query-collection.dto.js';
+import { UpdateCollectionDto } from './dto/update-collection.dto.js';
 
 @Injectable()
 export class CollectionsService {

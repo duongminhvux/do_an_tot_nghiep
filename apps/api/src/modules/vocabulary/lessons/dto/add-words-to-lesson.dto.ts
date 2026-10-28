@@ -1,4 +1,4 @@
-import { IsArray, IsUUID, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsArray,IsNotEmpty,IsOptional,IsUUID } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
 
 export class AddWordsToLessonDto {

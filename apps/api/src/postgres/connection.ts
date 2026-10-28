@@ -1,6 +1,6 @@
+import { Global,Inject,Module,type DynamicModule } from '@nestjs/common';
 import pg from 'pg';
-import { Global, Inject, Module, type DynamicModule } from '@nestjs/common';
-import { currentPgSession, sessionPool } from './session.js';
+import { currentPgSession,runPgSession,sessionPool } from './session.js';
 
 export type PgConnection = {
   pool: pg.Pool;
@@ -32,7 +32,7 @@ export async function withPgTransaction<T>(
   const client = await connection.pool.connect();
   try {
     await client.query('BEGIN');
-    const result = await work(createConnection(client as unknown as pg.Pool));
+    const result = await runPgSession(connection.pool,client,()=>work(createConnection(client as unknown as pg.Pool)));
     await client.query('COMMIT');
     return result;
   } catch (error) {

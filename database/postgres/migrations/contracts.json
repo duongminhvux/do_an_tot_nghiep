@@ -1,7 +1,7 @@
 {
   "identity": {"version":"0009_numeric_collation","migrationsChecksum":"0ffe5b33ab317f1464feb52bb416e369e5e651d80bc6aaaa99ce4db38c57f377","fingerprint":"1379b6ee30b9e2e9e912941ef9bc609082ec43f8d902306e6e123a42798b273c"},
   "content": {"version":"0015_content_publication","migrationsChecksum":"73037be65ef701b844f4b39ccf37028d1040f9f94c5898f5cec7ec0f90efa334","fingerprint":"1b53e3389022b8deb089dd9f6aa1e0be8a0828baef946bbb8582ea0fc039e918"},
-  "assessment": {"version":"0015_content_publication","migrationsChecksum":"19a94a25d1cba32fcf3534419f722847e5a2d8dbba0bd23563e93c799d9c5e3c","fingerprint":"5a081a94e3ceb4b8df4aa22c2bea6207d040f975422cac588daf393c09c81082"},
+  "assessment": {"version":"0016_native_attempt_fields","migrationsChecksum":"2c71ae7a29b2a5a84682a2e5d0efaabd43ddbdcf80bc000e5d4fb6aed962317f","fingerprint":"683554e17c8edb84665d84db8ecbb2e08a46887342acf23dacef3d9b25e09ae6"},
   "arena": {"version":"0013_friend_room_defaults","migrationsChecksum":"c31d5a88d648d2f2e4b01ff61e544cc1d329a9f5cb29b0fc445b1065c2901fb5","fingerprint":"8b6037e2560c08db6e98c18137b78fa41512babdef595a5e80f826137d530e98"},
   "learning": {"version":"0014_mistake_notebook","migrationsChecksum":"17edcd9d513cbeda8fcebdcaec01510025ef46ef60ce372e627b2bb82859f641","fingerprint":"a3c104145a7e27cebf731d11210375734d562dd89a5ba9d24338feb8dfac8379"},
   "media-jobs": {"version":"0010_asr_durable_jobs","migrationsChecksum":"ad66505734746c0ebf0669b6d2491b7b71e1dff2ab5b7e14e6daace7fbad8c17","fingerprint":"37006da1032b28da829cb10fcf116a162beef1fbe1d15292643912c8b190f59c"},

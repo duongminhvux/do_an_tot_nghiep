@@ -1,4 +1,4 @@
-import { Get, Injectable } from '@nestjs/common';
+import { Get } from '@nestjs/common';
 import { AdminController } from '../auth/decorators/admin-controller.decorator.js';
 
 // Fixed upstream allowlist. Never proxy user-supplied URLs from this endpoint.

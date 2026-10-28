@@ -1,10 +1,10 @@
 import { Transform } from 'class-transformer';
 import {
-  IsNotEmpty,
-  IsString,
-  IsTimeZone,
-  Matches,
-  MaxLength,
+IsNotEmpty,
+IsString,
+IsTimeZone,
+Matches,
+MaxLength,
 } from 'class-validator';
 const trim = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim() : value;

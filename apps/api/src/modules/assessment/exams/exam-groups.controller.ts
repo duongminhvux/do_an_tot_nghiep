@@ -1,6 +1,6 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
-import { ExamGroupsService } from './exam-groups.service.js';
+import { Controller,Get,Param,Query } from '@nestjs/common';
 import { QueryExamGroupDto } from './dto/query-exam-group.dto.js';
+import { ExamGroupsService } from './exam-groups.service.js';
 
 @Controller('exam-groups')
 export class ExamGroupsController {

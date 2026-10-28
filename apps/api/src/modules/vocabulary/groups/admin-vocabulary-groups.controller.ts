@@ -1,16 +1,17 @@
 import {
-  Body,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Query } from '@nestjs/common';
+Body,
+Delete,
+Get,
+Param,
+Patch,
+Post,
+Query
+} from '@nestjs/common';
 import { AdminController } from '../../auth/decorators/admin-controller.decorator.js';
-import { VocabularyGroupsService } from './vocabulary-groups.service.js';
 import { CreateVocabularyGroupDto } from './dto/create-vocabulary-group.dto.js';
-import { UpdateVocabularyGroupDto } from './dto/update-vocabulary-group.dto.js';
 import { QueryVocabularyGroupDto } from './dto/query-vocabulary-group.dto.js';
+import { UpdateVocabularyGroupDto } from './dto/update-vocabulary-group.dto.js';
+import { VocabularyGroupsService } from './vocabulary-groups.service.js';
 
 @AdminController('vocabulary-groups')
 export class AdminVocabularyGroupsController {

@@ -1,41 +1,50 @@
-import { PgId, makePgModel } from '../../../postgres/compat.js';
-import { toeicOutcomes } from '@repo/shared-types/mistakes';
-import { DomainOutboxService } from '../../../common/events/domain-outbox.service.js';
 import {
-  BadRequestException,
-  ConflictException,
-  ForbiddenException,
-  Inject,
-  Injectable,
-  NotFoundException,
-  Optional } from '@nestjs/common';
+BadRequestException,
+ConflictException,
+ForbiddenException,
+Inject,
+Injectable,
+NotFoundException,
+Optional
+} from '@nestjs/common';
 import { toeicAttemptXp } from '@repo/shared-types/learning-xp';
+import { toeicOutcomes } from '@repo/shared-types/mistakes';
 import { LearningActivityClient } from '../../../common/clients/learning-activity-client.js';
+import { DomainOutboxService } from '../../../common/events/domain-outbox.service.js';
+import { createConnection,InjectPgConnection,type PgConnection } from '../../../postgres/connection.js';
+import { isUuid } from '../../../postgres/ids.js';
+import { SqlRecords } from '../../../postgres/records.js';
+import { rows,sql,type Sql } from '../../../postgres/sql.js';
 import type { LearningActivityWriter } from '../../learning-activity/learning-activity.service.js';
-import { InjectPgModel } from '../../../postgres/compat.js';
-import type { Model } from '../../../postgres/compat.js';
-import { CreateAttemptDto } from './dto/create-attempt.dto.js';
+import { attemptOverview,attemptStatistics } from './attempt-stats.sql.js';
+
 import {
-  AudioPlayDto,
-  SaveAnswerDto,
-  UpdateAttemptDto } from './dto/update-attempt.dto.js';
-import { Attempt } from './schemas/attempt.schema.js';
-import { Exam } from '../exams/schemas/exam.schema.js';
-import { Question } from '../questions/schemas/question.schema.js';
-import { Passage } from '../questions/schemas/passage.schema.js';
-import { ExamMode, ToeicAttemptStatus } from './attempt.types.js';
+estimateToeicScore,
+TOEIC_SCORE_BANDS,
+TOEIC_TOTAL_MAX,
+toeicScoreBand
+} from '@repo/shared-types/toeic-score';
+import type { SqlRow } from '../../../postgres/row.js';
+import { Exam } from '../exams/rows/exam.row.js';
+import { Passage } from '../questions/rows/passage.row.js';
+import { Question } from '../questions/rows/question.row.js';
+import {
+calculateAttemptResult,
+COMPLETED_STATUSES
+} from './attempt-results.js';
 import type { SnapshotQuestion } from './attempt.types.js';
-import {
-  buildAttemptResultPipeline,
-  COMPLETED_STATUSES } from './attempt-results.js';
-import {
-  estimateToeicScore,
-  TOEIC_SCORE_BANDS,
-  toeicScoreBand,
-  TOEIC_TOTAL_MAX } from '@repo/shared-types/toeic-score';
+import { ExamMode,ToeicAttemptStatus } from './attempt.types.js';
+import { CreateAttemptDto } from './dto/create-attempt.dto.js';
 import type {
-  QueryAttemptDto,
-  AdminQueryAttemptDto } from './dto/query-attempt.dto.js';
+AdminQueryAttemptDto,
+QueryAttemptDto
+} from './dto/query-attempt.dto.js';
+import {
+AudioPlayDto,
+SaveAnswerDto,
+UpdateAttemptDto
+} from './dto/update-attempt.dto.js';
+import { Attempt } from './rows/attempt.row.js';
 
 export function publicQuestion(question: SnapshotQuestion, review = false) {
   const {
@@ -110,35 +119,20 @@ export function answerFeedback(question: SnapshotQuestion, answer: string) {
 
 @Injectable()
 export class AttemptsService {
-  constructor(
-    @InjectPgModel(Attempt.name) private readonly attempts: Model<Attempt>,
-    @InjectPgModel(Exam.name) private readonly exams: Model<Exam>,
-    @InjectPgModel(Question.name) private readonly questions: Model<Question>,
-    @InjectPgModel(Passage.name) private readonly passages: Model<Passage>,
-    @Optional()
+  private get attempts(){return new SqlRecords<SqlRow<Attempt>>(this.nativeDb,'attempts');}
+private get exams(){return new SqlRecords<SqlRow<Exam>>(this.nativeDb,'exams');}
+private get questions(){return new SqlRecords<SqlRow<Question>>(this.nativeDb,'questions');}
+private get passages(){return new SqlRecords<SqlRow<Passage>>(this.nativeDb,'passages');}
+constructor(
+@InjectPgConnection() private readonly nativeDb:PgConnection,@Optional()
     @Inject(LearningActivityClient) private readonly learningActivity?: LearningActivityWriter,
-    @Optional() @Inject(DomainOutboxService) private readonly domainOutbox?: DomainOutboxService,
+@Optional() @Inject(DomainOutboxService) private readonly domainOutbox?: DomainOutboxService
   ) {}
 
   async availableParts(idOrSlug: string) {
-    const exam = await this.exams
-      .findOne({
-        ...(PgId.isValid(idOrSlug)
-          ? { _id: idOrSlug }
-          : { slug: idOrSlug }),
-        type: 'TOEIC',publicationStatus:'PUBLISHED',
-        isDeleted: { $ne: true },
-        isActive: { $ne: false } })
-      .lean()
-      .exec();
+    const exam=await this.exams.one(sql`type='TOEIC' AND publication_status='PUBLISHED' AND is_deleted IS NOT TRUE AND is_active IS NOT FALSE AND ${isUuid(idOrSlug)?sql`id=${idOrSlug}::uuid`:sql`slug=${idOrSlug}`}`);
     if (!exam) throw new NotFoundException('Exam not found');
-    const rows = await this.questions
-      .aggregate<{ _id: number; totalQuestions: number }>([
-        { $match: { examId: exam._id, isActive: { $ne: false } } },
-        { $group: { _id: '$part', totalQuestions: { $sum: 1 } } },
-        { $sort: { _id: 1 } },
-      ])
-      .exec();
+    const parts=await rows(this.nativeDb,sql`SELECT part AS "_id",COUNT(*)::int AS "totalQuestions" FROM questions WHERE exam_id=${exam._id}::uuid AND is_active IS NOT FALSE GROUP BY part ORDER BY part`);
     const names = [
       '',
       'Photographs',
@@ -149,7 +143,7 @@ export class AttemptsService {
       'Text Completion',
       'Reading Comprehension',
     ];
-    return rows.map((row) => ({
+    return parts.map((row) => ({
       _id: String(row._id),
       part: row._id,
       section: row._id <= 4 ? 'LISTENING' : 'READING',
@@ -157,18 +151,19 @@ export class AttemptsService {
       totalQuestions: row.totalQuestions }));
   }
 
+  private async hydrateAttempts(pending:Promise<any[]>,includeUser=false){
+    const list=await pending;const exams=await this.exams.select(sql`id=ANY(${list.map(row=>row.examId)}::uuid[])`);const map=new Map(exams.map(row=>[String(row._id),{_id:String(row._id),name:row.name,slug:row.slug}]));
+    const users=includeUser?await new SqlRecords(this.nativeDb,'identity_profiles').select(sql`id=ANY(${list.map(row=>row.userId)}::uuid[])`):[];const userMap=new Map(users.map(row=>[String(row._id),{_id:String(row._id),username:row.username}]));
+    return list.map(row=>({...row,examId:map.get(String(row.examId))??null,...(includeUser?{userId:userMap.get(String(row.userId))??null}:{})}));
+  }
   private uuid(id: string) {
-    if (!PgId.isValid(id))
+    if (!isUuid(id))
       throw new BadRequestException('Invalid id');
-    return new PgId(id);
+    return String(id);
   }
 
   private async owned(userId: string, id: string) {
-    const attempt = await this.attempts
-      .findOne({ _id: this.uuid(id), userId: this.uuid(userId) })
-      .select('+questionSnapshot')
-      .lean()
-      .exec();
+    const attempt = await this.attempts.one(sql`("id" = ${this.uuid(id)}) AND ("user_id" = ${this.uuid(userId)})`);
     if (!attempt) throw new NotFoundException('Attempt not found');
     if (!attempt.questionSnapshot?.length)
       throw new ConflictException(
@@ -185,7 +180,6 @@ export class AttemptsService {
   private summary(attempt: any) {
     const {
       questionSnapshot: _questionSnapshot,
-      __v: _version,
       ...summary
     } = attempt;
     const answers = attempt.answers ?? {};
@@ -241,34 +235,15 @@ export class AttemptsService {
         'Choose TEST or PRACTICE and unique available Parts',
       );
     }
-    const exam = await this.exams
-      .findOne({
-        _id: this.uuid(dto.examId),
-        publicationStatus:'PUBLISHED',
-        type: 'TOEIC',
-        isDeleted: { $ne: true },
-        isActive: { $ne: false } })
-      .lean()
-      .exec();
+    const exam=await this.exams.one(sql`id=${this.uuid(dto.examId)}::uuid AND type='TOEIC' AND publication_status='PUBLISHED' AND is_deleted IS NOT TRUE AND is_active IS NOT FALSE`);
     if (!exam) throw new NotFoundException('Exam not found');
-    const questions = await this.questions
-      .find({
-        examId: exam._id,
-        isActive: { $ne: false },
-        part: { $in: dto.selectedParts } })
-      .sort({ part: 1, order: 1, sourceOrder: 1, _id: 1 })
-      .lean()
-      .exec();
+    const questions = await this.questions.select(sql`("exam_id" = ${exam._id}) AND ("is_active" IS DISTINCT FROM ${false}) AND ("part"=ANY(${dto.selectedParts}::double precision[]))`, sql`ORDER BY "part" ASC NULLS FIRST,"order" ASC NULLS FIRST,"source_order" ASC NULLS FIRST,"id" ASC NULLS FIRST`);
     if (dto.selectedParts.some((p) => !questions.some((q) => q.part === p)))
       throw new BadRequestException('Part is not available in this exam');
     const groupIds = questions.flatMap((q) =>
       q.passageGroupId ? [q.passageGroupId] : [],
     );
-    const passages = await this.passages
-      .find({ passageGroupId: { $in: groupIds } })
-      .sort({ order: 1, _id: 1 })
-      .lean()
-      .exec();
+    const passages = await this.passages.select(sql`("passage_group_id"=ANY(${groupIds}::uuid[]))`, sql`ORDER BY "order" ASC NULLS FIRST,"id" ASC NULLS FIRST`);
     const transcript = (meta: any) =>
       meta?.segments
         ?.map((s: any) => s.text)
@@ -313,7 +288,7 @@ export class AttemptsService {
         : undefined;
     const startedAt = new Date();
     let attempt;
-    try { attempt = await this.attempts.create({
+    try { attempt = await this.attempts.insert({
       examPublicationRevision:exam.publicationRevision,
       userId: this.uuid(userId),
       examId: exam._id,
@@ -339,27 +314,14 @@ export class AttemptsService {
     userId: string | undefined,
     query: AdminQueryAttemptDto,
   ) {
-    const filter: Record<string, unknown> = {};
-    if (userId || query.userId)
-      filter.userId = this.uuid(userId || query.userId!);
-    if (query.mode) filter.mode = query.mode;
-    if (query.status)
-      filter.status =
-        query.status === 'FINISHED'
-          ? { $in: COMPLETED_STATUSES }
-          : query.status;
-    if (query.examId) {
-      const examId = query.examId;
-      const exam = await this.exams
-        .findOne(
-          PgId.isValid(examId) ? { _id: examId } : { slug: examId },
-        )
-        .select('_id')
-        .lean()
-        .exec();
-      filter.examId = exam?._id ?? { $in: [] };
-    }
-    return filter;
+    const user=userId||query.userId;
+    let exam:string|undefined;
+    if(query.examId){const match=await this.exams.one(isUuid(query.examId)?sql`id=${query.examId}::uuid`:sql`slug=${query.examId}`);if(!match)return sql`FALSE`;exam=String(match._id);}
+    return sql`(${user??null}::uuid IS NULL OR user_id=${user?this.uuid(user):null}::uuid)
+      AND (${exam??null}::uuid IS NULL OR exam_id=${exam??null}::uuid)
+      AND (${query.mode??null}::text IS NULL OR mode=${query.mode??null})
+      AND (${query.status??null}::text IS NULL OR ${query.status==='FINISHED'} AND status IN ('FINISHED','COMPLETED') OR status=${query.status??null})`;
+  
   }
 
   async findAll(userId: string, queryOrExam: QueryAttemptDto | string = {}) {
@@ -367,18 +329,7 @@ export class AttemptsService {
       typeof queryOrExam === 'string' ? { examId: queryOrExam } : queryOrExam;
     const filter = await this.listFilter(userId, query);
     const limit = Math.max(1, Math.min(100, query.limit ?? 100));
-    const rows = await this.attempts
-      .find(filter)
-      .populate('examId', 'name slug')
-      .sort(
-        query.sort === 'oldest'
-          ? { createdAt: 1, _id: 1 }
-          : { createdAt: -1, _id: -1 },
-      )
-      .skip(((query.page ?? 1) - 1) * limit)
-      .limit(limit)
-      .lean()
-      .exec();
+    const rows=await this.hydrateAttempts(this.attempts.select(filter,sql`ORDER BY ${query.sort==='oldest'?sql`created_at ASC,id ASC`:sql`created_at DESC,id DESC`} LIMIT ${limit} OFFSET ${((query.page??1)-1)*limit}`));
     return rows.map((row) => this.summary(row));
   }
 
@@ -387,34 +338,20 @@ export class AttemptsService {
     const page = query.page ?? 1;
     const limit = Math.max(1, Math.min(100, query.limit ?? 100));
     const [rows, total] = await Promise.all([
-      this.attempts
-        .find(filter)
-        .populate('examId', 'name slug')
-        .populate('userId', 'username email')
-        .sort({ createdAt: -1, _id: -1 })
-        .skip((page - 1) * limit)
-        .limit(limit)
-        .lean()
-        .exec(),
-      this.attempts.countDocuments(filter).exec(),
+      this.hydrateAttempts(this.attempts.select(filter,sql`ORDER BY created_at DESC,id DESC LIMIT ${limit} OFFSET ${(page-1)*limit}`),true),
+      this.attempts.count(filter),
     ]);
     return { data: rows.map((row) => this.summary(row)), total, page, limit };
   }
 
   async adminFindOne(id: string) {
-    const attempt = await this.attempts
-      .findById(this.uuid(id))
-      .select('+questionSnapshot')
-      .populate('examId', 'name slug')
-      .populate('userId', 'username email')
-      .lean()
-      .exec();
+    const attempt=(await this.hydrateAttempts(this.attempts.select(sql`id=${this.uuid(id)}::uuid`),true))[0];
     if (!attempt) throw new NotFoundException('Attempt not found');
     return {
       ...this.summary(attempt),
       hasSnapshot: Boolean(attempt.questionSnapshot?.length),
       questions:
-        attempt.questionSnapshot?.map((q) => publicQuestion(q, true)) ?? [] };
+        attempt.questionSnapshot?.map((q:SnapshotQuestion) => publicQuestion(q, true)) ?? [] };
   }
 
   async stats(userId?: string, query: AdminQueryAttemptDto = {}) {
@@ -423,44 +360,8 @@ export class AttemptsService {
     const since = query.days
       ? new Date(Date.now() - query.days * dayMs)
       : undefined;
-    const filter = since
-      ? { ...baseFilter, createdAt: { $gte: since } }
-      : baseFilter;
-    const timezone = query.timezone || 'UTC';
-    const completed = { $in: ['$status', COMPLETED_STATUSES] };
-    const completedValue = (value: unknown) => ({
-      $cond: [completed, value, 0] });
-    const correctValue = {
-      $ifNull: ['$correctAnswers', { $ifNull: ['$totalCorrect', 0] }] };
-    const accuracyValue = {
-      $cond: [
-        { $gt: ['$totalQuestions', 0] },
-        { $multiply: [{ $divide: [correctValue, '$totalQuestions'] }, 100] },
-        0,
-      ] };
-    const sectionAccuracy = (field: string) => ({
-      $avg: {
-        $cond: [
-          { $and: [completed, { $gt: [`$${field}.total`, 0] }] },
-          `$${field}.accuracy`,
-          null,
-        ] } });
-    const overviewStage = {
-      $group: {
-        _id: null,
-        totalAttempts: { $sum: 1 },
-        totalCompleted: { $sum: completedValue(1) },
-        inProgress: {
-          $sum: { $cond: [{ $eq: ['$status', 'IN_PROGRESS'] }, 1, 0] } },
-        testAttempts: {
-          $sum: { $cond: [{ $eq: ['$mode', ExamMode.TEST] }, 1, 0] } },
-        practiceAttempts: {
-          $sum: { $cond: [{ $eq: ['$mode', ExamMode.PRACTICE] }, 1, 0] } },
-        totalQuestions: { $sum: completedValue('$totalQuestions') },
-        totalAnswered: { $sum: completedValue('$answeredQuestions') },
-        totalCorrect: { $sum: completedValue(correctValue) },
-        totalDuration: { $sum: completedValue('$durationSpent') },
-        avgAccuracy: { $avg: { $cond: [completed, accuracyValue, null] } } } };
+    const filter=sql`${baseFilter} ${since?sql`AND created_at>=${since}`:sql``}`;
+    const timezone=query.timezone||'UTC';
     const round2 = (value: number) => Math.round(value * 100) / 100;
     const shapeOverview = (overview: any = {}) => ({
       totalAttempts: overview.totalAttempts ?? 0,
@@ -484,118 +385,15 @@ export class AttemptsService {
       avgDuration: overview.totalCompleted
         ? Math.round((overview.totalDuration ?? 0) / overview.totalCompleted)
         : 0 });
-    const scoredFilter = (
-      createdAt: unknown,
-    ): Record<string, unknown> | null =>
-      query.mode === ExamMode.PRACTICE
-        ? null
-        : {
-            ...baseFilter,
-            ...(createdAt ? { createdAt } : {}),
-            mode: ExamMode.TEST,
-            status: { $in: COMPLETED_STATUSES } };
-    const findScored = (createdAt: unknown) => {
-      const scoredQuery = scoredFilter(createdAt);
-      return scoredQuery
-        ? this.attempts
-            .find(scoredQuery)
-            .select('listeningResult readingResult selectedParts createdAt')
-            .lean()
-            .exec()
-        : Promise.resolve([]);
-    };
-    const [result, recent, previous, scoredRows, previousScoredRows] =
-      await Promise.all([
-        this.attempts
-          .aggregate([
-            { $match: filter },
-            {
-              $facet: {
-                overview: [overviewStage],
-                parts: [
-                  { $match: { status: { $in: COMPLETED_STATUSES } } },
-                  { $unwind: '$partResults' },
-                  {
-                    $group: {
-                      _id: '$partResults.part',
-                      attempts: { $sum: 1 },
-                      total: { $sum: '$partResults.total' },
-                      answered: { $sum: '$partResults.answered' },
-                      correct: { $sum: '$partResults.correct' } } },
-                  { $sort: { _id: 1 } },
-                ],
-                timeline: [
-                  {
-                    $group: {
-                      _id: {
-                        $dateToString: {
-                          format: '%Y-%m-%d',
-                          date: '$createdAt',
-                          timezone } },
-                      attempts: { $sum: 1 },
-                      completed: { $sum: completedValue(1) },
-                      duration: {
-                        $sum: completedValue({
-                          $ifNull: ['$durationSpent', 0] }) },
-                      accuracy: {
-                        $avg: { $cond: [completed, accuracyValue, null] } },
-                      listeningAccuracy: sectionAccuracy('listeningResult'),
-                      readingAccuracy: sectionAccuracy('readingResult') } },
-                  { $sort: { _id: 1 } },
-                ],
-                // Raw-accuracy bands; there is no calibrated TOEIC scale yet.
-                distribution: [
-                  { $match: { status: { $in: COMPLETED_STATUSES } } },
-                  {
-                    $group: {
-                      _id: {
-                        $switch: {
-                          branches: [
-                            {
-                              case: { $gte: [accuracyValue, 90] },
-                              then: 'excellent' },
-                            {
-                              case: { $gte: [accuracyValue, 75] },
-                              then: 'good' },
-                            {
-                              case: { $gte: [accuracyValue, 60] },
-                              then: 'fair' },
-                            {
-                              case: { $gte: [accuracyValue, 45] },
-                              then: 'average' },
-                          ],
-                          default: 'low' } },
-                      count: { $sum: 1 } } },
-                ] } },
-          ])
-          .exec(),
-        this.attempts
-          .find(filter)
-          .populate('examId', 'name slug')
-          .sort({ createdAt: -1, _id: -1 })
-          .limit(5)
-          .lean()
-          .exec(),
-        since
-          ? this.attempts
-              .aggregate([
-                {
-                  $match: {
-                    ...baseFilter,
-                    createdAt: {
-                      $gte: new Date(since.getTime() - query.days! * dayMs),
-                      $lt: since } } },
-                overviewStage,
-              ])
-              .exec()
-          : Promise.resolve(null),
-        findScored(since ? { $gte: since } : undefined),
-        since
-          ? findScored({
-              $gte: new Date(since.getTime() - query.days! * dayMs),
-              $lt: since })
-          : Promise.resolve([]),
-      ]);
+    const previousWhere=since?sql`${baseFilter} AND created_at>=${new Date(since.getTime()-query.days!*dayMs)} AND created_at<${since}`:sql`FALSE`;
+    const scoredWhere=(where:Sql)=>sql`${where} AND mode='TEST' AND status IN ('FINISHED','COMPLETED') AND ${query.mode!==ExamMode.PRACTICE}`;
+    const [result,recent,previous,scoredRows,previousScoredRows]=await Promise.all([
+      attemptStatistics(this.nativeDb,filter,timezone),
+      this.hydrateAttempts(this.attempts.select(filter,sql`ORDER BY created_at DESC,id DESC LIMIT 5`)),
+      since?attemptOverview(this.nativeDb,previousWhere).then(row=>[row]):Promise.resolve(null),
+      this.attempts.select(scoredWhere(filter)),
+      since?this.attempts.select(scoredWhere(previousWhere)):Promise.resolve([]),
+    ]);
     const overview = result[0]?.overview[0] ?? {};
     const parts = (result[0]?.parts ?? []).map((part: any) => ({
       part: part._id,
@@ -711,21 +509,15 @@ export class AttemptsService {
     );
   }
 
-  private async grade(attempt: Attempt & { _id: PgId }) {
-    // The graded state AND the XP delivery event must commit atomically.
-    // The compat update pipeline uses row locks on a caller-owned pg client;
-    // publish to RabbitMQ happens later via the PostgreSQL outbox relay.
+  private async grade(attempt: Attempt & { _id: string }) {
     if (!this.domainOutbox) throw new Error('Transactional outbox is required for TOEIC grading');
     await this.domainOutbox.withTransaction(async (session) => {
-      const model = makePgModel<Attempt>(Attempt.name, session.client as any);
-      const result = await model.updateOne(
-        { _id: attempt._id, status: ToeicAttemptStatus.IN_PROGRESS },
-        buildAttemptResultPipeline(attempt.questionSnapshot, attempt.selectedParts),
-        { updatePipeline: true },
-      ).exec();
-      if (!result.modifiedCount) return;
-      const graded = await model.findById(attempt._id).lean().exec();
-      if (!graded) throw new Error('Graded attempt disappeared within transaction');
+      const records=new SqlRecords(createConnection(session.client as any),'attempts');
+      const current=await records.one(sql`id=${attempt._id}::uuid`,sql`FOR UPDATE`);
+      if(!current||current.status!==ToeicAttemptStatus.IN_PROGRESS)return;
+      const result=calculateAttemptResult(current.questionSnapshot,current.selectedParts,current.answers??{},current.startedAt);
+      const graded=await records.patch(sql`id=${attempt._id}::uuid AND status='IN_PROGRESS'`,result);
+      if(!graded)return;
       const correct = graded.correctAnswers ?? 0;
       await this.domainOutbox!.enqueue('learning.activity.recorded.v1', String(graded.userId), {
         userId: String(graded.userId),
@@ -759,13 +551,7 @@ export class AttemptsService {
     // Audio can be uploaded/generated after an attempt starts, or replaced at a
     // new URL. Refresh only media; prompts, answer keys and grading stay frozen.
     const questions = listening.length
-      ? await this.questions
-          .find({
-            _id: { $in: listening.map((q) => this.uuid(q._id)) },
-            examId: attempt.examId })
-          .select('_id audioUrl passageGroupId')
-          .lean()
-          .exec()
+      ? await this.questions.select(sql`("id"=ANY(${listening.map((q) => this.uuid(q._id))}::uuid[])) AND ("exam_id" = ${attempt.examId})`)
       : [];
     const sourceQuestions = new Map(questions.map((q) => [String(q._id), q]));
     const groupIds = [
@@ -778,14 +564,7 @@ export class AttemptsService {
       ),
     ];
     const passages = groupIds.length
-      ? await this.passages
-          .find({
-            passageGroupId: {
-              $in: groupIds.map((id) => this.uuid(id)) } })
-          .select('_id passageGroupId audioUrl order')
-          .sort({ order: 1, _id: 1 })
-          .lean()
-          .exec()
+      ? await this.passages.select(sql`("passage_group_id"=ANY(${groupIds.map((id) => this.uuid(id))}::uuid[]))`, sql`ORDER BY "order" ASC NULLS FIRST,"id" ASC NULLS FIRST`)
       : [];
     return {
       ...this.summary(attempt),
@@ -875,31 +654,8 @@ export class AttemptsService {
       : `question_${question._id}`;
     if (attempt.mode === ExamMode.PRACTICE)
       return { key, used: 0, limit: null };
-    const path = `audioPlayCounts.${key}`;
-    // The count is reserved atomically BEFORE starting/restarting playback.
-    // The passage key is shared by all questions referring to that recording.
-    const updated = await this.attempts
-      .findOneAndUpdate(
-        {
-          _id: this.uuid(id),
-          userId: this.uuid(userId),
-          status: ToeicAttemptStatus.IN_PROGRESS,
-          mode: ExamMode.TEST,
-          $expr: { $lt: [{ $ifNull: [`$${path}`, 0] }, 2] } },
-        [
-          {
-            $set: {
-              audioPlayCounts: {
-                $mergeObjects: [
-                  { $ifNull: ['$audioPlayCounts', {}] },
-                  { [key]: { $add: [{ $ifNull: [`$${path}`, 0] }, 1] } },
-                ] } } },
-        ],
-        { updatePipeline: true, returnDocument: 'after' },
-      )
-      .select('audioPlayCounts')
-      .lean()
-      .exec();
+    const updated=await this.attempts.patch(sql`id=${this.uuid(id)}::uuid AND user_id=${this.uuid(userId)}::uuid AND status='IN_PROGRESS' AND mode='TEST' AND COALESCE((audio_play_counts->>${key})::int,0)<2`,{},
+      {audioPlayCounts:sql`COALESCE(audio_play_counts,'{}')||jsonb_build_object(${key}::text,COALESCE((audio_play_counts->>${key})::int,0)+1)`});
     if (!updated)
       throw new ConflictException(
         'Audio limit reached or attempt is no longer in progress',
@@ -915,50 +671,12 @@ export class AttemptsService {
     );
     if (!question || !question.options.some((o) => o.key === dto.answer))
       throw new BadRequestException('Invalid question or answer');
-    const result = await this.attempts
-      .updateOne(
-        {
-          _id: attempt._id,
-          userId: attempt.userId,
-          status: ToeicAttemptStatus.IN_PROGRESS,
-          // Lock only answers whose feedback has been revealed. Legacy
-          // PRACTICE attempts already exposed every previously saved answer.
-          ...(attempt.mode === ExamMode.PRACTICE
-            ? {
-                [`revealedAnswers.${dto.questionId}`]: { $exists: false },
-                ...(attempt.revealedAnswers == null
-                  ? { [`answers.${dto.questionId}`]: { $exists: false } }
-                  : {}),
-              }
-            : {}),
-          // Refuse answers once a timed test is past its deadline.
-          $or: [
-            { expiresAt: { $exists: false } },
-            { expiresAt: null },
-            {
-              expiresAt: {
-                $gt: new Date(Date.now() - TIME_LIMIT_GRACE_MS) } },
-          ] },
-        [
-          {
-            $set: {
-              ...(attempt.mode === ExamMode.PRACTICE
-                ? {
-                    revealedAnswers: {
-                      $ifNull: ['$revealedAnswers', { $ifNull: ['$answers', {}] }],
-                    },
-                  }
-                : {}),
-              answers: {
-                $mergeObjects: [
-                  { $ifNull: ['$answers', {}] },
-                  { [dto.questionId]: dto.answer },
-                ] } } },
-        ],
-        { updatePipeline: true },
-      )
-      .exec();
-    if (!result.matchedCount) {
+    const result=await this.attempts.patch(sql`id=${attempt._id}::uuid AND user_id=${attempt.userId}::uuid AND status='IN_PROGRESS'
+      AND (mode<>'PRACTICE' OR NOT (COALESCE(revealed_answers,answers,'{}') ? ${dto.questionId}))
+      AND (expires_at IS NULL OR expires_at>${new Date(Date.now()-TIME_LIMIT_GRACE_MS)})`,{},
+      {answers:sql`COALESCE(answers,'{}')||jsonb_build_object(${dto.questionId}::text,${dto.answer}::text)`,
+       ...(attempt.mode===ExamMode.PRACTICE?{revealedAnswers:sql`COALESCE(revealed_answers,answers,'{}')`}:{}),});
+    if (!result) {
       const latest = await this.owned(userId, id);
       throw new ConflictException(
         latest.answers?.[dto.questionId]
@@ -996,13 +714,8 @@ export class AttemptsService {
         throw new BadRequestException('Invalid question index');
       patch.currentQuestionIndex = dto.currentQuestionIndex;
     }
-    const result = await this.attempts
-      .updateOne(
-        { _id: attempt._id, status: ToeicAttemptStatus.IN_PROGRESS },
-        { $set: patch },
-      )
-      .exec();
-    if (!result.matchedCount)
+    const result=await this.attempts.patch(sql`id=${attempt._id}::uuid AND status='IN_PROGRESS'`,patch);
+    if (!result)
       throw new ConflictException('Attempt is no longer in progress');
     return { saved: true };
   }
@@ -1023,22 +736,8 @@ export class AttemptsService {
       return { ...answerFeedback(question, existing), selectedAnswer: existing };
     // Read and freeze the answer in the same atomic operation: another tab's
     // save either wins before this reveal or is refused after it.
-    const updated = await this.attempts.findOneAndUpdate(
-      {
-        _id: attempt._id,
-        userId: attempt.userId,
-        mode: ExamMode.PRACTICE,
-        status: ToeicAttemptStatus.IN_PROGRESS,
-        [`answers.${questionId}`]: { $exists: true },
-      },
-      [{ $set: {
-        revealedAnswers: { $mergeObjects: [
-          { $ifNull: ['$revealedAnswers', {}] },
-          { [questionId]: `$answers.${questionId}` },
-        ] },
-      } }],
-      { updatePipeline: true, returnDocument: 'after' },
-    ).select('revealedAnswers').lean().exec();
+    const updated=await this.attempts.patch(sql`id=${attempt._id}::uuid AND user_id=${attempt.userId}::uuid AND mode='PRACTICE' AND status='IN_PROGRESS' AND answers ? ${questionId}`,{},
+      {revealedAnswers:sql`COALESCE(revealed_answers,'{}')||jsonb_build_object(${questionId}::text,answers->${questionId})`});
     if (!updated) throw new ConflictException('Attempt is no longer in progress');
     const selectedAnswer = updated.revealedAnswers![questionId];
     return { ...answerFeedback(question, selectedAnswer), selectedAnswer };
@@ -1056,16 +755,8 @@ export class AttemptsService {
   async abandon(userId: string, id: string) {
     const attempt = await this.owned(userId, id);
     this.inProgress(attempt);
-    const result = await this.attempts
-      .updateOne(
-        { _id: attempt._id, status: ToeicAttemptStatus.IN_PROGRESS },
-        {
-          $set: {
-            status: ToeicAttemptStatus.ABANDONED,
-            completedAt: new Date() } },
-      )
-      .exec();
-    if (!result.matchedCount)
+    const result=await this.attempts.patch(sql`id=${attempt._id}::uuid AND status='IN_PROGRESS'`,{status:ToeicAttemptStatus.ABANDONED,completedAt:new Date()});
+    if (!result)
       throw new ConflictException('Attempt is no longer in progress');
     return this.summary({ ...attempt, status: ToeicAttemptStatus.ABANDONED });
   }

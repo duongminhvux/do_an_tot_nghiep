@@ -1,22 +1,22 @@
-import { Controller, Post, Body, UseGuards, Req, Res, UnauthorizedException, Logger, Get } from '@nestjs/common';
+import { Body,Controller,Get,Logger,Post,Req,Res,UnauthorizedException,UseGuards } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import express from 'express';
 import { AuthService } from './auth.service.js';
-import { CreateAuthDto } from './dto/create-auth.dto.js';
 import { Public } from './decorators/public.decorator.js';
+import { CreateAuthDto } from './dto/create-auth.dto.js';
 import { LocalAuthGuard } from './guards/local-auth.guard.js';
-import { ConfigService } from '@nestjs/config';
-import { setRefreshCookie, clearRefreshCookie, readRefreshCookie } from './refresh-cookie.js';
+import { clearRefreshCookie,readRefreshCookie,setRefreshCookie } from './refresh-cookie.js';
 
-import { VerifyEmailDto } from './dto/verify-email-auth.dto.js';
-import { ResendCodeDto } from './dto/resend-code.dto.js';
+import { I18nService } from 'nestjs-i18n';
+import { NotificationClient } from '../../common/clients/notification-client.js';
+import { ActivityAction,ActivityCategory } from '../../common/contracts/activity.types.js';
 import { ChangePasswordDto } from './dto/change-password.dto.js';
 import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
+import { ResendCodeDto } from './dto/resend-code.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
-import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
-import { I18nService } from 'nestjs-i18n';
+import { VerifyEmailDto } from './dto/verify-email-auth.dto.js';
 import { GoogleOauthGuard } from './guards/google-oauth.guard.js';
-import { NotificationClient } from '../../common/clients/notification-client.js';
-import { ActivityAction, ActivityCategory } from '../../common/contracts/activity.types.js';
+import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 
 @Controller('auth')
 export class AuthController {

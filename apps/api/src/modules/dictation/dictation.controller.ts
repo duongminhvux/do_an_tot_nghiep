@@ -1,8 +1,8 @@
-import { Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
+import { Body,Controller,Get,Param,Post,Query,Req } from '@nestjs/common';
 import { DictationService } from './dictation.service.js';
-import { QueryDictationDto } from './dto/query-dictation.dto.js';
 import { DictationAttemptDto } from './dto/dictation-attempt.dto.js';
 import { DictationSegmentActionDto } from './dto/dictation-progress-action.dto.js';
+import { QueryDictationDto } from './dto/query-dictation.dto.js';
 
 @Controller('dictation')
 export class DictationController {

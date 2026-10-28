@@ -1,12 +1,13 @@
 import { Type } from 'class-transformer';
 import {
-  IsArray,
-  IsBoolean,
-  IsEnum,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  ValidateNested } from 'class-validator';
+IsArray,
+IsBoolean,
+IsEnum,
+IsNotEmpty,
+IsOptional,
+IsString,
+ValidateNested
+} from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
 
 export enum WordLevel {

@@ -1,10 +1,10 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
-import {
-  InjectPgConnection,
-  type PgConnection,
-} from '../../postgres/connection.js';
-import { ACTIVE_TIME_MAX_SLICE_MS } from '@repo/shared-types/active-time';
+import { BadRequestException,Injectable } from '@nestjs/common';
 import type { ActiveTimePulse } from '@repo/shared-types/active-time';
+import { ACTIVE_TIME_MAX_SLICE_MS } from '@repo/shared-types/active-time';
+import {
+InjectPgConnection,
+type PgConnection,
+} from '../../postgres/connection.js';
 
 @Injectable()
 export class ActiveTimeService {

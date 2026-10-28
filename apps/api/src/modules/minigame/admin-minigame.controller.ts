@@ -1,14 +1,15 @@
-import { WordShooterSettingsDto } from './dto/word-shooter-settings.dto.js';
-import { TypingRushSettingsDto } from './dto/typing-rush-settings.dto.js';
-import { MeaningTypingSettingsDto } from './dto/meaning-typing-settings.dto.js';
-import { Body, Get, Param, Patch, Put, Query } from '@nestjs/common';
+import { Body,Get,Param,Patch,Put,Query } from '@nestjs/common';
 import { AdminController } from '../auth/decorators/admin-controller.decorator.js';
+import { UpdateGameDto } from './dto/game-definition.dto.js';
+import { MeaningTypingSettingsDto } from './dto/meaning-typing-settings.dto.js';
+import {
+MiniGameResultQueryDto,
+TopScoresQueryDto
+} from './dto/minigame-result-query.dto.js';
+import { TypingRushSettingsDto } from './dto/typing-rush-settings.dto.js';
+import { WordShooterSettingsDto } from './dto/word-shooter-settings.dto.js';
 import { GameCatalogService } from './services/game-catalog.service.js';
 import { MiniGameAdminService } from './services/minigame-admin.service.js';
-import {
-  MiniGameResultQueryDto,
-  TopScoresQueryDto } from './dto/minigame-result-query.dto.js';
-import { UpdateGameDto } from './dto/game-definition.dto.js';
 
 @AdminController('minigames')
 export class AdminMinigameController {
