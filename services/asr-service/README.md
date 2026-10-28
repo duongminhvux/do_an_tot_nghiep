@@ -7,5 +7,7 @@ Internal FastAPI service used by the NestJS API to turn uploaded Dictation audio
 
 Important env vars: `ASR_MODEL`, `ASR_DEVICE`, `ASR_COMPUTE_TYPE`, `ASR_VAD_FILTER`, `ASR_BEAM_SIZE`, `ASR_SENTENCE_GAP_MS`, `ASR_MAX_UPLOAD_MB`.
 
+CPU/CUDA launch commands and build cache behavior: [Docker guide](../../DOCKER.md).
+
 
 Environment configuration is centralized in the repository root `.env` / `.env.example`; do not create a service-local `.env`. Docker Compose passes only the variables required by this service.

@@ -11,6 +11,11 @@
     "dev:gateway": "node scripts/dev-gateway.mjs",
     "dev:infra": "docker compose -f compose.infra.yml up -d --build",
     "dev:docker": "docker compose up -d --build",
+    "dev:docker:auto": "node scripts/docker-up.mjs",
+    "dev:docker:cuda": "node scripts/docker-up.mjs --cuda",
+    "dev:infra:cuda": "node scripts/docker-up.mjs --infra --cuda",
+    "test:docker-devices": "node --test tests/docker-devices.mjs && python -m unittest discover -s services/tts-service -p test_install_torch.py",
+    "test:docker-compose-devices": "node --test tests/docker-compose-devices.mjs",
     "audit:postgres": "python scripts/audit-postgres.py",
     "audit:postgres-native": "node scripts/audit-postgres-native.cjs"
   },

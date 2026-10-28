@@ -1,5 +1,9 @@
 .git
 .local
+.tmp
+.agents
+.codex
+.aws
 .gitignore
 **/node_modules
 **/.next

@@ -1,0 +1,16 @@
+# Add to either docker-compose.yml or compose.infra.yml for CUDA TTS only.
+services:
+  tts-service:
+    build:
+      args:
+        TORCH_VARIANT: ${TORCH_CUDA_VARIANT:-cu126}
+    environment:
+      KOKORO_DEVICE: cuda
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

@@ -120,9 +120,12 @@ export class LearningActivityService {
   async home(userId: string, timezone = DEFAULT_TIMEZONE) {
     const activeByDay = await this.activeTime.daily(userId, timezone);
     const rows=await queryRows<{_id:{day:string;module:LearningModule};xp:number;count:number;durationSec:number}>(this.connection,sql`
-      SELECT jsonb_build_object('day',TO_CHAR(occurred_at AT TIME ZONE ${timezone},'YYYY-MM-DD'),'module',module) AS "_id",
+      SELECT jsonb_build_object('day',day,'module',module) AS "_id",
         COALESCE(SUM(xp),0)::integer AS xp,COUNT(*) FILTER(WHERE type<>ALL(${WORD_TYPES}::text[]))::integer AS count,0 AS "durationSec"
-      FROM public.learning_activities WHERE user_id=${userId}::uuid GROUP BY TO_CHAR(occurred_at AT TIME ZONE ${timezone},'YYYY-MM-DD'),module`);
+      FROM (
+        SELECT TO_CHAR(occurred_at AT TIME ZONE ${timezone},'YYYY-MM-DD') AS day,module,xp,type
+        FROM public.learning_activities WHERE user_id=${userId}::uuid
+      ) AS daily_activity GROUP BY day,module`);
 
     const days = new Map<
       string,

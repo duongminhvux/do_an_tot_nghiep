@@ -1,9 +1,6 @@
 # syntax=docker/dockerfile:1.7
 FROM python:3.11-slim-bookworm
 
-ARG TORCH_VERSION=2.7.1
-ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cpu
-
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
@@ -15,9 +12,17 @@ RUN sed -i "s|http://deb.debian.org|https://deb.debian.org|g" /etc/apt/sources.l
 ENV PIP_DEFAULT_TIMEOUT=180 PIP_RETRIES=12 PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_PROGRESS_BAR=off
 WORKDIR /app
 
+# Keep the large Torch layer independent of application requirements and code.
+ARG TORCH_VERSION=2.7.1
+ARG TORCH_VARIANT=cpu
+COPY services/tts-service/install_torch.py /opt/install_torch.py
+RUN --mount=type=cache,id=vocalearn-tts-pip-${TORCH_VARIANT},target=/root/.cache/pip,sharing=locked \
+    python /opt/install_torch.py --version "${TORCH_VERSION}" --variant "${TORCH_VARIANT}"
+
 COPY services/tts-service/requirements.txt ./requirements.txt
-RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked python -m pip install "torch==${TORCH_VERSION}" --index-url "${TORCH_INDEX_URL}" \
-    && python -m pip install -r requirements.txt
+RUN --mount=type=cache,id=vocalearn-tts-pip-${TORCH_VARIANT},target=/root/.cache/pip,sharing=locked \
+    python -m pip install -c /opt/torch-constraints.txt -r requirements.txt \
+    && python /opt/install_torch.py --version "${TORCH_VERSION}" --variant "${TORCH_VARIANT}" --verify
 
 COPY services/tts-service/app ./app
 

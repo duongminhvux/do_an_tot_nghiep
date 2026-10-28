@@ -78,10 +78,10 @@ services:
       sbom: false
       args:
         TORCH_VERSION: ${TORCH_VERSION:-2.7.1}
-        TORCH_INDEX_URL: ${TORCH_INDEX_URL:-https://download.pytorch.org/whl/cpu}
+        TORCH_VARIANT: cpu
     restart: unless-stopped
     environment:
-      KOKORO_DEVICE: ${KOKORO_DEVICE:-cpu}
+      KOKORO_DEVICE: cpu
       KOKORO_MODEL_ID: ${KOKORO_MODEL_ID:-hexgrad/Kokoro-82M}
       HF_HOME: /models/huggingface
     volumes:
@@ -96,8 +96,8 @@ services:
       sbom: false
     restart: unless-stopped
     environment:
-      ASR_DEVICE: ${ASR_DEVICE:-cpu}
-      ASR_COMPUTE_TYPE: ${ASR_COMPUTE_TYPE:-int8}
+      ASR_DEVICE: cpu
+      ASR_COMPUTE_TYPE: int8
       ASR_MODEL: ${ASR_MODEL:-small.en}
       ASR_MODEL_DIR: /models/faster-whisper
     volumes:
@@ -200,4 +200,6 @@ services:
 volumes:
   redis_data: {}
   rabbitmq_data: {}
+  kokoro_models: {}
+  whisper_models: {}
   objectstore_data: {}

@@ -12,7 +12,7 @@ RUN sed -i "s|http://deb.debian.org|https://deb.debian.org|g" /etc/apt/sources.l
 ENV PIP_DEFAULT_TIMEOUT=180 PIP_RETRIES=12 PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_PROGRESS_BAR=off
 WORKDIR /app
 COPY services/asr-service/requirements.txt ./requirements.txt
-RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked python -m pip install -r requirements.txt
+RUN --mount=type=cache,id=vocalearn-asr-pip-cpu,target=/root/.cache/pip,sharing=locked python -m pip install -r requirements.txt
 
 COPY services/asr-service/app ./app
 

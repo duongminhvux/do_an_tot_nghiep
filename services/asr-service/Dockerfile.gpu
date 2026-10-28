@@ -1,18 +1,19 @@
 # syntax=docker/dockerfile:1.7
-FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
+# faster-whisper/CTranslate2 requires CUDA 12 + cuDNN 9 (not cuDNN 8).
+FROM nvidia/cuda:12.3.2-cudnn9-runtime-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends python3 python3-pip ffmpeg ca-certificates \
+RUN apt-get -o Acquire::Retries=8 -o Acquire::https::Timeout=120 update \
+    && apt-get -o Acquire::Retries=8 -o Acquire::https::Timeout=120 install -y --no-install-recommends python3 python3-pip ffmpeg ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 ENV PIP_DEFAULT_TIMEOUT=180 PIP_RETRIES=12 PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_PROGRESS_BAR=off
 WORKDIR /app
 COPY services/asr-service/requirements.txt ./requirements.txt
-RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked python3 -m pip install -r requirements.txt
+RUN --mount=type=cache,id=vocalearn-asr-pip-cuda,target=/root/.cache/pip,sharing=locked python3 -m pip install -r requirements.txt
 
 COPY services/asr-service/app ./app
 
