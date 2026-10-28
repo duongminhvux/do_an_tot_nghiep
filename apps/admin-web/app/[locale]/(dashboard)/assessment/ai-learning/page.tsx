@@ -1,5 +1,7 @@
 "use client";
 
+import { useListPagination } from '@/hooks/use-list-pagination';
+import { ListPagination } from '@/components/ui/list-pagination';
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -20,6 +22,7 @@ export default function LearningPage() {
   const [filter, setFilter] = useState("pending");
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
+  const samplePage = useListPagination(data?.samples.filter(sample => sample.status === filter) ?? [], filter, 5);
   const load = async () => {
     const res = await apiClient.get<{ data: Corpus }>("/admin/pdf-ai/learning");
     setData(res.data.data);
@@ -49,7 +52,7 @@ export default function LearningPage() {
         }}>Thử chuyển lại</button></p>}
       <p className="text-sm text-slate-500">Hiển thị tối đa 300 mẫu gần nhất trên tổng {data.total} mẫu. PDF được giữ riêng trên máy, không đưa vào thư mục ảnh công khai.</p>
       {!data.samples.some(s => s.status === filter) && <p className="rounded border bg-white p-8">Chưa có mẫu trong mục này. Khi sửa và lưu đề AI, mẫu thay đổi sẽ xuất hiện ở đây.</p>}
-      {data.samples.filter(s => s.status === filter).map(s => <article key={s.id} className="space-y-4 rounded-xl border bg-white p-5">
+      {samplePage.items.map(s => <article key={s.id} className="space-y-4 rounded-xl border bg-white p-5">
         <div className="flex flex-wrap justify-between gap-3">
           <h2 className="font-semibold">{s.provenance.testNumber ? `Test ${s.provenance.testNumber} · ` : ""}Part {s.part} · {s.kind === "group" ? "Bài đọc/lời thoại từ câu" : "Câu"} {s.number}</h2>
           {s.provenance.examId && <Link className="text-blue-600" href={`/${locale}/assessment/${s.provenance.examId}?editQuestion=${s.number}`}>Mở câu trong đề</Link>}
@@ -78,6 +81,7 @@ export default function LearningPage() {
           </div>
         </>}
       </article>)}
+        <ListPagination pagination={samplePage} />
     </>}
   </main>;
 }

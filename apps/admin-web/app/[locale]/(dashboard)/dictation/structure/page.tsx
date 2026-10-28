@@ -1,5 +1,8 @@
 'use client';
 
+import { useListPagination } from '@/hooks/use-list-pagination';
+import { PaginatedItems } from '@/components/ui/paginated-items';
+import { ListPagination } from '@/components/ui/list-pagination';
 import Link from 'next/link';
 import { FormEvent, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
@@ -33,6 +36,7 @@ export default function DictationStructurePage() {
     queryFn: () => dictationService.getHierarchy(),
   });
   const topics = unwrap<DictationTopic[]>(data) || [];
+  const topicPage = useListPagination(topics, '');
 
   const [topicTitle, setTopicTitle] = useState('');
   const [topicDescription, setTopicDescription] = useState('');
@@ -252,7 +256,7 @@ export default function DictationStructurePage() {
             <div className="p-10 text-center text-sm text-slate-400">Chưa có Topic. Tạo Topic đầu tiên ở phía trên.</div>
           ) : (
             <div className="grid gap-4 p-4 lg:grid-cols-2">
-              {topics.map((topic) => (
+              {topicPage.items.map((topic) => (
                 <article key={topic._id} className="overflow-hidden rounded-xl border border-slate-200">
                   <div className="flex gap-4 p-4">
                     <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-slate-100">
@@ -270,7 +274,8 @@ export default function DictationStructurePage() {
                   </div>
                   <div className="border-t border-slate-100 bg-slate-50/70 p-3">
                     <div className="space-y-2">
-                      {(topic.sections || []).map((section) => (
+                      <PaginatedItems items={topic.sections || []} resetKey={topic._id}>
+                        {sections => sections.map((section) => (
                         <div key={section._id} className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2">
                           <div><p className="text-xs font-bold text-slate-700">{section.title}</p><p className="mt-0.5 text-[11px] text-slate-400">{section.lessonCount || 0} lesson · order {section.order}</p></div>
                           <div className="flex gap-1">
@@ -279,11 +284,13 @@ export default function DictationStructurePage() {
                           </div>
                         </div>
                       ))}
+                      </PaginatedItems>
                       {(topic.sections || []).length === 0 && <p className="px-2 py-3 text-xs text-slate-400">Topic này chưa có Section.</p>}
                     </div>
                   </div>
                 </article>
               ))}
+              <ListPagination pagination={topicPage} />
             </div>
           )}
         </section>

@@ -51,7 +51,7 @@ export function AppSidebar() {
   const siteSettings = useSiteSettings();
   const router = useRouter();
   const pathname = usePathname();
-  const { setOpenMobile } = useSidebar();
+  const { setOpenMobile, state, setOpen, isMobile } = useSidebar();
   React.useEffect(() => { setOpenMobile(false); }, [pathname, setOpenMobile]);
   const params = useParams();
   const locale = (params?.locale as string) || 'vi';
@@ -62,6 +62,7 @@ export function AppSidebar() {
   const [vocabMenuOpen, setVocabMenuOpen] = useState(true);
   const [toeicMenuOpen, setToeicMenuOpen] = useState(true);
   const [gamesMenuOpen, setGamesMenuOpen] = useState(true);
+  const [dictationMenuOpen, setDictationMenuOpen] = useState(true);
 
   const handleLogout = async () => {
     try {
@@ -83,6 +84,9 @@ export function AppSidebar() {
     pathname === `/${locale}/dictation` ||
     (pathname?.startsWith(`/${locale}/dictation/`) && !pathname?.startsWith(`/${locale}/dictation/progress`));
   const isProgressActive = pathname?.startsWith(`/${locale}/dictation/progress`);
+  React.useEffect(() => {
+    if (pathname?.startsWith(`/${locale}/dictation`)) setDictationMenuOpen(true);
+  }, [pathname, locale]);
   const isArenaActive = pathname === `/${locale}/arena` || pathname?.startsWith(`/${locale}/arena/`);
   const isGamesListActive = pathname === `/${locale}/games` || pathname?.startsWith(`/${locale}/games/`);
   const isGamesSectionActive = isArenaActive || isGamesListActive;
@@ -407,52 +411,42 @@ export function AppSidebar() {
 
               {/* 3. Luyện tập */}
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={isPracticeActive}
-                  tooltip={t('nav.dictation', 'Dictation')}
-                  className={cn(
-                    'h-10 px-3 rounded-lg text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-all font-medium text-sm',
-                    isPracticeActive && 'bg-blue-50/80 text-blue-600 font-semibold shadow-xs'
+                <div>
+                  <SidebarMenuButton
+                    onClick={() => {
+                      if (state === 'collapsed' && !isMobile) {
+                        setOpen(true);
+                        setDictationMenuOpen(true);
+                      } else setDictationMenuOpen(open => !open);
+                    }}
+                    isActive={!!(isPracticeActive || isProgressActive)}
+                    tooltip={t('nav.dictation', 'Dictation')}
+                    aria-expanded={dictationMenuOpen}
+                    aria-controls="dictation-submenu"
+                    className={cn('h-10 rounded-lg px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600',
+                      (isPracticeActive || isProgressActive) && 'text-blue-600')}
+                  >
+                    <Headphones className="h-5 w-5 shrink-0" />
+                    <span className="flex-1 truncate group-data-[collapsible=icon]:hidden">{t('nav.dictation', 'Dictation')}</span>
+                    <ChevronDown className={cn('h-4 w-4 transition-transform group-data-[collapsible=icon]:hidden', dictationMenuOpen && 'rotate-180')} />
+                  </SidebarMenuButton>
+                  {dictationMenuOpen && (
+                    <div id="dictation-submenu" className="space-y-1 pl-7 pr-1 pt-1.5 group-data-[collapsible=icon]:hidden">
+                      <Link href={`/${locale}/dictation`} aria-current={isPracticeActive ? 'page' : undefined}
+                        className={cn('flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all',
+                          isPracticeActive ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900')}>
+                        <Headphones className="h-4 w-4 shrink-0" />
+                        <span>{t('nav.dictation', 'Dictation')}</span>
+                      </Link>
+                      <Link href={`/${locale}/dictation/progress`} aria-current={isProgressActive ? 'page' : undefined}
+                        className={cn('flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all',
+                          isProgressActive ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900')}>
+                        <TrendingUp className="h-4 w-4 shrink-0" />
+                        <span>{t('nav.dictation_progress')}</span>
+                      </Link>
+                    </div>
                   )}
-                >
-                  <Link href={`/${locale}/dictation`} className="flex items-center gap-3">
-                    <Headphones
-                      className={cn(
-                        'h-5 w-5 shrink-0',
-                        isPracticeActive ? 'text-blue-600' : 'text-slate-500'
-                      )}
-                    />
-                    <span className="truncate group-data-[collapsible=icon]:hidden">
-                      {t('nav.dictation', 'Dictation')}
-                    </span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              {/* 4. Tiến độ */}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={isProgressActive}
-                  tooltip={t('nav.dictation_progress', 'Tiến độ Dictation')}
-                  className={cn(
-                    'h-10 px-3 rounded-lg text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-all font-medium text-sm',
-                    isProgressActive && 'bg-blue-50/80 text-blue-600 font-semibold shadow-xs'
-                  )}
-                >
-                  <Link href={`/${locale}/dictation/progress`} className="flex items-center gap-3">
-                    <TrendingUp
-                      className={cn(
-                        'h-5 w-5 shrink-0',
-                        isProgressActive ? 'text-blue-600' : 'text-slate-500'
-                      )}
-                    />
-                    <span className="truncate group-data-[collapsible=icon]:hidden">
-                      {t('nav.dictation_progress', 'Tiến độ Dictation')}
-                    </span>
-                  </Link>
-                </SidebarMenuButton>
+                </div>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>

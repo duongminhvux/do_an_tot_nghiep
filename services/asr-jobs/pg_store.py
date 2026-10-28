@@ -1,73 +1,81 @@
-"""PostgreSQL ASR job persistence. JSONB documents with first-class UUID/status columns."""
+"""ASR job commands backed by parameterized PostgreSQL statements."""
 from __future__ import annotations
+
 import os
-import json
-from datetime import datetime
 from uuid import UUID
+
 import psycopg
 from psycopg.rows import dict_row
+from psycopg.types.json import Jsonb
 
-class JobStore:
-    def __init__(self, table='asr_jobs'):
-        assert table in ('asr_jobs', 'audio_jobs')
-        self.table = table
+
+class AsrJobStore:
     def _conn(self):
         return psycopg.connect(
-            host=os.getenv('PGHOST','127.0.0.1'),
-            port=int(os.getenv('PGPORT','5432')),
-            dbname=os.getenv('PGDATABASE','media_db'),
-            user=os.getenv('PGUSER','vl_media'),
-            password=os.environ['PGPASSWORD'],
-            row_factory=dict_row,
+            host=os.getenv('PGHOST', '127.0.0.1'),
+            port=int(os.getenv('PGPORT', '5432')),
+            dbname=os.getenv('PGDATABASE', 'media_db'),
+            user=os.getenv('PGUSER', 'vl_media'),
+            password=os.environ['PGPASSWORD'], row_factory=dict_row,
         )
+
     def ping(self):
         with self._conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute('SELECT 1')
-                return cur.fetchone()
-    def _find(self, data, filter):
-        return all(str(data.get(k) if k != '_id' else data.get('_id')) == str(v)
-                   for k,v in filter.items())
-    def find_one(self, filter, projection=None):
+            conn.execute('SELECT 1')
+
+    def get(self, job_id: str):
         with self._conn() as conn:
-            with conn.cursor() as cur:
-                # Use SQL indexed PK for the normal queue lookup.
-                key=filter.get('_id') or filter.get('id')
-                if key:
-                    cur.execute(f'SELECT id, payload FROM {self.table} WHERE id=%s',(str(key),))
-                else:
-                    cur.execute(f'SELECT id, payload FROM {self.table}')
-                for row in cur.fetchall():
-                    doc={**row['payload'],'_id':str(row['id']),'id':str(row['id'])}
-                    if self._find(doc,filter):
-                        if projection and projection.get('_id')==0:doc.pop('_id',None)
-                        return doc
-        return None
-    def insert_one(self,doc):
-        id=str(doc.get('_id') or doc.get('id'))
-        UUID(id)
-        normalized=json.dumps(doc,default=self._json)
+            row = conn.execute('''
+                SELECT (payload - '_id') || jsonb_build_object(
+                    'id', id::text, 'state', lower(status),
+                    'attempts', GREATEST(COALESCE(attempts,0), COALESCE((payload->>'attempts')::integer,0)),
+                    'error', COALESCE(error,payload->>'error'), 'createdAt', created_at) AS job
+                FROM public.asr_jobs WHERE id=%s
+            ''', (UUID(job_id),)).fetchone()
+            return row['job'] if row else None
+
+    def create(self, job_id: str, language: str, key: str):
         with self._conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute(f'''INSERT INTO {self.table}(id,payload,status)
-                    VALUES(%s,%s::jsonb,%s)''',(id,normalized,doc.get('state','PENDING')))
-        return id
-    def update_one(self,filter,update):
-        key=filter.get('_id') or filter.get('id')
-        if not key:raise ValueError('Job writes require a UUID filter')
+            conn.execute('''
+                INSERT INTO public.asr_jobs (id, status, attempts, payload)
+                VALUES (%s, 'WAITING', 0, %s)
+            ''', (UUID(job_id), Jsonb({'language': language, 'key': key, 'result': None})))
+
+    def activate(self, job_id: str):
         with self._conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute(f'SELECT payload FROM {self.table} WHERE id=%s FOR UPDATE',(str(key),))
-                row=cur.fetchone()
-                if not row:return 0
-                doc=row['payload']
-                for k,v in update.get('$set',{}).items():doc[k]=v
-                for k,v in update.get('$inc',{}).items():doc[k]=doc.get(k,0)+v
-                for k in update.get('$unset',{}):doc.pop(k,None)
-                cur.execute(f'''UPDATE {self.table} SET payload=%s::jsonb,status=%s,updated_at=now() WHERE id=%s''',
-                    (json.dumps(doc,default=self._json),doc.get('state','PENDING'),str(key)))
-                return 1
-    @staticmethod
-    def _json(obj):
-        if isinstance(obj,datetime):return obj.isoformat()
-        raise TypeError(f'Unsupported JSON value {type(obj)}')
+            row = conn.execute('''
+                UPDATE public.asr_jobs
+                SET status='ACTIVE', attempts=GREATEST(COALESCE(attempts,0), COALESCE((payload->>'attempts')::integer,0))+1, error=NULL,
+                    payload=payload - ARRAY['state','attempts','error','finishedAt']::text[]
+                WHERE id=%s AND upper(status)<>'COMPLETED'
+                RETURNING id
+            ''', (UUID(job_id),)).fetchone()
+            return row is not None
+
+    def complete(self, job_id: str, result: dict):
+        with self._conn() as conn:
+            conn.execute('''
+                UPDATE public.asr_jobs SET status='COMPLETED', error=NULL,
+                    payload=(payload - ARRAY['state','attempts','error']::text[])
+                        || jsonb_build_object('result',%s::jsonb,'finishedAt',now())
+                WHERE id=%s AND upper(status)='ACTIVE'
+            ''', (Jsonb(result), UUID(job_id)))
+
+    def retry(self, job_id: str, error: str):
+        with self._conn() as conn:
+            conn.execute('''
+                UPDATE public.asr_jobs SET status='RETRYING', error=%s,
+                    attempts=GREATEST(COALESCE(attempts,0), COALESCE((payload->>'attempts')::integer,0)),
+                    payload=payload - ARRAY['state','attempts','error','finishedAt']::text[]
+                WHERE id=%s AND upper(status)<>'COMPLETED'
+            ''', (error[:500], UUID(job_id)))
+
+    def fail(self, job_id: str, error: str):
+        with self._conn() as conn:
+            conn.execute('''
+                UPDATE public.asr_jobs SET status='FAILED', error=%s,
+                    attempts=GREATEST(COALESCE(attempts,0), COALESCE((payload->>'attempts')::integer,0)),
+                    payload=(payload - ARRAY['state','attempts','error']::text[])
+                        || jsonb_build_object('finishedAt',now())
+                WHERE id=%s AND upper(status)<>'COMPLETED'
+            ''', (error[:500], UUID(job_id)))

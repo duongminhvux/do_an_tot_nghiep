@@ -28,6 +28,7 @@ function route(rules, url) {
   return rules.find(({re}) => re.test(p))?.role ?? null;
 }
 const fixtures = [
+  ['/api/admin/content-quality/summary','content'],
   ['/api/auth/google/login','identity'],['/api/admin/auth/login','identity'],['/api/users','identity'],
   ['/api/words','content'],['/api/admin/words','content'],['/api/collections','content'],
   ['/api/vocabulary-groups','content'],['/api/lessons','content'],['/api/dictation','content'],

@@ -56,9 +56,10 @@ export class SavedWordsService {
   async deleteFolder(userId:string,folderId:string){
     if(!isUuid(folderId))throw new BadRequestException(msg.invalidFolder);
     return withPgTransaction(this.db,async db=>{
-      const folder=await first(db,sql`DELETE FROM public.vocabularyfolders WHERE id=${folderId}::uuid AND user_id=${userId}::uuid RETURNING id`);
+      const folder=await first(db,sql`SELECT id FROM public.vocabularyfolders WHERE id=${folderId}::uuid AND user_id=${userId}::uuid FOR UPDATE`);
       if(!folder)throw new NotFoundException(msg.folderMissing);
       await rows(db,sql`UPDATE public.usersavedwords SET folder_id=NULL,payload=payload-'folderId' WHERE user_id=${userId}::uuid AND folder_id=${folderId}::uuid`);
+      await rows(db,sql`DELETE FROM public.vocabularyfolders WHERE id=${folderId}::uuid AND user_id=${userId}::uuid`);
       return {success:true,folderId};
     });
   }

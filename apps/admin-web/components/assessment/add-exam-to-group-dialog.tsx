@@ -1,6 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useRemotePagination } from '@/hooks/use-remote-pagination';
+import { ListPagination } from '@/components/ui/list-pagination';
 import { CreateExamChoiceDialog } from './create-exam-choice-dialog';
 import { useParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
@@ -44,14 +46,16 @@ export function AddExamToGroupDialog({
   const [selectedExamIds, setSelectedExamIds] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const pagination = useRemotePagination(`${groupId}:${searchTerm}:${open}`);
   // Query unassigned exams (exams without a group, or matching search)
   const { data: examsResponse, isLoading } = useQuery({
-    queryKey: ['admin-exams-unassigned', searchTerm],
+    queryKey: ['admin-exams-unassigned', searchTerm, pagination.page, pagination.pageSize],
     queryFn: async () => {
       const res = await examService.getAll({
         search: searchTerm.trim() || undefined,
         groupId: 'none',
-        limit: 50,
+        limit: pagination.pageSize,
+        page: pagination.page,
       });
       return res?.data;
     },
@@ -59,6 +63,11 @@ export function AddExamToGroupDialog({
   });
 
   const exams = examsResponse?.data || [];
+  const total = examsResponse?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / pagination.pageSize));
+  useEffect(() => {
+    if (examsResponse && pagination.page > totalPages) pagination.setPage(totalPages);
+  }, [examsResponse, pagination.page, totalPages]);
 
   const addMutation = useMutation({
     mutationFn: async () => {
@@ -89,11 +98,9 @@ export function AddExamToGroupDialog({
   };
 
   const handleSelectAll = () => {
-    if (selectedExamIds.length === exams.length) {
-      setSelectedExamIds([]);
-    } else {
-      setSelectedExamIds(exams.map((e) => e._id));
-    }
+    const visible = exams.map(exam => exam._id);
+    setSelectedExamIds(previous => visible.every(id => previous.includes(id))
+      ? previous.filter(id => !visible.includes(id)) : [...new Set([...previous, ...visible])]);
   };
 
   return (
@@ -153,7 +160,7 @@ export function AddExamToGroupDialog({
             onClick={handleSelectAll}
             className="text-xs text-blue-600 hover:underline font-medium cursor-pointer"
           >
-            {selectedExamIds.length === exams.length && exams.length > 0
+            {exams.length > 0 && exams.every(exam => selectedExamIds.includes(exam._id))
               ? t('examGroups.addExamDialog.deselectAll')
               : t('examGroups.addExamDialog.selectAll')}
           </button>
@@ -211,6 +218,7 @@ export function AddExamToGroupDialog({
               );
             })
           )}
+          <ListPagination pagination={{ ...pagination, totalPages, totalItems: total }} disabled={isLoading || addMutation.isPending} />
         </div>
 
         {/* Footer */}

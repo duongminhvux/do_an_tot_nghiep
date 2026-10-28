@@ -246,16 +246,17 @@ export class LessonsService {
   }
   async deleteSection(sectionId: string): Promise<void> {
     await this.repository.transaction(async (repository) => {
-      const deleted = await first(
+      const section = await first(
         repository.connection,
-        sql`DELETE FROM public.sections WHERE id = ${sectionId}::uuid RETURNING id`,
+        sql`SELECT id FROM public.sections WHERE id = ${sectionId}::uuid FOR UPDATE`,
       );
-      if (!deleted) return this.missing('SECTION_NOT_FOUND');
+      if (!section) return this.missing('SECTION_NOT_FOUND');
       await repository.patch(
         'lessonwords',
         sql`section_id = ${sectionId}::uuid`,
         { sectionId: null },
       );
+      await rows(repository.connection,sql`DELETE FROM public.sections WHERE id = ${sectionId}::uuid`);
     });
   }
   reorderSections(lessonId: string, items: { id: string; order: number }[]) {

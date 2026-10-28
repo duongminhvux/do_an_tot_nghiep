@@ -1,6 +1,90 @@
+# ==========================================
+# 1. DEPENDENCIES & BUILD OUTPUTS
+# ==========================================
+**/node_modules/**
+**/dist/**
+**/build/**
+**/.next/**
+**/.turbo/**
+**/.pnpm-store/**
+**/.git/**
+**/.agents/**
+
+# ==========================================
+# 2. LOCK FILES & ENVIRONMENT CONFIGS
+# ==========================================
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+*.lock
+.env*
+
+# ==========================================
+# 3. FRONTEND UI COMPONENTS & PAGES (Giảm nhiễu cho AI)
+# ==========================================
+# Bỏ qua các file trang và layout lặp lại của Next.js
+**/page.tsx
+**/layout.tsx
+
+# Bỏ qua thư viện UI có sẵn (shadcn/ui, v.v.)
+**/components/ui/**
+
+# ==========================================
+# 4. LOCALIZATION & ASSETS
+# ==========================================
+# Bỏ qua file dịch ngôn ngữ (JSON quá dài)
+**/locales/**
+**/i18n/**
+
+# Bỏ qua các file tĩnh, ảnh, font, media
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.ico
+*.svg
+*.webp
+*.woff
+*.woff2
+*.ttf
+*.mp3
+*.wav
+*.mp4
+
+# ==========================================
+# 5. TESTS, FIXTURES & MIGRATIONS
+# ==========================================
+# Bỏ qua toàn bộ file test và dữ liệu mẫu
+**/test/**
+**/*.spec.ts
+**/*.test.ts
+**/*.test.mjs
+**/fixtures/**
+
+# Bỏ qua lịch sử migration SQL cũ của Database (chỉ giữ lại schema chính)
+database/postgres/migrations/**
+
+# ==========================================
+# 6. IDE & SYSTEM FILES
+# ==========================================
+.DS_Store
+Thumbs.db
+.vscode/**
+.idea/**
 *.md
+
+# ==========================================
+# 7. BỔ SUNG LƯỢC BỚT CÁC SCRIPT & FILE PHỤ
+# ==========================================
+# Bỏ qua toàn bộ thư mục scripts vận hành, kiểm tra (nếu AI không cần sửa script)
+scripts/**
+
+# Bỏ qua các file test viết bằng Python hoặc JS bên ngoài service
+services/**/test_*.py
+tests/**
+
+# Bỏ qua các file cấu hình docker compose phụ, file log audit hệ thống
+compose.*.yml
 *.json
-*.txt
-*.mjs
+*.config.mjs
 *.config.js
-*.xml

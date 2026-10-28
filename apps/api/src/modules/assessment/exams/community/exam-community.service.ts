@@ -72,7 +72,7 @@ export class ExamCommunityService {
         AND a.total_questions>0 AND a.total_questions=(SELECT count(*) FROM questions)
         AND a.correct_answers BETWEEN 0 AND a.total_questions AND a.duration_spent>=0
         AND p.is_deleted IS NOT TRUE AND p.is_banned IS NOT TRUE
-        AND a.payload->>'examPublicationRevision'=$2::text
+        AND a.exam_publication_revision=$2::integer
         AND jsonb_typeof(a.question_snapshot)='array'
         AND jsonb_array_length(CASE WHEN jsonb_typeof(a.question_snapshot)='array' THEN a.question_snapshot ELSE '[]'::jsonb END)=a.total_questions
         AND NOT EXISTS (SELECT q.id::text FROM questions q EXCEPT

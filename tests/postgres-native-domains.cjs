@@ -58,7 +58,8 @@ const {ArenaSettingsService}=source('modules/arena/admin/arena-settings.service.
 
    role('content');
    const word=await record('words').insert({word:'apple',slug:'apple',level:'A1',isActive:true,parts:[{partOfSpeech:'noun',meanings:[{definition:'A fruit',translation:['qua tao']}]}]});
-   const lesson=await record('lessons').insert({title:'Vocabulary',slug:'vocabulary',collectionId:randomUUID()});
+   const collection=await record('collections').insert({name:'Vocabulary',slug:'vocabulary'});
+   const lesson=await record('lessons').insert({title:'Vocabulary',slug:'vocabulary',collectionId:collection._id});
    const lw=await record('lessonwords').insert({lessonId:lesson._id,wordId:word._id});
    // Publication is controlled by PostgreSQL's explicit publisher transaction.
    await db.query('BEGIN');await db.query("SET LOCAL vocalearn.publication_transition='1'");

@@ -3,7 +3,7 @@ import hmac
 import json
 import os
 import pika
-from pg_store import JobStore
+from pg_store import AudioJobReader
 from fastapi import HTTPException, Request
 
 AMQP = os.environ['RABBITMQ_URL']
@@ -13,7 +13,7 @@ DLQ = 'audio.jobs.dead'
 TOKEN = os.getenv('JOB_INTERNAL_TOKEN', '')
 if len(TOKEN) < 24 or TOKEN.upper().startswith('REPLACE_'): raise RuntimeError('JOB_INTERNAL_TOKEN must be >= 24 chars')
 
-JOBS = JobStore('audio_jobs')
+JOBS = AudioJobReader()
 
 def authorize(request: Request):
     if not hmac.compare_digest(request.headers.get('x-internal-token',''), TOKEN):
@@ -32,4 +32,4 @@ def connect(long_running=False):
     return c, ch
 
 def load_job(job_id):
-    return JOBS.find_one({'id':job_id}, {'_id':0})
+    return JOBS.get(job_id)

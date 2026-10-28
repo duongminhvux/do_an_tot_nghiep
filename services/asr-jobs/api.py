@@ -2,7 +2,6 @@ from __future__ import annotations
 import hmac
 import os
 import uuid
-from datetime import datetime, timezone
 from fastapi import FastAPI, UploadFile, File, Form, Request, HTTPException
 from common import JOBS, S3, BUCKET, TOKEN, broker, publish
 
@@ -33,14 +32,12 @@ async def enqueue(request: Request, file: UploadFile=File(...), language: str=Fo
     key=f'asr-jobs/{job_id}/source{suffix}'
     S3.put_object(Bucket=BUCKET, Key=key, Body=data,
                   ContentType=file.content_type or 'application/octet-stream')
-    doc={'_id':job_id, 'state':'waiting', 'language':language,'key':key,
-         'createdAt':datetime.now(timezone.utc),'attempts':0,'result':None}
-    JOBS.insert_one(doc)
+    JOBS.create(job_id, language, key)
     c=None
     try:
         c,ch=broker();publish(ch,job_id)
     except Exception as exc:
-        JOBS.update_one({'_id':job_id},{'$set':{'state':'failed','error':'Queue unavailable'}})
+        JOBS.fail(job_id, 'Queue unavailable')
         raise HTTPException(503,'RabbitMQ unavailable') from exc
     finally:
         if c and c.is_open:c.close()
@@ -52,9 +49,6 @@ def status(job_id: str, request:Request):
     try:
         if str(uuid.UUID(job_id))!=job_id:raise ValueError('Invalid job ID')
     except ValueError:raise HTTPException(404,'Job not found')
-    job=JOBS.find_one({'_id':job_id})
+    job=JOBS.get(job_id)
     if job is None:raise HTTPException(404,'Job not found')
-    job['id']=job.pop('_id')
-    for name in ('createdAt','finishedAt'):
-        if isinstance(job.get(name),datetime):job[name]=job[name].isoformat()
     return job

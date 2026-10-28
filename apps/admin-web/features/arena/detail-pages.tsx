@@ -1,4 +1,6 @@
 "use client";
+import { useListPagination } from '@/hooks/use-list-pagination';
+import { ListPagination } from '@/components/ui/list-pagination';
 import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -36,6 +38,9 @@ export function ArenaMatchDetailPage() {
     refetchInterval: 30000,
   });
   const data = query.data;
+  const guessPage = useListPagination(data?.wordGuessAttempts ?? [], id);
+  const historyPage = useListPagination(data?.usedWords ?? [], id);
+  const questionPage = useListPagination(data?.questions ?? [], id);
   return (
     <ArenaShell title="matches" refresh={() => void query.refetch()}>
       {!data ? (
@@ -173,7 +178,7 @@ export function ArenaMatchDetailPage() {
           <Panel title={t("questions")}>
             {data.questions.length ? (
               <div className="space-y-3">
-                {data.questions.map((question) => (
+                {questionPage.items.map((question) => (
                   <details
                     key={question._id}
                     className="rounded-lg border border-slate-200"
@@ -260,6 +265,7 @@ export function ArenaMatchDetailPage() {
                     </div>
                   </details>
                 ))}
+                <ListPagination pagination={questionPage} />
               </div>
             ) : (
               <p className="text-sm text-slate-500">{t("noQuestionHistory")}</p>
@@ -271,14 +277,15 @@ export function ArenaMatchDetailPage() {
                 {t("wordHistoryHint")}
               </p>
               <div className="flex flex-wrap gap-2">
-                {data.usedWords.map((word, index) => (
+                {historyPage.items.map((word, index) => (
                   <span
-                    key={index}
+                    key={(index + historyPage.offset)}
                     className="rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700"
                   >
-                    {index + 1}. {word}
+                    {(index + historyPage.offset) + 1}. {word}
                   </span>
                 ))}
+                <ListPagination pagination={historyPage} />
                 {!data.usedWords.length && (
                   <p className="text-sm text-slate-500">{t("empty")}</p>
                 )}
@@ -288,7 +295,7 @@ export function ArenaMatchDetailPage() {
           {data.friendMode === "WORD_GUESS" && (
             <Panel title={t("guessHistory")}>
               <DataTable
-                rows={data.wordGuessAttempts ?? []}
+                rows={guessPage.items}
                 rowKey={(a) =>
                   (data.wordGuessAttempts ?? []).indexOf(a).toString()
                 }
@@ -339,6 +346,7 @@ export function ArenaMatchDetailPage() {
                   },
                 ]}
               />
+              <ListPagination pagination={guessPage} />
             </Panel>
           )}
         </>

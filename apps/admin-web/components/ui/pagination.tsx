@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 export interface PaginationProps {
@@ -11,6 +11,7 @@ export interface PaginationProps {
   className?: string;
   showItemCount?: boolean;
   itemLabel?: string;
+  compact?: boolean;
 }
 
 export function Pagination({
@@ -22,6 +23,7 @@ export function Pagination({
   className = '',
   showItemCount = true,
   itemLabel,
+  compact = false,
 }: PaginationProps) {
   const { t } = useTranslation('vocabulary');
 
@@ -59,7 +61,7 @@ export function Pagination({
     ];
   };
 
-  const pages = getPageNumbers();
+  const pages = compact ? [currentPage] : getPageNumbers();
 
   const startItem = totalItems ? Math.min((currentPage - 1) * pageSize + 1, totalItems) : (currentPage - 1) * pageSize + 1;
   const endItem = totalItems ? Math.min(currentPage * pageSize, totalItems) : currentPage * pageSize;
@@ -90,6 +92,12 @@ export function Pagination({
       )}
 
       <div className="flex items-center gap-1.5 order-1 sm:order-2">
+        {compact && (
+          <button type="button" disabled={currentPage <= 1} onClick={() => onPageChange(1)} aria-label="First page"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-40">
+            <ChevronsLeft className="h-4 w-4" />
+          </button>
+        )}
         {/* Previous button */}
         <button
           type="button"
@@ -129,7 +137,7 @@ export function Pagination({
                   : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               }`}
             >
-              {pageNum}
+              {compact ? `${pageNum} / ${totalPages}` : pageNum}
             </button>
           );
         })}
@@ -144,6 +152,12 @@ export function Pagination({
         >
           <ChevronRight className="w-4 h-4" />
         </button>
+        {compact && (
+          <button type="button" disabled={currentPage >= totalPages} onClick={() => onPageChange(totalPages)} aria-label="Last page"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-40">
+            <ChevronsRight className="h-4 w-4" />
+          </button>
+        )}
       </div>
     </div>
   );

@@ -20,6 +20,10 @@ for(const location of walk(sourceRoot)){
   }visit(source);if(locations.length)findings.push({file,locations});
 }
 const bridgePresent=fs.existsSync(path.join(sourceRoot,'postgres/compat.ts'));
-const report={complete:!bridgePresent&&!findings.length,scannedFiles:scanned,scope:'All runtime TypeScript in apps/api/src; specs, comments and SQL parameter strings excluded.',bridgePresent,totals,filesRemaining:findings.length,findings};
+const {spawnSync}=require('node:child_process');
+const workerRun=spawnSync(process.env.PYTHON||(process.platform==='win32'?'python':'python3'),[path.join(root,'scripts/audit-postgres-workers.py')],{encoding:'utf8'});
+if(workerRun.status!==0)throw new Error(workerRun.stderr||'Python worker audit could not run');
+const workers=JSON.parse(workerRun.stdout);
+const report={complete:!bridgePresent&&!findings.length&&workers.complete,scannedFiles:scanned,scope:'NestJS runtime TypeScript and all Python service runtime; specs, comments and SQL parameter strings excluded.',bridgePresent,totals,filesRemaining:findings.length+new Set(workers.findings.map(row=>row.file)).size,findings,workers};
 const outputIndex=process.argv.indexOf('--output');if(outputIndex>=0)fs.writeFileSync(path.resolve(root,process.argv[outputIndex+1]),JSON.stringify(report,null,2)+'\n');
 console.log(JSON.stringify({...report,findings:undefined},null,2));if(!report.complete)process.exitCode=1;

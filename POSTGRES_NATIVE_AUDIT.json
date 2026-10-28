@@ -1,7 +1,7 @@
 {
   "complete": true,
-  "scannedFiles": 332,
-  "scope": "All runtime TypeScript in apps/api/src; specs, comments and SQL parameter strings excluded.",
+  "scannedFiles": 341,
+  "scope": "NestJS runtime TypeScript and all Python service runtime; specs, comments and SQL parameter strings excluded.",
   "bridgePresent": false,
   "totals": {
     "compatImports": 0,
@@ -12,5 +12,10 @@
     "legacySchemas": 0
   },
   "filesRemaining": 0,
-  "findings": []
+  "findings": [],
+  "workers": {
+    "complete": true,
+    "scannedFiles": 30,
+    "findings": []
+  }
 }

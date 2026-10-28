@@ -1,4 +1,6 @@
 'use client';
+import { useListPagination } from '@/hooks/use-list-pagination';
+import { ListPagination } from '@/components/ui/list-pagination';
 import {PublicationBar} from '@/components/publication/publication-controls';
 
 import Link from 'next/link';
@@ -74,6 +76,7 @@ export default function DictationDetailPage() {
   const [pauseAfterMs, setPauseAfterMs] = useState(300);
   const [replacementFile, setReplacementFile] = useState<File | null>(null);
   const [segmentDrafts, setSegmentDrafts] = useState<DictationSegmentEditPayload[]>([]);
+  const segmentPage = useListPagination(segmentDrafts, id);
   const [message, setMessage] = useState('');
   const selectedTopic = topics.find((item) => item._id === topicId);
   const availableSections = selectedTopic?.sections || [];
@@ -273,25 +276,26 @@ export default function DictationDetailPage() {
                 <button onClick={() => saveSegmentsMutation.mutate()} disabled={busy || !segmentDrafts.length} className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-blue-200 px-3 text-xs font-bold text-blue-700 hover:bg-blue-50 disabled:opacity-50">{saveSegmentsMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Lưu segment</button>
               </div>
               <div className="max-h-[850px] divide-y divide-slate-100 overflow-y-auto">
-                {segmentDrafts.length === 0 ? <div className="p-12 text-center text-sm text-slate-400">Chưa có metadata. Hãy generate hoặc phân tích audio.</div> : segmentDrafts.map((segment, index) => {
-                  const original = lesson.segments?.[index];
+                {segmentDrafts.length === 0 ? <div className="p-12 text-center text-sm text-slate-400">Chưa có metadata. Hãy generate hoặc phân tích audio.</div> : segmentPage.items.map((segment, index) => {
+                  const original = lesson.segments?.[(index + segmentPage.offset)];
                   return (
-                    <div key={`${segment.order}-${index}`} className="p-4">
+                    <div key={`${segment.order}-${(index + segmentPage.offset)}`} className="p-4">
                       <div className="flex items-center gap-3">
                         <button type="button" onClick={() => playSegment(segment.startMs, segment.endMs)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100"><Play className="ml-0.5 h-3.5 w-3.5 fill-current" /></button>
                         <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400"><span className="font-bold text-slate-600">#{index + 1}</span><span>{original?.source || effectiveAudioSource}</span>{original?.voiceId && <span>{original.voiceId}</span>}{typeof original?.confidence === 'number' && original.source === 'ASR' && <span>confidence {Math.round(original.confidence * 100)}%</span>}</div>
-                          <textarea value={segment.text} onChange={(e) => updateDraft(index, { text: e.target.value })} rows={2} className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm leading-6" />
+                          <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400"><span className="font-bold text-slate-600">#{(index + segmentPage.offset) + 1}</span><span>{original?.source || effectiveAudioSource}</span>{original?.voiceId && <span>{original.voiceId}</span>}{typeof original?.confidence === 'number' && original.source === 'ASR' && <span>confidence {Math.round(original.confidence * 100)}%</span>}</div>
+                          <textarea value={segment.text} onChange={(e) => updateDraft((index + segmentPage.offset), { text: e.target.value })} rows={2} className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm leading-6" />
                         </div>
                       </div>
                       <div className="mt-3 grid gap-3 pl-11 sm:grid-cols-3">
-                        <label className="text-[11px] font-semibold text-slate-500">Start ms<input type="number" min="0" value={segment.startMs} onChange={(e) => updateDraft(index, { startMs: Number(e.target.value) })} className="mt-1 h-9 w-full rounded-lg border border-slate-200 px-2 text-xs" /></label>
-                        <label className="text-[11px] font-semibold text-slate-500">End ms<input type="number" min="1" value={segment.endMs} onChange={(e) => updateDraft(index, { endMs: Number(e.target.value) })} className="mt-1 h-9 w-full rounded-lg border border-slate-200 px-2 text-xs" /></label>
-                        <label className="text-[11px] font-semibold text-slate-500">Speaker<input value={segment.speaker || ''} onChange={(e) => updateDraft(index, { speaker: e.target.value })} placeholder="A / B / ..." className="mt-1 h-9 w-full rounded-lg border border-slate-200 px-2 text-xs" /></label>
+                        <label className="text-[11px] font-semibold text-slate-500">Start ms<input type="number" min="0" value={segment.startMs} onChange={(e) => updateDraft((index + segmentPage.offset), { startMs: Number(e.target.value) })} className="mt-1 h-9 w-full rounded-lg border border-slate-200 px-2 text-xs" /></label>
+                        <label className="text-[11px] font-semibold text-slate-500">End ms<input type="number" min="1" value={segment.endMs} onChange={(e) => updateDraft((index + segmentPage.offset), { endMs: Number(e.target.value) })} className="mt-1 h-9 w-full rounded-lg border border-slate-200 px-2 text-xs" /></label>
+                        <label className="text-[11px] font-semibold text-slate-500">Speaker<input value={segment.speaker || ''} onChange={(e) => updateDraft((index + segmentPage.offset), { speaker: e.target.value })} placeholder="A / B / ..." className="mt-1 h-9 w-full rounded-lg border border-slate-200 px-2 text-xs" /></label>
                       </div>
                     </div>
                   );
                 })}
+                <ListPagination pagination={segmentPage} />
               </div>
             </section>
           </div>

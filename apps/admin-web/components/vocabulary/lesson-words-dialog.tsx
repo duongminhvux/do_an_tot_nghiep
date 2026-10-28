@@ -485,6 +485,7 @@ export function LessonWordsDialog({
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden pt-1 min-h-0">
           {/* CỘT TRÁI: BẢNG DANH SÁCH TỪ VỰNG */}
           <WordsTable
+            paginationKey={`${lesson?._id}:${searchQuery}:${filterLevel}:${filterSection}:${open}`}
             isLoadingLessonWords={isLoadingLessonWords}
             lessonWords={lessonWords}
             filteredWords={filteredWords}

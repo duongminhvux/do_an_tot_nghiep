@@ -1,5 +1,7 @@
 "use client";
 
+import { useListPagination } from '@/hooks/use-list-pagination';
+import { ListPagination } from '@/components/ui/list-pagination';
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
@@ -70,6 +72,7 @@ function RulesForm({
   const preview = useMutation({
     mutationFn: () => recommendationsService.preview(rules, scenario, locale),
   });
+  const previewPage = useListPagination(preview.data?.items ?? [], scenario + JSON.stringify(rules));
   useEffect(() => {
     if (!dirty) return;
     const warn = (event: BeforeUnloadEvent) => {
@@ -302,7 +305,7 @@ function RulesForm({
         {preview.data && (
           <div className="grid gap-3 md:grid-cols-3">
             {preview.data.items.length ? (
-              preview.data.items.map((item) => (
+              previewPage.items.map((item) => (
                 <article key={item.id} className="rounded-xl border p-4">
                   <h3 className="font-semibold">{item.title}</h3>
                   <p className="my-2 text-sm text-slate-600">{item.reason}</p>
@@ -316,6 +319,7 @@ function RulesForm({
             ) : (
               <p className="text-sm">{t("recommendations.disabled")}</p>
             )}
+            <ListPagination pagination={previewPage} />
           </div>
         )}
       </section>

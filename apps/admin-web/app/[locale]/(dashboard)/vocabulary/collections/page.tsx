@@ -1,4 +1,7 @@
 'use client';
+import { loadListPages } from '@/lib/load-list-pages';
+import { useListPagination } from '@/hooks/use-list-pagination';
+import { ListPagination } from '@/components/ui/list-pagination';
 import {PublicationBadge,PublicationFilter} from '@/components/publication/publication-controls';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -93,14 +96,12 @@ export default function CollectionsPage() {
     isLoading: isLoadingCols,
   } = useQuery({
     queryKey: ['collections', debouncedSearchCol],
-    queryFn: () =>
-      collectionService.getAll({
-        search: debouncedSearchCol || undefined,
-        limit: 50,
-      }),
+    queryFn: () => loadListPages((page, limit) =>
+      collectionService.getAll({ search: debouncedSearchCol || undefined, page, limit })),
   });
 
   const collections: CollectionItem[] = collectionsRes?.data?.data || [];
+  const collectionPage = useListPagination(collections, debouncedSearchCol);
 
   // Helper to select collection and sync with URL query param
   const selectCollection = (id: string) => {
@@ -177,6 +178,7 @@ export default function CollectionsPage() {
         (l.description && l.description.toLowerCase().includes(q)),
     );
   }, [lessons, searchLesson,publicationFilter]);
+  const lessonPage = useListPagination(filteredLessons, (selectedId ?? '') + searchLesson + publicationFilter);
 
   // Toggle Collection Active Mutation
   const toggleColActiveMutation = useMutation({
@@ -369,10 +371,10 @@ export default function CollectionsPage() {
                 </button>
               </div>
             ) : (
-              collections.map((col, idx) => {
+              collectionPage.items.map((col, idx) => {
                 const isSelected = col._id === currentCollection?._id;
                 const cover = col.coverUrl || col.thumbnail;
-                const color = getColor(col.name, idx);
+                const color = getColor(col.name, (idx + collectionPage.offset));
                 const isDragging = draggedColId === col._id;
                 const isDragOver = dragOverColId === col._id;
 
@@ -493,6 +495,7 @@ export default function CollectionsPage() {
                 );
               })
             )}
+            <ListPagination pagination={collectionPage} />
           </div>
         </div>
 
@@ -713,7 +716,7 @@ export default function CollectionsPage() {
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        {filteredLessons.map((l, index) => {
+                        {lessonPage.items.map((l, index) => {
                           const isDragging = draggedLessonId === l._id;
                           const isDragOver = dragOverLessonId === l._id;
 
@@ -764,7 +767,7 @@ export default function CollectionsPage() {
 
                                 {/* Order Badge */}
                                 <div className="w-7 h-7 rounded-[4px] bg-blue-50 text-blue-700 border border-blue-200 flex items-center justify-center font-bold text-xs shrink-0 select-none">
-                                  {l.order ?? index + 1}
+                                  {l.order ?? (index + lessonPage.offset) + 1}
                                 </div>
 
                                 <div className="min-w-0 flex-1">
@@ -850,6 +853,7 @@ export default function CollectionsPage() {
                             </div>
                           );
                         })}
+                        <ListPagination pagination={lessonPage} />
                       </div>
                     )}
                   </div>

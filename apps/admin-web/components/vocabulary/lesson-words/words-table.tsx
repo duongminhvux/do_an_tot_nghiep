@@ -1,5 +1,7 @@
 'use client';
 
+import { useListPagination } from '@/hooks/use-list-pagination';
+import { ListPagination } from '@/components/ui/list-pagination';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { SectionItem } from '@/types/vocabulary';
@@ -23,6 +25,7 @@ import {
 } from 'lucide-react';
 
 interface WordsTableProps {
+  paginationKey: string;
   isLoadingLessonWords: boolean;
   lessonWords: any[];
   filteredWords: any[];
@@ -41,6 +44,7 @@ interface WordsTableProps {
 }
 
 export function WordsTable({
+  paginationKey,
   isLoadingLessonWords,
   lessonWords,
   filteredWords,
@@ -58,6 +62,7 @@ export function WordsTable({
   onEditWordSection,
 }: WordsTableProps) {
   const { t } = useTranslation('vocabulary');
+  const wordPage = useListPagination(filteredWords, paginationKey);
 
   const handlePlayAudio = (url?: string) => {
     if (!url) return;
@@ -76,7 +81,7 @@ export function WordsTable({
   };
 
   const handleSelectAllTable = () => {
-    const visibleIds = filteredWords.map((item: any) => item.wordId?._id || item.wordId);
+    const visibleIds = wordPage.items.map((item: any) => item.wordId?._id || item.wordId);
     const allSelected = visibleIds.every((id) => selectedWordIds.includes(id));
     if (allSelected) {
       setSelectedWordIds((prev) => prev.filter((id) => !visibleIds.includes(id)));
@@ -244,8 +249,8 @@ export function WordsTable({
                     <input
                       type="checkbox"
                       checked={
-                        filteredWords.length > 0 &&
-                        filteredWords.every((item: any) =>
+                        wordPage.items.length > 0 &&
+                        wordPage.items.every((item: any) =>
                           selectedWordIds.includes(item.wordId?._id || item.wordId)
                         )
                       }
@@ -263,7 +268,7 @@ export function WordsTable({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
-                {filteredWords.map((item: any) => {
+                {wordPage.items.map((item: any) => {
                   const w = item.wordId || {};
                   const wordId = w._id || item.wordId;
                   const audioUrl = w.audio?.us || w.audio?.uk;
@@ -363,6 +368,7 @@ export function WordsTable({
                 })}
               </tbody>
             </table>
+            <ListPagination pagination={wordPage} />
           </div>
         )}
       </div>

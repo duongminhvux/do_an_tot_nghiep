@@ -1,4 +1,6 @@
 "use client";
+import { useListPagination } from '@/hooks/use-list-pagination';
+import { ListPagination } from '@/components/ui/list-pagination';
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -9,6 +11,7 @@ export default function MistakeStatisticsPage() {
     queryKey: ["mistake-statistics"],
     queryFn: getMistakeStatistics,
   });
+  const mistakePage = useListPagination(query.data?.items ?? [], '');
   return (
     <div className="mx-auto max-w-6xl space-y-5 p-4 sm:p-6">
       <h1 className="text-2xl font-bold">{t("mistakes.adminTitle")}</h1>
@@ -57,7 +60,7 @@ export default function MistakeStatisticsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {query.data.items.map((item) => (
+                  {mistakePage.items.map((item) => (
                     <tr
                       key={`${item.sourceType}:${item.sourceItemId}`}
                       className="border-t"
@@ -79,6 +82,7 @@ export default function MistakeStatisticsPage() {
                   ))}
                 </tbody>
               </table>
+              <ListPagination pagination={mistakePage} />
             </div>
           )}
         </>

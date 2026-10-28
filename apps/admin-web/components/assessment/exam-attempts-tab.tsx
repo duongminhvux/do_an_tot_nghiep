@@ -1,22 +1,30 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
+import { useRemotePagination } from '@/hooks/use-remote-pagination';
+import { ListPagination } from '@/components/ui/list-pagination';
 import { useTranslation } from "react-i18next";
 import { useParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { examService } from "@/services/assessment.service";
 
 export function ExamAttemptsTab() {
   const { t } = useTranslation("assessment");
   const { id, locale } = useParams<{ id: string; locale: string }>();
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["admin-exam-attempts", id],
-    queryFn: () => examService.getAttempts(id),
+  const pagination = useRemotePagination(id);
+  const { data, isLoading, isError, isFetching, isPlaceholderData } = useQuery({
+    queryKey: ["admin-exam-attempts", id, pagination.page, pagination.pageSize],
+    queryFn: () => examService.getAttempts(id, { page: pagination.page, limit: pagination.pageSize }),
+    placeholderData: keepPreviousData,
     enabled: Boolean(id),
     refetchInterval: 30000,
   });
   const result = data?.data;
   const rows = result?.data ?? [];
+  const totalPages = Math.max(1, Math.ceil((result?.total ?? 0) / pagination.pageSize));
+  useEffect(() => {
+    if (result && !isPlaceholderData && pagination.page > totalPages) pagination.setPage(totalPages);
+  }, [result, isPlaceholderData, pagination.page, totalPages]);
   const formatDate = (value?: string) =>
     value
       ? new Date(value).toLocaleString(locale === "en" ? "en-US" : "vi-VN")
@@ -135,6 +143,7 @@ export function ExamAttemptsTab() {
           {t("detailPage.noAttemptsDesc")}
         </div>
       )}
+      <ListPagination pagination={{ ...pagination, totalPages, totalItems: result?.total ?? 0 }} disabled={isFetching} />
     </div>
   );
 }

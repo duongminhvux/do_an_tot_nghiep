@@ -1,5 +1,7 @@
 'use client';
 
+import { useListPagination } from '@/hooks/use-list-pagination';
+import { ListPagination } from '@/components/ui/list-pagination';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { UserItem } from '@/types/user';
@@ -97,6 +99,7 @@ export function UserDetailPanel({
   };
 
   const coursesList = user.courses || [];
+  const coursePage = useListPagination(coursesList, (user._id || user.id) + activeTab);
   const activitiesList = user.recentActivities || [];
 
   const avgProgress =
@@ -502,7 +505,7 @@ export function UserDetailPanel({
                     {t('detail.no_lessons_desc', 'Chưa có bài học nào được ghi nhận.')}
                   </div>
                 ) : (
-                  coursesList.map((course: any) => (
+                  coursePage.items.map((course: any) => (
                     <div key={course.id} className="space-y-1.5">
                       <div className="flex items-center justify-between text-xs">
                         <div className="flex items-center gap-2.5">
@@ -540,6 +543,7 @@ export function UserDetailPanel({
                     </div>
                   ))
                 )}
+                <ListPagination pagination={coursePage} />
               </div>
             </div>
 
@@ -659,7 +663,7 @@ export function UserDetailPanel({
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {coursesList.map((course: any) => (
+                {coursePage.items.map((course: any) => (
                   <div
                     key={course.id}
                     className="rounded border border-slate-200 p-4 space-y-3 bg-slate-50/40 hover:bg-white hover:border-blue-200 transition-all"
@@ -695,6 +699,7 @@ export function UserDetailPanel({
                     </div>
                   </div>
                 ))}
+                <ListPagination pagination={coursePage} />
               </div>
             )}
           </div>

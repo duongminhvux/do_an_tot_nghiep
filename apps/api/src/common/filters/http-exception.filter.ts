@@ -24,10 +24,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
       return;
     }
 
+    const relationConflict = !(exception instanceof HttpException) && exception instanceof Error &&
+      'code' in exception && exception.code === '23503';
     const status =
       exception instanceof HttpException
         ? exception.getStatus()
-        : HttpStatus.INTERNAL_SERVER_ERROR;
+        : relationConflict ? HttpStatus.CONFLICT : HttpStatus.INTERNAL_SERVER_ERROR;
 
     const exceptionResponse: any =
       exception instanceof HttpException
@@ -40,7 +42,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
         ? (exceptionResponse?.error || exception.name.replace('Exception', ''))
         : 'Internal Server Error';
 
-    if (typeof exceptionResponse === 'string') {
+    if (relationConflict) {
+      message = 'Related data is missing, belongs to another parent, or is still in use.';
+      error = 'Conflict';
+    } else if (typeof exceptionResponse === 'string') {
       message = exceptionResponse;
     } else if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
       message = exceptionResponse.message || message;

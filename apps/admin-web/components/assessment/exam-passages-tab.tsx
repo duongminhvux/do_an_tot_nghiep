@@ -1,5 +1,7 @@
 'use client';
 
+import { useListPagination } from '@/hooks/use-list-pagination';
+import { ListPagination } from '@/components/ui/list-pagination';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { PassageItem } from '@/types';
@@ -11,6 +13,7 @@ interface ExamPassagesTabProps {
 
 export function ExamPassagesTab({ passagesList }: ExamPassagesTabProps) {
   const { t } = useTranslation('assessment');
+  const passagePage = useListPagination(passagesList, '', 5);
 
   const getPassageTypeIcon = (type?: string) => {
     switch (type) {
@@ -68,7 +71,7 @@ export function ExamPassagesTab({ passagesList }: ExamPassagesTabProps) {
         </div>
       ) : (
         <div className="space-y-4 text-xs">
-          {passagesList.map((p) => {
+          {passagePage.items.map((p) => {
             const childPassages = p.passages && p.passages.length > 0 ? p.passages : null;
             const passageCount = childPassages ? childPassages.length : 1;
             const clusterBadge =
@@ -183,6 +186,7 @@ export function ExamPassagesTab({ passagesList }: ExamPassagesTabProps) {
               </div>
             );
           })}
+          <ListPagination pagination={passagePage} />
         </div>
       )}
     </div>

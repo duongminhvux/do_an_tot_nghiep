@@ -16,6 +16,8 @@ const overrides={LearningActivity:'learning_activities',SavedWord:'usersavedword
         const base=name.toLowerCase(),table=[overrides[name],base,base+'s',base+'es',base.endsWith('y')?base.slice(0,-1)+'ies':null].find(key=>definition.tables[key]);if(!table)continue;
         checked++;const fields=new Map(node.members.filter(ts.isPropertySignature).map(member=>[member.name.getText(source).replace(/['"]/g,'').replace(/([a-z\d])([A-Z])/g,'$1_$2').toLowerCase(),member]));
         const {rows}=await test.connection.query('SELECT column_name,is_nullable,column_default,data_type FROM information_schema.columns WHERE table_schema=\'public\' AND table_name=$1',[table]);
+        const columns=new Set(rows.map(column=>column.column_name));
+        for(const field of fields.keys())if(!columns.has(field==='password'?'password_hash':field))failures.push(`${table}.${field} is a business row field without a SQL column`);
         for(const column of rows){if(['id','payload','created_at','updated_at'].includes(column.column_name))continue;
           const field=fields.get(column.column_name==='password_hash'?'password':column.column_name);
           if(column.is_nullable==='NO'&&!column.column_default&&!field)failures.push(`${table}.${column.column_name} required but absent from ${name}`);

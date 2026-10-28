@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useRemotePagination } from '@/hooks/use-remote-pagination';
+import { ListPagination } from '@/components/ui/list-pagination';
 import { useTranslation } from "react-i18next";
 import { minigamesAdminService, type ScoreSort } from "@/services/minigames-admin.service";
 import type { GameDefinition } from "@/services/games.service";
@@ -22,17 +24,24 @@ export default function GameScoresPage() {
   const [to, setTo] = useState("");
   const [minScore, setMinScore] = useState("");
   const [maxScore, setMaxScore] = useState("");
+  const pagination = useRemotePagination(JSON.stringify([gameType, search, sort, from, to, minScore, maxScore]));
   const games = useQuery({ queryKey: ["admin-games"], queryFn: gamesService.list });
   const scores = useQuery({
-    queryKey: ["minigame-scores", gameType, search, sort, from, to, minScore, maxScore],
+    queryKey: ["minigame-scores", gameType, search, sort, from, to, minScore, maxScore, pagination.page, pagination.pageSize],
+    placeholderData: keepPreviousData,
     queryFn: () => minigamesAdminService.scores({
       gameType: gameType || undefined, search: search || undefined, sort,
       from: from || undefined, to: to || undefined,
       minScore: minScore ? Number(minScore) : undefined,
       maxScore: maxScore ? Number(maxScore) : undefined,
+      page: pagination.page, limit: pagination.pageSize,
     }),
   });
   const rows = scores.data?.items ?? [];
+  const totalPages = Math.max(1, Math.ceil((scores.data?.total ?? 0) / pagination.pageSize));
+  useEffect(() => {
+    if (scores.data && !scores.isPlaceholderData && pagination.page > totalPages) pagination.setPage(totalPages);
+  }, [scores.data, scores.isPlaceholderData, pagination.page, totalPages]);
   return (
     <main className="w-full space-y-5 p-4 sm:p-6 xl:p-8">
       <div>
@@ -68,6 +77,7 @@ export default function GameScoresPage() {
             </table>
           </div>
         )}
+        <ListPagination pagination={{ ...pagination, totalPages, totalItems: scores.data?.total ?? 0 }} disabled={scores.isFetching} />
       </section>
     </main>
   );

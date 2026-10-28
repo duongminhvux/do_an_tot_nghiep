@@ -1,10 +1,42 @@
 {
-  "identity": {"version":"0009_numeric_collation","migrationsChecksum":"0ffe5b33ab317f1464feb52bb416e369e5e651d80bc6aaaa99ce4db38c57f377","fingerprint":"1379b6ee30b9e2e9e912941ef9bc609082ec43f8d902306e6e123a42798b273c"},
-  "content": {"version":"0016_content_quality","migrationsChecksum":"7ce896d868b41765e357f6d158965d602b314a79575c6d2d0ffa25d9969d4d9e","fingerprint":"c7de24cd494d5f351fbf4580ed92a1c56bb942368164ed85b509a2a52e3aff9c"},
-  "assessment": {"version":"0017_exam_community","migrationsChecksum":"e2d7fd523dced39929bc984a106fccb1cad3c9f8712eb7fc371eb13a47de110f","fingerprint":"636b52e2e1bd5ea8e00b6460d474224fa88894a505a35279513e24867ffb9490"},
-  "arena": {"version":"0013_friend_room_defaults","migrationsChecksum":"c31d5a88d648d2f2e4b01ff61e544cc1d329a9f5cb29b0fc445b1065c2901fb5","fingerprint":"8b6037e2560c08db6e98c18137b78fa41512babdef595a5e80f826137d530e98"},
-  "learning": {"version":"0014_mistake_notebook","migrationsChecksum":"17edcd9d513cbeda8fcebdcaec01510025ef46ef60ce372e627b2bb82859f641","fingerprint":"a3c104145a7e27cebf731d11210375734d562dd89a5ba9d24338feb8dfac8379"},
-  "media-jobs": {"version":"0010_asr_durable_jobs","migrationsChecksum":"ad66505734746c0ebf0669b6d2491b7b71e1dff2ab5b7e14e6daace7fbad8c17","fingerprint":"37006da1032b28da829cb10fcf116a162beef1fbe1d15292643912c8b190f59c"},
-  "ai-import": {"version":"0009_numeric_collation","migrationsChecksum":"2bb515977d057215eb45f27cde98119203804e0306ec5f5a9f7ad8a9675dbc0e","fingerprint":"9d1bf13509bed52031976d2dbee266a3eb090c2251bb0677ef0d327ecf0826f5"},
-  "notification": {"version":"0009_numeric_collation","migrationsChecksum":"bbc342a7036c37e8fbb07f9fedef920ad0652da7fb5fa443bc7409510088a9b0","fingerprint":"e013ee1370de9ad104995c4729c8775c01c517a21bb503b62a1d23ebbec0c852"}
+  "identity": {
+    "version": "0009_numeric_collation",
+    "migrationsChecksum": "0ffe5b33ab317f1464feb52bb416e369e5e651d80bc6aaaa99ce4db38c57f377",
+    "fingerprint": "1379b6ee30b9e2e9e912941ef9bc609082ec43f8d902306e6e123a42798b273c"
+  },
+  "content": {
+    "version": "0018_content_relations",
+    "migrationsChecksum": "0b3e3cbee4bbc3c84fb80f600c996f78ab41119f1a19a9fcefa46772c6e8e197",
+    "fingerprint": "0965a0f8008301591d75716e2a10ca0f669103263badb614abcf8e76ea74aa85"
+  },
+  "assessment": {
+    "version": "0018_attempt_exam_snapshot",
+    "migrationsChecksum": "bd74ac39d4334a7e7093a6c5f3094fe16b122e6d06cd7ccba6903b98ba4cb2de",
+    "fingerprint": "1b54b68dd887ecf526729ff930d4135dbd23d76cdcc08d7437ade667b75db91b"
+  },
+  "arena": {
+    "version": "0018_match_state_columns",
+    "migrationsChecksum": "cafc2d1c5dea657498d7dc2cad7b329ef89f000a92ccff11cbb04cf8fe46282f",
+    "fingerprint": "8fd6ef77288ec45307caef813d71257af52ec1b91e9338269326d2b0fabd8d60"
+  },
+  "learning": {
+    "version": "0018_learning_relations",
+    "migrationsChecksum": "49e2b4407bf7c8e715b9364544e5222bcb5ac67ce375240142ea7489f646920b",
+    "fingerprint": "17c853ba5e07a21f22d61863d5b7f0e4704bee222333ec15c8b933aaea33828c"
+  },
+  "media-jobs": {
+    "version": "0010_asr_durable_jobs",
+    "migrationsChecksum": "ad66505734746c0ebf0669b6d2491b7b71e1dff2ab5b7e14e6daace7fbad8c17",
+    "fingerprint": "37006da1032b28da829cb10fcf116a162beef1fbe1d15292643912c8b190f59c"
+  },
+  "ai-import": {
+    "version": "0009_numeric_collation",
+    "migrationsChecksum": "2bb515977d057215eb45f27cde98119203804e0306ec5f5a9f7ad8a9675dbc0e",
+    "fingerprint": "9d1bf13509bed52031976d2dbee266a3eb090c2251bb0677ef0d327ecf0826f5"
+  },
+  "notification": {
+    "version": "0018_activity_description_columns",
+    "migrationsChecksum": "4418ac6abdf2ec3e4f3bb05046926bba195289610a264e05814e6b28056753f0",
+    "fingerprint": "c78039ce352efe45cae376d1d7151d6127d1d388d1145387ec2e0bed51ba0f5f"
+  }
 }

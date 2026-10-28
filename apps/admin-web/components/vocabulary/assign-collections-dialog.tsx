@@ -1,5 +1,8 @@
 'use client';
 
+import { useListPagination } from '@/hooks/use-list-pagination';
+import { loadListPages } from '@/lib/load-list-pages';
+import { ListPagination } from '@/components/ui/list-pagination';
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -51,7 +54,7 @@ export function AssignCollectionsDialog({
     isLoading,
   } = useQuery({
     queryKey: ['all-collections-for-assign'],
-    queryFn: () => collectionService.getAll({ limit: 100 }),
+    queryFn: () => loadListPages((page, limit) => collectionService.getAll({ page, limit })),
     enabled: open,
   });
 
@@ -84,6 +87,7 @@ export function AssignCollectionsDialog({
       return true;
     });
   }, [availableCollections, filterMode, search]);
+  const assignmentPage = useListPagination(filteredCollections, (group?._id ?? '') + search + filterMode + open);
 
   const toggleSelect = (id: string) => {
     setSelectedColIds((prev) =>
@@ -92,7 +96,7 @@ export function AssignCollectionsDialog({
   };
 
   const selectAll = () => {
-    const visibleIds = filteredCollections.map((c) => c._id);
+    const visibleIds = assignmentPage.items.map((c) => c._id);
     const allSelected = visibleIds.every((id) => selectedColIds.includes(id));
     if (allSelected) {
       setSelectedColIds((prev) => prev.filter((id) => !visibleIds.includes(id)));
@@ -199,7 +203,7 @@ export function AssignCollectionsDialog({
                   onClick={selectAll}
                   className="text-xs font-semibold text-blue-600 hover:text-blue-700 px-2 py-1 cursor-pointer"
                 >
-                  {filteredCollections.every((c) => selectedColIds.includes(c._id))
+                  {assignmentPage.items.every((c) => selectedColIds.includes(c._id))
                     ? t('assign_deselect_all', 'Bỏ chọn tất cả')
                     : t('assign_select_all', 'Chọn tất cả')}
                 </button>
@@ -231,7 +235,7 @@ export function AssignCollectionsDialog({
                 </p>
               </div>
             ) : (
-              filteredCollections.map((col) => {
+              assignmentPage.items.map((col) => {
                 const isChecked = selectedColIds.includes(col._id);
                 const hasOtherGroup = !!col.groupId;
                 const otherGroupName =
@@ -306,6 +310,7 @@ export function AssignCollectionsDialog({
                 );
               })
             )}
+            <ListPagination pagination={assignmentPage} />
           </div>
 
           {/* Footer Actions */}

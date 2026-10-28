@@ -1,5 +1,7 @@
 'use client';
 
+import { useListPagination } from '@/hooks/use-list-pagination';
+import { ListPagination } from '@/components/ui/list-pagination';
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -80,6 +82,7 @@ export default function ExamGroupDetailPage() {
   const exams: ExamItem[] = orderIds
     ? orderIds.flatMap((id) => serverExams.filter((exam) => exam._id === id))
     : serverExams;
+  const examPage = useListPagination(exams, groupId);
 
   const reorderMutation = useMutation({
     mutationFn: (examIds: string[]) => examGroupService.reorderExams(groupId, examIds),
@@ -289,7 +292,7 @@ export default function ExamGroupDetailPage() {
           </div>
         ) : (
           <div className="bg-white rounded border border-slate-200/90 divide-y divide-slate-100 shadow-2xs overflow-hidden">
-            {exams.map((exam, idx) => (
+            {examPage.items.map((exam, idx) => (
               <div
                 key={exam._id}
                 draggable={!reorderMutation.isPending && exams.length > 1}
@@ -333,8 +336,8 @@ export default function ExamGroupDetailPage() {
                           type="button"
                           title={t('examGroups.detail.moveUp')}
                           aria-label={t('examGroups.detail.moveUp')}
-                          disabled={idx === 0 || reorderMutation.isPending}
-                          onClick={() => moveBy(idx, -1)}
+                          disabled={(idx + examPage.offset) === 0 || reorderMutation.isPending}
+                          onClick={() => moveBy((idx + examPage.offset), -1)}
                           className="rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 cursor-pointer"
                         >
                           <ChevronUp className="h-3 w-3" />
@@ -343,8 +346,8 @@ export default function ExamGroupDetailPage() {
                           type="button"
                           title={t('examGroups.detail.moveDown')}
                           aria-label={t('examGroups.detail.moveDown')}
-                          disabled={idx === exams.length - 1 || reorderMutation.isPending}
-                          onClick={() => moveBy(idx, 1)}
+                          disabled={(idx + examPage.offset) === exams.length - 1 || reorderMutation.isPending}
+                          onClick={() => moveBy((idx + examPage.offset), 1)}
                           className="rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 cursor-pointer"
                         >
                           <ChevronDown className="h-3 w-3" />
@@ -353,7 +356,7 @@ export default function ExamGroupDetailPage() {
                     </div>
                   )}
                   <div className="w-8 h-8 rounded bg-slate-100 group-hover:bg-blue-50 text-slate-600 group-hover:text-blue-600 font-bold text-xs flex items-center justify-center shrink-0 transition-colors">
-                    {idx + 1}
+                    {(idx + examPage.offset) + 1}
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -413,6 +416,7 @@ export default function ExamGroupDetailPage() {
                 </div>
               </div>
             ))}
+            <ListPagination pagination={examPage} />
           </div>
         )}
       </div>

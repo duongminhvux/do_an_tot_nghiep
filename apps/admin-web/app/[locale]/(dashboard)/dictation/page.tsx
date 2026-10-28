@@ -1,4 +1,6 @@
 'use client';
+import { useListPagination } from '@/hooks/use-list-pagination';
+import { ListPagination } from '@/components/ui/list-pagination';
 import {PublicationBadge,PublicationFilter} from '@/components/publication/publication-controls';
 
 import Link from 'next/link';
@@ -55,6 +57,7 @@ export default function AdminDictationPage() {
       `${lesson.title} ${lesson.topic} ${lesson.level}`.toLowerCase().includes(keyword),
     );
   }, [lessons, search,publicationFilter]);
+  const dictationPage = useListPagination(filtered, search + publicationFilter);
 
   const removeMutation = useMutation({
     mutationFn: (id: string) => dictationService.remove(id),
@@ -159,7 +162,7 @@ export default function AdminDictationPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filtered.map((lesson) => (
+                {dictationPage.items.map((lesson) => (
                   <tr key={lesson._id} className="hover:bg-slate-50/60">
                     <td className="px-4 py-4">
                       <Link href={`/${locale}/dictation/${lesson._id}`} className="font-semibold text-slate-900 hover:text-blue-600">
@@ -224,6 +227,7 @@ export default function AdminDictationPage() {
                 ))}
               </tbody>
             </table>
+            <ListPagination pagination={dictationPage} />
           </div>
         )}
       </div>

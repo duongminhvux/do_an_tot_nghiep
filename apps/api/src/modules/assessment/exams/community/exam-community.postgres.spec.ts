@@ -49,7 +49,7 @@ describe.runIf(Boolean(process.env.F01_ASSESSMENT_TEST_DATABASE_URL))(
         ...patch,
       };
       return pool.query(
-        `INSERT INTO public.attempts(user_id,exam_id,mode,status,started_at,completed_at,total_questions,correct_answers,duration_spent,result_version,selected_parts,question_snapshot,payload)
+        `INSERT INTO public.attempts(user_id,exam_id,mode,status,started_at,completed_at,total_questions,correct_answers,duration_spent,result_version,selected_parts,question_snapshot,exam_publication_revision)
       VALUES($1,$2,$3,$4,now()-interval '3 minutes',now(),$5,$6,$7,$8,$9,$10,$11)`,
         [
           user,
@@ -62,7 +62,7 @@ describe.runIf(Boolean(process.env.F01_ASSESSMENT_TEST_DATABASE_URL))(
           value.version,
           JSON.stringify(value.parts),
           JSON.stringify(value.questions),
-          JSON.stringify({ examPublicationRevision: value.revision }),
+          value.revision,
         ],
       );
     }

@@ -5,7 +5,6 @@ import os
 import time
 import logging
 import uuid
-from datetime import datetime, timezone
 import requests
 from common import JOBS, S3, BUCKET, QUEUE, RETRY, broker, publish
 
@@ -22,35 +21,36 @@ def main():
             connection,ch=broker();ch.basic_qos(prefetch_count=1)
             def handle(ch,delivery,properties,body):
                 job_id=None
+                attempt=0
                 try:
-                    payload=json.loads(body);job_id=payload['jobId']
-                    if str(uuid.UUID(job_id))!=job_id:raise ValueError('Invalid job ID')
+                    payload=json.loads(body);candidate=payload['jobId']
+                    if str(uuid.UUID(candidate))!=candidate:raise ValueError('Invalid job ID')
                     attempt=int(payload.get('attempt',0))
-                    job=JOBS.find_one({'_id':job_id})
+                    if attempt<0:raise ValueError('Invalid attempt')
+                    job_id=candidate
+                    job=JOBS.get(job_id)
                     if job is None or job['state']=='completed':
                         ch.basic_ack(delivery.delivery_tag);return
-                    JOBS.update_one({'_id':job_id},{'$set':{'state':'active'},'$inc':{'attempts':1}})
+                    if not JOBS.activate(job_id):
+                        ch.basic_ack(delivery.delivery_tag);return
                     file=S3.get_object(Bucket=BUCKET,Key=job['key'])['Body'].read()
                     resp=requests.post(ASR_URL+'/v1/transcribe',timeout=3600,
                         data={'language':job['language'] if job['language']!='auto' else ''},
                         files={'file':('audio.wav',io.BytesIO(file),'application/octet-stream')})
                     resp.raise_for_status()
                     result=resp.json()
-                    JOBS.update_one({'_id':job_id},{'$set':{
-                        'state':'completed','result':result,'finishedAt':datetime.now(timezone.utc)}})
+                    JOBS.complete(job_id, result)
                     ch.basic_ack(delivery.delivery_tag)
                     LOG.info('Completed ASR %s',job_id)
                 except Exception as exc:
                     LOG.exception('Failed ASR %s',job_id)
-                    attempt=int(json.loads(body).get('attempt',0))
                     if job_id:
                         if attempt<MAX_RETRIES:
+                            JOBS.retry(job_id, str(exc))
                             publish(ch,job_id,attempt+1,RETRY)
-                            JOBS.update_one({'_id':job_id},{'$set':{'state':'retrying','error':str(exc)[:500]}})
                             ch.basic_ack(delivery.delivery_tag)
                         else:
-                            JOBS.update_one({'_id':job_id},{'$set':{'state':'failed','error':str(exc)[:500],
-                                'finishedAt':datetime.now(timezone.utc)}})
+                            JOBS.fail(job_id, str(exc))
                             ch.basic_reject(delivery.delivery_tag,requeue=False)
                     else: ch.basic_reject(delivery.delivery_tag,requeue=False)
             ch.basic_consume(queue=QUEUE,on_message_callback=handle,auto_ack=False)

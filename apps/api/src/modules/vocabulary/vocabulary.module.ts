@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { ContentSqlRepository } from './content-sql.repository.js';
 
 import { AdminWordsController } from './words/admin-words.controller.js';
-import { WordsController } from './words/words.controller.js';
 import { WordsService } from './words/words.service.js';
 
 import { AdminVocabularyGroupsController } from './groups/admin-vocabulary-groups.controller.js';
@@ -19,7 +18,6 @@ import { LessonsService } from './lessons/lessons.service.js';
 
 @Module({
   controllers: [
-    WordsController,
     AdminWordsController,
     VocabularyGroupsController,
     AdminVocabularyGroupsController,

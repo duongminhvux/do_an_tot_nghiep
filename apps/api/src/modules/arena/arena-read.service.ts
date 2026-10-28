@@ -45,7 +45,7 @@ export class ArenaReadService {
     if(!Number.isInteger(value)||value<1||value>50)throw new BadRequestException('Limit must be between 1 and 50');return value;
   }
   async getMatchAudio(userId:string,matchId:string) {
-    const row=await first(this.db,sql`SELECT COALESCE(m.payload->'audioSettings','{}'::jsonb) AS audio
+    const row=await first(this.db,sql`SELECT COALESCE(m.audio_settings,'{}'::jsonb) AS audio
       FROM public.arenamatches m JOIN public.arenamatchplayers p ON p.match_id=m.id
       WHERE m.id=${this.userId(matchId)}::uuid AND p.user_id=${this.userId(userId)}::uuid LIMIT 1`);
     if(!row)throw new NotFoundException('ARENA_MATCH_NOT_FOUND');return row.audio;

@@ -1,4 +1,6 @@
 "use client";
+import { useListPagination } from '@/hooks/use-list-pagination';
+import { ListPagination } from '@/components/ui/list-pagination';
 import { GameSettingsDialog } from "@/features/minigames/game-settings-dialog";
 /* eslint-disable @next/next/no-img-element */
 import { useState } from "react";
@@ -75,6 +77,7 @@ export default function GamesAdminPage() {
         .toLowerCase()
         .includes(search.toLowerCase()),
   );
+  const gamePage = useListPagination(filtered, search + category);
   const busy = mutation.isPending || uploading;
   function open(game: GameDefinition) {
     setError("");
@@ -209,7 +212,7 @@ export default function GamesAdminPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filtered.map((game) => (
+                {gamePage.items.map((game) => (
                   <tr key={game._id}>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
@@ -326,6 +329,7 @@ export default function GamesAdminPage() {
                 )}
               </tbody>
             </table>
+            <ListPagination pagination={gamePage} />
           </div>
         )}
       </section>

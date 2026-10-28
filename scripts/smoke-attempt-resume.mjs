@@ -1,19 +1,22 @@
-/** Read-only verification of a saved PRACTICE attempt, run inside Identity. */
+/** Read-only verification inside Identity: node scripts/smoke-attempt-resume.mjs ATTEMPT_UUID OWNER_UUID */
 import {createRequire} from 'node:module';
 import assert from 'node:assert/strict';
 const require=createRequire(new URL('../apps/api/package.json',import.meta.url));
 const {Pool}=require('pg'),{JwtService}=require('@nestjs/jwt');
 const id=process.argv[2];
 assert.match(id||'',/^[a-f0-9-]{36}$/i,'Pass the saved attempt UUID');
-const source=await fetch(`${process.env.ASSESSMENT_INTERNAL_URL}/api/_internal/read-models/attempts`,{headers:{'x-internal-token':process.env.INTERNAL_SERVICE_TOKEN}});
+const userId=process.argv[3];
+assert.match(userId||'',/^[a-f0-9-]{36}$/i,'Pass the attempt owner UUID as the second argument');
+const source=await fetch(`${process.env.ASSESSMENT_INTERNAL_URL}/api/_internal/assessment/attempts`,{
+  method:'POST',headers:{'x-internal-token':process.env.INTERNAL_SERVICE_TOKEN,'content-type':'application/json'},
+  body:JSON.stringify({ids:[id],userId,limit:1}),signal:AbortSignal.timeout(8000)});
 assert.equal(source.status,200);
-const row=(await source.json()).data.find(row=>row.id===id);
+const projection=await source.json();
+const row=(projection.data??projection).find(row=>row.id===id);
 assert(row,'Saved attempt not found');
-const stored={...row.payload,...Object.fromEntries(Object.entries(row).filter(([key])=>key!=='payload'))};
-assert.equal(row.payload?.mode,'PRACTICE','Use a practice attempt so the read cannot auto-submit an expired test');
-const snapshot=row.payload?.questionSnapshot||row.question_snapshot;
+assert.equal(row.mode,'PRACTICE','Use a practice attempt so the read cannot auto-submit an expired test');
+const snapshot=row.questionSnapshot;
 assert(snapshot?.length,'This check requires an existing snapshot');
-const userId=row.user_id||row.payload?.userId;
 const pool=new Pool();
 try {
   const active=await pool.query('SELECT id FROM users WHERE id=$1 AND is_deleted=false AND COALESCE(is_banned,false)=false',[userId]);
@@ -23,7 +26,7 @@ try {
   const body=await response.json();
   assert.equal(response.status,200,body.message);
   assert.equal(body.data.questions.length,snapshot.length);
-  assert.equal(body.data.status,stored.status);
-  assert.deepEqual(body.data.answers,row.payload?.answers||row.answers||{});
+  assert.equal(body.data.status,row.status);
+  assert.deepEqual(body.data.answers,row.answers||{});
   console.log(`200 GET /api/attempts/${id}; ${snapshot.length} saved question(s), original answers retained`);
 } finally {await pool.end();}

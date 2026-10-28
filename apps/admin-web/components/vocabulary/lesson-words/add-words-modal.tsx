@@ -1,4 +1,6 @@
 'use client';
+import { useRemotePagination } from '@/hooks/use-remote-pagination';
+import { ListPagination } from '@/components/ui/list-pagination';
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -123,13 +125,14 @@ export function AddWordsModal({
   }, [onClose, resetImportState]);
 
   // Query global dictionary words for Tab 1
-  const { data: dictWordsRes, isLoading: isLoadingDict } = useQuery({
-    queryKey: ['admin-words-lookup', debouncedDict],
+  const dictPagination = useRemotePagination(`${lessonId}:${debouncedDict}:${open}:${addWordTab}`);
+  const { data: dictWordsRes, isLoading: isLoadingDict, isFetching: isFetchingDict } = useQuery({
+    queryKey: ['admin-words-lookup', debouncedDict, dictPagination.page, dictPagination.pageSize],
     queryFn: () =>
       wordService.getAll({
         search: debouncedDict || undefined,
-        limit: 40,
-        page: 1,
+        limit: dictPagination.pageSize,
+        page: dictPagination.page,
         sortBy: 'createdAt',
         sortOrder: 'desc',
       }),
@@ -137,6 +140,11 @@ export function AddWordsModal({
   });
 
   const dictWords: WordListItem[] = dictWordsRes?.data?.data || [];
+  const dictTotal = dictWordsRes?.data?.total ?? 0;
+  const dictTotalPages = Math.max(1, Math.ceil(dictTotal / dictPagination.pageSize));
+  useEffect(() => {
+    if (dictWordsRes && dictPagination.page > dictTotalPages) dictPagination.setPage(dictTotalPages);
+  }, [dictWordsRes, dictPagination.page, dictTotalPages]);
 
   // Mutation: Add words from Dictionary
   const addWordsMutation = useMutation({
@@ -416,6 +424,7 @@ export function AddWordsModal({
                       </div>
                     );
                   })}
+                  <ListPagination pagination={{ ...dictPagination, totalPages: dictTotalPages, totalItems: dictTotal }} disabled={isFetchingDict} />
                 </div>
               )}
             </div>

@@ -23,8 +23,8 @@
     "legacy_db_references": [],
     "native_query_audit": {
       "complete": true,
-      "scannedFiles": 332,
-      "scope": "All runtime TypeScript in apps/api/src; specs, comments and SQL parameter strings excluded.",
+      "scannedFiles": 341,
+      "scope": "NestJS runtime TypeScript and all Python service runtime; specs, comments and SQL parameter strings excluded.",
       "bridgePresent": false,
       "totals": {
         "compatImports": 0,
@@ -34,7 +34,12 @@
         "legacyDeclarations": 0,
         "legacySchemas": 0
       },
-      "filesRemaining": 0
+      "filesRemaining": 0,
+      "workers": {
+        "complete": true,
+        "scannedFiles": 30,
+        "findings": []
+      }
     },
     "sql_business_tables": 50,
     "sql_database_names": [
@@ -49,7 +54,7 @@
     ],
     "compose_services_full": 35,
     "compose_services_local_infra": 10,
-    "source_files_scanned": 885,
+    "source_files_scanned": 921,
     "invalid_index_lines": [],
     "known_blockers": [
       "Full application deployment, HTTP/WebSocket traffic and Redis/RabbitMQ delivery are not certified by this static audit.",

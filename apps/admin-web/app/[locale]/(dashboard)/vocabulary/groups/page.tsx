@@ -1,5 +1,8 @@
 'use client';
 
+import { loadListPages } from '@/lib/load-list-pages';
+import { useListPagination } from '@/hooks/use-list-pagination';
+import { ListPagination } from '@/components/ui/list-pagination';
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -136,7 +139,7 @@ export default function VocabularyGroupsPage() {
     isLoading: isGroupsLoading,
   } = useQuery({
     queryKey: ['vocabulary-groups'],
-    queryFn: () => vocabularyGroupService.getAll({ limit: 100 }),
+    queryFn: () => loadListPages((page, limit) => vocabularyGroupService.getAll({ page, limit })),
   });
 
   const groups: VocabularyGroupItem[] = useMemo(() => {
@@ -165,13 +168,14 @@ export default function VocabularyGroupsPage() {
     isLoading: isCollectionsLoading,
   } = useQuery({
     queryKey: ['collections', 'by-group', selectedGroupId],
-    queryFn: () => collectionService.getAll({ groupId: selectedGroupId || undefined, limit: 100 }),
+    queryFn: () => loadListPages((page, limit) => collectionService.getAll({ groupId: selectedGroupId || undefined, page, limit })),
     enabled: !!selectedGroupId,
   });
 
   const collections: CollectionItem[] = useMemo(() => {
     return collectionsResponse?.data?.data || selectedGroup?.collections || [];
   }, [collectionsResponse, selectedGroup]);
+  const collectionPage = useListPagination(collections, selectedGroupId ?? '');
 
   useEffect(() => {
     if (!collections.length) {
@@ -197,6 +201,7 @@ export default function VocabularyGroupsPage() {
     const payload: any = lessonsResponse;
     return Array.isArray(payload?.data) ? payload.data : [];
   }, [lessonsResponse]);
+  const lessonPage = useListPagination(lessons, selectedCollectionId ?? '');
 
   // Filter groups by search query
   const filteredGroups: VocabularyGroupItem[] = useMemo(() => {
@@ -208,6 +213,7 @@ export default function VocabularyGroupsPage() {
         (g.description && g.description.toLowerCase().includes(q))
     );
   }, [groups, searchQuery]);
+  const groupPage = useListPagination(filteredGroups, searchQuery);
 
   // Total stats across all groups
   const totalCollectionsAll = useMemo(() => {
@@ -400,7 +406,7 @@ export default function VocabularyGroupsPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {filteredGroups.map((group: VocabularyGroupItem, idx: number) => {
+              {groupPage.items.map((group: VocabularyGroupItem, idx: number) => {
                 const isSelected = group._id === selectedGroupId;
                 const isDragging = draggedGroupId === group._id;
                 const isDragOver = dragOverGroupId === group._id;
@@ -458,7 +464,7 @@ export default function VocabularyGroupsPage() {
 
                       {/* Order Badge */}
                       <span className="w-5 h-5 rounded-[4px] bg-slate-100 text-slate-500 text-[10px] font-semibold flex items-center justify-center shrink-0">
-                        {group.order ?? (idx + 1)}
+                        {group.order ?? ((idx + groupPage.offset) + 1)}
                       </span>
 
                       {/* Group Icon Badge */}
@@ -500,6 +506,7 @@ export default function VocabularyGroupsPage() {
                   </div>
                 );
               })}
+              <ListPagination pagination={groupPage} />
             </div>
           )}
         </div>
@@ -673,7 +680,7 @@ export default function VocabularyGroupsPage() {
                   </div>
                 ) : (
                   <div className="space-y-2.5">
-                    {collections.map((col: CollectionItem) => (
+                    {collectionPage.items.map((col: CollectionItem) => (
                       <div
                         key={col._id}
                         onClick={() => setSelectedCollectionId(col._id)}
@@ -784,6 +791,7 @@ export default function VocabularyGroupsPage() {
                         </div>
                       </div>
                     ))}
+                    <ListPagination pagination={collectionPage} />
                   </div>
                 )}
               </div>
@@ -816,14 +824,14 @@ export default function VocabularyGroupsPage() {
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        {lessons.map((lesson, index) => (
+                        {lessonPage.items.map((lesson, index) => (
                           <Link
                             key={lesson._id}
                             href={`/${locale}/vocabulary/collections?collectionId=${selectedCollection._id}&lessonId=${lesson._id}`}
                             className="flex items-center justify-between gap-3 rounded-[6px] border border-slate-200 bg-white px-3 py-2.5 hover:border-blue-300 hover:bg-blue-50/30 transition-colors"
                           >
                             <div className="flex min-w-0 items-center gap-3">
-                              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-slate-100 text-xs font-bold text-slate-500">{index + 1}</span>
+                              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-slate-100 text-xs font-bold text-slate-500">{(index + lessonPage.offset) + 1}</span>
                               <div className="min-w-0">
                                 <p className="truncate text-sm font-semibold text-slate-800">{lesson.title}</p>
                                 <p className="mt-0.5 text-[11px] text-slate-500">{lesson.sectionsCount || 0} section · {lesson.wordsCount || 0} {locale === 'en' ? 'words' : 'từ'}{lesson.isActive === false ? ` · ${locale === 'en' ? 'inactive' : 'đang tắt'}` : ''}</p>
@@ -832,6 +840,7 @@ export default function VocabularyGroupsPage() {
                             <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
                           </Link>
                         ))}
+                        <ListPagination pagination={lessonPage} />
                       </div>
                     )}
                   </div>

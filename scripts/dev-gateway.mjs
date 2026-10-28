@@ -5,7 +5,7 @@ const routes=[
 [/^\/api\/(?:admin\/exams\/[^/]+\/pdf-ai)(?:\/|$)/,'ai-import'],
 [/^\/api\/(?:admin\/pdf-ai|pdf-ai)(?:\/|$)/,'ai-import'],
 [/^\/api\/(?:auth|admin\/auth|users|admin\/users)(?:\/|$)/,'identity'],
-[/^\/api\/(?:words|admin\/words|collections|admin\/collections|lessons|admin\/lessons|vocabulary-groups|admin\/vocabulary-groups|dictation|admin\/dictation|upload)(?:\/|$)/,'content'],
+[/^\/api\/(?:admin\/content-quality|words|admin\/words|collections|admin\/collections|lessons|admin\/lessons|vocabulary-groups|admin\/vocabulary-groups|dictation|admin\/dictation|upload)(?:\/|$)/,'content'],
 [/^\/api\/(?:exams|admin\/exams|exam-groups|admin\/exam-groups|admin\/questions|attempts|admin\/attempts)(?:\/|$)/,'assessment'],
 [/^\/api\/(?:arena|admin\/arena)(?:\/|$)/,'arena'],
 [/^\/api\/(?:learning|learning-activity|progress|reviews|sessions|admin\/learning|admin\/dashboard|minigames|admin\/minigames|admin\/games)(?:\/|$)/,'learning'],
