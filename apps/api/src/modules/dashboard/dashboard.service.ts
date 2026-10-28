@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectPgConnection,type PgConnection } from '../../postgres/connection.js';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service.js';
 import { dashboardData } from './dashboard-reader.js';
+import { dashboardPeriod } from './dashboard-period.js';
 
 import { ToeicAttemptStatus } from '../assessment/attempts/attempt.types.js';
 import { User } from '../users/rows/user.row.js';
@@ -18,26 +19,14 @@ export class DashboardService {
   ) {}
 
   async getOverview(inputDays: number, lang?: string) {
-    const days = Math.max(7, Math.min(90, inputDays));
-    const now = new Date();
-    const start = new Date(now);
-    start.setHours(0, 0, 0, 0);
-    start.setDate(start.getDate() - days + 1);
-    const previousStart = new Date(start);
-    previousStart.setDate(previousStart.getDate() - days);
-    const period={start:start.toISOString(),end:new Date(now.getTime()+1).toISOString(),previousStart:previousStart.toISOString()};
+    const {days,labels,...period}=dashboardPeriod(inputDays);
     const [identity,assessment,notification]=await Promise.all([dashboardData(this.db,'identity',period),dashboardData(this.db,'assessment',period),dashboardData(this.db,'notification',period)]);
     const {totalUsers,previousUsers,userTimeline,newUsers}=identity;
     const {totalExams,activeExams,totalAttempts,previousAttempts,scoreResult,previousScoreResult,attemptTimeline,examTypes,popularExams}=assessment;
     const {recentActivity}=notification;
 
     const dailyMap = new Map<string, { newUsers: number; attempts: number }>();
-    for (let index = 0; index < days; index += 1) {
-      const date = new Date(start);
-      date.setDate(start.getDate() + index);
-      const key = date.toISOString().slice(0, 10);
-      dailyMap.set(key, { newUsers: 0, attempts: 0 });
-    }
+    for (const key of labels)dailyMap.set(key,{newUsers:0,attempts:0});
     userTimeline.forEach((item:any) => dailyMap.get(item._id) && (dailyMap.get(item._id)!.newUsers = item.count));
     attemptTimeline.forEach((item:any) => dailyMap.get(item._id) && (dailyMap.get(item._id)!.attempts = item.count));
 

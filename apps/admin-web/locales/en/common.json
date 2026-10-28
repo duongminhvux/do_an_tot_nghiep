@@ -164,5 +164,68 @@
     "reveal": "Show / hide meaning or transcript",
     "wordUnavailable": "Word unavailable to learners",
     "valid": "No errors found by the current validation rules."
+  },
+  "contentQuality": {
+    "content": "Content",
+    "title": "Data quality",
+    "description": "Review missing data, media and potential duplicates. Results come from the last completed scan; opening this page does not scan the catalog.",
+    "scan": "Rescan",
+    "scanning": "Scanning",
+    "loading": "Loading data quality",
+    "loadError": "Unable to load results. Please retry.",
+    "retry": "Retry",
+    "scanError": "Unable to queue a scan. Please retry.",
+    "queued": "Scan request received. Progress updates automatically.",
+    "snapshot": "Snapshot updated",
+    "stale": "No fresh snapshot within 24 hours. Rescan when needed.",
+    "processed": "Checked {{count}} items",
+    "phase": "Checking",
+    "workerError": "Scan did not finish after 3 attempts. Previous results remain available. Check source services and rescan.",
+    "filter": "Filter issue category",
+    "all": "All",
+    "noFeedback": "No learner content-report source is available yet. This tab will aggregate reports when that feature is integrated.",
+    "noScan": "No completed scan yet. Select Rescan to check content.",
+    "empty": "No warnings in this category in the latest scan.",
+    "edit": "Open editor",
+    "total": "{{count}} findings",
+    "previous": "Previous",
+    "next": "Next",
+    "mediaScope": "Only system media URLs are probed, at most 4 per batch. External or unavailable URLs are marked unverified, not confirmed dead.",
+    "kpi": {
+      "needsReview": "Needs review",
+      "missingAudio": "Missing audio",
+      "duplicates": "Potential duplicates",
+      "feedback": "Reported issues"
+    },
+    "tabs": {
+      "DATA": "Incomplete data",
+      "MEDIA": "Media",
+      "DUPLICATE": "Duplicates",
+      "FEEDBACK": "Feedback"
+    },
+    "state": {
+      "PENDING": "Queued",
+      "RUNNING": "Scanning",
+      "COMPLETED": "Scan complete",
+      "FAILED": "Scan failed"
+    },
+    "kind": {
+      "words": "Word",
+      "lessons": "Vocabulary lesson",
+      "dictation": "Dictation",
+      "exams": "TOEIC exam"
+    },
+    "columns": {
+      "type": "Content type",
+      "name": "Name",
+      "issue": "Issue",
+      "severity": "Severity",
+      "updated": "Content updated",
+      "action": "Action"
+    },
+    "severity": {
+      "error": "Error",
+      "warning": "Needs review"
+    }
   }
 }

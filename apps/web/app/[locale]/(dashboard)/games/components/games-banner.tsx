@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import Image from "next/image";
+import {StudyArtwork} from '@/components/study-artwork';
 import { BarChart3, Gamepad2, Star, Trophy } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { PageHeader, tones } from "@/components/ui/page";
@@ -38,14 +38,7 @@ export function GamesBanner() {
           maskImage: "linear-gradient(to right, transparent, black 24%)",
         }}
       >
-        <Image
-          src="/images/games/vocabulary-banner-light.webp"
-          alt=""
-          fill
-          priority
-          sizes="75vw"
-          className="object-contain object-right"
-        />
+        <StudyArtwork kind="games" className="h-full w-full object-contain object-right" />
       </div>
       <div className="relative z-10 space-y-5 p-6 md:w-[68%] lg:w-[60%] xl:w-[56%]">
         <PageHeader

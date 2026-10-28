@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import {StudyArtwork} from '@/components/study-artwork';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
@@ -228,11 +229,7 @@ export default function VocabularyPage() {
             </div>
 
             <div className="flex w-48 shrink-0 items-center justify-center sm:w-60 md:w-64 lg:w-72">
-              <img
-                src="/images/vocab-hero-student.jpg"
-                alt="Student studying English"
-                className="h-auto w-full select-none rounded-lg object-contain"
-              />
+              <StudyArtwork className="h-auto w-full select-none rounded-lg" />
             </div>
           </div>
 
@@ -542,11 +539,7 @@ export default function VocabularyPage() {
               </p>
             </div>
             <div className="h-24 overflow-hidden">
-              <img
-                src="/images/vocab-quote-mountains.jpg"
-                alt="Mountains landscape"
-                className="h-full w-full object-cover object-bottom"
-              />
+              <StudyArtwork kind="landscape" className="h-full w-full object-cover" />
             </div>
           </div>
         </div>

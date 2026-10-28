@@ -14,6 +14,8 @@ import {
 } from "../apps/api/src/postgres/migrations.ts";
 
 const cwd = fileURLToPath(new URL("..", import.meta.url));
+const includeCommunity=process.argv.includes('--community');
+const includeQuality=process.argv.includes('--quality');
 const includeArena=process.argv.includes('--arena');
 const includePublication=process.argv.includes('--publication');
 const includeMistakes = process.argv.includes("--mistakes");
@@ -124,7 +126,7 @@ try {
   }
   if(includeArena)env.ARENA_TEST_DATABASE_URL=env.F01_ARENA_TEST_DATABASE_URL;
   console.log(
-    `${includePublication ? "F01/F02/F10" : includeMistakes ? "F01/F02" : "F01"} integration: four isolated owner databases; disposable fixtures`,
+    `${includeQuality ? "F01/F02/F10/F11" : includePublication ? "F01/F02/F10" : includeMistakes ? "F01/F02" : "F01"} integration: four isolated owner databases; disposable fixtures`,
   );
   const result = spawnSync(
     process.execPath,
@@ -132,10 +134,13 @@ try {
       resolve(createRequire(new URL('../apps/api/package.json',import.meta.url)).resolve('vitest/package.json'),'../vitest.mjs'),
       "run",
       "--maxWorkers=3",
+      "--no-file-parallelism",
       ...(includeArena?["src/modules/arena"]:[]),
       "src/modules/learning/recommendations",
       ...(includeMistakes ? ["src/modules/learning/mistakes"] : []),
       ...(includePublication ? ["src/modules/publication"] : []),
+      ...(includeQuality ? ["src/modules/content-quality"] : []),
+      ...(includeCommunity ? ["src/modules/assessment/exams/community"] : []),
       "src/modules/site-settings/site-settings.spec.ts",
       "src/modules/auth/guards/jwt-auth.guard.spec.ts",
     ],

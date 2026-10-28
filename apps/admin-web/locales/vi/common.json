@@ -164,5 +164,68 @@
     "reveal": "Hiện / ẩn nghĩa hoặc transcript",
     "wordUnavailable": "Từ chưa khả dụng cho người học",
     "valid": "Không phát hiện lỗi theo các quy tắc kiểm tra hiện tại."
+  },
+  "contentQuality": {
+    "content": "Nội dung",
+    "title": "Chất lượng dữ liệu",
+    "description": "Theo dõi nội dung thiếu dữ liệu, media và nghi trùng. Kết quả được lưu từ lần quét hoàn tất gần nhất; mở trang không tự quét toàn bộ nội dung.",
+    "scan": "Quét lại",
+    "scanning": "Đang quét",
+    "loading": "Đang tải chất lượng dữ liệu",
+    "loadError": "Không tải được kết quả. Vui lòng thử lại.",
+    "retry": "Thử lại",
+    "scanError": "Chưa tạo được lượt quét. Vui lòng thử lại.",
+    "queued": "Đã tiếp nhận yêu cầu quét. Tiến độ sẽ tự cập nhật.",
+    "snapshot": "Kết quả cập nhật lúc",
+    "stale": "Chưa có kết quả mới trong 24 giờ. Hãy quét lại khi cần.",
+    "processed": "Đã kiểm tra {{count}} nội dung",
+    "phase": "Đang kiểm tra",
+    "workerError": "Lượt quét không hoàn tất sau 3 lần thử. Kết quả trước vẫn được giữ. Hãy kiểm tra dịch vụ nguồn và quét lại.",
+    "filter": "Lọc loại vấn đề",
+    "all": "Tất cả",
+    "noFeedback": "Chưa có nguồn báo lỗi nội dung từ người học. Tab này sẽ tổng hợp khi chức năng báo lỗi được tích hợp.",
+    "noScan": "Chưa có lần quét hoàn tất. Nhấn Quét lại để kiểm tra nội dung.",
+    "empty": "Không có cảnh báo trong nhóm này ở lần quét gần nhất.",
+    "edit": "Đi đến chỉnh sửa",
+    "total": "{{count}} cảnh báo",
+    "previous": "Trước",
+    "next": "Sau",
+    "mediaScope": "Chỉ kiểm tra link trong vùng media của hệ thống, tối đa 4 URL mỗi lượt. Link ngoài phạm vi hoặc không phản hồi được đánh dấu chưa xác minh; không kết luận là link chết.",
+    "kpi": {
+      "needsReview": "Cần kiểm tra",
+      "missingAudio": "Thiếu audio",
+      "duplicates": "Nghi trùng",
+      "feedback": "Có báo lỗi"
+    },
+    "tabs": {
+      "DATA": "Chưa đủ dữ liệu",
+      "MEDIA": "Media",
+      "DUPLICATE": "Trùng lặp",
+      "FEEDBACK": "Phản hồi"
+    },
+    "state": {
+      "PENDING": "Đang chờ",
+      "RUNNING": "Đang quét",
+      "COMPLETED": "Quét hoàn tất",
+      "FAILED": "Quét thất bại"
+    },
+    "kind": {
+      "words": "Từ vựng",
+      "lessons": "Bài từ vựng",
+      "dictation": "Dictation",
+      "exams": "Đề TOEIC"
+    },
+    "columns": {
+      "type": "Loại nội dung",
+      "name": "Tên",
+      "issue": "Vấn đề",
+      "severity": "Mức độ",
+      "updated": "Cập nhật nội dung",
+      "action": "Thao tác"
+    },
+    "severity": {
+      "error": "Lỗi",
+      "warning": "Cần kiểm tra"
+    }
   }
 }

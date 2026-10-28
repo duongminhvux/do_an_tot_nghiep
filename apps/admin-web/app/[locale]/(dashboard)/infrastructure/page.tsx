@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { audioService } from '@/services/audio.service';
+import { useTranslation } from 'react-i18next';
 
 type Config = { maxWorkers: number; backlogThreshold: number; note: string };
 type Metrics = { backend: string; waiting: number; retrying?: number; dead?: number; consumers?: number };
 export default function InfrastructurePage() {
+  const {t}=useTranslation('common');
   const [config, setConfig] = useState<Config | null>(null);
   const [services, setServices] = useState<{name:string;state:string}[]>([]);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
@@ -13,14 +15,20 @@ export default function InfrastructurePage() {
   const [busy, setBusy] = useState(false);
   const [jobId, setJobId] = useState('');
   const [job, setJob] = useState<any>(null);
+  const [refreshing,setRefreshing]=useState(true);
+  const generation=useRef(0);
   const refresh = useCallback(async () => {
-    try {
-      const [nextConfig, nextMetrics] = await Promise.all([audioService.getWorkerConfig(), audioService.getQueueMetrics()]);
-      setConfig(nextConfig);setMetrics(nextMetrics);setError('');
-      void audioService.getServiceHealth().then(result => setServices(result.services)).catch(()=>setServices([]));
-    } catch (e) {setError(e instanceof Error ? e.message : 'Cannot load queue metrics');}
-  }, []);
-  useEffect(() => {void refresh();}, [refresh]);
+    const request=++generation.current;
+    setRefreshing(true);
+    const [nextConfig,nextMetrics,nextHealth]=await Promise.allSettled([audioService.getWorkerConfig(),audioService.getQueueMetrics(),audioService.getServiceHealth()]);
+    if(request!==generation.current)return;
+    setConfig(nextConfig.status==='fulfilled'?nextConfig.value:null);
+    setMetrics(nextMetrics.status==='fulfilled'?nextMetrics.value:null);
+    setServices(nextHealth.status==='fulfilled'&&Array.isArray(nextHealth.value?.services)?nextHealth.value.services:[]);
+    setError([nextConfig,nextMetrics,nextHealth].some(result=>result.status==='rejected')?t('infrastructure.loadError'):'');
+    setRefreshing(false);
+  }, [t]);
+  useEffect(() => {void refresh();return()=>{generation.current++;};}, [refresh]);
   async function save() {
     if (!config) return;
     setBusy(true);setError('');
@@ -43,7 +51,7 @@ export default function InfrastructurePage() {
             <span className={item.state==='healthy'?'text-green-700':'text-amber-700'}>{item.state}</span>
           </div>)}
         </div>
-        {!services.length && <p className="text-sm text-slate-500">Service health chưa có dữ liệu; kiểm tra Gateway/Media Jobs.</p>}
+        {!services.length && <p role="status" className="text-sm text-slate-500">{t(refreshing?'infrastructure.loading':'infrastructure.emptyHealth')}</p>}
       </section>
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {([['Broker',metrics?.backend||'—'],['Waiting',metrics?.waiting??'—'],['Retrying',metrics?.retrying??'—'],['Dead letter',metrics?.dead??'—']] as const).map(([label,value]) =>
@@ -64,8 +72,8 @@ export default function InfrastructurePage() {
         </div>
         <p className="text-xs text-slate-500">{config?.note}</p>
         <div className="flex gap-3">
-          <button className="rounded-lg bg-blue-600 px-4 py-2 text-white disabled:opacity-50" disabled={!config||busy} onClick={()=>void save()}>Save policy</button>
-          <button className="rounded-lg border px-4 py-2" onClick={()=>void refresh()}>Refresh</button>
+          <button className="rounded-lg bg-blue-600 px-4 py-2 text-white disabled:opacity-50" disabled={!config||busy||refreshing} onClick={()=>void save()}>Save policy</button>
+          <button className="rounded-lg border px-4 py-2" disabled={refreshing||busy} onClick={()=>void refresh()}>{refreshing?t('infrastructure.loading'):'Refresh'}</button>
         </div>
       </section>
       <section className="rounded-xl border bg-white p-5 space-y-3">

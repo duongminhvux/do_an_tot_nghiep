@@ -19,6 +19,7 @@ import { ExamStructureTable } from './components/exam-structure-table';
 import { ExamModePartsSelector } from './components/exam-mode-parts-selector';
 import { ExamLeaderboard } from './components/exam-leaderboard';
 import { ExamComments } from './components/exam-comments';
+import { AttemptHistory } from '@/features/toeic/attempt/attempt-history';
 import { toeicAttemptService, ExamMode } from '@/services/toeic-attempt.service';
 
 function unwrapOne<T>(value: any): T | null {
@@ -229,9 +230,9 @@ export default function ToeicExamDetailPage() {
             </div>
           </div>
 
-          <ExamLeaderboard rawAttempts={rawAttempts} />
-
-          <ExamComments currentUser={user} />
+          <ExamLeaderboard key={exam!._id} examId={exam!._id} viewerId={user?._id} />
+          <Card><h2 className="mb-4 font-semibold">{t('attempt.history')}</h2><AttemptHistory attempts={rawAttempts} locale={locale} /></Card>
+          <ExamComments key={`${exam!._id}:${user?._id}`} examId={exam!._id} viewerId={user?._id} />
         </div>
       )}
     </PageShell>

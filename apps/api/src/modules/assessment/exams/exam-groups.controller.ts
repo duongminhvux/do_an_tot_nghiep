@@ -1,4 +1,4 @@
-import { Controller,Get,Param,Query } from '@nestjs/common';
+import { Controller,Get,Header,Param,Query,Req } from '@nestjs/common';
 import { QueryExamGroupDto } from './dto/query-exam-group.dto.js';
 import { ExamGroupsService } from './exam-groups.service.js';
 
@@ -19,5 +19,10 @@ export class ExamGroupsController {
   @Get(':id/exams')
   getExams(@Param('id') id: string, @Query() query: any) {
     return this.examGroupsService.getExams(id, query);
+  }
+  @Get(':id/progress')
+  @Header('Cache-Control','private, no-store')
+  progress(@Param('id') id:string,@Req() req:{user:{_id:string}}){
+    return this.examGroupsService.getProgress(id,String(req.user._id));
   }
 }

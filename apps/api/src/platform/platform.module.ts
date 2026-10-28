@@ -14,6 +14,7 @@ import { RedisService } from '../common/redis/redis.service.js';
 import { OwnerReadsModule } from '../internal/owner-reads.module.js';
 import { Public } from '../modules/auth/decorators/public.decorator.js';
 import { PublicationModule } from '../modules/publication/publication.module.js';
+import { ContentQualityModule } from '../modules/content-quality/content-quality.module.js';
 import { InjectPgConnection,PgDatabaseModule,type PgConnection } from '../postgres/connection.js';
 
 export type OwnedService = 'identity'|'content'|'assessment'|'arena'|'learning'|'media-jobs'|'ai-import'|'notification';
@@ -73,7 +74,8 @@ export class PlatformModule {
         resolvers:[new HeaderResolver(['x-custom-lang']),AcceptLanguageResolver]}),
       PgDatabaseModule.forRootAsync(),
       ...(role==='arena'?[RedisModule]:[]),JwtModule.register({}),MediaStorageModule,
-      DomainEventsModule,NotificationClientModule,LearningActivityClientModule,OwnerReadsModule,PublicationModule,...business,
+      DomainEventsModule,NotificationClientModule,LearningActivityClientModule,OwnerReadsModule,PublicationModule,
+      ...(['content','assessment'].includes(role)?[ContentQualityModule]:[]),...business,
     ],controllers:[HealthController]};
   }
 }

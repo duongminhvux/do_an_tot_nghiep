@@ -56,7 +56,11 @@ export async function bootstrapService(role:OwnedService,modules:Type<unknown>[]
         for(const h of ['content-type','content-length','content-range','accept-ranges','cache-control']){
           const v=response.headers.get(h);if(v)res.setHeader(h,v);
         }
-        if(req.method==='HEAD'||!response.body)return res.end();
+        if(req.method==='HEAD'){
+          await response.body?.cancel();
+          return res.end();
+        }
+        if(!response.body)return res.end();
         Readable.fromWeb(response.body as any).pipe(res);
       }catch{res.status(502).end('Media unavailable');}
     });

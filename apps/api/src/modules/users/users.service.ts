@@ -1,6 +1,7 @@
 import { BadRequestException,Injectable,Logger,Optional } from '@nestjs/common';
 import { I18nService } from 'nestjs-i18n';
 import { DomainOutboxService } from '../../common/events/domain-outbox.service.js';
+import { hashPassword } from '../../common/bcrypt.js';
 import { InjectPgConnection,createConnection,type PgConnection } from '../../postgres/connection.js';
 import { SqlRecords } from '../../postgres/records.js';
 import { first,joinSql,literal,sql,type Sql } from '../../postgres/sql.js';
@@ -392,9 +393,12 @@ export class UsersService {
 
   async updateNotes(id:string,notes:string){await this.requireUser(id);await this.update(id,{notes});return {success:true,notes};}
   async createAdmin(data:CreateAdminUserDto){
-    if(await this.isExistingEmail(data.email))throw new BadRequestException('Email already exists');
+    const email=data.email.toLowerCase().trim();
+    if(typeof data.password!=='string'||data.password.length<6)throw new BadRequestException('Initial password must contain at least 6 characters');
+    if(await this.isExistingEmail(email))throw new BadRequestException('Email already exists');
     const created = await this.create({
-      email: data.email.toLowerCase().trim(),
+      email,
+      password:await hashPassword(data.password),
       username: data.name.trim(),
       phone: data.phone?.trim(),
       avatarUrl: data.avatarUrl || '',
@@ -404,7 +408,8 @@ export class UsersService {
       authProvider: AuthProvider.LOCAL,
       lastActive: new Date() });
 
-    return created;
+    const {password:_password,...publicUser}=created;
+    return publicUser;
   }
   async updateAdmin(id:string,data:UpdateAdminUserDto){
     const user=await this.requireUser(id);const changes:Record<string,any>={};

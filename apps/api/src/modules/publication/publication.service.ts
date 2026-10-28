@@ -126,6 +126,10 @@ export class PublicationService {
       audit,
     };
   }
+  /** Read-only owner-side input shared by publication and the quality scanner. */
+  qualityDocument(kind: PublicationKind, id: string) {
+    return this.document(this.db, kind, id);
+  }
   private async transition(
     kind: PublicationKind,
     id: string,

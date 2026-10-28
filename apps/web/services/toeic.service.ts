@@ -142,6 +142,9 @@ export interface ToeicStatsOverview {
 }
 
 export const toeicService = {
+  getGroupProgress: async (idOrSlug:string) => {
+    return (await apiClient.get<ApiResponse<ToeicAttemptSummary[]>>(`/exam-groups/${encodeURIComponent(idOrSlug)}/progress`)).data;
+  },
   getExams: async (params?: Record<string, any>) => {
     const res = await apiClient.get<ApiResponse<ToeicExamSummary[]>>("/exams", {
       params,

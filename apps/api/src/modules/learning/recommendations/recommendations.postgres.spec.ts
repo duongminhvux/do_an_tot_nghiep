@@ -41,6 +41,10 @@ describe.runIf(roles.every((role) => Boolean(process.env[variable(role)])))(
       const learning = clients.get('learning')!,
         assessment = clients.get('assessment')!,
         content = clients.get('content')!;
+      // Other integration suites share these disposable owner databases. Hide
+      // their catalog only inside this rolled-back fixture transaction.
+      await assessment.query('UPDATE public.exams SET is_active=false WHERE is_active IS TRUE');
+      await content.query('UPDATE public.dictationlessons SET is_deleted=true WHERE is_deleted IS NOT TRUE');
       await content.query(`INSERT INTO public.words(id,word,slug,level,is_active) VALUES($1,'reviewfixture',$2,'B1',true)`,[reviewWord,`f01-${reviewWord}`]);
       await learning.query(
         `INSERT INTO public.userwordreviews (user_id, word_id, next_review_at) VALUES ($1, $2, now() - interval '1 day')`,

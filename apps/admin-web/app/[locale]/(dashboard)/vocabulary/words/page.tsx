@@ -45,6 +45,7 @@ export default function WordsPage() {
   const locale = (params?.locale as string) || 'vi';
 
   const action = searchParams.get('action');
+  const targetEditWordId = searchParams.get('editWordId');
   const targetLessonId = searchParams.get('lessonId');
   const targetLessonTitle = searchParams.get('lessonTitle');
   const targetSectionId = searchParams.get('sectionId');
@@ -68,6 +69,9 @@ export default function WordsPage() {
   const [editingWordId, setEditingWordId] = useState<string | null>(null);
   const [deletingWord, setDeletingWord] = useState<WordListItem | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  useEffect(() => {
+    if (targetEditWordId && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(targetEditWordId)) setEditingWordId(targetEditWordId);
+  }, [targetEditWordId]);
 
   // Automatically open create dialog if URL has action=create
   useEffect(() => {

@@ -9,10 +9,10 @@ export class CreateAdminUserDto {
   @IsString()
   name!: string;
 
-  @IsOptional()
+  @IsNotEmpty()
   @IsString()
   @MinLength(6)
-  password?: string;
+  password!: string;
 
   @IsOptional()
   @IsString()

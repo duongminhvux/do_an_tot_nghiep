@@ -117,6 +117,12 @@ export function AppSidebar() {
       }],
     },
     {
+      label: t('contentQuality.content'),
+      icon: ClipboardCheck,
+      active: active(`/${locale}/content`),
+      children: [{ label: t('contentQuality.title'), href: `/${locale}/content/quality`, icon: ClipboardCheck, active: active(`/${locale}/content/quality`) }],
+    },
+    {
       label: t("nav.games"),
       href: `/${locale}/games`,
       icon: Gamepad2,

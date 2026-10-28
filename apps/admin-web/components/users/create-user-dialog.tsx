@@ -44,7 +44,7 @@ export function CreateUserDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !email.trim()) return;
+    if (!name.trim() || !email.trim() || password.length < 6) return;
 
     try {
       setLoading(true);
@@ -54,7 +54,7 @@ export function CreateUserDialog({
         email: email.trim(),
         phone: phone.trim() || undefined,
         status,
-        password: password.trim() || undefined,
+        password,
       });
       // Reset form
       setName('');
@@ -137,11 +137,16 @@ export function CreateUserDialog({
                 </label>
                 <Input
                   type="password"
+                  required
+                  minLength={6}
+                  autoComplete="new-password"
+                  aria-describedby="create-user-password-help"
                   placeholder={t('forms.password_placeholder', '••••••••')}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="h-9 text-sm"
                 />
+                <p id="create-user-password-help" className="text-xs text-slate-500">{t('forms.password_help')}</p>
               </div>
             </div>
 
@@ -177,7 +182,7 @@ export function CreateUserDialog({
             </Button>
             <Button
               type="submit"
-              disabled={loading || !name.trim() || !email.trim()}
+              disabled={loading || !name.trim() || !email.trim() || password.length < 6}
               className="h-9 text-sm bg-blue-600 hover:bg-blue-700 text-white"
             >
               {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

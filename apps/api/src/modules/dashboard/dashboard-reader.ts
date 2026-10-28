@@ -11,7 +11,7 @@ export async function readDashboard(db:PgConnection,owner:string,input:Dashboard
   if(owner==='identity'){
     const [counts,userTimeline,newUsers]=await Promise.all([
       first(db,sql`SELECT COUNT(*)::int "totalUsers",COUNT(*) FILTER(WHERE created_at<${start})::int "previousUsers" FROM users WHERE is_deleted IS NOT TRUE`),
-      rows(db,sql`SELECT to_char(created_at AT TIME ZONE 'UTC','YYYY-MM-DD') "_id",COUNT(*)::int count FROM users WHERE is_deleted IS NOT TRUE AND created_at>=${start} AND created_at<${end} GROUP BY 1 ORDER BY 1`),
+      rows(db,sql`SELECT to_char(created_at AT TIME ZONE 'Asia/Ho_Chi_Minh','YYYY-MM-DD') "_id",COUNT(*)::int count FROM users WHERE is_deleted IS NOT TRUE AND created_at>=${start} AND created_at<${end} GROUP BY 1 ORDER BY 1`),
       rows(db,sql`SELECT id AS "_id",username,email,created_at AS "createdAt" FROM users WHERE is_deleted IS NOT TRUE ORDER BY created_at DESC,id LIMIT 5`),
     ]);return {...counts,userTimeline,newUsers};
   }
@@ -21,7 +21,7 @@ export async function readDashboard(db:PgConnection,owner:string,input:Dashboard
       first(db,sql`SELECT COUNT(*) FILTER(WHERE created_at>=${start} AND created_at<${end})::int "totalAttempts",COUNT(*) FILTER(WHERE created_at>=${previous} AND created_at<${start})::int "previousAttempts" FROM attempts WHERE status IN ('FINISHED','COMPLETED')`),
       rows(db,sql`SELECT AVG(score)::float8 value FROM attempts WHERE created_at>=${start} AND created_at<${end} AND status IN ('FINISHED','COMPLETED')`),
       rows(db,sql`SELECT AVG(score)::float8 value FROM attempts WHERE created_at>=${previous} AND created_at<${start} AND status IN ('FINISHED','COMPLETED')`),
-      rows(db,sql`SELECT to_char(created_at AT TIME ZONE 'UTC','YYYY-MM-DD') "_id",COUNT(*)::int count FROM attempts WHERE created_at>=${start} AND created_at<${end} AND status IN ('FINISHED','COMPLETED') GROUP BY 1 ORDER BY 1`),
+      rows(db,sql`SELECT to_char(created_at AT TIME ZONE 'Asia/Ho_Chi_Minh','YYYY-MM-DD') "_id",COUNT(*)::int count FROM attempts WHERE created_at>=${start} AND created_at<${end} AND status IN ('FINISHED','COMPLETED') GROUP BY 1 ORDER BY 1`),
       rows(db,sql`SELECT type "_id",COUNT(*)::int count FROM exams WHERE is_deleted IS NOT TRUE GROUP BY type ORDER BY count DESC`),
       rows(db,sql`SELECT e.id,e.name,COUNT(*)::int attempts FROM attempts a JOIN exams e ON e.id=a.exam_id WHERE a.status IN ('FINISHED','COMPLETED') AND e.type='TOEIC' AND e.is_deleted IS NOT TRUE GROUP BY e.id,e.name ORDER BY attempts DESC,e.id LIMIT 5`),
     ]);return {...exams,...attempts,scoreResult,previousScoreResult,attemptTimeline,examTypes,popularExams};

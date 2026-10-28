@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
+import {StudyArtwork} from '@/components/study-artwork';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -256,14 +256,7 @@ export default function ToeicExamsPage() {
         </div>
         <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-[40%] overflow-hidden md:block">
           <div className="absolute inset-y-0 left-0 z-10 w-32 bg-gradient-to-r from-white to-transparent" />
-          <Image
-            src="/images/toeic/banner.jpg"
-            alt="TOEIC Study Workspace"
-            fill
-            priority
-            className="object-cover object-center opacity-90"
-            sizes="(max-width: 1024px) 40vw, 30vw"
-          />
+          <StudyArtwork kind="exam" className="h-full w-full object-cover opacity-90" />
         </div>
       </section>
 

@@ -38,6 +38,19 @@ private get examModel(){return new SqlRecords(this.nativeDb,'exams');}
 constructor(
 @InjectPgConnection() private readonly nativeDb:PgConnection,
   ) {}
+  /** One safe summary per exam, independent of the size of a learner's history. */
+  async getProgress(idOrSlug:string,userId:string){
+    const group=await this.examGroupModel.one(sql`is_deleted IS NOT TRUE AND is_active IS NOT FALSE AND ${isUuid(idOrSlug)?sql`id=${idOrSlug}::uuid`:sql`slug=${idOrSlug}`}`);
+    if(!group)throw new NotFoundException('Exam group not found');
+    return rows(this.nativeDb,sql`SELECT DISTINCT ON (a.exam_id)
+      a.id AS "_id",a.exam_id AS "examId",a.status,a.total_questions AS "totalQuestions",
+      COALESCE(a.correct_answers,a.total_correct,0) AS "correctAnswers",
+      CASE WHEN jsonb_typeof(a.answers)='object' THEN (SELECT count(*)::int FROM jsonb_object_keys(a.answers)) ELSE COALESCE(a.answered_questions,0) END AS "answeredQuestions"
+      FROM public.attempts a JOIN public.exams e ON e.id=a.exam_id
+      WHERE e.group_id=${group._id}::uuid AND e.type='TOEIC' AND e.is_deleted IS NOT TRUE AND e.is_active IS NOT FALSE AND e.publication_status='PUBLISHED'
+        AND a.user_id=${userId}::uuid AND a.status IN ('IN_PROGRESS','FINISHED','COMPLETED')
+      ORDER BY a.exam_id,a.created_at DESC,a.id DESC`);
+  }
 
   private generateSlug(text: string): string {
     if (!text) return '';

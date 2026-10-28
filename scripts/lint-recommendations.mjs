@@ -23,6 +23,12 @@ if (process.argv.includes('--mistakes')) {
 if (process.argv.includes('--publication')) {
   files['admin-web'].push('services/publication.service.ts','components/publication/publication-controls.tsx');
 }
+if (process.argv.includes('--quality')) {
+  files['admin-web'].push('services/content-quality.service.ts','app/[locale]/(dashboard)/content/quality/page.tsx');
+}
+if(process.argv.includes('--community')) {
+ files.web.push('services/toeic-community.service.ts','app/[locale]/(dashboard)/toeic/[slug]/[examSlug]/components/exam-comments.tsx','app/[locale]/(dashboard)/toeic/[slug]/[examSlug]/components/exam-leaderboard.tsx');
+}
 for (const [app, paths] of Object.entries(files)) {
   const eslint = new ESLint({
     cwd: fileURLToPath(new URL(`../apps/${app}/`, import.meta.url)),
@@ -48,6 +54,6 @@ for (const [app, paths] of Object.entries(files)) {
   const results = await eslint.lintFiles(paths);
   process.stdout.write(await (await eslint.loadFormatter('stylish')).format(results));
   const problems = results.reduce((count, item) => count + item.errorCount + item.warningCount, 0);
-  console.log(`${app}: ${results.length} ${process.argv.includes('--mistakes') ? 'F01/F02' : 'F01'} TypeScript files, ${problems} lint problems`);
+  console.log(`${app}: ${results.length} ${process.argv.includes('--quality') ? 'F01/F02/F10/F11' : process.argv.includes('--publication') ? 'F01/F02/F10' : process.argv.includes('--mistakes') ? 'F01/F02' : 'F01'} TypeScript files, ${problems} lint problems`);
   if (problems) process.exitCode = 1;
 }

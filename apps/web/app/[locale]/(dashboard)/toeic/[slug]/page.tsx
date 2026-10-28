@@ -39,6 +39,8 @@ import {
   type Tone,
 } from '@/components/ui/page';
 import { cn } from '@/lib/utils';
+import { useAppSelector } from '@/redux/hooks';
+import { groupAttemptProgress } from '@/features/toeic/attempt/group-progress';
 
 function unwrapArray<T>(value: any): T[] {
   if (Array.isArray(value)) return value as T[];
@@ -71,6 +73,7 @@ export default function ToeicGroupDetailPage() {
   const locale = (params?.locale as string) || 'vi';
   const slug = (params?.slug as string) || '';
   const { t } = useTranslation('toeic');
+  const userId=useAppSelector(state=>state.auth.user?._id);
 
 
 
@@ -89,9 +92,10 @@ export default function ToeicGroupDetailPage() {
   });
 
   // 3. Fetch user attempts for progress status
-  const { data: attemptsData } = useQuery({
-    queryKey: ['toeic-user-attempts'],
-    queryFn: () => toeicService.getAttempts({ limit: 200 }),
+  const { data: attemptsData,isError:isProgressError,isPending:isProgressPending,refetch:retryProgress } = useQuery({
+    queryKey: ['toeic-group-progress',slug,userId],
+    queryFn: () => toeicService.getGroupProgress(slug),
+    enabled:!!slug&&!!userId,
     staleTime: 15_000,
   });
 
@@ -186,6 +190,7 @@ export default function ToeicGroupDetailPage() {
         />
       </div>
 
+      {isProgressError && <div role="alert" className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm"><p>{t('group_detail.progress_error')}</p><Button variant="outline" size="sm" onClick={()=>void retryProgress()}>{t('community.retry')}</Button></div>}
       {isLoading ? (
         <Card>
           <LoadingState label={t('modals.group_exams.loading')} />
@@ -200,14 +205,13 @@ export default function ToeicGroupDetailPage() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {sortedExams.map((exam, index) => {
             const attempt = attemptsMap.get(exam._id);
-            const isCompleted = attempt?.status === 'COMPLETED';
-            const isInProgress = attempt?.status === 'IN_PROGRESS';
+            const progress=groupAttemptProgress(attempt);
+            const isCompleted = progress.completed;
+            const isInProgress = progress.inProgress;
             const isNew = index === 0;
 
             const totalQ = exam.totalQuestions || 0;
-            const correctQ = attempt?.totalCorrect || 0;
-            const answeredQ = attempt?.totalQuestions || 0;
-            const score = attempt?.score ?? null;
+            const answeredQ = progress.answered;
 
             const examSlug = exam.slug || exam._id;
             const href = `/${locale}/toeic/${slug}/${examSlug}`;
@@ -215,11 +219,7 @@ export default function ToeicGroupDetailPage() {
             // Circular progress ring
             const R = 18;
             const circ = 2 * Math.PI * R;
-            const progressVal = isCompleted
-              ? totalQ > 0 ? (correctQ / totalQ) * 100 : 100
-              : isInProgress
-              ? totalQ > 0 ? (answeredQ / totalQ) * 100 : 0
-              : 0;
+            const progressVal = progress.percent;
             const dash = (progressVal / 100) * circ;
             const ringColor = isCompleted ? '#10b981' : isInProgress ? '#2563eb' : '#e2e8f0';
 
@@ -298,14 +298,14 @@ export default function ToeicGroupDetailPage() {
 
                   {isCompleted ? (
                     <span className="text-xs font-semibold text-emerald-600">
-                      {score !== null ? `${score} điểm` : 'Hoàn thành'}
+                      {t('group_detail.status_completed')}
                     </span>
                   ) : isInProgress ? (
                     <span className="text-xs font-semibold text-blue-600">
-                      {answeredQ}/{totalQ} câu
+                      {answeredQ}/{progress.total} {t('pages.questions')}
                     </span>
                   ) : (
-                    <span className="text-xs text-slate-400">{t('group_detail.status_not_started')}</span>
+                    <span className="text-xs text-slate-400">{t(isProgressError?'group_detail.progress_unavailable':isProgressPending?'community.loading':'group_detail.status_not_started')}</span>
                   )}
                 </div>
               </Link>
