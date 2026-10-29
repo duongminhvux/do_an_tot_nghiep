@@ -1,4 +1,6 @@
 {
+  "load_error": "Unable to load data. Please try again.",
+  "retry": "Retry",
   "title": "Choose a listening topic",
   "description": "Each topic contains sections and lessons. In each lesson, listen and type one sentence at a time.",
   "search_topics": "Search topics...",

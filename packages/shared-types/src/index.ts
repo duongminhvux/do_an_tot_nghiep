@@ -24,3 +24,4 @@ export interface PaginationParams {
   page?: number;
   limit?: number;
 }
+export type { MediaCategory, MediaItemKind, MediaLibraryItem, MediaUsage, MediaReference, MediaLibraryList, MediaLibraryDetail } from './media-library.js';

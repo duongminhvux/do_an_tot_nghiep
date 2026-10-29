@@ -25,6 +25,7 @@ import {
   Trophy,
   DoorOpen,
   Settings,
+  Images,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -169,6 +170,12 @@ export function AppSidebar() {
       href: `/${locale}/infrastructure`,
       icon: Settings,
       active: active(`/${locale}/infrastructure`),
+    },
+    {
+      label: locale === 'en' ? 'Media library' : 'Quản lý media',
+      href: `/${locale}/media`,
+      icon: Images,
+      active: active(`/${locale}/media`),
     },
     {
       label: t("nav.users"),

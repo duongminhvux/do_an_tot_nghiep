@@ -28,6 +28,10 @@ function route(rules, url) {
   return rules.find(({re}) => re.test(p))?.role ?? null;
 }
 const fixtures = [
+  ['/api/admin/media-library/dictation/items','content'],
+  ['/api/admin/media-library/vocab/items/00000000-0000-4000-8000-000000000001','content'],
+  ['/api/admin/media-library/toeic/items?page=2','assessment'],
+  ['/api/admin/media-library/games/items','learning'],
   ['/api/admin/content-quality/summary','content'],
   ['/api/auth/google/login','identity'],['/api/admin/auth/login','identity'],['/api/users','identity'],
   ['/api/words','content'],['/api/admin/words','content'],['/api/collections','content'],

@@ -1,4 +1,5 @@
 'use client';
+import { LoadError } from '@/components/ui/load-error';
 import { useListPagination } from '@/hooks/use-list-pagination';
 import { ListPagination } from '@/components/ui/list-pagination';
 import {PublicationBadge,PublicationFilter} from '@/components/publication/publication-controls';
@@ -43,7 +44,7 @@ export default function AdminDictationPage() {
   const [publicationFilter,setPublicationFilter]=useState('');
   const [search, setSearch] = useState('');
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['admin-dictation'],
     queryFn: () => dictationService.getAll(),
   });
@@ -82,6 +83,8 @@ export default function AdminDictationPage() {
     { label: 'Sẵn sàng', value: stats.ready, Icon: Sparkles },
     { label: 'Tổng số câu', value: stats.sentences, Icon: AudioLines },
   ];
+
+  if (isError) return <LoadError onRetry={() => { void refetch(); }} />;
 
   return (
     <div className="min-h-screen bg-slate-50/50 p-4 sm:p-6 md:p-8 space-y-6">

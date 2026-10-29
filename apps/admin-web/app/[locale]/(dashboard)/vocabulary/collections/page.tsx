@@ -1,4 +1,5 @@
 'use client';
+import { LoadError } from '@/components/ui/load-error';
 import { loadListPages } from '@/lib/load-list-pages';
 import { useListPagination } from '@/hooks/use-list-pagination';
 import { ListPagination } from '@/components/ui/list-pagination';
@@ -93,7 +94,7 @@ export default function CollectionsPage() {
   // Query Collections
   const {
     data: collectionsRes,
-    isLoading: isLoadingCols,
+    isLoading: isLoadingCols, isError: collectionsError, refetch: retryCollections,
   } = useQuery({
     queryKey: ['collections', debouncedSearchCol],
     queryFn: () => loadListPages((page, limit) =>
@@ -134,7 +135,7 @@ export default function CollectionsPage() {
   }, [collections, urlCollectionId]);
 
   // Fetch target lesson if URL has lessonId (e.g. returning from Create Word page)
-  const { data: targetLessonRes } = useQuery({
+  const { data: targetLessonRes, isError: targetLessonError, refetch: retryTargetLesson } = useQuery({
     queryKey: ['target-lesson', urlLessonId],
     queryFn: () => lessonService.getById(urlLessonId!),
     enabled: !!urlLessonId,
@@ -158,7 +159,7 @@ export default function CollectionsPage() {
   // Query Lessons for selected collection
   const {
     data: lessonsRes,
-    isLoading: isLoadingLessons,
+    isLoading: isLoadingLessons, isError: lessonsError, refetch: retryLessons,
   } = useQuery({
     queryKey: ['lessons', currentCollection?._id],
     queryFn: () => lessonService.getAll(currentCollection!._id),
@@ -303,6 +304,8 @@ export default function CollectionsPage() {
     const palIdx = (name.length + index) % SOLID_PALETTES.length;
     return SOLID_PALETTES[palIdx];
   };
+
+  if (collectionsError || lessonsError || targetLessonError) return <LoadError onRetry={() => { if (collectionsError) void retryCollections(); if (lessonsError) void retryLessons(); if (targetLessonError) void retryTargetLesson(); }} />;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full max-w-[1600px] mx-auto">

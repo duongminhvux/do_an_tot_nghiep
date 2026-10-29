@@ -1,4 +1,5 @@
 'use client';
+import { LoadError } from '@/components/ui/load-error';
 
 import React, { useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
@@ -56,6 +57,8 @@ export default function AdminHomePage() {
     if (hours < 24) return t('time.hoursAgo', { n: hours });
     return t('time.daysAgo', { n: Math.floor(hours / 24) });
   };
+
+  if (overviewQuery.isError) return <LoadError onRetry={() => { void overviewQuery.refetch(); }} />;
 
   return (
     <main className="w-full flex-1 space-y-3.5 px-3 py-4 sm:px-4 lg:px-5 lg:py-5">

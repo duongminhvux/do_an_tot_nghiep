@@ -1,4 +1,5 @@
 'use client';
+import { LoadError } from '@/components/ui/load-error';
 import {PublicationBadge,PublicationFilter} from '@/components/publication/publication-controls';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -198,7 +199,7 @@ export default function WordsPage() {
   }, [page, pageSize, debouncedSearch, selectedLevel, selectedStatus,publicationFilter]);
 
   // Fetch data
-  const { data: response, isLoading } = useQuery({
+  const { data: response, isLoading, isError, refetch } = useQuery({
     queryKey: ['words', queryParams],
     queryFn: () => wordService.getAll(queryParams),
   });
@@ -298,6 +299,8 @@ export default function WordsPage() {
     FAILED: 'bg-rose-500',
     NONE: 'bg-slate-300',
   };
+
+  if (isError) return <LoadError onRetry={() => { void refetch(); }} />;
 
   return (
     <div className="p-4 sm:p-6 md:p-8 w-full mx-auto space-y-6">

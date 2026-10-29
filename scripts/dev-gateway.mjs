@@ -5,10 +5,10 @@ const routes=[
 [/^\/api\/(?:admin\/exams\/[^/]+\/pdf-ai)(?:\/|$)/,'ai-import'],
 [/^\/api\/(?:admin\/pdf-ai|pdf-ai)(?:\/|$)/,'ai-import'],
 [/^\/api\/(?:auth|admin\/auth|users|admin\/users)(?:\/|$)/,'identity'],
-[/^\/api\/(?:admin\/content-quality|words|admin\/words|collections|admin\/collections|lessons|admin\/lessons|vocabulary-groups|admin\/vocabulary-groups|dictation|admin\/dictation|upload)(?:\/|$)/,'content'],
-[/^\/api\/(?:exams|admin\/exams|exam-groups|admin\/exam-groups|admin\/questions|attempts|admin\/attempts)(?:\/|$)/,'assessment'],
+[/^\/api\/(?:admin\/media-library\/(?:dictation|vocab)|admin\/content-quality|words|admin\/words|collections|admin\/collections|lessons|admin\/lessons|vocabulary-groups|admin\/vocabulary-groups|dictation|admin\/dictation|upload)(?:\/|$)/,'content'],
+[/^\/api\/(?:admin\/media-library\/toeic|exams|admin\/exams|exam-groups|admin\/exam-groups|admin\/questions|attempts|admin\/attempts)(?:\/|$)/,'assessment'],
 [/^\/api\/(?:arena|admin\/arena)(?:\/|$)/,'arena'],
-[/^\/api\/(?:learning|learning-activity|progress|reviews|sessions|admin\/learning|admin\/dashboard|minigames|admin\/minigames|admin\/games)(?:\/|$)/,'learning'],
+[/^\/api\/(?:admin\/media-library\/games|learning|learning-activity|progress|reviews|sessions|admin\/learning|admin\/dashboard|minigames|admin\/minigames|admin\/games)(?:\/|$)/,'learning'],
 [/^\/api\/(?:site-settings|admin\/site-settings|admin\/audio|admin\/asr|admin\/infrastructure|tts|asr)(?:\/|$)/,'media-jobs'],
 [/^\/api\/(?:activity-logs|admin\/activity-logs)(?:\/|$)/,'notification'],
 ];

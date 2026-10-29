@@ -1,4 +1,5 @@
 'use client';
+import { LoadError } from '@/components/ui/load-error';
 
 import { loadListPages } from '@/lib/load-list-pages';
 import { useListPagination } from '@/hooks/use-list-pagination';
@@ -136,7 +137,7 @@ export default function VocabularyGroupsPage() {
   // 1. Fetch all groups
   const {
     data: groupsResponse,
-    isLoading: isGroupsLoading,
+    isLoading: isGroupsLoading, isError: groupsError, refetch: retryGroups,
   } = useQuery({
     queryKey: ['vocabulary-groups'],
     queryFn: () => loadListPages((page, limit) => vocabularyGroupService.getAll({ page, limit })),
@@ -165,7 +166,7 @@ export default function VocabularyGroupsPage() {
   // 2. Fetch collections for selected group (with live details)
   const {
     data: collectionsResponse,
-    isLoading: isCollectionsLoading,
+    isLoading: isCollectionsLoading, isError: collectionsError, refetch: retryCollections,
   } = useQuery({
     queryKey: ['collections', 'by-group', selectedGroupId],
     queryFn: () => loadListPages((page, limit) => collectionService.getAll({ groupId: selectedGroupId || undefined, page, limit })),
@@ -191,7 +192,7 @@ export default function VocabularyGroupsPage() {
     collections.find((collection) => collection._id === selectedCollectionId) || null,
   [collections, selectedCollectionId]);
 
-  const { data: lessonsResponse, isLoading: isLessonsLoading } = useQuery({
+  const { data: lessonsResponse, isLoading: isLessonsLoading, isError: lessonsError, refetch: retryLessons } = useQuery({
     queryKey: ['lessons', 'curriculum', selectedCollectionId],
     queryFn: () => lessonService.getAll(selectedCollectionId || undefined),
     enabled: !!selectedCollectionId,
@@ -299,6 +300,8 @@ export default function VocabularyGroupsPage() {
     setDraggedGroupId(null);
     setDragOverGroupId(null);
   };
+
+  if (groupsError || collectionsError || lessonsError) return <LoadError onRetry={() => { if (groupsError) void retryGroups(); if (collectionsError) void retryCollections(); if (lessonsError) void retryLessons(); }} />;
 
   return (
     <div className="w-full max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8">

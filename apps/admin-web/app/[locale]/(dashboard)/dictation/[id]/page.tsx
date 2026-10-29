@@ -1,4 +1,5 @@
 'use client';
+import { LoadError } from '@/components/ui/load-error';
 import { useListPagination } from '@/hooks/use-list-pagination';
 import { ListPagination } from '@/components/ui/list-pagination';
 import {PublicationBar} from '@/components/publication/publication-controls';
@@ -42,7 +43,7 @@ export default function DictationDetailPage() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const stopHandlerRef = useRef<(() => void) | null>(null);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['admin-dictation-detail', id],
     queryFn: () => dictationService.getById(id),
     enabled: Boolean(id),
@@ -196,7 +197,11 @@ export default function DictationDetailPage() {
     audio.play().catch(() => undefined);
   };
 
-  if (isLoading || !lesson) {
+  if (isError || (!isLoading && !lesson)) {
+    return <LoadError onRetry={() => void refetch()} />;
+  }
+
+  if (isLoading) {
     return <div className="flex min-h-[60vh] items-center justify-center text-slate-500"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Đang tải bài Dictation...</div>;
   }
 

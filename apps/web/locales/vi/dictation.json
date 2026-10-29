@@ -1,4 +1,6 @@
 {
+  "load_error": "Không thể tải dữ liệu. Vui lòng thử lại.",
+  "retry": "Thử lại",
   "title": "Chọn chủ đề luyện nghe",
   "description": "Mỗi Topic được chia thành nhiều Section và Lesson. Trong mỗi Lesson bạn sẽ nghe và gõ lại từng câu một.",
   "search_topics": "Tìm Topic...",

@@ -9,7 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import { BookOpenText, Headphones, Search } from 'lucide-react';
 import { dictationService } from '@/services/dictation.service';
 import type { DictationTopicSummary } from '@/types/dictation';
-import { EmptyState, LoadingState, PageHeader, PageShell, surface } from '@/components/ui/page';
+import { EmptyState, ErrorState, LoadingState, PageHeader, PageShell, surface } from '@/components/ui/page';
 import { cn } from '@/lib/utils';
 
 function unwrap<T>(value: any): T {
@@ -27,7 +27,7 @@ export default function DictationTopicsPage() {
   const params = useParams();
   const locale = (params?.locale as string) || 'vi';
   const [search, setSearch] = useState('');
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['dictation-topics'],
     queryFn: () => dictationService.getTopics(),
     staleTime: 30_000,
@@ -63,6 +63,8 @@ export default function DictationTopicsPage() {
 
       {isLoading ? (
         <LoadingState label={t('loading_topics')} />
+      ) : isError ? (
+        <ErrorState message={t('load_error')} onRetry={() => void refetch()} retryLabel={t('retry')} />
       ) : filtered.length === 0 ? (
         <EmptyState icon={BookOpenText} title={t('empty_topics')} description={t('empty_topics_description')} />
       ) : (

@@ -9,7 +9,7 @@ import { BarChart3, CheckCircle2, Headphones, Target } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { dictationService } from '@/services/dictation.service';
 import { DictationLessonSummary, DictationProgressOverview } from '@/types/dictation';
-import { Card, EmptyState, LoadingState, PageHeader, PageShell, StatCard, type Tone } from '@/components/ui/page';
+import { Card, EmptyState, ErrorState, LoadingState, PageHeader, PageShell, StatCard, type Tone } from '@/components/ui/page';
 import { Button } from '@/components/ui/button';
 
 function unwrap<T>(value: any): T { return (value?.data ?? value) as T; }
@@ -18,7 +18,7 @@ export default function DictationProgressPage() {
   const { t } = useTranslation('dictation');
   const params = useParams();
   const locale = (params?.locale as string) || 'vi';
-  const { data, isLoading } = useQuery({ queryKey: ['dictation-progress-overview'], queryFn: () => dictationService.getProgressOverview() });
+  const { data, isLoading, isError, refetch } = useQuery({ queryKey: ['dictation-progress-overview'], queryFn: () => dictationService.getProgressOverview() });
   const overview = unwrap<DictationProgressOverview>(data) || { totalStarted: 0, completed: 0, totalCorrect: 0, totalAttempts: 0, items: [] };
   const accuracy = overview.totalAttempts ? Math.round((overview.totalCorrect / overview.totalAttempts) * 100) : 0;
   const statCards: Array<{ label: string; value: string | number; Icon: LucideIcon; tone: Tone }> = [
@@ -34,6 +34,8 @@ export default function DictationProgressPage() {
 
       {isLoading ? (
         <LoadingState label={t('loading_progress')} />
+      ) : isError ? (
+        <ErrorState message={t('load_error')} onRetry={() => void refetch()} retryLabel={t('retry')} />
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

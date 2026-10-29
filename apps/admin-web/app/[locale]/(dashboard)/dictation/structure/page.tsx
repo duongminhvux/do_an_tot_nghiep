@@ -1,4 +1,5 @@
 'use client';
+import { LoadError } from '@/components/ui/load-error';
 
 import { useListPagination } from '@/hooks/use-list-pagination';
 import { PaginatedItems } from '@/components/ui/paginated-items';
@@ -31,7 +32,7 @@ export default function DictationStructurePage() {
   const queryClient = useQueryClient();
   const [message, setMessage] = useState('');
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['dictation-hierarchy'],
     queryFn: () => dictationService.getHierarchy(),
   });
@@ -161,6 +162,8 @@ export default function DictationStructurePage() {
     event.preventDefault();
     saveSectionMutation.mutate();
   };
+
+  if (isError) return <LoadError onRetry={() => { void refetch(); }} />;
 
   return (
     <div className="min-h-screen bg-slate-50/50 p-4 sm:p-6 md:p-8">

@@ -1,4 +1,5 @@
 'use client';
+import { LoadError } from '@/components/ui/load-error';
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -95,7 +96,7 @@ export default function UsersPage() {
   }, [searchQuery]);
 
   // Query users directly from server
-  const { data: usersData, isLoading } = useQuery({
+  const { data: usersData, isLoading, isError, refetch } = useQuery({
     queryKey: ['admin-users', debouncedSearch, statusFilter, dateFilter, page],
     queryFn: () =>
       userService.getAll({
@@ -197,6 +198,8 @@ export default function UsersPage() {
       setSelectedCheckboxIds((prev) => prev.filter((i) => i !== deletingUser?.id));
     },
   });
+
+  if (isError) return <LoadError onRetry={() => { void refetch(); }} />;
 
   return (
     <div className="flex-1 w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-7">

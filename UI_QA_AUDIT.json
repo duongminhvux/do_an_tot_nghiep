@@ -1,0 +1,1204 @@
+{
+  "date": "2026-10-29",
+  "phase": "After UI fixes; production frontend images rebuilt and running on localhost3000/3001",
+  "historicalBaseline": {
+    "checks": 70,
+    "passed": 66,
+    "failed": 4,
+    "defectGroups": 3
+  },
+  "summary": {
+    "checks": 79,
+    "passed": 79,
+    "failed": 0,
+    "browserErrors": 0
+  },
+  "builds": {
+    "web": "Production build and TypeScript PASS",
+    "admin": "Production build and TypeScript PASS"
+  },
+  "cleanup": {
+    "activeQaUsers": 0,
+    "availableQaWords": 0,
+    "availableQaLessons": 0,
+    "availableQaCollections": 0,
+    "activeQaRooms": 0,
+    "activeQaMatches": 0,
+    "rankedQueue": 0,
+    "note": "QA records soft-deleted; game history and publication audit retained."
+  },
+  "limitations": [
+    "Audio quality/playback not validated.",
+    "Initial refresh-token401 before login is expected.",
+    "Some invitation/game setup and cleanup use real ACKs over the application transport."
+  ],
+  "suites": [
+    {
+      "name": "fixed",
+      "scope": "Fixture regression checks; APIs intercepted and sockets blocked",
+      "checks": [
+        {
+          "app": "admin",
+          "route": "/vi/dictation",
+          "name": "dictation-pagination",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          },
+          "errors": [],
+          "consoleErrors": [],
+          "httpStatus": 200,
+          "finalUrl": "http://localhost:3001/vi/dictation",
+          "title": "English Platform | Admin",
+          "horizontalOverflow": {
+            "viewport": 1440,
+            "document": 1440,
+            "body": 1440
+          },
+          "bodyExcerpt": "háp\t\nChi tiết\n\nQA Lesson 13\nQA Topic\n•\n23 câu\n\tA1\t\n23s\n\tDRAFTBản nháp\t\nChi tiết\n\nQA Lesson 14\nQA Topic\n•\n23 câu\n\tA1\t\n23s\n\tDRAFTBản nháp\t\nChi tiết\n\nQA Lesson 15\nQA Topic\n•\n23 câu\n\tA1\t\n23s\n\tDRAFTBản nháp\t\nChi tiết\n\nQA Lesson 16\nQA Topic\n•\n23 câu\n\tA1\t\n23s\n\tDRAFTBản nháp\t\nChi tiết\n\nQA Lesson 17\nQA Topic\n•\n23 câu\n\tA1\t\n23s\n\tDRAFTBản nháp\t\nChi tiết\n\nQA Lesson 18\nQA Topic\n•\n23 câu\n\tA1\t\n23s\n\tDRAFTBản nháp\t\nChi tiết\n\nQA Lesson 19\nQA Topic\n•\n23 câu\n\tA1\t\n23s\n\tDRAFTBản nháp\t\nChi tiết\n\nQA Lesson 20\nQA Topic\n•\n23 câu\n\tA1\t\n23s\n\tDRAFTBản nháp\t\nChi tiết\nPhân trang\n\nHiển thị 1–20 / 23\n\nMỗi trang\n5\n10\n20\n50\n1 / 2",
+          "loadingIndicators": 0,
+          "status": "PASS",
+          "screenshot": ".tmp/ui-qa/fixed/admin-dictation-pagination.png"
+        },
+        {
+          "app": "admin",
+          "route": "/vi/vocabulary/groups",
+          "name": "groups-pagination",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          },
+          "errors": [],
+          "consoleErrors": [],
+          "httpStatus": 200,
+          "finalUrl": "http://localhost:3001/vi/vocabulary/groups",
+          "title": "English Platform | Admin",
+          "horizontalOverflow": {
+            "viewport": 1440,
+            "document": 1440,
+            "body": 1440
+          },
+          "bodyExcerpt": "A Group 16\n\n0 bộ sưu tập · 0 bài học · 0 từ\n\n16\n\nQA Group 17\n\n0 bộ sưu tập · 0 bài học · 0 từ\n\n17\n\nQA Group 18\n\n0 bộ sưu tập · 0 bài học · 0 từ\n\n18\n\nQA Group 19\n\n0 bộ sưu tập · 0 bài học · 0 từ\n\n19\n\nQA Group 20\n\n0 bộ sưu tập · 0 bài học · 0 từ\n\nPhân trang\n\nHiển thị 11–20 / 23\n\nMỗi trang\n5\n10\n20\n50\n2 / 3\nQA Group 01\n0 bộ sưu tập\n0 bài học\n0 từ\nPhân bộ sưu tập\nChưa có bộ sưu tập nào trong nhóm này\n\nHãy chọn các bộ sưu tập đã có để đưa vào nhóm này.\n\nPhân bộ sưu tập vào nhóm\n\nLuồng quản lý gọn hơn\n\nChọn Nhóm → Bộ sưu tập → Lesson ngay tại đây. Từ điển được tách riêng để quản lý kho từ dùng chung.",
+          "loadingIndicators": 0,
+          "status": "PASS",
+          "screenshot": ".tmp/ui-qa/fixed/admin-groups-pagination.png"
+        },
+        {
+          "app": "admin",
+          "route": "/vi/dictation/00000000-0000-4000-8000-000000000100",
+          "name": "segment-edit-populated",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          },
+          "errors": [],
+          "consoleErrors": [],
+          "httpStatus": 200,
+          "finalUrl": "http://localhost:3001/vi/dictation/00000000-0000-4000-8000-000000000100",
+          "title": "English Platform | Admin",
+          "horizontalOverflow": {
+            "viewport": 1440,
+            "document": 1440,
+            "body": 1440
+          },
+          "bodyExcerpt": "ro TTS\nVoice 1\nVoice 2\nKhông dùng\nSpeed\nPause ms\nFull audio duy nhất\n\n— · — · 23.00s\n\nChưa có audio.\n\nTranscript & metadata\n\nCả Kokoro và Faster Whisper đều dùng chung text + startMs + endMs trên full audio.\n\nLưu segment\n#11\nTTS\nStart ms\nEnd ms\nSpeaker\n#12\nTTS\nStart ms\nEnd ms\nSpeaker\n#13\nTTS\nStart ms\nEnd ms\nSpeaker\n#14\nTTS\nStart ms\nEnd ms\nSpeaker\n#15\nTTS\nStart ms\nEnd ms\nSpeaker\n#16\nTTS\nStart ms\nEnd ms\nSpeaker\n#17\nTTS\nStart ms\nEnd ms\nSpeaker\n#18\nTTS\nStart ms\nEnd ms\nSpeaker\n#19\nTTS\nStart ms\nEnd ms\nSpeaker\n#20\nTTS\nStart ms\nEnd ms\nSpeaker\nPhân trang\n\nHiển thị 11–20 / 23\n\nMỗi trang\n5\n10\n20\n50\n2 / 3",
+          "loadingIndicators": 0,
+          "status": "PASS",
+          "screenshot": ".tmp/ui-qa/fixed/admin-segment-edit-populated.png"
+        },
+        {
+          "app": "web",
+          "route": "/vi",
+          "name": "api-error-home",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          },
+          "errors": [],
+          "consoleErrors": [],
+          "httpStatus": 200,
+          "finalUrl": "http://localhost:3000/vi",
+          "title": "English Platform",
+          "horizontalOverflow": {
+            "viewport": 1440,
+            "document": 1440,
+            "body": 1440
+          },
+          "bodyExcerpt": " học\nTừ vựng\n\n0 hoạt động · 0 XP\n\nBắt đầu học bộ từ vựng đầu tiên\n\nKhám phá từ vựng\nDictation\n\n0 hoạt động · 0 XP\n\nLuyện nghe chép chính tả từng câu\n\nLuyện bài mới\nThi TOEIC\n\n0 hoạt động · 0 XP\n\nLàm bài thi thử hoặc luyện từng Part\n\nChọn đề thi\nĐấu trường\n\n0 hoạt động · 0 XP\n\nThi đấu từ vựng 1-1 với người khác\n\nVào đấu trường\nMinigame\n\n0 hoạt động · 0 XP\n\nÔn từ vựng qua các trò chơi\n\nChơi game\nHôm nay nên học gì?\n\nDựa trên hoạt động học gần đây của bạn · Gợi ý theo quy tắc\n\nTất cả\nNghe\nĐọc\nTừ vựng\n\nChưa tải được gợi ý học tập.\n\nThử lại\nHoạt động gần đây\n\nChưa có hoạt động nào. Hãy bắt đầu học!",
+          "loadingIndicators": 0,
+          "status": "PASS",
+          "screenshot": ".tmp/ui-qa/fixed/web-api-error-home.png"
+        },
+        {
+          "app": "admin",
+          "route": "/vi",
+          "name": "api-error-home",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          },
+          "errors": [],
+          "consoleErrors": [],
+          "httpStatus": 200,
+          "finalUrl": "http://localhost:3001/vi",
+          "title": "English Platform | Admin",
+          "horizontalOverflow": {
+            "viewport": 1440,
+            "document": 1440,
+            "body": 1440
+          },
+          "bodyExcerpt": "English Platform\nQUẢN TRỊ\nHệ thống Quản trị\nĐIỀU HƯỚNG\nBảng điều khiển\nQuản trị học tập\nNội dung\nTrò chơi\nĐấu trường\nWorkers & Queue\nNgười dùng\nTừ vựng\nDictation\nĐề thi\nCấu hình hệ thống\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nQ\n\nqa\n\nqa@example.invalid\n\nToggle Sidebar\nBảng điều khiển\n\nKhông thể tải dữ liệu. Vui lòng thử lại.\n\nThử lại",
+          "loadingIndicators": 0,
+          "status": "PASS",
+          "screenshot": ".tmp/ui-qa/fixed/admin-api-error-home.png"
+        },
+        {
+          "app": "web",
+          "route": "/vi/vocabulary",
+          "name": "api-error--vocabulary",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          },
+          "errors": [],
+          "consoleErrors": [],
+          "httpStatus": 200,
+          "finalUrl": "http://localhost:3000/vi/vocabulary",
+          "title": "English Platform",
+          "horizontalOverflow": {
+            "viewport": 1440,
+            "document": 1440,
+            "body": 1440
+          },
+          "bodyExcerpt": "độ và mục tiêu của bạn.\n\nBắt đầu học ngay\nBộ sưu tập nổi bật\n\nChưa có bộ sưu tập nào\n\nTất cả bộ sưu tập\nTất cả\nMới nhất\n\nKhông tìm thấy bộ sưu tập nào\n\nDữ liệu sẽ hiển thị khi hệ thống có bộ sưu tập.\n\nHọc hôm nay\nMục tiêu: 20 từ\n0/20\ntừ đã học\n\nChưa có từ vựng nào được học hôm nay.\n\nBắt đầu học\nThành tích của bạn\nThực tế\n\n0\n\nNgày liên tiếp\n\n0\n\nTừ đã học\n\n0\n\nTừ đã ghi nhớ\n\nChưa có dữ liệu học tập. Hãy hoàn thành bài học đầu tiên để tích lũy thành tích!\n\nGợi ý cho bạn\nXem tất cả\nChưa có bộ sưu tập nào khả dụng\n\n“Mỗi từ vựng bạn học hôm nay là một cánh cửa mở ra thế giới mới.”\n\n— English Platform",
+          "loadingIndicators": 0,
+          "status": "PASS",
+          "screenshot": ".tmp/ui-qa/fixed/web-api-error--vocabulary.png"
+        },
+        {
+          "app": "admin",
+          "route": "/vi/users",
+          "name": "api-error--users",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          },
+          "errors": [],
+          "consoleErrors": [],
+          "httpStatus": 200,
+          "finalUrl": "http://localhost:3001/vi/users",
+          "title": "English Platform | Admin",
+          "horizontalOverflow": {
+            "viewport": 1440,
+            "document": 1440,
+            "body": 1440
+          },
+          "bodyExcerpt": "English Platform\nQUẢN TRỊ\nHệ thống Quản trị\nĐIỀU HƯỚNG\nBảng điều khiển\nQuản trị học tập\nNội dung\nTrò chơi\nĐấu trường\nWorkers & Queue\nNgười dùng\nTừ vựng\nDictation\nĐề thi\nCấu hình hệ thống\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nQ\n\nqa\n\nqa@example.invalid\n\nToggle Sidebar\nNgười dùng\n\nKhông thể tải dữ liệu. Vui lòng thử lại.\n\nThử lại",
+          "loadingIndicators": 0,
+          "status": "PASS",
+          "screenshot": ".tmp/ui-qa/fixed/admin-api-error--users.png"
+        },
+        {
+          "app": "web",
+          "route": "/vi/vocabulary/my-words",
+          "name": "api-error--vocabulary-my-words",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          },
+          "errors": [],
+          "consoleErrors": [],
+          "httpStatus": 200,
+          "finalUrl": "http://localhost:3000/vi/vocabulary/my-words",
+          "title": "English Platform",
+          "horizontalOverflow": {
+            "viewport": 1440,
+            "document": 1440,
+            "body": 1440
+          },
+          "bodyExcerpt": "English Platform\nHỌC VIÊN\nCổng học tập\nTrang chủ\nLỗi sai của tôi\nTOEIC\nĐề thi\nLịch sử làm bài\nThống kê\nTrò chơi\nĐấu trường từ vựng\nDanh sách trò chơi\nTừ vựng\nKhám phá\nTừ vựng của tôi\nDictation\nDictation\nTiến độ Dictation\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nQ\n\nqa\n\nStudent\n\nToggle Sidebar\nTừ vựng\nTừ vựng của tôi\n\nKho từ vựng cá nhân bạn đã lưu lại để tra cứu nhanh, ghi chú riêng và ôn tập định kỳ theo phương pháp Spaced Repetition.\n\nTừ vựng bạn lưu khi học sẽ xuất hiện ở đây. Sắp xếp chúng vào các danh sách để dễ dàng xem lại và ôn tập.\n\nTạo danh sách từ\nKhông thể tải dữ liệu. Vui lòng thử lại.\nThử lại",
+          "loadingIndicators": 0,
+          "status": "PASS",
+          "screenshot": ".tmp/ui-qa/fixed/web-api-error--vocabulary-my-words.png"
+        },
+        {
+          "app": "admin",
+          "route": "/vi/vocabulary/groups",
+          "name": "api-error--vocabulary-groups",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          },
+          "errors": [],
+          "consoleErrors": [],
+          "httpStatus": 200,
+          "finalUrl": "http://localhost:3001/vi/vocabulary/groups",
+          "title": "English Platform | Admin",
+          "horizontalOverflow": {
+            "viewport": 1440,
+            "document": 1440,
+            "body": 1440
+          },
+          "bodyExcerpt": "English Platform\nQUẢN TRỊ\nHệ thống Quản trị\nĐIỀU HƯỚNG\nBảng điều khiển\nQuản trị học tập\nNội dung\nTrò chơi\nĐấu trường\nWorkers & Queue\nNgười dùng\nTừ vựng\nChương trình học\nBộ sưu tập\nTừ điển\nDictation\nĐề thi\nCấu hình hệ thống\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nQ\n\nqa\n\nqa@example.invalid\n\nToggle Sidebar\nTừ vựng\n\nKhông thể tải dữ liệu. Vui lòng thử lại.\n\nThử lại",
+          "loadingIndicators": 0,
+          "status": "PASS",
+          "screenshot": ".tmp/ui-qa/fixed/admin-api-error--vocabulary-groups.png"
+        },
+        {
+          "app": "web",
+          "route": "/vi/vocabulary/review",
+          "name": "api-error--vocabulary-review",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          },
+          "errors": [],
+          "consoleErrors": [],
+          "httpStatus": 200,
+          "finalUrl": "http://localhost:3000/vi/vocabulary/review",
+          "title": "English Platform",
+          "horizontalOverflow": {
+            "viewport": 1440,
+            "document": 1440,
+            "body": 1440
+          },
+          "bodyExcerpt": "English Platform\nHỌC VIÊN\nCổng học tập\nTrang chủ\nLỗi sai của tôi\nTOEIC\nĐề thi\nLịch sử làm bài\nThống kê\nTrò chơi\nĐấu trường từ vựng\nDanh sách trò chơi\nTừ vựng\nKhám phá\nTừ vựng của tôi\nDictation\nDictation\nTiến độ Dictation\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nQ\n\nqa\n\nStudent\n\nToggle Sidebar\nTừ vựng\nÔn tập định kỳ\n\nÔn tập lại các từ vựng đến hạn để củng cố trí nhớ dài hạn\n\nFlashcard 3D\nĐoán từ\nLuyện nghe\nTiến độ bài học: 0%\n0 / 0 THẺ\nSpace\nLật thẻ\n\nChưa tải được nội dung. Vui lòng thử lại.\n\nThử lại",
+          "loadingIndicators": 0,
+          "status": "PASS",
+          "screenshot": ".tmp/ui-qa/fixed/web-api-error--vocabulary-review.png"
+        },
+        {
+          "app": "admin",
+          "route": "/vi/vocabulary/collections",
+          "name": "api-error--vocabulary-collections",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          },
+          "errors": [],
+          "consoleErrors": [],
+          "httpStatus": 200,
+          "finalUrl": "http://localhost:3001/vi/vocabulary/collections",
+          "title": "English Platform | Admin",
+          "horizontalOverflow": {
+            "viewport": 1440,
+            "document": 1440,
+            "body": 1440
+          },
+          "bodyExcerpt": "English Platform\nQUẢN TRỊ\nHệ thống Quản trị\nĐIỀU HƯỚNG\nBảng điều khiển\nQuản trị học tập\nNội dung\nTrò chơi\nĐấu trường\nWorkers & Queue\nNgười dùng\nTừ vựng\nChương trình học\nBộ sưu tập\nTừ điển\nDictation\nĐề thi\nCấu hình hệ thống\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nQ\n\nqa\n\nqa@example.invalid\n\nToggle Sidebar\nTừ vựng / Bộ sưu tập\n\nKhông thể tải dữ liệu. Vui lòng thử lại.\n\nThử lại",
+          "loadingIndicators": 0,
+          "status": "PASS",
+          "screenshot": ".tmp/ui-qa/fixed/admin-api-error--vocabulary-collections.png"
+        },
+        {
+          "app": "web",
+          "route": "/vi/dictation",
+          "name": "api-error--dictation",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          },
+          "errors": [],
+          "consoleErrors": [],
+          "httpStatus": 200,
+          "finalUrl": "http://localhost:3000/vi/dictation",
+          "title": "English Platform",
+          "horizontalOverflow": {
+            "viewport": 1440,
+            "document": 1440,
+            "body": 1440
+          },
+          "bodyExcerpt": "English Platform\nHỌC VIÊN\nCổng học tập\nTrang chủ\nLỗi sai của tôi\nTOEIC\nĐề thi\nLịch sử làm bài\nThống kê\nTrò chơi\nĐấu trường từ vựng\nDanh sách trò chơi\nTừ vựng\nKhám phá\nTừ vựng của tôi\nDictation\nDictation\nTiến độ Dictation\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nQ\n\nqa\n\nStudent\n\nToggle Sidebar\nDictation\n\nDICTATION\n\nChọn chủ đề luyện nghe\n\nMỗi Topic được chia thành nhiều Section và Lesson. Trong mỗi Lesson bạn sẽ nghe và gõ lại từng câu một.\n\nKhông thể tải dữ liệu. Vui lòng thử lại.\nThử lại",
+          "loadingIndicators": 0,
+          "status": "PASS",
+          "screenshot": ".tmp/ui-qa/fixed/web-api-error--dictation.png"
+        },
+        {
+          "app": "admin",
+          "route": "/vi/vocabulary/words",
+          "name": "api-error--vocabulary-words",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          },
+          "errors": [],
+          "consoleErrors": [],
+          "httpStatus": 200,
+          "finalUrl": "http://localhost:3001/vi/vocabulary/words",
+          "title": "English Platform | Admin",
+          "horizontalOverflow": {
+            "viewport": 1440,
+            "document": 1440,
+            "body": 1440
+          },
+          "bodyExcerpt": "English Platform\nQUẢN TRỊ\nHệ thống Quản trị\nĐIỀU HƯỚNG\nBảng điều khiển\nQuản trị học tập\nNội dung\nTrò chơi\nĐấu trường\nWorkers & Queue\nNgười dùng\nTừ vựng\nChương trình học\nBộ sưu tập\nTừ điển\nDictation\nĐề thi\nCấu hình hệ thống\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nQ\n\nqa\n\nqa@example.invalid\n\nToggle Sidebar\nTừ vựng / Từ vựng\n\nKhông thể tải dữ liệu. Vui lòng thử lại.\n\nThử lại",
+          "loadingIndicators": 0,
+          "status": "PASS",
+          "screenshot": ".tmp/ui-qa/fixed/admin-api-error--vocabulary-words.png"
+        },
+        {
+          "app": "web",
+          "route": "/vi/dictation/progress",
+          "name": "api-error--dictation-progress",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          },
+          "errors": [],
+          "consoleErrors": [],
+          "httpStatus": 200,
+          "finalUrl": "http://localhost:3000/vi/dictation/progress",
+          "title": "English Platform",
+          "horizontalOverflow": {
+            "viewport": 1440,
+            "document": 1440,
+            "body": 1440
+          },
+          "bodyExcerpt": "English Platform\nHỌC VIÊN\nCổng học tập\nTrang chủ\nLỗi sai của tôi\nTOEIC\nĐề thi\nLịch sử làm bài\nThống kê\nTrò chơi\nĐấu trường từ vựng\nDanh sách trò chơi\nTừ vựng\nKhám phá\nTừ vựng của tôi\nDictation\nDictation\nTiến độ Dictation\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nQ\n\nqa\n\nStudent\n\nToggle Sidebar\nTiến độ Dictation\n\nDICTATION\n\nTiến độ Dictation\n\nTheo dõi các bài đã luyện và độ chính xác.\n\nKhông thể tải dữ liệu. Vui lòng thử lại.\nThử lại",
+          "loadingIndicators": 0,
+          "status": "PASS",
+          "screenshot": ".tmp/ui-qa/fixed/web-api-error--dictation-progress.png"
+        },
+        {
+          "app": "admin",
+          "route": "/vi/dictation",
+          "name": "api-error--dictation",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          },
+          "errors": [],
+          "consoleErrors": [],
+          "httpStatus": 200,
+          "finalUrl": "http://localhost:3001/vi/dictation",
+          "title": "English Platform | Admin",
+          "horizontalOverflow": {
+            "viewport": 1440,
+            "document": 1440,
+            "body": 1440
+          },
+          "bodyExcerpt": "English Platform\nQUẢN TRỊ\nHệ thống Quản trị\nĐIỀU HƯỚNG\nBảng điều khiển\nQuản trị học tập\nNội dung\nTrò chơi\nĐấu trường\nWorkers & Queue\nNgười dùng\nTừ vựng\nDictation\nBài nghe\nChủ đề & Phần\nĐề thi\nCấu hình hệ thống\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nQ\n\nqa\n\nqa@example.invalid\n\nToggle Sidebar\nDictation\n\nKhông thể tải dữ liệu. Vui lòng thử lại.\n\nThử lại",
+          "loadingIndicators": 0,
+          "status": "PASS",
+          "screenshot": ".tmp/ui-qa/fixed/admin-api-error--dictation.png"
+        },
+        {
+          "app": "web",
+          "route": "/vi/dictation",
+          "name": "regression-error-notice-dictation",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          },
+          "errors": [],
+          "consoleErrors": [],
+          "httpStatus": 200,
+          "finalUrl": "http://localhost:3000/vi/dictation",
+          "title": "English Platform",
+          "horizontalOverflow": {
+            "viewport": 1440,
+            "document": 1440,
+            "body": 1440
+          },
+          "bodyExcerpt": "English Platform\nHỌC VIÊN\nCổng học tập\nTrang chủ\nLỗi sai của tôi\nTOEIC\nĐề thi\nLịch sử làm bài\nThống kê\nTrò chơi\nĐấu trường từ vựng\nDanh sách trò chơi\nTừ vựng\nKhám phá\nTừ vựng của tôi\nDictation\nDictation\nTiến độ Dictation\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nQ\n\nqa\n\nStudent\n\nToggle Sidebar\nDictation\n\nDICTATION\n\nChọn chủ đề luyện nghe\n\nMỗi Topic được chia thành nhiều Section và Lesson. Trong mỗi Lesson bạn sẽ nghe và gõ lại từng câu một.\n\nKhông thể tải dữ liệu. Vui lòng thử lại.\nThử lại",
+          "loadingIndicators": 0,
+          "status": "PASS",
+          "screenshot": ".tmp/ui-qa/fixed/web-regression-error-notice-dictation.png"
+        },
+        {
+          "app": "admin",
+          "route": "/vi/dictation/structure",
+          "name": "api-error--dictation-structure",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          },
+          "errors": [],
+          "consoleErrors": [],
+          "httpStatus": 200,
+          "finalUrl": "http://localhost:3001/vi/dictation/structure",
+          "title": "English Platform | Admin",
+          "horizontalOverflow": {
+            "viewport": 1440,
+            "document": 1440,
+            "body": 1440
+          },
+          "bodyExcerpt": "English Platform\nQUẢN TRỊ\nHệ thống Quản trị\nĐIỀU HƯỚNG\nBảng điều khiển\nQuản trị học tập\nNội dung\nTrò chơi\nĐấu trường\nWorkers & Queue\nNgười dùng\nTừ vựng\nDictation\nBài nghe\nChủ đề & Phần\nĐề thi\nCấu hình hệ thống\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nQ\n\nqa\n\nqa@example.invalid\n\nToggle Sidebar\nDictation\n\nKhông thể tải dữ liệu. Vui lòng thử lại.\n\nThử lại",
+          "loadingIndicators": 0,
+          "status": "PASS",
+          "screenshot": ".tmp/ui-qa/fixed/admin-api-error--dictation-structure.png"
+        },
+        {
+          "app": "web",
+          "route": "/vi/dictation/progress",
+          "name": "regression-error-notice-dictation-progress",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          },
+          "errors": [],
+          "consoleErrors": [],
+          "httpStatus": 200,
+          "finalUrl": "http://localhost:3000/vi/dictation/progress",
+          "title": "English Platform",
+          "horizontalOverflow": {
+            "viewport": 1440,
+            "document": 1440,
+            "body": 1440
+          },
+          "bodyExcerpt": "English Platform\nHỌC VIÊN\nCổng học tập\nTrang chủ\nLỗi sai của tôi\nTOEIC\nĐề thi\nLịch sử làm bài\nThống kê\nTrò chơi\nĐấu trường từ vựng\nDanh sách trò chơi\nTừ vựng\nKhám phá\nTừ vựng của tôi\nDictation\nDictation\nTiến độ Dictation\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nQ\n\nqa\n\nStudent\n\nToggle Sidebar\nTiến độ Dictation\n\nDICTATION\n\nTiến độ Dictation\n\nTheo dõi các bài đã luyện và độ chính xác.\n\nKhông thể tải dữ liệu. Vui lòng thử lại.\nThử lại",
+          "loadingIndicators": 0,
+          "status": "PASS",
+          "screenshot": ".tmp/ui-qa/fixed/web-regression-error-notice-dictation-progress.png"
+        },
+        {
+          "app": "admin",
+          "route": "/vi/dictation/create",
+          "name": "api-error--dictation-create",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          },
+          "errors": [],
+          "consoleErrors": [],
+          "httpStatus": 200,
+          "finalUrl": "http://localhost:3001/vi/dictation/create",
+          "title": "English Platform | Admin",
+          "horizontalOverflow": {
+            "viewport": 1440,
+            "document": 1440,
+            "body": 1440
+          },
+          "bodyExcerpt": "ừng segment trong memory rồi ghép thành một WAV duy nhất.\n\nUpload audio\n\nUpload MP3/WAV/M4A..., Faster Whisper tự transcript và lưu timestamp để nghe từng câu.\n\nNội dung Dictation\n\nDán cả đoạn văn. Xuống dòng để ép một speaker turn thành một segment.\n\nXem cách tách câu\nNgôn ngữ / audio\nAccent\nEnglish (US)\nEnglish (UK)\nVoice 1\nVoice 2 (tuỳ chọn)\nKhông dùng\nSpeed\nPause (ms)\nPublish sau khi xử lý xong\nVới audio upload, nên bỏ chọn nếu muốn review transcript/timestamp trước.\nTạo bài & Generate Audio\nKokoro chỉ lưu một full audio. Metadata từng câu được lấy ngay lúc ghép, không upload sentence WAV.",
+          "loadingIndicators": 0,
+          "status": "PASS",
+          "screenshot": ".tmp/ui-qa/fixed/admin-api-error--dictation-create.png"
+        },
+        {
+          "app": "web",
+          "route": "/vi/dictation",
+          "name": "mobile-menu-interaction",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "errors": [],
+          "consoleErrors": [],
+          "httpStatus": 200,
+          "finalUrl": "http://localhost:3000/vi/dictation/progress",
+          "title": "English Platform",
+          "horizontalOverflow": {
+            "viewport": 390,
+            "document": 390,
+            "body": 390
+          },
+          "bodyExcerpt": "Toggle Sidebar\nTiến độ Dictation\n\nDICTATION\n\nTiến độ Dictation\n\nTheo dõi các bài đã luyện và độ chính xác.\n\nĐã bắt đầu\n\n0\n\nHoàn thành\n\n0\n\nCâu đúng\n\n0\n\nĐộ chính xác\n\n0%\n\nChưa có tiến độ\n\nChọn bài để bắt đầu →",
+          "loadingIndicators": 0,
+          "status": "PASS",
+          "screenshot": ".tmp/ui-qa/fixed/web-mobile-menu-interaction.png"
+        },
+        {
+          "app": "admin",
+          "route": "/vi/dictation/00000000-0000-4000-8000-000000000100",
+          "name": "regression-detail-stuck-loading",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          },
+          "errors": [],
+          "consoleErrors": [],
+          "httpStatus": 200,
+          "finalUrl": "http://localhost:3001/vi/dictation/00000000-0000-4000-8000-000000000100",
+          "title": "English Platform | Admin",
+          "horizontalOverflow": {
+            "viewport": 1440,
+            "document": 1440,
+            "body": 1440
+          },
+          "bodyExcerpt": "English Platform\nQUẢN TRỊ\nHệ thống Quản trị\nĐIỀU HƯỚNG\nBảng điều khiển\nQuản trị học tập\nNội dung\nTrò chơi\nĐấu trường\nWorkers & Queue\nNgười dùng\nTừ vựng\nDictation\nBài nghe\nChủ đề & Phần\nĐề thi\nCấu hình hệ thống\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nQ\n\nqa\n\nqa@example.invalid\n\nToggle Sidebar\nDictation\n\nKhông thể tải dữ liệu. Vui lòng thử lại.\n\nThử lại",
+          "loadingIndicators": 0,
+          "status": "PASS",
+          "screenshot": ".tmp/ui-qa/fixed/admin-regression-detail-stuck-loading.png"
+        },
+        {
+          "app": "admin",
+          "route": "/vi/vocabulary/words",
+          "name": "regression-empty-range",
+          "viewport": {
+            "width": 1440,
+            "height": 1000
+          },
+          "errors": [],
+          "consoleErrors": [],
+          "httpStatus": 200,
+          "finalUrl": "http://localhost:3001/vi/vocabulary/words",
+          "title": "English Platform | Admin",
+          "horizontalOverflow": {
+            "viewport": 1440,
+            "document": 1440,
+            "body": 1440
+          },
+          "bodyExcerpt": "g điều khiển\nQuản trị học tập\nNội dung\nTrò chơi\nĐấu trường\nWorkers & Queue\nNgười dùng\nTừ vựng\nChương trình học\nBộ sưu tập\nTừ điển\nDictation\nĐề thi\nCấu hình hệ thống\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nQ\n\nqa\n\nqa@example.invalid\n\nToggle Sidebar\nTừ vựng / Từ vựng\nTừ điển\n\nQuản lý kho từ dùng chung, phát âm và nội dung học.\n\nThêm từ mới\nTất cả trạng thái xuất bản\nBản nháp\nCần kiểm tra\nĐã xuất bản\nCấp độ\nTất cả cấp độ\nTrạng thái\nTất cả trạng thái\nĐặt lại\n\tTỪ VỰNG & PHÁT ÂM\tNGHĨA\tCẤP ĐỘ\tTRẠNG THÁI\tTHAO TÁC\n\n\nKhông tìm thấy từ vựng nào\n\nHãy thử điều chỉnh bộ lọc hoặc từ khóa tìm kiếm\n\nHiển thị 0 - 0 trên 0 từ\n1",
+          "loadingIndicators": 0,
+          "status": "PASS",
+          "screenshot": ".tmp/ui-qa/fixed/admin-regression-empty-range.png"
+        }
+      ],
+      "events": [],
+      "browserErrors": [],
+      "apiErrors": []
+    },
+    {
+      "name": "live",
+      "scope": "Real Docker HTTP/WebSocket; QA accounts and rooms",
+      "checks": [
+        {
+          "name": "host-real-login-and-websocket",
+          "status": "PASS",
+          "route": "/vi",
+          "body": "English Platform\nHỌC VIÊN\nCổng học tập\nTrang chủ\nLỗi sai của tôi\nTOEIC\nĐề thi\nLịch sử làm bài\nThống kê\nTrò chơi\nĐấu trường từ vựng\nDanh sách trò chơi\nTừ vựng\nKhám phá\nTừ vựng của tôi\nDictation\nDictation\nTiến độ Dictation\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nU\n\nUI-QA-mvt765v6-1\n\nStudent\n\nToggle Sidebar\nTrang chủ\nXin chào, UI-QA-mvt765v6-1! 👋\n\nHôm nay là một ngày tuyệt vời để học thêm những điều mới!\n\nThứ Năm, 29 Tháng 10, 2026\nTiếp tục học\nTừ vựng\n\n0 hoạt động · 0 XP\n\nKhám phá từ vựng\nDictation\n\n0 hoạt động · 0 XP\n\nLuyện bài mới\nThi TOEIC\n\n0 hoạt động · 0 XP\n\nChọn đề thi\nĐấu trường\n\n0 hoạt động · 0 XP\n\nVào đấu trường\nMinigame\n\n0 hoạt động · 0 XP\n\nChơi game\nHôm nay nên học gì?\n\nDựa trên hoạt động học gần đây của bạn · Gợi ý theo quy tắc\n\nTất cả\nNghe\nĐọc\nTừ vựng",
+          "screenshot": ".tmp/ui-qa/live/host-real-login-and-websocket.png"
+        },
+        {
+          "name": "guest-real-login-and-websocket",
+          "status": "PASS",
+          "route": "/vi",
+          "body": "English Platform\nHỌC VIÊN\nCổng học tập\nTrang chủ\nLỗi sai của tôi\nTOEIC\nĐề thi\nLịch sử làm bài\nThống kê\nTrò chơi\nĐấu trường từ vựng\nDanh sách trò chơi\nTừ vựng\nKhám phá\nTừ vựng của tôi\nDictation\nDictation\nTiến độ Dictation\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nU\n\nUI-QA-mvt765v6-2\n\nStudent\n\nToggle Sidebar\nTrang chủ\nXin chào, UI-QA-mvt765v6-2! 👋\n\nHôm nay là một ngày tuyệt vời để học thêm những điều mới!\n\nThứ Năm, 29 Tháng 10, 2026\nTiếp tục học\nTừ vựng\n\n0 hoạt động · 0 XP\n\nKhám phá từ vựng\nDictation\n\n0 hoạt động · 0 XP\n\nLuyện bài mới\nThi TOEIC\n\n0 hoạt động · 0 XP\n\nChọn đề thi\nĐấu trường\n\n0 hoạt động · 0 XP\n\nVào đấu trường\nMinigame\n\n0 hoạt động · 0 XP\n\nChơi game\nHôm nay nên học gì?\n\nDựa trên hoạt động học gần đây của bạn · Gợi ý theo quy tắc\n\nTất cả\nNghe\nĐọc\nTừ vựng",
+          "screenshot": ".tmp/ui-qa/live/guest-real-login-and-websocket.png"
+        },
+        {
+          "name": "mobile-real-login-and-websocket",
+          "status": "PASS",
+          "route": "/vi",
+          "body": "Toggle Sidebar\nTrang chủ\nXin chào, UI-QA-mvt765v6-3! 👋\n\nHôm nay là một ngày tuyệt vời để học thêm những điều mới!\n\nThứ Năm, 29 Tháng 10, 2026\nTiếp tục học\nTừ vựng\n\n0 hoạt động · 0 XP\n\nKhám phá từ vựng\nDictation\n\n0 hoạt động · 0 XP\n\nLuyện bài mới\nThi TOEIC\n\n0 hoạt động · 0 XP\n\nChọn đề thi\nĐấu trường\n\n0 hoạt động · 0 XP\n\nVào đấu trường\nMinigame\n\n0 hoạt động · 0 XP\n\nChơi game\nHôm nay nên học gì?\n\nDựa trên hoạt động học gần đây của bạn · Gợi ý theo quy tắc\n\nTất cả\nNghe\nĐọc\nTừ vựng",
+          "screenshot": ".tmp/ui-qa/live/mobile-real-login-and-websocket.png"
+        },
+        {
+          "name": "user-live-dictation",
+          "status": "PASS",
+          "route": "/vi/dictation",
+          "body": "English Platform\nHỌC VIÊN\nCổng học tập\nTrang chủ\nLỗi sai của tôi\nTOEIC\nĐề thi\nLịch sử làm bài\nThống kê\nTrò chơi\nĐấu trường từ vựng\nDanh sách trò chơi\nTừ vựng\nKhám phá\nTừ vựng của tôi\nDictation\nDictation\nTiến độ Dictation\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nU\n\nUI-QA-mvt765v6-1\n\nStudent\n\nToggle Sidebar\nDictation\n\nDICTATION\n\nChọn chủ đề luyện nghe\n\nMỗi Topic được chia thành nhiều Section và Lesson. Trong mỗi Lesson bạn sẽ nghe và gõ lại từng câu một.\n\nádasdasd\n\nádasdasd\n\nTrình độ: B1\n•\n1 bài học\n•\n2 phần",
+          "screenshot": ".tmp/ui-qa/live/user-live-dictation.png"
+        },
+        {
+          "name": "user-live-dictation-progress",
+          "status": "PASS",
+          "route": "/vi/dictation/progress",
+          "body": "English Platform\nHỌC VIÊN\nCổng học tập\nTrang chủ\nLỗi sai của tôi\nTOEIC\nĐề thi\nLịch sử làm bài\nThống kê\nTrò chơi\nĐấu trường từ vựng\nDanh sách trò chơi\nTừ vựng\nKhám phá\nTừ vựng của tôi\nDictation\nDictation\nTiến độ Dictation\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nU\n\nUI-QA-mvt765v6-1\n\nStudent\n\nToggle Sidebar\nTiến độ Dictation\n\nDICTATION\n\nTiến độ Dictation\n\nTheo dõi các bài đã luyện và độ chính xác.\n\nĐã bắt đầu\n\n0\n\nHoàn thành\n\n0\n\nCâu đúng\n\n0\n\nĐộ chính xác\n\n0%\n\nChưa có tiến độ\n\nChọn bài để bắt đầu →",
+          "screenshot": ".tmp/ui-qa/live/user-live-dictation-progress.png"
+        },
+        {
+          "name": "admin-live-home",
+          "status": "PASS",
+          "route": "/vi",
+          "body": "\n1\n\n2026-10-25\n\nNgười dùng mới\n0\nLượt làm bài\n0\n\n2026-10-26\n\nNgười dùng mới\n0\nLượt làm bài\n0\n\n2026-10-27\n\nNgười dùng mới\n0\nLượt làm bài\n0\n\n2026-10-28\n\nNgười dùng mới\n0\nLượt làm bài\n0\n\n2026-10-29\n\nNgười dùng mới\n3\nLượt làm bài\n0\n2026-10-23\n2026-10-24\n2026-10-25\n2026-10-26\n2026-10-27\n2026-10-28\n2026-10-29\nTỷ lệ trạng thái đề\n1\ntổng số đề\nđang hoạt động\n1\nđang ẩn\n0\nNhóm đề nổi bật\nXem\n#\nNHÓM ĐỀ NỔI BẬT\nSL\n1\n\nádasdad\n\n1\nNgười dùng mới\nU\n\nUI-QA-mvt765v6-3\n\nVừa xong\nU\n\nUI-QA-mvt765v6-2\n\nVừa xong\nU\n\nUI-QA-mvt765v6-1\n\nVừa xong\nT\n\nTDATT TDATT\n\n4 ngày trước\nV\n\nVũ Minh Dương (B22DCCN174)\n\n5 ngày trước\nXem tất cả\nHoạt động gần đây\n\nUI-QA-mvt765v6-1 · Bắt đầu phiên truy cập\n\nBắt đầu phiên truy cập\n\nVừa xong\n\nUI-QA-mvt765v6-1 · Kết thúc phiên / Thoát web\n\nKết thúc phiên truy cập\n\nVừa xong\n\nUI-QA-mvt765v6-1 · Bắt đầu phiên truy cập\n\nBắt đầu phiên truy cập\n\nVừa xong\n\nUI-QA-mvt765v6-1 · Kết thúc phiên / Thoát web\n\nKết thúc phiên truy cập\n\nVừa xong\n\nUI-QA-mvt765v6-3 · Xem trang\n\nXem trang: /vi\n\nVừa xong",
+          "screenshot": ".tmp/ui-qa/live/admin-live-home.png"
+        },
+        {
+          "name": "admin-live-users",
+          "status": "PASS",
+          "route": "/vi/users",
+          "body": "Quản trị học tập\nNội dung\nTrò chơi\nĐấu trường\nWorkers & Queue\nNgười dùng\nTừ vựng\nDictation\nĐề thi\nCấu hình hệ thống\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nA\n\nadmin\n\nadmin@gmail.com\n\nToggle Sidebar\nNgười dùng\nQuản lý người dùng\n\nXem và quản lý tất cả người dùng trong hệ thống\n\nTổng người dùng\n\n5\n\nToàn bộ hệ thống\n\nĐang hoạt động\n\n5\n\nHoạt động\n\nTài khoản mới (7 ngày)\n\n5\n\n7 ngày qua\n\nBị khóa\n\n0\n\nBị khóa\n\nTrạng thái:\nTất cả\nNgày đăng ký:\nTất cả\nThêm người dùng\n\tTÊN NGƯỜI DÙNG\tEMAIL\tTRẠNG THÁI\tNGÀY ĐĂNG KÝ\tHOẠT ĐỘNG CUỐI\tHÀNH ĐỘNG\n\t\nU\nUI-QA-mvt765v6-3\n\tui-qa-mvt765v6-3@example.invalid\tHoạt động\t29/10/2026\tHôm nay, 14:03\t\n\n\t\nU\nUI-QA-mvt765v6-2\n\tui-qa-mvt765v6-2@example.invalid\tHoạt động\t29/10/2026\tHôm nay, 14:03\t\n\n\t\nU\nUI-QA-mvt765v6-1\n\tui-qa-mvt765v6-1@example.invalid\tHoạt động\t29/10/2026\tHôm nay, 14:03\t\n\n\t\nTDATT TDATT\n\ttdatt8104@gmail.com\tHoạt động\t24/10/2026\t24/10/2026 22:56\t\n\n\t\nVũ Minh Dương (B22DCCN174)\n\tminhduonghg10@gmail.com\tHoạt động\t23/10/2026\t23/10/2026 23:41\t\nHiển thị 1 - 5 trong 5 người dùng\n1",
+          "screenshot": ".tmp/ui-qa/live/admin-live-users.png"
+        },
+        {
+          "name": "admin-live-vocabulary-groups",
+          "status": "PASS",
+          "route": "/vi/vocabulary/groups",
+          "body": "English Platform\nQUẢN TRỊ\nHệ thống Quản trị\nĐIỀU HƯỚNG\nBảng điều khiển\nQuản trị học tập\nNội dung\nTrò chơi\nĐấu trường\nWorkers & Queue\nNgười dùng\nTừ vựng\nChương trình học\nBộ sưu tập\nTừ điển\nDictation\nĐề thi\nCấu hình hệ thống\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nA\n\nadmin\n\nadmin@gmail.com\n\nToggle Sidebar\nTừ vựng\nChương trình học từ vựng\n\nQuản lý nhóm và phân loại các bộ sưu tập theo mục tiêu học tập, chứng chỉ hoặc giáo trình\n\nMở từ điển\nThêm nhóm\nCác nhóm từ vựng\n\n3 nhóm · 0 bộ sưu tập\n\n1\n\nádasdasdasd\n\n0 bộ sưu tập · 0 bài học · 0 từ\n\n1\n\nsadasdasd\n\n0 bộ sưu tập · 0 bài học · 0 từ\n\n3\n\ngdfgdfgdfg\n\n0 bộ sưu tập · 0 bài học · 0 từ\n\nPhân trang\n\nHiển thị 1–3 / 3\n\nMỗi trang\n5\n10\n20\n50\n1 / 1\nádasdasdasd\n0 bộ sưu tập\n0 bài học\n0 từ\nPhân bộ sưu tập\nChưa có bộ sưu tập nào trong nhóm này\n\nHãy chọn các bộ sưu tập đã có để đưa vào nhóm này.\n\nPhân bộ sưu tập vào nhóm\n\nLuồng quản lý gọn hơn\n\nChọn Nhóm → Bộ sưu tập → Lesson ngay tại đây. Từ điển được tách riêng để quản lý kho từ dùng chung.",
+          "screenshot": ".tmp/ui-qa/live/admin-live-vocabulary-groups.png"
+        },
+        {
+          "name": "admin-live-vocabulary-collections",
+          "status": "PASS",
+          "route": "/vi/vocabulary/collections",
+          "body": "English Platform\nQUẢN TRỊ\nHệ thống Quản trị\nĐIỀU HƯỚNG\nBảng điều khiển\nQuản trị học tập\nNội dung\nTrò chơi\nĐấu trường\nWorkers & Queue\nNgười dùng\nTừ vựng\nChương trình học\nBộ sưu tập\nTừ điển\nDictation\nĐề thi\nCấu hình hệ thống\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nA\n\nadmin\n\nadmin@gmail.com\n\nToggle Sidebar\nTừ vựng / Bộ sưu tập\nBộ sưu tập Từ vựng\n\nQuản lý các bộ sưu tập và các bài học từ vựng theo chủ đề, giáo trình\n\nThêm bộ sưu tập\n\nChưa có bộ sưu tập nào\n\nBắt đầu bằng cách thêm bộ sưu tập từ vựng đầu tiên.\n\nThêm bộ sưu tập\nChưa chọn bộ sưu tập\n\nVui lòng chọn một bộ sưu tập từ danh sách bên trái để xem các bài học và từ vựng liên quan.",
+          "screenshot": ".tmp/ui-qa/live/admin-live-vocabulary-collections.png"
+        },
+        {
+          "name": "admin-live-vocabulary-words",
+          "status": "PASS",
+          "route": "/vi/vocabulary/words",
+          "body": "English Platform\nQUẢN TRỊ\nHệ thống Quản trị\nĐIỀU HƯỚNG\nBảng điều khiển\nQuản trị học tập\nNội dung\nTrò chơi\nĐấu trường\nWorkers & Queue\nNgười dùng\nTừ vựng\nChương trình học\nBộ sưu tập\nTừ điển\nDictation\nĐề thi\nCấu hình hệ thống\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nA\n\nadmin\n\nadmin@gmail.com\n\nToggle Sidebar\nTừ vựng / Từ vựng\nTừ điển\n\nQuản lý kho từ dùng chung, phát âm và nội dung học.\n\nThêm từ mới\nTất cả trạng thái xuất bản\nBản nháp\nCần kiểm tra\nĐã xuất bản\nCấp độ\nTất cả cấp độ\nTrạng thái\nTất cả trạng thái\nĐặt lại\n\tTỪ VỰNG & PHÁT ÂM\tNGHĨA\tCẤP ĐỘ\tTRẠNG THÁI\tTHAO TÁC\n\t\nword\nĐã xuất bản\nUS\n—\n\t\nNOUN\n\ntừ\n\ntừ\n\n\tA1\t\nĐang hoạt động\n\t\nHiển thị 1 - 1 trên 1 từ\n1",
+          "screenshot": ".tmp/ui-qa/live/admin-live-vocabulary-words.png"
+        },
+        {
+          "name": "admin-live-dictation",
+          "status": "PASS",
+          "route": "/vi/dictation",
+          "body": "English Platform\nQUẢN TRỊ\nHệ thống Quản trị\nĐIỀU HƯỚNG\nBảng điều khiển\nQuản trị học tập\nNội dung\nTrò chơi\nĐấu trường\nWorkers & Queue\nNgười dùng\nTừ vựng\nDictation\nBài nghe\nChủ đề & Phần\nĐề thi\nCấu hình hệ thống\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nA\n\nadmin\n\nadmin@gmail.com\n\nToggle Sidebar\nDictation\nDictation\n\nQuản lý Topic → Section → Lesson, TTS Kokoro và audio upload Faster Whisper.\n\nTopic & Section\nTạo Lesson\n\nTổng bài\n\n2\n\nĐã xuất bản\n\n1\n\nSẵn sàng\n\n1\n\nTổng số câu\n\n2\n\nTất cả trạng thái xuất bản\nBản nháp\nCần kiểm tra\nĐã xuất bản\n\n2 bài\n\nBÀI LUYỆN\tLEVEL\tAUDIO\tTRẠNG THÁI\tTHAO TÁC\nádasdasdasd\nádasdasd\n•\n1 câu\n\tB1\t\n4s\n\tPUBLISHEDĐã xuất bản\t\nUnpublish\nChi tiết\n\nádasdasdasd\nádasdasd\n•\n1 câu\n\tB1\t\n3s\n\tREADYBản nháp\t\nChi tiết\nPhân trang\n\nHiển thị 1–2 / 2\n\nMỗi trang\n5\n10\n20\n50\n1 / 1",
+          "screenshot": ".tmp/ui-qa/live/admin-live-dictation.png"
+        },
+        {
+          "name": "admin-live-dictation-structure",
+          "status": "PASS",
+          "route": "/vi/dictation/structure",
+          "body": "g Quản trị\nĐIỀU HƯỚNG\nBảng điều khiển\nQuản trị học tập\nNội dung\nTrò chơi\nĐấu trường\nWorkers & Queue\nNgười dùng\nTừ vựng\nDictation\nBài nghe\nChủ đề & Phần\nĐề thi\nCấu hình hệ thống\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nA\n\nadmin\n\nadmin@gmail.com\n\nToggle Sidebar\nDictation\nCấu trúc Dictation\n\nQuản lý 3 cấp Topic → Section → Lesson. Thumbnail được hiển thị ở thư viện học viên.\n\nTạo Topic\n\nẢnh nên dùng tỷ lệ vuông hoặc 4:3, nội dung rõ ở kích thước nhỏ.\n\nTên Topic\nMô tả\nThứ tự\nThumbnail\nChọn ảnh\nTạo Topic\nTạo Section\n\nMỗi Lesson phải thuộc đúng một Section.\n\nTopic\nChọn Topic...\nGeneral\nsadasda\nádasdasd\nTên Section\nMô tả\nThứ tự\nTạo Section\nTopic & Section hiện tại\nGeneral\n\nChưa có mô tả.\n\nSection 1\n\n0 lesson · order 0\n\nPhân trang\n\nHiển thị 1–1 / 1\n\nMỗi trang\n5\n10\n20\n50\n1 / 1\nsadasda\n\nádasdasd\n\nTopic này chưa có Section.\n\nádasdasd\n\nádasdasd\n\nádasdasd\n\n2 lesson · order 0\n\nấdasd\n\n0 lesson · order 0\n\nPhân trang\n\nHiển thị 1–2 / 2\n\nMỗi trang\n5\n10\n20\n50\n1 / 1\nPhân trang\n\nHiển thị 1–3 / 3\n\nMỗi trang\n5\n10\n20\n50\n1 / 1",
+          "screenshot": ".tmp/ui-qa/live/admin-live-dictation-structure.png"
+        },
+        {
+          "name": "admin-live-arena",
+          "status": "PASS",
+          "route": "/vi/arena",
+          "body": "English Platform\nQUẢN TRỊ\nHệ thống Quản trị\nĐIỀU HƯỚNG\nBảng điều khiển\nQuản trị học tập\nNội dung\nTrò chơi\nĐấu trường\nTổng quan\nTrận đấu\nNgười chơi\nPhòng\nCài đặt\nWorkers & Queue\nNgười dùng\nTừ vựng\nDictation\nĐề thi\nCấu hình hệ thống\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nA\n\nadmin\n\nadmin@gmail.com\n\nToggle Sidebar\nĐấu trường\nTổng quan\n\nTheo dõi hoạt động và cấu hình Arena.\n\nLàm mới\n\nTrận hôm nay\n\n0\n\nXếp hạng hôm nay\n\n0\n\n1vs1 hôm nay\n\n0\n\nNhóm hôm nay\n\n0\n\nTrận đang hoạt động\n\n0\n\nĐang online Arena\n\n3\n\nPhòng chờ\n\n0\n\nĐã hủy hôm nay\n\n0\n\nThống kê theo giờ Việt Nam (UTC+7). Dữ liệu theo dõi được làm mới mỗi 30 giây.\n\n7 ngày\n30 ngày\nSố trận theo ngày\n0\n10-23\n0\n10-24\n0\n10-25\n0\n10-26\n0\n10-27\n0\n10-28\n0\n10-29\nTỷ lệ loại trận\n\nChưa có dữ liệu phù hợp.\n\nLý do kết thúc\n\nChưa có dữ liệu phù hợp.\n\nTrận gần đây\nID trận\tLoại\tChế độ\tNgười chơi\tNgười thắng\tTrạng thái\tLý do kết thúc\tTạo lúc\tKết thúc\nChưa có dữ liệu phù hợp.",
+          "screenshot": ".tmp/ui-qa/live/admin-live-arena.png"
+        },
+        {
+          "name": "admin-live-arena-players",
+          "status": "PASS",
+          "route": "/vi/arena/players",
+          "body": " dùng\nTừ vựng\nDictation\nĐề thi\nCấu hình hệ thống\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nA\n\nadmin\n\nadmin@gmail.com\n\nToggle Sidebar\nĐấu trường\nNgười chơi\n\nTheo dõi hoạt động và cấu hình Arena.\n\nLàm mới\nTìm kiếm\nElo từ\nElo đến\nSố trận tối thiểu\nHoạt động từ ngày\nSắp xếp\nTất cả\nElo\nTrận xếp hạng\nTỷ lệ thắng\nHoạt động Arena gần nhất\nÁp dụng bộ lọc\nNgười chơi\tElo\tTrận xếp hạng\tThắng\tThua\tHòa\tChuỗi thắng hiện tại\tChuỗi thắng tốt nhất\tTỷ lệ thắng\tHoạt động Arena gần nhất\n\nTDATT TDATT\n\n\t1000\t0\t0\t0\t0\t0\t0\t0.0%\t01:14:36 29/10/2026\n\nUI-QA-mvt719g1-2\n\n\t1000\t0\t0\t0\t0\t0\t0\t0.0%\t14:02:59 29/10/2026\n\nUI-QA-mvt765v6-3\n\n\t1000\t0\t0\t0\t0\t0\t0\t0.0%\t14:03:51 29/10/2026\n\n9403c8c9-3a33-4003-8b56-fa8534e015eb\n\n\t1000\t0\t0\t0\t0\t0\t0\t0.0%\t22:56:51 24/10/2026\n\nUI-QA-mvt765v6-2\n\n\t1000\t0\t0\t0\t0\t0\t0\t0.0%\t14:03:51 29/10/2026\n\nUI-QA-mvt719g1-1\n\n\t1000\t0\t0\t0\t0\t0\t0\t0.0%\t14:02:56 29/10/2026\n\nUI-QA-mvt765v6-1\n\n\t1000\t0\t0\t0\t0\t0\t0\t0.0%\t14:03:50 29/10/2026\n\nUI-QA-mvt719g1-3\n\n\t1000\t0\t0\t0\t0\t0\t0\t0.0%\t14:02:44 29/10/2026\n\nTrang 1 / 1 · 8 kết quả\n\nTrước\nSau",
+          "screenshot": ".tmp/ui-qa/live/admin-live-arena-players.png"
+        },
+        {
+          "name": "admin-live-arena-matches",
+          "status": "PASS",
+          "route": "/vi/arena/matches",
+          "body": "English Platform\nQUẢN TRỊ\nHệ thống Quản trị\nĐIỀU HƯỚNG\nBảng điều khiển\nQuản trị học tập\nNội dung\nTrò chơi\nĐấu trường\nTổng quan\nTrận đấu\nNgười chơi\nPhòng\nCài đặt\nWorkers & Queue\nNgười dùng\nTừ vựng\nDictation\nĐề thi\nCấu hình hệ thống\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nA\n\nadmin\n\nadmin@gmail.com\n\nToggle Sidebar\nĐấu trường\nTrận đấu\n\nTheo dõi hoạt động và cấu hình Arena.\n\nLàm mới\nID trận\nLoại\nTất cả\nXếp hạng\n1vs1\nNhóm\nTrạng thái\nTất cả\nĐang chờ\nChờ sẵn sàng\nĐang chơi\nTạm dừng\nĐang tiếp tục\nĐang xử lý kết quả\nĐã kết thúc\nĐã hủy\nChế độ\nTất cả\nCổ điển\nNối từ\nĐoán từ\nNghĩa → Từ\nTừ → Nghĩa\nNghe\nNgữ cảnh\nHỗn hợp\nID người chơi\nID người thắng\nLý do kết thúc\nTất cả\nBình thường\nNgười chơi rời trận\nMất kết nối quá lâu\nHết thời gian lượt\nTừ ngày\nĐến ngày\nÁp dụng bộ lọc\nID trận\tLoại\tChế độ\tNgười chơi\tNgười thắng\tTrạng thái\tLý do kết thúc\tTạo lúc\tKết thúc\nChưa có dữ liệu phù hợp.\n\nTrang 1 / 1 · 0 kết quả\n\nTrước\nSau",
+          "screenshot": ".tmp/ui-qa/live/admin-live-arena-matches.png"
+        },
+        {
+          "name": "admin-live-arena-rooms",
+          "status": "PASS",
+          "route": "/vi/arena/rooms",
+          "body": "English Platform\nQUẢN TRỊ\nHệ thống Quản trị\nĐIỀU HƯỚNG\nBảng điều khiển\nQuản trị học tập\nNội dung\nTrò chơi\nĐấu trường\nTổng quan\nTrận đấu\nNgười chơi\nPhòng\nCài đặt\nWorkers & Queue\nNgười dùng\nTừ vựng\nDictation\nĐề thi\nCấu hình hệ thống\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nA\n\nadmin\n\nadmin@gmail.com\n\nToggle Sidebar\nĐấu trường\nPhòng\n\nTheo dõi hoạt động và cấu hình Arena.\n\nLàm mới\nMã phòng\nLoại\nTất cả\n1vs1\nNhóm\nTrạng thái\nTất cả\nĐang chờ\nTrong trận\nĐã đóng\nChế độ\nTất cả\nCổ điển\nNối từ\nĐoán từ\nID chủ phòng\nTừ ngày\nĐến ngày\nÁp dụng bộ lọc\nChỉ phòng chờ không hoạt động trên 30 phút\nMã phòng\tLoại\tChủ phòng\tSức chứa\tChế độ\tTrạng thái\tTrận hiện tại\tTạo lúc\tHoạt động gần nhất\nChưa có dữ liệu phù hợp.\n\nTrang 1 / 1 · 0 kết quả\n\nTrước\nSau\n\nDữ liệu theo dõi được làm mới mỗi 30 giây. Chỉ đóng phòng chờ chưa có trận đang chạy.",
+          "screenshot": ".tmp/ui-qa/live/admin-live-arena-rooms.png"
+        },
+        {
+          "name": "create-friendly-room-from-ui",
+          "status": "PASS",
+          "route": "/vi/arena/friend/room/66HDH4",
+          "body": "àm bài\nThống kê\nTrò chơi\nĐấu trường từ vựng\nDanh sách trò chơi\nTừ vựng\nKhám phá\nTừ vựng của tôi\nDictation\nDictation\nTiến độ Dictation\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nU\n\nUI-QA-mvt765v6-1\n\nStudent\n\nToggle Sidebar\nĐấu trường từ vựng\nĐấu Trường Solo 1v1\n1 vs 1\n\nPhòng chờ sẵn sàng · Chuẩn bị xuất kích\n\nMáy chủ trực tuyến\nRời phòng\nMÃ PHÒNG ĐẤU\n66HDH4\nChép mã\nChia sẻ link\n\nCHẾ ĐỘ\n\nClassic Đối kháng\n\nTHỜI GIAN\n\n15s\n\nSỐ CÂU\n\n10 câu\n\nTHÀNH VIÊN\n\n1 / 2\n\nSÀN ĐẤU ĐỐI ĐẦU 1V1\n\nChờ đối thủ gia nhập và sẵn sàng xuất chiến\n\n1/2 sẵn sàng\nCHỦ PHÒNG\nUI-QA-mvt765v6-1\nBạn\nSẵn sàng chiến\nVS\nTHÁCH ĐẤU\nChờ đối thủ gia nhập…\nBấm để mời người chơi\nChờ tất cả người chơi sẵn sàng\n\nĐấu giao hữu cùng bạn bè · Rèn luyện phản xạ · Không tính Elo\n\nBẮT ĐẦU TRẬN ĐẤU\nCÀI ĐẶT TRẬN ĐẤU\nChế độ thi đấu\nClassic\nNghĩa -> Từ vựng\nWord Guess\nĐoán từ 5 ký tự\nWord Chain\nNối từ thần tốc\nSố câu hỏi\n5\n10\n15\n20\nThời gian mỗi câu\n10s\n15s\n20s\n30s\n\n💡 Đọc nghĩa tiếng Việt, gõ từ tiếng Anh chuẩn xác nhanh nhất để ghi điểm tối đa.\n\nCÀI ĐẶT ĐÃ LƯU",
+          "screenshot": ".tmp/ui-qa/live/create-friendly-room-from-ui.png"
+        },
+        {
+          "name": "guest-joins-room-live-broadcast",
+          "status": "PASS",
+          "route": "/vi/arena/friend/room/66HDH4",
+          "body": "sử làm bài\nThống kê\nTrò chơi\nĐấu trường từ vựng\nDanh sách trò chơi\nTừ vựng\nKhám phá\nTừ vựng của tôi\nDictation\nDictation\nTiến độ Dictation\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nU\n\nUI-QA-mvt765v6-1\n\nStudent\n\nToggle Sidebar\nĐấu trường từ vựng\nĐấu Trường Solo 1v1\n1 vs 1\n\nPhòng chờ sẵn sàng · Chuẩn bị xuất kích\n\nMáy chủ trực tuyến\nRời phòng\nMÃ PHÒNG ĐẤU\n66HDH4\nChép mã\nChia sẻ link\n\nCHẾ ĐỘ\n\nClassic Đối kháng\n\nTHỜI GIAN\n\n15s\n\nSỐ CÂU\n\n10 câu\n\nTHÀNH VIÊN\n\n2 / 2\n\nSÀN ĐẤU ĐỐI ĐẦU 1V1\n\nChờ đối thủ gia nhập và sẵn sàng xuất chiến\n\n1/2 sẵn sàng\nCHỦ PHÒNG\nUI-QA-mvt765v6-1\nBạn\nSẵn sàng chiến\nVS\nTHÁCH ĐẤU\nĐỐI THỦ\nUI-QA-mvt765v6-2\nĐang chuẩn bị…\nChờ tất cả người chơi sẵn sàng\n\nĐấu giao hữu cùng bạn bè · Rèn luyện phản xạ · Không tính Elo\n\nBẮT ĐẦU TRẬN ĐẤU\nCÀI ĐẶT TRẬN ĐẤU\nChế độ thi đấu\nClassic\nNghĩa -> Từ vựng\nWord Guess\nĐoán từ 5 ký tự\nWord Chain\nNối từ thần tốc\nSố câu hỏi\n5\n10\n15\n20\nThời gian mỗi câu\n10s\n15s\n20s\n30s\n\n💡 Đọc nghĩa tiếng Việt, gõ từ tiếng Anh chuẩn xác nhanh nhất để ghi điểm tối đa.\n\nCÀI ĐẶT ĐÃ LƯU",
+          "screenshot": ".tmp/ui-qa/live/guest-joins-room-live-broadcast.png"
+        },
+        {
+          "name": "guest-ready-enables-host-start",
+          "status": "PASS",
+          "route": "/vi/arena/friend/room/66HDH4",
+          "body": "m bài\nThống kê\nTrò chơi\nĐấu trường từ vựng\nDanh sách trò chơi\nTừ vựng\nKhám phá\nTừ vựng của tôi\nDictation\nDictation\nTiến độ Dictation\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nU\n\nUI-QA-mvt765v6-1\n\nStudent\n\nToggle Sidebar\nĐấu trường từ vựng\nĐấu Trường Solo 1v1\n1 vs 1\n\nPhòng chờ sẵn sàng · Chuẩn bị xuất kích\n\nMáy chủ trực tuyến\nRời phòng\nMÃ PHÒNG ĐẤU\n66HDH4\nChép mã\nChia sẻ link\n\nCHẾ ĐỘ\n\nClassic Đối kháng\n\nTHỜI GIAN\n\n15s\n\nSỐ CÂU\n\n10 câu\n\nTHÀNH VIÊN\n\n2 / 2\n\nSÀN ĐẤU ĐỐI ĐẦU 1V1\n\n🔥 Hai bên đã sẵn sàng, trận đấu có thể bắt đầu!\n\n2/2 sẵn sàng\nCHỦ PHÒNG\nUI-QA-mvt765v6-1\nBạn\nSẵn sàng chiến\nVS\nTHÁCH ĐẤU\nĐỐI THỦ\nUI-QA-mvt765v6-2\nĐã sẵn sàng!\nĐấu trường đã sẵn sàng khai hỏa!\n\nĐấu giao hữu cùng bạn bè · Rèn luyện phản xạ · Không tính Elo\n\nBẮT ĐẦU TRẬN ĐẤU\nCÀI ĐẶT TRẬN ĐẤU\nChế độ thi đấu\nClassic\nNghĩa -> Từ vựng\nWord Guess\nĐoán từ 5 ký tự\nWord Chain\nNối từ thần tốc\nSố câu hỏi\n5\n10\n15\n20\nThời gian mỗi câu\n10s\n15s\n20s\n30s\n\n💡 Đọc nghĩa tiếng Việt, gõ từ tiếng Anh chuẩn xác nhanh nhất để ghi điểm tối đa.\n\nCÀI ĐẶT ĐÃ LƯU",
+          "screenshot": ".tmp/ui-qa/live/guest-ready-enables-host-start.png"
+        },
+        {
+          "name": "offline-disables-controls-and-reconnect-restores-room",
+          "status": "PASS",
+          "route": "/vi/arena/friend/room/66HDH4",
+          "body": "English Platform\nHỌC VIÊN\nCổng học tập\nTrang chủ\nLỗi sai của tôi\nTOEIC\nĐề thi\nLịch sử làm bài\nThống kê\nTrò chơi\nĐấu trường từ vựng\nDanh sách trò chơi\nTừ vựng\nKhám phá\nTừ vựng của tôi\nDictation\nDictation\nTiến độ Dictation\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nU\n\nUI-QA-mvt765v6-2\n\nStudent\n\nToggle Sidebar\nĐấu trường từ vựng\nĐấu Trường Solo 1v1\n1 vs 1\n\nPhòng chờ sẵn sàng · Chuẩn bị xuất kích\n\nMáy chủ trực tuyến\nRời phòng\nMÃ PHÒNG ĐẤU\n66HDH4\nChép mã\nChia sẻ link\n\nCHẾ ĐỘ\n\nClassic Đối kháng\n\nTHỜI GIAN\n\n15s\n\nSỐ CÂU\n\n10 câu\n\nTHÀNH VIÊN\n\n2 / 2\n\nSÀN ĐẤU ĐỐI ĐẦU 1V1\n\n🔥 Hai bên đã sẵn sàng, trận đấu có thể bắt đầu!\n\n2/2 sẵn sàng\nCHỦ PHÒNG\nUI-QA-mvt765v6-1\nSẵn sàng chiến\nVS\nTHÁCH ĐẤU\nĐỐI THỦ\nUI-QA-mvt765v6-2\nBạn\nĐã sẵn sàng!\nĐấu trường đã sẵn sàng khai hỏa!\n\nĐấu giao hữu cùng bạn bè · Rèn luyện phản xạ · Không tính Elo\n\nĐÃ SẴN SÀNG (HỦY)\nTHÔNG TIN PHÒNG\nMã phòng\n66HDH4\nChủ phòng\nUI-QA-mvt765v6-1\nChế độ thi đấu\nClassic Đối kháng\nNgười chơi\n2/2\nTrạng thái\nĐang chờ\nSố câu hỏi\n10\nThời gian mỗi câu\n15 giây",
+          "screenshot": ".tmp/ui-qa/live/offline-disables-controls-and-reconnect-restores-room.png"
+        },
+        {
+          "name": "guest-leaves-host-updates-without-reload",
+          "status": "PASS",
+          "route": "/vi/arena/friend/room/66HDH4",
+          "body": "àm bài\nThống kê\nTrò chơi\nĐấu trường từ vựng\nDanh sách trò chơi\nTừ vựng\nKhám phá\nTừ vựng của tôi\nDictation\nDictation\nTiến độ Dictation\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nU\n\nUI-QA-mvt765v6-1\n\nStudent\n\nToggle Sidebar\nĐấu trường từ vựng\nĐấu Trường Solo 1v1\n1 vs 1\n\nPhòng chờ sẵn sàng · Chuẩn bị xuất kích\n\nMáy chủ trực tuyến\nRời phòng\nMÃ PHÒNG ĐẤU\n66HDH4\nChép mã\nChia sẻ link\n\nCHẾ ĐỘ\n\nClassic Đối kháng\n\nTHỜI GIAN\n\n15s\n\nSỐ CÂU\n\n10 câu\n\nTHÀNH VIÊN\n\n1 / 2\n\nSÀN ĐẤU ĐỐI ĐẦU 1V1\n\nChờ đối thủ gia nhập và sẵn sàng xuất chiến\n\n1/2 sẵn sàng\nCHỦ PHÒNG\nUI-QA-mvt765v6-1\nBạn\nSẵn sàng chiến\nVS\nTHÁCH ĐẤU\nChờ đối thủ gia nhập…\nBấm để mời người chơi\nChờ tất cả người chơi sẵn sàng\n\nĐấu giao hữu cùng bạn bè · Rèn luyện phản xạ · Không tính Elo\n\nBẮT ĐẦU TRẬN ĐẤU\nCÀI ĐẶT TRẬN ĐẤU\nChế độ thi đấu\nClassic\nNghĩa -> Từ vựng\nWord Guess\nĐoán từ 5 ký tự\nWord Chain\nNối từ thần tốc\nSố câu hỏi\n5\n10\n15\n20\nThời gian mỗi câu\n10s\n15s\n20s\n30s\n\n💡 Đọc nghĩa tiếng Việt, gõ từ tiếng Anh chuẩn xác nhanh nhất để ghi điểm tối đa.\n\nCÀI ĐẶT ĐÃ LƯU",
+          "screenshot": ".tmp/ui-qa/live/guest-leaves-host-updates-without-reload.png"
+        },
+        {
+          "name": "invite-received-and-declined-on-mobile",
+          "status": "PASS",
+          "route": "/vi",
+          "body": "ọc\n\n0 ngày\n\nKỷ lục: 0 ngày\n\nXP hôm nay\n\n0 / 50 XP\n\nTổng: 0 XP\n\nThời gian học (7 ngày)\n\n0 phút\n\n0%\nso với tuần trước\n\nHoạt động hoàn thành (7 ngày)\n\n0\n\n0%\nso với tuần trước\nTiếp tục học\nTừ vựng\n\n0 hoạt động · 0 XP\n\nBắt đầu học bộ từ vựng đầu tiên\n\nKhám phá từ vựng\nDictation\n\n0 hoạt động · 0 XP\n\nLuyện nghe chép chính tả từng câu\n\nLuyện bài mới\nThi TOEIC\n\n0 hoạt động · 0 XP\n\nLàm bài thi thử hoặc luyện từng Part\n\nChọn đề thi\nĐấu trường\n\n0 hoạt động · 0 XP\n\nRating 1000\n\nVào đấu trường\nMinigame\n\n0 hoạt động · 0 XP\n\nÔn từ vựng qua các trò chơi\n\nChơi game\nHôm nay nên học gì?\n\nDựa trên hoạt động học gần đây của bạn · Gợi ý theo quy tắc\n\nTất cả\nNghe\nĐọc\nTừ vựng\nTừ vựng\n5 phút\nBắt đầu với một bài luyện thử\n\nChưa đủ dữ liệu gần đây để xác định kỹ năng cần cải thiện.\n\nBắt đầu\nHoạt động học tập (13 tuần gần đây)\n\n0 ngày có học trong 90 ngày\n\nT2\nT3\nT4\nT5\nT6\nT7\nCN\nÍt\nNhiều\nÔ đậm nhất = đạt mục tiêu 50 XP\n\nRê chuột lên một ngày để xem chi tiết\n\nHoạt động gần đây\n\nChưa có hoạt động nào. Hãy bắt đầu học!",
+          "screenshot": ".tmp/ui-qa/live/invite-received-and-declined-on-mobile.png"
+        },
+        {
+          "name": "invite-accepted-routes-mobile-to-room",
+          "status": "PASS",
+          "route": "/vi/arena/friend/room/66HDH4",
+          "body": "Toggle Sidebar\nĐấu trường từ vựng\nĐấu Trường Solo 1v1\n\nPhòng chờ sẵn sàng · Chuẩn bị xuất kích\n\nRời phòng\nMÃ PHÒNG ĐẤU\n66HDH4\nChép mã\nLink\n\nCHẾ ĐỘ\n\nClassic Đối kháng\n\nTHỜI GIAN\n\n15s\n\nSỐ CÂU\n\n10 câu\n\nTHÀNH VIÊN\n\n2 / 2\n\nSÀN ĐẤU ĐỐI ĐẦU 1V1\n\nChờ đối thủ gia nhập và sẵn sàng xuất chiến\n\n1/2 sẵn sàng\nCHỦ PHÒNG\nUI-QA-mvt765v6-1\nSẵn sàng chiến\nVS\nTHÁCH ĐẤU\nĐỐI THỦ\nUI-QA-mvt765v6-3\nBạn\nĐang chuẩn bị…\nHãy bấm Sẵn Sàng để tham chiến\n\nĐấu giao hữu cùng bạn bè · Rèn luyện phản xạ · Không tính Elo\n\nSẴN SÀNG CHIẾN\nTHÔNG TIN PHÒNG\nMã phòng\n66HDH4\nChủ phòng\nUI-QA-mvt765v6-1\nChế độ thi đấu\nClassic Đối kháng\nNgười chơi\n2/2\nTrạng thái\nĐang chờ\nSố câu hỏi\n10\nThời gian mỗi câu\n15 giây",
+          "screenshot": ".tmp/ui-qa/live/invite-accepted-routes-mobile-to-room.png"
+        },
+        {
+          "name": "admin-ui-closes-qa-room-broadcasts-to-both-users",
+          "status": "PASS",
+          "route": "/vi/arena/rooms/3d304338-2aa0-4325-bf47-e4a825b03910",
+          "body": "English Platform\nQUẢN TRỊ\nHệ thống Quản trị\nĐIỀU HƯỚNG\nBảng điều khiển\nQuản trị học tập\nNội dung\nTrò chơi\nĐấu trường\nTổng quan\nTrận đấu\nNgười chơi\nPhòng\nCài đặt\nWorkers & Queue\nNgười dùng\nTừ vựng\nDictation\nĐề thi\nCấu hình hệ thống\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nA\n\nadmin\n\nadmin@gmail.com\n\nToggle Sidebar\nĐấu trường\nPhòng\n\nTheo dõi hoạt động và cấu hình Arena.\n\nLàm mới\n66HDH4\n1vs1\nCổ điển\nĐang chờ\nĐóng phòng\n\nChỉ đóng phòng chờ chưa có trận đang chạy.\n\nChi tiết\nChủ phòng\nUI-QA-mvt765v6-1\nSức chứa\n2 / 2\nTrận hiện tại\n—\nTạo lúc\n14:04:03 29/10/2026\nHoạt động gần nhất\n14:04:06 29/10/2026\nThành viên\nNgười chơi\tChủ phòng\tTrạng thái\n\nUI-QA-mvt765v6-1\n\tChủ phòng\tSẵn sàng\n\nUI-QA-mvt765v6-3\n\t—\tChưa sẵn sàng\nCấu hình phòng\nSố câu hỏi\n10\nGiây mỗi câu\n15\nHết hạn không hoạt động (giây)\n1800\nThời gian chờ kết nối lại (giây)\n20\nXác nhận đóng phòng\n\nThành viên sẽ được thông báo phòng bị quản trị viên đóng. Lịch sử trận đấu được giữ lại.\n\nLý do thao tác\nHủy\nĐang tải dữ liệu...\nClose",
+          "screenshot": ".tmp/ui-qa/live/admin-ui-closes-qa-room-broadcasts-to-both-users.png"
+        },
+        {
+          "name": "no-uncaught-errors-on-live-pages",
+          "status": "PASS"
+        }
+      ],
+      "events": [
+        {
+          "name": "socket-event-coverage",
+          "status": "INFO",
+          "pages": [
+            {
+              "name": "host",
+              "connections": 4,
+              "events": [
+                "arena:authenticated",
+                "arena:presence-changed",
+                "friend-room:created",
+                "friend-room:update",
+                "friend:invite-sent",
+                "friend:invite-declined",
+                "friend:invite-accepted",
+                "friend-room:closed"
+              ]
+            },
+            {
+              "name": "guest",
+              "connections": 3,
+              "events": [
+                "arena:authenticated",
+                "arena:presence-changed",
+                "friend-room:update"
+              ]
+            },
+            {
+              "name": "third-mobile",
+              "connections": 1,
+              "events": [
+                "arena:authenticated",
+                "arena:presence-changed",
+                "friend:invite-received",
+                "friend:invite-declined",
+                "friend:invite-accepted",
+                "friend-room:update",
+                "friend-room:closed"
+              ]
+            },
+            {
+              "name": "admin",
+              "connections": 0,
+              "events": []
+            }
+          ]
+        }
+      ],
+      "browserErrors": [],
+      "apiErrors": [
+        {
+          "page": "host",
+          "status": 401,
+          "path": "/api/auth/refresh-token"
+        },
+        {
+          "page": "guest",
+          "status": 401,
+          "path": "/api/auth/refresh-token"
+        },
+        {
+          "page": "third-mobile",
+          "status": 401,
+          "path": "/api/auth/refresh-token"
+        },
+        {
+          "page": "admin",
+          "status": 404,
+          "path": "/api/admin/arena/rooms/3d304338-2aa0-4325-bf47-e4a825b03910"
+        }
+      ]
+    },
+    {
+      "name": "live-games",
+      "scope": "Real game UI/WebSocket; temporary validated/published QA vocabulary",
+      "checks": [
+        {
+          "name": "host-real-login-and-websocket",
+          "status": "PASS",
+          "route": "/vi",
+          "body": "English Platform\nHỌC VIÊN\nCổng học tập\nTrang chủ\nLỗi sai của tôi\nTOEIC\nĐề thi\nLịch sử làm bài\nThống kê\nTrò chơi\nĐấu trường từ vựng\nDanh sách trò chơi\nTừ vựng\nKhám phá\nTừ vựng của tôi\nDictation\nDictation\nTiến độ Dictation\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nU\n\nUI-QA-mvt7c7p6-1\n\nStudent\n\nToggle Sidebar\nTrang chủ\nXin chào, UI-QA-mvt7c7p6-1! 👋\n\nHôm nay là một ngày tuyệt vời để học thêm những điều mới!\n\nThứ Năm, 29 Tháng 10, 2026\nTiếp tục học\nTừ vựng\n\n0 hoạt động · 0 XP\n\nKhám phá từ vựng\nDictation\n\n0 hoạt động · 0 XP\n\nLuyện bài mới\nThi TOEIC\n\n0 hoạt động · 0 XP\n\nChọn đề thi\nĐấu trường\n\n0 hoạt động · 0 XP\n\nVào đấu trường\nMinigame\n\n0 hoạt động · 0 XP\n\nChơi game\nHôm nay nên học gì?\n\nDựa trên hoạt động học gần đây của bạn · Gợi ý theo quy tắc\n\nTất cả\nNghe\nĐọc\nTừ vựng",
+          "screenshot": ".tmp/ui-qa/live-games/host-real-login-and-websocket.png"
+        },
+        {
+          "name": "guest-real-login-and-websocket",
+          "status": "PASS",
+          "route": "/vi",
+          "body": "English Platform\nHỌC VIÊN\nCổng học tập\nTrang chủ\nLỗi sai của tôi\nTOEIC\nĐề thi\nLịch sử làm bài\nThống kê\nTrò chơi\nĐấu trường từ vựng\nDanh sách trò chơi\nTừ vựng\nKhám phá\nTừ vựng của tôi\nDictation\nDictation\nTiến độ Dictation\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nU\n\nUI-QA-mvt7c7p6-2\n\nStudent\n\nToggle Sidebar\nTrang chủ\nXin chào, UI-QA-mvt7c7p6-2! 👋\n\nHôm nay là một ngày tuyệt vời để học thêm những điều mới!\n\nThứ Năm, 29 Tháng 10, 2026\nTiếp tục học\nTừ vựng\n\n0 hoạt động · 0 XP\n\nKhám phá từ vựng\nDictation\n\n0 hoạt động · 0 XP\n\nLuyện bài mới\nThi TOEIC\n\n0 hoạt động · 0 XP\n\nChọn đề thi\nĐấu trường\n\n0 hoạt động · 0 XP\n\nVào đấu trường\nMinigame\n\n0 hoạt động · 0 XP\n\nChơi game\nHôm nay nên học gì?\n\nDựa trên hoạt động học gần đây của bạn · Gợi ý theo quy tắc\n\nTất cả\nNghe\nĐọc\nTừ vựng",
+          "screenshot": ".tmp/ui-qa/live-games/guest-real-login-and-websocket.png"
+        },
+        {
+          "name": "mobile-real-login-and-websocket",
+          "status": "PASS",
+          "route": "/vi",
+          "body": "Toggle Sidebar\nTrang chủ\nXin chào, UI-QA-mvt7c7p6-3! 👋\n\nHôm nay là một ngày tuyệt vời để học thêm những điều mới!\n\nThứ Năm, 29 Tháng 10, 2026\nTiếp tục học\nTừ vựng\n\n0 hoạt động · 0 XP\n\nKhám phá từ vựng\nDictation\n\n0 hoạt động · 0 XP\n\nLuyện bài mới\nThi TOEIC\n\n0 hoạt động · 0 XP\n\nChọn đề thi\nĐấu trường\n\n0 hoạt động · 0 XP\n\nVào đấu trường\nMinigame\n\n0 hoạt động · 0 XP\n\nChơi game\nHôm nay nên học gì?\n\nDựa trên hoạt động học gần đây của bạn · Gợi ý theo quy tắc\n\nTất cả\nNghe\nĐọc\nTừ vựng",
+          "screenshot": ".tmp/ui-qa/live-games/mobile-real-login-and-websocket.png"
+        },
+        {
+          "name": "create-and-publish-ten-isolated-qa-words",
+          "status": "PASS"
+        },
+        {
+          "name": "word-guess-room-settings-and-start-ui",
+          "status": "PASS",
+          "route": "/vi/arena/friend/8a89411c-02e2-4517-b7c0-d35655fc1881",
+          "body": "English Platform\nHỌC VIÊN\nCổng học tập\nTrang chủ\nLỗi sai của tôi\nTOEIC\nĐề thi\nLịch sử làm bài\nThống kê\nTrò chơi\nĐấu trường từ vựng\nDanh sách trò chơi\nTừ vựng\nKhám phá\nTừ vựng của tôi\nDictation\nDictation\nTiến độ Dictation\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nU\n\nUI-QA-mvt7c7p6-1\n\nStudent\n\nToggle Sidebar\nĐấu trường từ vựng\nTắt âm thanh\nĐấu trường\nĐoán từ\n5 chữ cái · 5 lượt đoán\n\nTìm từ tiếng Anh bí mật. Người đoán đúng trước chiến thắng!\n\n0/5 lượt đã dùng\n\nĐúng vị trí\nSai vị trí\nKhông có\nQ\nW\nE\nR\nT\nY\nU\nI\nO\nP\nA\nS\nD\nF\nG\nH\nJ\nK\nL\nENTER\nZ\nX\nC\nV\nB\nN\nM\nNgười chơi trong phòng\nUI-QA-mvt7c7p6-2\n\n0/5 lượt đoán\n\nUI-QA-mvt7c7p6-1 (Bạn)\n\n0/5 lượt đoán\n\nMỗi người có 5 lượt riêng. Các lượt đoán của bạn được giữ riêng tư. Trò chơi không thay đổi Elo.",
+          "screenshot": ".tmp/ui-qa/live-games/word-guess-room-settings-and-start-ui.png"
+        },
+        {
+          "name": "word-guess-private-answer-and-opponent-update",
+          "status": "PASS",
+          "route": "/vi/arena/friend/8a89411c-02e2-4517-b7c0-d35655fc1881",
+          "body": "English Platform\nHỌC VIÊN\nCổng học tập\nTrang chủ\nLỗi sai của tôi\nTOEIC\nĐề thi\nLịch sử làm bài\nThống kê\nTrò chơi\nĐấu trường từ vựng\nDanh sách trò chơi\nTừ vựng\nKhám phá\nTừ vựng của tôi\nDictation\nDictation\nTiến độ Dictation\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nU\n\nUI-QA-mvt7c7p6-1\n\nStudent\n\nToggle Sidebar\nĐấu trường từ vựng\nTắt âm thanh\nĐấu trường\nĐoán từ\n5 chữ cái · 5 lượt đoán\n\nTìm từ tiếng Anh bí mật. Người đoán đúng trước chiến thắng!\n\nQ\nD\nF\nM\nQ\n\n1/5 lượt đã dùng\n\nĐúng vị trí\nSai vị trí\nKhông có\nQ\nW\nE\nR\nT\nY\nU\nI\nO\nP\nA\nS\nD\nF\nG\nH\nJ\nK\nL\nENTER\nZ\nX\nC\nV\nB\nN\nM\nNgười chơi trong phòng\nUI-QA-mvt7c7p6-2\n\n0/5 lượt đoán\n\nUI-QA-mvt7c7p6-1 (Bạn)\n\n1/5 lượt đoán\n\nMỗi người có 5 lượt riêng. Các lượt đoán của bạn được giữ riêng tư. Trò chơi không thay đổi Elo.",
+          "screenshot": ".tmp/ui-qa/live-games/word-guess-private-answer-and-opponent-update.png"
+        },
+        {
+          "name": "word-guess-reload-restores-live-state",
+          "status": "PASS",
+          "route": "/vi/arena",
+          "body": "a\n\nThách đấu – Học nhanh – Tiến bộ hơn mỗi ngày!\n\nSo tài vốn từ vựng với người chơi khác, rèn phản xạ và ghi nhớ từ vựng qua những trận đấu thú vị.\n\nChơi xếp hạng\nOnline\n\nĐấu 1 vs 1 với đối thủ cùng trình độ, tích điểm và leo hạng.\n\nTìm trận ngay\nHM\nPT\nTT\n2 người đang online\nĐấu bạn bè 1vs1\n\nTạo phòng 1vs1 hoặc nhập mã để đấu cùng một người bạn.\n\nTạo phòng\nNhập mã\nHM\nPT\nTT\nChơi cùng bạn bè vui hơn!\nPhòng đấu\n\nTạo phòng và mời bạn bè tham gia cùng chơi.\n\nTạo phòng\nNhập mã\nHM\nPT\nTT\nHỗ trợ 3 - 8 người chơi\n\nHạng hiện tại\n\n--\n\nChưa có hạng\n\nĐiểm xếp hạng\n\n1,000 Elo\n\nHôm nay: 0 Elo\n\nTổng số trận\n\n0\n\nThắng 0 · Thua 0\n\nChuỗi thắng\n\n0 trận\n\nKỷ lục: 0 trận\n\nTỷ lệ thắng\n\n0%\n\nTrận đấu gần đây\nU\n\nUI-QA-mvt7c7p6-2\n\nVừa xong\n\nThua\n0 - 0\nĐoán từ\nBảng xếp hạng\n\nElo · đã hoàn thành trận rank\n\nTuần này\nTháng này\nTất cả\n\nChưa có người chơi hoàn thành trận rank trong khoảng này.\n\n--\nUI\nUI-QA-mvt7c7p6-1 (Bạn)\nChưa có hạng trong khoảng này\n1,000\n\nChơi công bằng, học cùng nhau. Mỗi trận đấu là một bước tiến!",
+          "screenshot": ".tmp/ui-qa/live-games/word-guess-reload-restores-live-state.png"
+        },
+        {
+          "name": "word-chain-room-starts-and-accepts-first-turn",
+          "status": "PASS",
+          "route": "/vi/arena",
+          "body": "mỗi ngày!\n\nSo tài vốn từ vựng với người chơi khác, rèn phản xạ và ghi nhớ từ vựng qua những trận đấu thú vị.\n\nChơi xếp hạng\nOnline\n\nĐấu 1 vs 1 với đối thủ cùng trình độ, tích điểm và leo hạng.\n\nTìm trận ngay\nHM\nPT\nTT\n2 người đang online\nĐấu bạn bè 1vs1\n\nTạo phòng 1vs1 hoặc nhập mã để đấu cùng một người bạn.\n\nTạo phòng\nNhập mã\nHM\nPT\nTT\nChơi cùng bạn bè vui hơn!\nPhòng đấu\n\nTạo phòng và mời bạn bè tham gia cùng chơi.\n\nTạo phòng\nNhập mã\nHM\nPT\nTT\nHỗ trợ 3 - 8 người chơi\n\nHạng hiện tại\n\n--\n\nChưa có hạng\n\nĐiểm xếp hạng\n\n—\n\nĐang tải Elo…\n\nTổng số trận\n\n0\n\nThắng 0 · Thua 0\n\nChuỗi thắng\n\n0 trận\n\nKỷ lục: 0 trận\n\nTỷ lệ thắng\n\n0%\n\nTrận đấu gần đây\nU\n\nUI-QA-mvt7c7p6-1\n\nVừa xong\n\nThắng\nNối từ\nNối từ\nU\n\nUI-QA-mvt7c7p6-1\n\nVừa xong\n\nThắng\n0 - 0\nĐoán từ\nBảng xếp hạng\n\nElo · đã hoàn thành trận rank\n\nTuần này\nTháng này\nTất cả\n\nChưa có người chơi hoàn thành trận rank trong khoảng này.\n\n--\nUI\nUI-QA-mvt7c7p6-2 (Bạn)\nChưa có hạng trong khoảng này\n0\n\nChơi công bằng, học cùng nhau. Mỗi trận đấu là một bước tiến!",
+          "screenshot": ".tmp/ui-qa/live-games/word-chain-room-starts-and-accepts-first-turn.png"
+        },
+        {
+          "name": "classic-room-start-and-question-delivery",
+          "status": "PASS",
+          "route": "/vi/arena",
+          "body": "i nhớ từ vựng qua những trận đấu thú vị.\n\nChơi xếp hạng\nOnline\n\nĐấu 1 vs 1 với đối thủ cùng trình độ, tích điểm và leo hạng.\n\nTìm trận ngay\nHM\nPT\nTT\n2 người đang online\nĐấu bạn bè 1vs1\n\nTạo phòng 1vs1 hoặc nhập mã để đấu cùng một người bạn.\n\nTạo phòng\nNhập mã\nHM\nPT\nTT\nChơi cùng bạn bè vui hơn!\nPhòng đấu\n\nTạo phòng và mời bạn bè tham gia cùng chơi.\n\nTạo phòng\nNhập mã\nHM\nPT\nTT\nHỗ trợ 3 - 8 người chơi\n\nHạng hiện tại\n\n--\n\nChưa có hạng\n\nĐiểm xếp hạng\n\n1,000 Elo\n\nHôm nay: 0 Elo\n\nTổng số trận\n\n0\n\nThắng 0 · Thua 0\n\nChuỗi thắng\n\n0 trận\n\nKỷ lục: 0 trận\n\nTỷ lệ thắng\n\n0%\n\nTrận đấu gần đây\nU\n\nUI-QA-mvt7c7p6-2\n\nVừa xong\n\nThua\n0 - 0\nĐấu với bạn bè\nU\n\nUI-QA-mvt7c7p6-2\n\nVừa xong\n\nThua\nNối từ\nNối từ\nU\n\nUI-QA-mvt7c7p6-2\n\nVừa xong\n\nThua\n0 - 0\nĐoán từ\nBảng xếp hạng\n\nElo · đã hoàn thành trận rank\n\nTuần này\nTháng này\nTất cả\n\nChưa có người chơi hoàn thành trận rank trong khoảng này.\n\n--\nUI\nUI-QA-mvt7c7p6-1 (Bạn)\nChưa có hạng trong khoảng này\n1,000\n\nChơi công bằng, học cùng nhau. Mỗi trận đấu là một bước tiến!",
+          "screenshot": ".tmp/ui-qa/live-games/classic-room-start-and-question-delivery.png"
+        },
+        {
+          "name": "multiplayer-room-three-live-members-and-start",
+          "status": "PASS",
+          "route": "/vi/arena",
+          "body": "Toggle Sidebar\nĐấu trường từ vựng\nHỌC HẾT MÌNH · CHƠI HẾT SỨC\nVocabulary Arena\n\nThách đấu – Học nhanh – Tiến bộ hơn mỗi ngày!\n\nSo tài vốn từ vựng với người chơi khác, rèn phản xạ và ghi nhớ từ vựng qua những trận đấu thú vị.\n\nChơi xếp hạng\nOnline\n\nĐấu 1 vs 1 với đối thủ cùng trình độ, tích điểm và leo hạng.\n\nTìm trận ngay\nHM\nPT\nTT\nĐang cập nhật số người online…\nĐấu bạn bè 1vs1\n\nTạo phòng 1vs1 hoặc nhập mã để đấu cùng một người bạn.\n\nTạo phòng\nNhập mã\nHM\nPT\nTT\nChơi cùng bạn bè vui hơn!\nPhòng đấu\n\nTạo phòng và mời bạn bè tham gia cùng chơi.\n\nTạo phòng\nNhập mã\nHM\nPT\nTT\nHỗ trợ 3 - 8 người chơi\n\nHạng hiện tại\n\n--\n\nChưa có hạng\n\nĐiểm xếp hạng\n\n—\n\nĐang tải Elo…\n\nTổng số trận\n\n0\n\nThắng 0 · Thua 0\n\nChuỗi thắng\n\n0 trận\n\nKỷ lục: 0 trận\n\nTỷ lệ thắng\n\n0%\n\nTrận đấu gần đây\nĐang tải trận đấu...\nBảng xếp hạng\n\nElo · đã hoàn thành trận rank\n\nTuần này\nTháng này\nTất cả\nĐang tải bảng xếp hạng...\n\nChơi công bằng, học cùng nhau. Mỗi trận đấu là một bước tiến!",
+          "screenshot": ".tmp/ui-qa/live-games/multiplayer-room-three-live-members-and-start.png"
+        },
+        {
+          "name": "ranked-queue-ui-join-and-cancel",
+          "status": "PASS",
+          "route": "/vi/arena",
+          "body": "p hạng\nOnline\n\nĐấu 1 vs 1 với đối thủ cùng trình độ, tích điểm và leo hạng.\n\nTìm trận ngay\nHM\nPT\nTT\n2 người đang online\nĐấu bạn bè 1vs1\n\nTạo phòng 1vs1 hoặc nhập mã để đấu cùng một người bạn.\n\nTạo phòng\nNhập mã\nHM\nPT\nTT\nChơi cùng bạn bè vui hơn!\nPhòng đấu\n\nTạo phòng và mời bạn bè tham gia cùng chơi.\n\nTạo phòng\nNhập mã\nHM\nPT\nTT\nHỗ trợ 3 - 8 người chơi\n\nHạng hiện tại\n\n--\n\nChưa có hạng\n\nĐiểm xếp hạng\n\n1,000 Elo\n\nHôm nay: 0 Elo\n\nTổng số trận\n\n0\n\nThắng 0 · Thua 0\n\nChuỗi thắng\n\n0 trận\n\nKỷ lục: 0 trận\n\nTỷ lệ thắng\n\n0%\n\nTrận đấu gần đây\nU\n\nUI-QA-mvt7c7p6-2\n\nVừa xong\n\nHòa\n0 - 0\nĐoán từ\nU\n\nUI-QA-mvt7c7p6-2\n\nVừa xong\n\nThua\n0 - 0\nĐấu với bạn bè\nU\n\nUI-QA-mvt7c7p6-2\n\nVừa xong\n\nThua\nNối từ\nNối từ\nU\n\nUI-QA-mvt7c7p6-2\n\nVừa xong\n\nThua\n0 - 0\nĐoán từ\nBảng xếp hạng\n\nElo · đã hoàn thành trận rank\n\nTuần này\nTháng này\nTất cả\n\nChưa có người chơi hoàn thành trận rank trong khoảng này.\n\n--\nUI\nUI-QA-mvt7c7p6-1 (Bạn)\nChưa có hạng trong khoảng này\n1,000\n\nChơi công bằng, học cùng nhau. Mỗi trận đấu là một bước tiến!",
+          "screenshot": ".tmp/ui-qa/live-games/ranked-queue-ui-join-and-cancel.png"
+        },
+        {
+          "name": "game-ui-no-uncaught-browser-errors",
+          "status": "PASS"
+        }
+      ],
+      "events": [
+        {
+          "name": "socket-event-coverage",
+          "status": "INFO",
+          "pages": [
+            {
+              "name": "host",
+              "connections": 11,
+              "events": [
+                "arena:authenticated",
+                "arena:presence-changed",
+                "friend-room:created",
+                "friend-room:update",
+                "friend-room:started",
+                "friend:connection",
+                "friend:snapshot",
+                "word-guess:update",
+                "friend:match-finished",
+                "friend-room:closed",
+                "word-chain:turn",
+                "word-chain:accepted",
+                "match:question",
+                "match:hint"
+              ]
+            },
+            {
+              "name": "guest",
+              "connections": 9,
+              "events": [
+                "arena:authenticated",
+                "arena:presence-changed",
+                "friend-room:update",
+                "friend-room:started",
+                "friend:connection",
+                "friend:snapshot",
+                "word-guess:update",
+                "friend:match-finished",
+                "friend-room:closed",
+                "word-chain:turn",
+                "word-chain:accepted",
+                "match:question",
+                "match:hint"
+              ]
+            },
+            {
+              "name": "third-mobile",
+              "connections": 3,
+              "events": [
+                "arena:authenticated",
+                "arena:presence-changed",
+                "friend-room:update",
+                "friend-room:started",
+                "friend:connection",
+                "word-guess:update",
+                "friend:snapshot",
+                "friend:match-finished",
+                "friend-room:closed"
+              ]
+            }
+          ]
+        }
+      ],
+      "browserErrors": [],
+      "apiErrors": [
+        {
+          "page": "host",
+          "status": 401,
+          "path": "/api/auth/refresh-token"
+        },
+        {
+          "page": "guest",
+          "status": 401,
+          "path": "/api/auth/refresh-token"
+        },
+        {
+          "page": "third-mobile",
+          "status": 401,
+          "path": "/api/auth/refresh-token"
+        }
+      ]
+    },
+    {
+      "name": "recovery",
+      "scope": "Injected read503 then Retry uses actual Docker backend",
+      "checks": [
+        {
+          "app": "web",
+          "route": "/vi/dictation",
+          "endpoint": "/api/dictation/topics",
+          "failureNotice": true,
+          "status": "PASS",
+          "retryResponseStatus": 200,
+          "screenshot": ".tmp/ui-qa/recovery/web-vi-dictation.png"
+        },
+        {
+          "app": "web",
+          "route": "/vi/dictation/progress",
+          "endpoint": "/api/dictation/progress",
+          "failureNotice": true,
+          "status": "PASS",
+          "retryResponseStatus": 200,
+          "screenshot": ".tmp/ui-qa/recovery/web-vi-dictation-progress.png"
+        },
+        {
+          "app": "web",
+          "route": "/en/dictation",
+          "endpoint": "/api/dictation/topics",
+          "failureNotice": true,
+          "status": "PASS",
+          "retryResponseStatus": 200,
+          "screenshot": ".tmp/ui-qa/recovery/web-en-dictation.png"
+        },
+        {
+          "app": "admin",
+          "route": "/vi",
+          "endpoint": "/api/admin/dashboard/overview",
+          "failureNotice": true,
+          "status": "PASS",
+          "retryResponseStatus": 200,
+          "screenshot": ".tmp/ui-qa/recovery/admin-vi.png"
+        },
+        {
+          "app": "admin",
+          "route": "/en",
+          "endpoint": "/api/admin/dashboard/overview",
+          "failureNotice": true,
+          "status": "PASS",
+          "retryResponseStatus": 200,
+          "screenshot": ".tmp/ui-qa/recovery/admin-en.png"
+        },
+        {
+          "app": "admin",
+          "route": "/vi/users",
+          "endpoint": "/api/admin/users",
+          "failureNotice": true,
+          "status": "PASS",
+          "retryResponseStatus": 200,
+          "screenshot": ".tmp/ui-qa/recovery/admin-vi-users.png"
+        },
+        {
+          "app": "admin",
+          "route": "/vi/vocabulary/groups",
+          "endpoint": "/api/admin/vocabulary-groups",
+          "failureNotice": true,
+          "status": "PASS",
+          "retryResponseStatus": 200,
+          "screenshot": ".tmp/ui-qa/recovery/admin-vi-vocabulary-groups.png"
+        },
+        {
+          "app": "admin",
+          "route": "/vi/vocabulary/collections",
+          "endpoint": "/api/admin/collections",
+          "failureNotice": true,
+          "status": "PASS",
+          "retryResponseStatus": 200,
+          "screenshot": ".tmp/ui-qa/recovery/admin-vi-vocabulary-collections.png"
+        },
+        {
+          "app": "admin",
+          "route": "/vi/vocabulary/words",
+          "endpoint": "/api/admin/words",
+          "failureNotice": true,
+          "status": "PASS",
+          "retryResponseStatus": 200,
+          "screenshot": ".tmp/ui-qa/recovery/admin-vi-vocabulary-words.png"
+        },
+        {
+          "app": "admin",
+          "route": "/vi/dictation",
+          "endpoint": "/api/admin/dictation",
+          "failureNotice": true,
+          "status": "PASS",
+          "retryResponseStatus": 200,
+          "screenshot": ".tmp/ui-qa/recovery/admin-vi-dictation.png"
+        },
+        {
+          "app": "admin",
+          "route": "/vi/dictation/structure",
+          "endpoint": "/api/admin/dictation/hierarchy",
+          "failureNotice": true,
+          "status": "PASS",
+          "retryResponseStatus": 200,
+          "screenshot": ".tmp/ui-qa/recovery/admin-vi-dictation-structure.png"
+        }
+      ],
+      "events": [],
+      "browserErrors": [],
+      "apiErrors": []
+    },
+    {
+      "name": "live-ranked",
+      "scope": "Actual ranked pairing, answers, disconnect/resume and forfeit",
+      "checks": [
+        {
+          "name": "host-real-login-and-websocket",
+          "status": "PASS",
+          "route": "/vi",
+          "body": "English Platform\nHỌC VIÊN\nCổng học tập\nTrang chủ\nLỗi sai của tôi\nTOEIC\nĐề thi\nLịch sử làm bài\nThống kê\nTrò chơi\nĐấu trường từ vựng\nDanh sách trò chơi\nTừ vựng\nKhám phá\nTừ vựng của tôi\nDictation\nDictation\nTiến độ Dictation\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nU\n\nUI-QA-mvt7i78h-1\n\nStudent\n\nToggle Sidebar\nTrang chủ\nXin chào, UI-QA-mvt7i78h-1! 👋\n\nHôm nay là một ngày tuyệt vời để học thêm những điều mới!\n\nThứ Năm, 29 Tháng 10, 2026\nTiếp tục học\nTừ vựng\n\n0 hoạt động · 0 XP\n\nKhám phá từ vựng\nDictation\n\n0 hoạt động · 0 XP\n\nLuyện bài mới\nThi TOEIC\n\n0 hoạt động · 0 XP\n\nChọn đề thi\nĐấu trường\n\n0 hoạt động · 0 XP\n\nVào đấu trường\nMinigame\n\n0 hoạt động · 0 XP\n\nChơi game\nHôm nay nên học gì?\n\nDựa trên hoạt động học gần đây của bạn · Gợi ý theo quy tắc\n\nTất cả\nNghe\nĐọc\nTừ vựng",
+          "screenshot": ".tmp/ui-qa/live-ranked/host-real-login-and-websocket.png"
+        },
+        {
+          "name": "guest-real-login-and-websocket",
+          "status": "PASS",
+          "route": "/vi",
+          "body": "English Platform\nHỌC VIÊN\nCổng học tập\nTrang chủ\nLỗi sai của tôi\nTOEIC\nĐề thi\nLịch sử làm bài\nThống kê\nTrò chơi\nĐấu trường từ vựng\nDanh sách trò chơi\nTừ vựng\nKhám phá\nTừ vựng của tôi\nDictation\nDictation\nTiến độ Dictation\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nU\n\nUI-QA-mvt7i78h-2\n\nStudent\n\nToggle Sidebar\nTrang chủ\nXin chào, UI-QA-mvt7i78h-2! 👋\n\nHôm nay là một ngày tuyệt vời để học thêm những điều mới!\n\nThứ Năm, 29 Tháng 10, 2026\nTiếp tục học\nTừ vựng\n\n0 hoạt động · 0 XP\n\nKhám phá từ vựng\nDictation\n\n0 hoạt động · 0 XP\n\nLuyện bài mới\nThi TOEIC\n\n0 hoạt động · 0 XP\n\nChọn đề thi\nĐấu trường\n\n0 hoạt động · 0 XP\n\nVào đấu trường\nMinigame\n\n0 hoạt động · 0 XP\n\nChơi game\nHôm nay nên học gì?\n\nDựa trên hoạt động học gần đây của bạn · Gợi ý theo quy tắc\n\nTất cả\nNghe\nĐọc\nTừ vựng",
+          "screenshot": ".tmp/ui-qa/live-ranked/guest-real-login-and-websocket.png"
+        },
+        {
+          "name": "mobile-real-login-and-websocket",
+          "status": "PASS",
+          "route": "/vi",
+          "body": "Toggle Sidebar\nTrang chủ\nXin chào, UI-QA-mvt7i78h-3! 👋\n\nHôm nay là một ngày tuyệt vời để học thêm những điều mới!\n\nThứ Năm, 29 Tháng 10, 2026\nTiếp tục học\nTừ vựng\n\n0 hoạt động · 0 XP\n\nKhám phá từ vựng\nDictation\n\n0 hoạt động · 0 XP\n\nLuyện bài mới\nThi TOEIC\n\n0 hoạt động · 0 XP\n\nChọn đề thi\nĐấu trường\n\n0 hoạt động · 0 XP\n\nVào đấu trường\nMinigame\n\n0 hoạt động · 0 XP\n\nChơi game\nHôm nay nên học gì?\n\nDựa trên hoạt động học gần đây của bạn · Gợi ý theo quy tắc\n\nTất cả\nNghe\nĐọc\nTừ vựng",
+          "screenshot": ".tmp/ui-qa/live-ranked/mobile-real-login-and-websocket.png"
+        },
+        {
+          "name": "ranked-qa-vocabulary-ready",
+          "status": "PASS"
+        },
+        {
+          "name": "ranked-two-users-match-and-enter-live-game",
+          "status": "PASS",
+          "route": "/vi/arena/rank/a9c9dd11-426a-45ea-8c9a-744d37ec8dd7",
+          "body": "English Platform\nHỌC VIÊN\nCổng học tập\nTrang chủ\nLỗi sai của tôi\nTOEIC\nĐề thi\nLịch sử làm bài\nThống kê\nTrò chơi\nĐấu trường từ vựng\nDanh sách trò chơi\nTừ vựng\nKhám phá\nTừ vựng của tôi\nDictation\nDictation\nTiến độ Dictation\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nU\n\nUI-QA-mvt7i78h-1\n\nStudent\n\nToggle Sidebar\nĐấu trường từ vựng\nTắt âm thanh\nĐấu trường\nĐấu xếp hạng\n\nUI-QA-mvt7i78h-1\n\n1,000\nElo\nBẠN\n\n0\n:\n0\n\nĐIỂM\n\nUI-QA-mvt7i78h-2\n\n1,000\nElo\n\nVòng 1/10\nx0\n30s\nTiếng Việt\n10\nBẮT ĐẦU\nNGHĨA → TỪ\n🧠\nBản dịch:\nUI QA meaning _____\nGiải thích:UI QA mvt7i78h _____\nVí dụ:Chưa có ví dụ\nLoại từ:noun\nNhập từ tiếng Anh\n\nNhập đáp án và nhấn Enter để gửi",
+          "screenshot": ".tmp/ui-qa/live-ranked/ranked-two-users-match-and-enter-live-game.png"
+        },
+        {
+          "name": "ranked-answer-from-ui-receives-private-result",
+          "status": "PASS",
+          "route": "/vi/arena/rank/a9c9dd11-426a-45ea-8c9a-744d37ec8dd7",
+          "body": "English Platform\nHỌC VIÊN\nCổng học tập\nTrang chủ\nLỗi sai của tôi\nTOEIC\nĐề thi\nLịch sử làm bài\nThống kê\nTrò chơi\nĐấu trường từ vựng\nDanh sách trò chơi\nTừ vựng\nKhám phá\nTừ vựng của tôi\nDictation\nDictation\nTiến độ Dictation\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nU\n\nUI-QA-mvt7i78h-1\n\nStudent\n\nToggle Sidebar\nĐấu trường từ vựng\nTắt âm thanh\nĐấu trường\nĐấu xếp hạng\n\nUI-QA-mvt7i78h-1\n\n1,000\nElo\nBẠN\n\n199\n:\n0\n\nĐIỂM\n\nUI-QA-mvt7i78h-2\n\n1,000\nElo\n\nVòng 1/10\nx1\n30s\nTiếng Việt\n10\nBẮT ĐẦU\nNGHĨA → TỪ\n🧠\nQ\nA\nV\nU\nQ\nBản dịch:\nUI QA meaning _____\nGiải thích:UI QA mvt7i78h qavuq\nVí dụ:Chưa có ví dụ\nLoại từ:noun\n\nChính xác! +199 điểm\n\nĐang chờ câu tiếp theo từ máy chủ...\n\nNhập từ tiếng Anh\n\nNhập đáp án và nhấn Enter để gửi",
+          "screenshot": ".tmp/ui-qa/live-ranked/ranked-answer-from-ui-receives-private-result.png"
+        },
+        {
+          "name": "ranked-loss-of-connection-pauses-and-resynchronizes",
+          "status": "PASS",
+          "route": "/vi/arena/rank/a9c9dd11-426a-45ea-8c9a-744d37ec8dd7",
+          "body": "English Platform\nHỌC VIÊN\nCổng học tập\nTrang chủ\nLỗi sai của tôi\nTOEIC\nĐề thi\nLịch sử làm bài\nThống kê\nTrò chơi\nĐấu trường từ vựng\nDanh sách trò chơi\nTừ vựng\nKhám phá\nTừ vựng của tôi\nDictation\nDictation\nTiến độ Dictation\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nU\n\nUI-QA-mvt7i78h-1\n\nStudent\n\nToggle Sidebar\nĐấu trường từ vựng\nTắt âm thanh\nĐấu trường\nĐấu xếp hạng\n\nUI-QA-mvt7i78h-1\n\n1,000\nElo\nBẠN\n\n199\n:\n0\n\nĐIỂM\n\nUI-QA-mvt7i78h-2\n\n1,000\nElo\n\nVòng 2/10\nx1\n30s\nTiếng Việt\n10\nBẮT ĐẦU\nNGHĨA → TỪ\n🧠\nBản dịch:\ntừ\nGiải thích:từ\nVí dụ:Chưa có ví dụ\nLoại từ:NOUN\nNhập từ tiếng Anh\n\nNhập đáp án và nhấn Enter để gửi",
+          "screenshot": ".tmp/ui-qa/live-ranked/ranked-loss-of-connection-pauses-and-resynchronizes.png"
+        },
+        {
+          "name": "ranked-forfeit-ui-and-opponent-finish-event",
+          "status": "PASS",
+          "route": "/vi/arena/rank/a9c9dd11-426a-45ea-8c9a-744d37ec8dd7",
+          "body": "English Platform\nHỌC VIÊN\nCổng học tập\nTrang chủ\nLỗi sai của tôi\nTOEIC\nĐề thi\nLịch sử làm bài\nThống kê\nTrò chơi\nĐấu trường từ vựng\nDanh sách trò chơi\nTừ vựng\nKhám phá\nTừ vựng của tôi\nDictation\nDictation\nTiến độ Dictation\nNgôn ngữ\n🇻🇳\nVI\n🇬🇧\nEN\nU\n\nUI-QA-mvt7i78h-2\n\nStudent\n\nToggle Sidebar\nĐấu trường từ vựng\nTắt âm thanh\nCHIẾN THẮNG!\n\nXuất sắc! Bạn đã thi đấu ấn tượng và giành chiến thắng.\n\nNgười chơi đã rời khỏi trận đấu.\nTHẮNG\nUI-QA-mvt7i78h-2\nBẠN\n\n0điểm\n\nVS\nCổ điển 1v1\nUI-QA-mvt7i78h-1\n\n199điểm\n\nĐiểm xếp hạng Elo\n\nHiện tại: 1.016 Elo\n\n+16\nElo\n0%\nChính xác\n10\nLượt trả lời\nTìm trận tiếp theo\nVề đấu trường",
+          "screenshot": ".tmp/ui-qa/live-ranked/ranked-forfeit-ui-and-opponent-finish-event.png"
+        },
+        {
+          "name": "ranked-no-uncaught-browser-errors",
+          "status": "PASS"
+        }
+      ],
+      "events": [
+        {
+          "name": "socket-event-coverage",
+          "status": "INFO",
+          "pages": [
+            {
+              "name": "host",
+              "connections": 3,
+              "events": [
+                "arena:authenticated",
+                "arena:presence-changed",
+                "ranked:match-found",
+                "arena:match-sync",
+                "match:start",
+                "match:question",
+                "match:hint",
+                "match:answer-result",
+                "match:question-resolved",
+                "match:score-update",
+                "match:finished"
+              ]
+            },
+            {
+              "name": "guest",
+              "connections": 2,
+              "events": [
+                "arena:authenticated",
+                "arena:presence-changed",
+                "ranked:match-found",
+                "arena:match-sync",
+                "match:start",
+                "match:question",
+                "match:hint",
+                "match:question-resolved",
+                "match:score-update",
+                "match:finished"
+              ]
+            },
+            {
+              "name": "third-mobile",
+              "connections": 1,
+              "events": [
+                "arena:authenticated",
+                "arena:presence-changed"
+              ]
+            }
+          ]
+        }
+      ],
+      "browserErrors": [],
+      "apiErrors": [
+        {
+          "page": "host",
+          "status": 401,
+          "path": "/api/auth/refresh-token"
+        },
+        {
+          "page": "guest",
+          "status": 401,
+          "path": "/api/auth/refresh-token"
+        },
+        {
+          "page": "third-mobile",
+          "status": 401,
+          "path": "/api/auth/refresh-token"
+        }
+      ]
+    }
+  ]
+}

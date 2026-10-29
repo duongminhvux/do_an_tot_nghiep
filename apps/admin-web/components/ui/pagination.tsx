@@ -63,8 +63,8 @@ export function Pagination({
 
   const pages = compact ? [currentPage] : getPageNumbers();
 
-  const startItem = totalItems ? Math.min((currentPage - 1) * pageSize + 1, totalItems) : (currentPage - 1) * pageSize + 1;
-  const endItem = totalItems ? Math.min(currentPage * pageSize, totalItems) : currentPage * pageSize;
+  const startItem = totalItems !== undefined ? Math.min((currentPage - 1) * pageSize + 1, totalItems) : (currentPage - 1) * pageSize + 1;
+  const endItem = totalItems !== undefined ? Math.min(currentPage * pageSize, totalItems) : currentPage * pageSize;
 
   return (
     <div
