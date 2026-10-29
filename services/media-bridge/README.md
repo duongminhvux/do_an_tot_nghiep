@@ -4,7 +4,7 @@ The Docker stack uses SeaweedFS through its S3-compatible API for media. `/media
 
 ## Admin media library
 
-Open `/vi/media` (or `/en/media`) in Admin. The sidebar entry **Quản lý media / Media library** opens four content folders:
+Open `/vi/media` (or `/en/media`) in Admin. The sidebar entry **Quản lý media / Media library** opens a collapsible folder tree. Choose **Audios** or **Images** first, then the content category and its lesson/exam/game. Breadcrumbs, back navigation and pagination keep the selected media type. Each root contains:
 
 - **Dictation:** lessons, lesson images, full recordings and segment audio.
 - **Games:** minigame images and configured background/correct/wrong/game-over audio. Shared vocabulary images and pronunciation are available under Vocab.

@@ -73,12 +73,15 @@ async function waitFor(fn,label){for(let n=0;n<150;n++){if(await fn())return;awa
     const page=await pageFor();
     await check('root-folders-and-four-live-categories',async()=>{
       await page.goto(base+'/vi/media');
+      await page.getByRole('heading',{name:'Quản lý media',exact:true}).waitFor();
+      assert.equal(await page.locator('aside details').count(),2);
+      await page.getByRole('link',{name:'Audios',exact:true}).first().click();
       for(const category of ['dictation','games','vocab','toeic']) {
-        await page.locator(`a[href="/vi/media?category=${category}"]`).waitFor();
+        await page.locator(`a[href="/vi/media?type=audio&category=${category}"]`).first().waitFor();
         const list=await request('/admin/media-library/'+category+'/items');
         if(list.items[0])await request('/admin/media-library/'+category+'/items/'+list.items[0].id);
       }
-      await page.locator('a[href="/vi/media?category=vocab"]').click();
+      await page.locator('a[href="/vi/media?type=audio&category=vocab"]').first().click();
       await page.getByRole('button',{name:'Bài học',exact:true}).waitFor();
     },page);
     await check('server-pagination-search-back-navigation',async()=>{
@@ -98,41 +101,47 @@ async function waitFor(fn,label){for(let n=0;n<150;n++){if(await fn())return;awa
       await page.locator('audio').waitFor();
     },page);
     await check('real-image-preview-and-audio-playback',async()=>{
-      await waitFor(()=>page.locator('img').evaluateAll(images=>images.some(img=>img.complete&&img.naturalWidth>0)),'decoded PNG');
       const playback=await page.locator('audio').evaluate(async audio=>{await audio.play();const result={duration:audio.duration,paused:audio.paused,readyState:audio.readyState};audio.pause();return result;});
       assert(playback.duration>0);assert.equal(playback.paused,false);assert(playback.readyState>=2);
-      assert.equal(await page.getByRole('link',{name:'Mở file',exact:true}).count(),2);
+      assert.equal(await page.locator('article img').count(),0);
+      await page.goto(base+'/vi/media?type=image&category=vocab&kind=lesson&id='+lessons[0]._id);
+      await waitFor(()=>page.locator('img').evaluateAll(images=>images.some(img=>img.complete&&img.naturalWidth>0)),'decoded PNG');
+      assert.equal(await page.locator('audio').count(),0);
+      assert.equal(await page.getByRole('link',{name:'Mở file',exact:true}).count(),1);
       await page.getByRole('button',{name:'Sao chép link',exact:true}).first().click();
       assert((await page.evaluate(()=>navigator.clipboard.readText())).includes('/media/'));
     },page);
     await check('type-filter-and-usage-deduplication',async()=>{
-      await page.getByRole('button',{name:'Ảnh (1)',exact:true}).click();
-      await page.locator('audio').waitFor({state:'hidden'});
-      assert.equal(await page.locator('audio').count(),0);
-      await page.getByRole('button',{name:'Âm thanh (1)',exact:true}).click();
-      await page.locator('audio').waitFor();assert.equal(await page.locator('article img').count(),0);
+      for(const [type,index] of [['audio',0],['image',1]]) {
+        await page.locator('aside').getByRole('link',{name:'Vocab',exact:true}).nth(index).click();
+        await page.getByLabel('Tìm nội dung',{exact:true}).fill(run);
+        await page.getByRole('button',{name:'Tìm kiếm',exact:true}).click();
+        await page.getByRole('button',{name:new RegExp(run+' Lesson 01')}).click();
+        await page.locator(type==='audio'?'audio':'article img').waitFor();
+        assert.equal(new URL(page.url()).searchParams.get('type'),type);
+        assert.equal(await page.locator(type==='audio'?'article img':'audio').count(),0);
+      }
     },page);
     await check('collection-and-dictionary-subtopics',async()=>{
-      await page.goto(base+'/vi/media?category=vocab&kind=collection&q='+encodeURIComponent(run));
+      await page.goto(base+'/vi/media?type=audio&category=vocab&kind=collection&q='+encodeURIComponent(run));
       await page.getByRole('button',{name:new RegExp(run)}).filter({has:page.getByRole('heading',{name:run,exact:true})}).click();
       await page.locator('audio').waitFor();
-      await page.goto(base+'/vi/media?category=vocab&kind=word&q='+encodeURIComponent('qa-media-'+session.run));
+      await page.goto(base+'/vi/media?type=audio&category=vocab&kind=word&q='+encodeURIComponent('qa-media-'+session.run));
       await page.getByRole('button',{name:new RegExp('qa-media-'+session.run)}).click();
       await page.locator('audio').waitFor();
     },page);
     const mobile=await pageFor(true);
     await check('mobile-english-media-preview',async()=>{
-      await mobile.goto(base+'/en/media?category=vocab&kind=lesson&id='+lessons[0]._id);
+      await mobile.goto(base+'/en/media?type=image&category=vocab&kind=lesson&id='+lessons[0]._id);
       await mobile.getByRole('heading',{name:'Media library',exact:true}).waitFor();
-      await mobile.locator('audio').waitFor();
-      await mobile.getByRole('button',{name:'Images (1)',exact:true}).click();
-      await mobile.locator('audio').waitFor({state:'hidden'});
+      await mobile.locator('article img').waitFor();
+      assert.equal(await mobile.locator('audio').count(),0);
       await mobile.getByRole('link',{name:'Open file',exact:true}).waitFor();
     },mobile);
     await check('read-failure-notice-and-retry-to-live-backend',async()=>{
       const matches=url=>url.pathname==='/api/admin/media-library/vocab/items';
       await page.route(matches,r=>r.fulfill({status:503,contentType:'application/json',body:JSON.stringify({message:'QA unavailable'})}));
-      await page.goto(base+'/vi/media?category=vocab');
+      await page.goto(base+'/vi/media?type=audio&category=vocab');
       const notice=page.getByRole('alert').filter({hasText:'Không thể tải dữ liệu.'});
       await notice.waitFor({timeout:20000});
       await page.unroute(matches);
