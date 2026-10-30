@@ -73,6 +73,8 @@
     "noMatchDesc": "Please check your search keyword or adjust the status and section filters."
   },
   "pagination": {
+    "items": "items",
+    "questions": "questions",
     "showing": "Showing",
     "to": "to",
     "of": "of",

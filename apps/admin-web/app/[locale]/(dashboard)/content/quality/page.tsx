@@ -1,4 +1,5 @@
 "use client";
+import { Pagination } from '@/components/ui/pagination';
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -224,28 +225,7 @@ export default function ContentQualityPage() {
               </table>
             </div>
           )}
-          <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-            <p>{t("contentQuality.total", { count: data.total })}</p>
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                {t("contentQuality.previous")}
-              </Button>
-              <span>
-                {page} / {Math.max(1, Math.ceil(data.total / data.pageSize))}
-              </span>
-              <Button
-                variant="outline"
-                disabled={page * data.pageSize >= data.total}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                {t("contentQuality.next")}
-              </Button>
-            </div>
-          </div>
+          <Pagination currentPage={page} totalPages={Math.max(1, Math.ceil(data.total / data.pageSize))} totalItems={data.total} pageSize={data.pageSize} onPageChange={setPage} itemLabel={t('contentQuality.items', { defaultValue: 'items' })} />
           <p className="text-xs text-slate-500">
             {t("contentQuality.mediaScope")}
           </p>

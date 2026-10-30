@@ -1,4 +1,5 @@
 'use client';
+import { Pagination } from '@/components/ui/pagination';
 import { LoadError } from '@/components/ui/load-error';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -21,8 +22,6 @@ import {
   Search,
   Plus,
   MoreHorizontal,
-  ChevronLeft,
-  ChevronRight,
   ArrowUpRight,
   ArrowDownRight,
   Pencil,
@@ -111,37 +110,10 @@ export default function UsersPage() {
   const usersList = useMemo(() => usersData?.items || [], [usersData]);
   const total = usersData?.total || 0;
   const totalPages = usersData?.totalPages || 1;
-  const startItem = total === 0 ? 0 : (page - 1) * 10 + 1;
-  const endItem = Math.min(page * 10, total);
 
-  const paginationRange = useMemo(() => {
-    if (totalPages <= 7) {
-      return Array.from({ length: totalPages }, (_, i) => i + 1);
-    }
-    const range: (number | string)[] = [];
-    const delta = 1;
-    for (
-      let i = Math.max(2, page - delta);
-      i <= Math.min(totalPages - 1, page + delta);
-      i++
-    ) {
-      range.push(i);
-    }
 
-    if (page - delta > 2) {
-      range.unshift('ellipsis-start');
-    }
-    if (page + delta < totalPages - 1) {
-      range.push('ellipsis-end');
-    }
 
-    range.unshift(1);
-    if (totalPages > 1) {
-      range.push(totalPages);
-    }
 
-    return range;
-  }, [page, totalPages]);
 
   // Handle multi-select checkboxes
   const handleSelectAll = (checked: boolean) => {
@@ -550,74 +522,7 @@ export default function UsersPage() {
         </div>
 
         {/* 5. Pagination */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 text-xs text-slate-500">
-          <div>
-            <span>
-              {t('table.showing', 'Hiển thị')}{' '}
-              <strong className="text-slate-700">
-                {startItem} - {endItem}
-              </strong>{' '}
-              {t('table.of', 'trong')}{' '}
-              <strong className="text-slate-700">
-                {total.toLocaleString()}
-              </strong>{' '}
-              {t('table.users', 'người dùng')}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-1">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="h-8 w-8 p-0 rounded text-slate-600 cursor-pointer disabled:cursor-not-allowed"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-
-            {paginationRange.map((item, idx) => {
-              if (item === 'ellipsis-start' || item === 'ellipsis-end') {
-                return (
-                  <span key={`${item}-${idx}`} className="px-1 text-slate-400">
-                    ...
-                  </span>
-                );
-              }
-
-              const pageNum = item as number;
-              const isActive = page === pageNum;
-
-              return (
-                <Button
-                  key={pageNum}
-                  type="button"
-                  size="sm"
-                  onClick={() => setPage(pageNum)}
-                  className={`h-8 min-w-[32px] px-2 rounded text-xs font-semibold cursor-pointer ${
-                    isActive
-                      ? 'bg-blue-600 text-white hover:bg-blue-700'
-                      : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
-                  }`}
-                >
-                  {pageNum}
-                </Button>
-              );
-            })}
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="h-8 w-8 p-0 rounded text-slate-600 cursor-pointer disabled:cursor-not-allowed"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
+        <Pagination currentPage={page} totalPages={totalPages} totalItems={total} pageSize={10} itemLabel={t('table.users')} onPageChange={setPage} />
       </div>
 
       {/* Activity Logs Modal */}

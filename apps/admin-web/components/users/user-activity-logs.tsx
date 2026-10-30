@@ -1,4 +1,5 @@
 'use client';
+import { Pagination } from '@/components/ui/pagination';
 
 import { useSiteSettings } from "@/providers/site-settings-provider";
 import React, { useState } from 'react';
@@ -23,8 +24,6 @@ import {
   AlertCircle,
   RefreshCw,
   Search,
-  ChevronLeft,
-  ChevronRight,
   Filter,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -387,43 +386,7 @@ export function UserActivityLogs({
 
           {/* Pagination bar */}
           {!compact && totalPages > 1 && (
-            <div className="flex items-center justify-between p-3 border-t border-slate-100 bg-slate-50/50 text-xs text-slate-600">
-              <div>
-                <span>
-                  {t('activityLog:feed.total', { count: total })}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-1.5">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  aria-label={t('activityLog:feed.previous')}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page <= 1}
-                  className="h-7 w-7 p-0 rounded border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 cursor-pointer"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                </Button>
-
-                <span className="px-2 font-medium">
-                  {page} / {totalPages}
-                </span>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  aria-label={t('activityLog:feed.next')}
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page >= totalPages}
-                  className="h-7 w-7 p-0 rounded border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 cursor-pointer"
-                >
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </Button>
-              </div>
-            </div>
+            <div className="border-t border-slate-100 px-3"><Pagination currentPage={page} totalPages={totalPages} totalItems={total} pageSize={limit} onPageChange={setPage} itemLabel={currentLang === 'en' ? 'activities' : 'hoạt động'} /></div>
           )}
         </div>
       )}

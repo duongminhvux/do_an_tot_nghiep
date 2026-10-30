@@ -1,4 +1,6 @@
 {
+  "items_per_page": "Items per page",
+  "page": "page",
   "words_title": "Vocabulary Management",
   "words_subtitle": "Explore, search, listen to pronunciations, and manage English word bank",
   "create_word": "Add Word",

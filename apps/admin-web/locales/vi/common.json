@@ -166,6 +166,7 @@
     "valid": "Không phát hiện lỗi theo các quy tắc kiểm tra hiện tại."
   },
   "contentQuality": {
+    "items": "mục",
     "content": "Nội dung",
     "title": "Chất lượng dữ liệu",
     "description": "Theo dõi nội dung thiếu dữ liệu, media và nghi trùng. Kết quả được lưu từ lần quét hoàn tất gần nhất; mở trang không tự quét toàn bộ nội dung.",

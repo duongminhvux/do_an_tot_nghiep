@@ -96,7 +96,7 @@ async function waitFor(fn,label){for(let n=0;n<150;n++){if(await fn())return;awa
       await page.getByRole('button',{name:'Về danh sách',exact:true}).click();
       assert.equal(new URL(page.url()).searchParams.get('page'),'2');
       await page.getByRole('button',{name:new RegExp(run+' Lesson 11')}).waitFor();
-      await page.getByRole('button',{name:'First page',exact:true}).click();
+      await page.getByRole('button',{name:'1',exact:true}).click();
       await page.getByRole('button',{name:new RegExp(run+' Lesson 01')}).click();
       await page.locator('audio').waitFor();
     },page);

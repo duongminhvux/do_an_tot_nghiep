@@ -73,6 +73,8 @@
     "noMatchDesc": "Vui lòng kiểm tra lại từ khóa tìm kiếm hoặc điều chỉnh lại bộ lọc trạng thái / kỹ năng."
   },
   "pagination": {
+    "items": "mục",
+    "questions": "câu hỏi",
     "showing": "Hiển thị",
     "to": "đến",
     "of": "trong tổng số",

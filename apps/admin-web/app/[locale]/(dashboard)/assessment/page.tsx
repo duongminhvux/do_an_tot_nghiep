@@ -1,4 +1,5 @@
 'use client';
+import { Pagination } from '@/components/ui/pagination';
 import {PublicationBadge,PublicationFilter} from '@/components/publication/publication-controls';
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
@@ -40,8 +41,6 @@ import {
   RotateCcw,
   FileText,
   Layers,
-  ChevronLeft,
-  ChevronRight,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
@@ -185,22 +184,6 @@ export default function AssessmentPage() {
   const totalFiltered = response?.total ?? exams.length;
   const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
 
-  // Smart pagination pages window
-  const paginationPages = useMemo(() => {
-    const pages: (number | string)[] = [];
-    if (totalPages <= 7) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
-    } else {
-      pages.push(1);
-      if (currentPage > 3) pages.push('...');
-      const start = Math.max(2, currentPage - 1);
-      const end = Math.min(totalPages - 1, currentPage + 1);
-      for (let i = start; i <= end; i++) pages.push(i);
-      if (currentPage < totalPages - 2) pages.push('...');
-      pages.push(totalPages);
-    }
-    return pages;
-  }, [currentPage, totalPages]);
 
   // Mutations
   const toggleActiveMutation = useMutation({
@@ -685,82 +668,7 @@ export default function AssessmentPage() {
 
         {/* Pagination Footer */}
         {exams.length > 0 && (
-          <div className="py-3 px-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-500">
-            <div>
-              {t('pagination.showing')}{' '}
-              <span className="font-semibold text-slate-700">
-                {(currentPage - 1) * pageSize + 1} -{' '}
-                {Math.min(currentPage * pageSize, totalFiltered)}
-              </span>{' '}
-              {t('pagination.of')}{' '}
-              <span className="font-semibold text-slate-700">{totalFiltered}</span> {t('pagination.exams')}
-            </div>
-
-            <div className="flex items-center gap-2.5 self-end sm:self-auto">
-              {/* Prev */}
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                disabled={currentPage === 1}
-                className="w-7 h-7 rounded border border-slate-200 flex items-center justify-center hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
-              >
-                <ChevronLeft className="h-3.5 w-3.5 text-slate-600" />
-              </button>
-
-              {/* Page numbers with ellipsis */}
-              {paginationPages.map((page, idx) =>
-                typeof page === 'number' ? (
-                  <button
-                    key={page}
-                    type="button"
-                    onClick={() => setCurrentPage(page)}
-                    className={`w-7 h-7 rounded text-xs font-semibold cursor-pointer transition-colors ${
-                      currentPage === page
-                        ? 'bg-blue-600 text-white'
-                        : 'border border-slate-200 hover:bg-slate-50 text-slate-600'
-                    }`}
-                  >
-                    {page}
-                  </button>
-                ) : (
-                  <span key={`ellipsis-${idx}`} className="px-1 text-slate-400 font-bold">
-                    ...
-                  </span>
-                )
-              )}
-
-              {/* Next */}
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-                disabled={currentPage >= totalPages}
-                className="w-7 h-7 rounded border border-slate-200 flex items-center justify-center hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
-              >
-                <ChevronRight className="h-3.5 w-3.5 text-slate-600" />
-              </button>
-
-              {/* Page Size Select */}
-              <div className="w-28 ml-1">
-                <Select
-                  value={String(pageSize)}
-                  onValueChange={(val) => {
-                    setPageSize(Number(val));
-                    setCurrentPage(1);
-                  }}
-                >
-                  <SelectTrigger className="h-7 text-xs rounded border border-slate-200 bg-white">
-                    <SelectValue placeholder="8 / trang" />
-                  </SelectTrigger>
-                  <SelectContent className="text-xs rounded border border-slate-200 bg-white">
-                    <SelectItem value="8">8 / {t('pagination.page')}</SelectItem>
-                    <SelectItem value="10">10 / {t('pagination.page')}</SelectItem>
-                    <SelectItem value="20">20 / {t('pagination.page')}</SelectItem>
-                    <SelectItem value="50">50 / {t('pagination.page')}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
+          <div className="border-t border-slate-100 px-4"><Pagination currentPage={currentPage} totalPages={totalPages} totalItems={totalFiltered} pageSize={pageSize} itemLabel={t('pagination.items', { defaultValue: 'items' })} onPageChange={setCurrentPage} onPageSizeChange={value => { setPageSize(value); setCurrentPage(1); }} pageSizeOptions={[8,10,20,50]} /></div>
         )}
       </div>
 

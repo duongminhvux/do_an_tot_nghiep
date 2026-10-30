@@ -1,4 +1,6 @@
 {
+  "items_per_page": "Số mục mỗi trang",
+  "page": "trang",
   "words_title": "Quản lý Từ vựng",
   "words_subtitle": "Xem, tìm kiếm, nghe phát âm và quản lý kho từ vựng tiếng Anh",
   "create_word": "Thêm từ mới",

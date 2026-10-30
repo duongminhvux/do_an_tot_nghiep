@@ -166,6 +166,7 @@
     "valid": "No errors found by the current validation rules."
   },
   "contentQuality": {
+    "items": "items",
     "content": "Content",
     "title": "Data quality",
     "description": "Review missing data, media and potential duplicates. Results come from the last completed scan; opening this page does not scan the catalog.",

@@ -1,4 +1,5 @@
 'use client';
+import { Pagination } from '@/components/ui/pagination';
 
 import React from 'react';
 import Link from 'next/link';
@@ -8,7 +9,6 @@ import {
   FileText,
   Volume2,
   MoreHorizontal,
-  ChevronLeft,
   ChevronRight,
   ChevronDown,
   Search,
@@ -905,73 +905,7 @@ export function ExamQuestionsTab({
 
         {/* Table Pagination */}
         {totalDisplayItems > 0 && (
-          <div className="py-3 px-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-500">
-            <div>
-              {t('pagination.showing')}{' '}
-              {(currentPage - 1) * pageSize + 1} -{' '}
-              {Math.min(currentPage * pageSize, totalDisplayItems)}{' '}
-              {t('pagination.of')} {totalDisplayItems} mục (
-              {totalFilteredQuestions} câu hỏi)
-            </div>
-
-            <div className="flex items-center gap-2 self-end sm:self-auto">
-              <button
-                type="button"
-                disabled={currentPage <= 1}
-                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                className="w-7 h-7 rounded border border-slate-200 flex items-center justify-center hover:bg-slate-50 disabled:opacity-40 cursor-pointer"
-              >
-                <ChevronLeft className="h-3.5 w-3.5 text-slate-600" />
-              </button>
-
-              {Array.from({ length: computedTotalPages }, (_, i) => i + 1).map(
-                (pg) => (
-                  <button
-                    key={pg}
-                    type="button"
-                    onClick={() => setCurrentPage(pg)}
-                    className={`w-7 h-7 rounded text-xs font-semibold cursor-pointer ${
-                      currentPage === pg
-                        ? 'bg-blue-600 text-white'
-                        : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    {pg}
-                  </button>
-                )
-              )}
-
-              <button
-                type="button"
-                disabled={currentPage >= computedTotalPages}
-                onClick={() =>
-                  setCurrentPage((p) => Math.min(p + 1, computedTotalPages))
-                }
-                className="w-7 h-7 rounded border border-slate-200 flex items-center justify-center hover:bg-slate-50 disabled:opacity-40 cursor-pointer"
-              >
-                <ChevronRight className="h-3.5 w-3.5 text-slate-600" />
-              </button>
-
-              <div className="w-28 ml-1">
-                <Select
-                  value={String(pageSize)}
-                  onValueChange={(v) => {
-                    setPageSize(Number(v));
-                    setCurrentPage(1);
-                  }}
-                >
-                  <SelectTrigger className="h-7 text-xs rounded border-slate-200 bg-white">
-                    <SelectValue placeholder={`10 / ${t('pagination.page')}`} />
-                  </SelectTrigger>
-                  <SelectContent className="text-xs">
-                    <SelectItem value="10">10 / {t('pagination.page')}</SelectItem>
-                    <SelectItem value="20">20 / {t('pagination.page')}</SelectItem>
-                    <SelectItem value="50">50 / {t('pagination.page')}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
+          <div className="border-t border-slate-100 px-4"><Pagination currentPage={currentPage} totalPages={computedTotalPages} totalItems={totalDisplayItems} pageSize={pageSize} itemLabel={`${t('pagination.items')} (${totalFilteredQuestions} ${t('pagination.questions')})`} onPageChange={setCurrentPage} onPageSizeChange={value => { setPageSize(value); setCurrentPage(1); }} pageSizeOptions={[10,20,50]} /></div>
         )}
       </div>
     </>

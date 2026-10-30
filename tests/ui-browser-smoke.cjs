@@ -222,7 +222,7 @@ async function suite(browser, app) {
 }
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: true, args: ['--disable-background-networking'] });
-  try { await Promise.all(['web','admin'].map(app => suite(browser, app))); }
+  try { await Promise.all((process.env.QA_APPS ? process.env.QA_APPS.split(',') : ['web','admin']).map(app => suite(browser, app))); }
   finally { await browser.close(); }
   console.log(JSON.stringify({ checks: results.length, failed: results.filter(x=>x.status==='FAIL').length, overflow: results.filter(x=>x.layoutWarning).length, output }));
   process.exitCode = results.some(x=>x.status==='FAIL') ? 1 : 0;

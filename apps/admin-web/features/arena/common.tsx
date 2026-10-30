@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { RefreshCw } from "lucide-react";
+import { Pagination } from '@/components/ui/pagination';
 import type {
   ArenaMatch,
   ArenaParams,
@@ -207,29 +208,11 @@ export function Pager({
   limit?: number;
   onChange: (page: number) => void;
 }) {
-  const { t } = useArenaUI();
+  const { locale } = useArenaUI();
   const pages = Math.max(1, Math.ceil(total / limit));
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3">
-      <p className="text-xs text-slate-500">
-        {t("pagination", { page, pages, total })}
-      </p>
-      <div className="flex gap-2">
-        <button
-          className={button}
-          disabled={page <= 1}
-          onClick={() => onChange(page - 1)}
-        >
-          {t("previous")}
-        </button>
-        <button
-          className={button}
-          disabled={page >= pages}
-          onClick={() => onChange(page + 1)}
-        >
-          {t("next")}
-        </button>
-      </div>
+    <div className="border-t border-slate-100 px-4">
+      <Pagination currentPage={page} totalPages={pages} totalItems={total} pageSize={limit} onPageChange={onChange} itemLabel={locale === 'en' ? 'items' : 'mục'} />
     </div>
   );
 }

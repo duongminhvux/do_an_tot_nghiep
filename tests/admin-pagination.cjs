@@ -64,17 +64,18 @@ test('empty lists stay on page one and do not render navigation', () => {
   assert.equal(renderToStaticMarkup(React.createElement(Harness)), '');
 });
 
-test('compact navigation exposes boundaries and item counts without a long page-number row', () => {
+test('list footers reuse Vocab numbered navigation with ellipsis and correct boundaries', () => {
   const pagination = { page: 1, pageSize: 10, totalPages: 25, totalItems: 245, setPage() {}, setPageSize() {} };
   const html = renderToStaticMarkup(React.createElement(ListPagination, { pagination }));
   const buttons = [...html.matchAll(/<button\b[^>]*>/g)].map(match => match[0]);
   const disabled = label => /\sdisabled(?:=|[\s>])/.test(buttons.find(button => button.includes(label)));
-  assert(disabled('First page'));
   assert(disabled('Previous page'));
   assert(!disabled('Next page'));
-  assert(!disabled('Last page'));
-  assert.equal(buttons.length, 5);
-  assert.match(html, /1–10 \/ 245/);
+  assert(!html.includes('First page'));
+  assert(!html.includes('Last page'));
+  assert.equal(buttons.length, 8);
+  assert.match(html, /Showing 1 - 10 of 245/);
+  assert(html.includes('...'));
   assert.match(html, /aria-current="page"/);
 });
 
