@@ -5,17 +5,6 @@ import { ErrorState, surface } from "@/components/ui/page";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
-export const StatCardSkeleton = () => (
-  <div className={cn(surface, "flex items-center gap-4 p-5")}>
-    <Skeleton className="h-11 w-11 shrink-0 rounded-xl" />
-    <div className="min-w-0 flex-1 space-y-2.5">
-      <Skeleton className="h-3 w-20" />
-      <Skeleton className="h-6 w-16" />
-      <Skeleton className="h-2.5 w-28" />
-    </div>
-  </div>
-);
-
 export const PanelSkeleton = ({ rows = 4 }: { rows?: number }) => (
   <div className={cn(surface, "p-5 sm:p-6")}>
     <div className="mb-5 flex items-center justify-between">

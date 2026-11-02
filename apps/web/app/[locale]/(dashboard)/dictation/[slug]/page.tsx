@@ -326,7 +326,7 @@ export default function DictationPracticePage() {
   }
   if (isError || !lesson || !current) {
     return (
-      <PageShell width="narrow">
+      <PageShell>
         <PageHeader back={{ href: `/${locale}/dictation`, label: t('all_topics') }} title="Dictation" />
         <ErrorState message={t('lesson_not_found')} />
       </PageShell>

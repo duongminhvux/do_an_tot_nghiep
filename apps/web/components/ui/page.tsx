@@ -3,7 +3,7 @@
 /**
  * Shared building blocks for learner pages, so every page has the same frame,
  * header, cards and states. Conventions:
- * - Page: <PageShell> (bg, padding, max 1400px) + <PageHeader>.
+ * - Page: <PageShell> (bg, padding, full width) + <PageHeader>.
  * - Surfaces: rounded-xl, border-slate-200, shadow-sm, white (`surface`).
  * - Primary colour: blue-600 (`bg-primary`); module colours only tint icons.
  * - Titles: h1 text-2xl/3xl bold, panel titles text-base semibold.
@@ -17,23 +17,16 @@ import { Button } from "@/components/ui/button";
 
 export const surface = "min-w-0 rounded-xl border border-slate-200 bg-white shadow-sm";
 
-const widths = {
-  narrow: "max-w-4xl",
-  default: "max-w-[1400px]",
-} as const;
-
 export function PageShell({
   children,
-  width = "default",
   className,
 }: {
   children: ReactNode;
-  width?: keyof typeof widths;
   className?: string;
 }) {
   return (
     <div className="min-h-full min-w-0 w-full bg-background px-3 py-4 sm:py-6 sm:px-6 lg:px-8">
-      <div className={cn("mx-auto min-w-0 w-full space-y-6", widths[width], className)}>
+      <div className={cn("min-w-0 w-full space-y-6", className)}>
         {children}
       </div>
     </div>

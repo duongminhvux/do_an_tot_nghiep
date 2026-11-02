@@ -7,7 +7,15 @@ import {
   ToeicAttempt,
   AnswerFeedback,
   AudioIdentity,
+  AttemptClock,
 } from "@/services/toeic-attempt.service";
+
+const HEARTBEAT_MS = 15_000;
+
+/** Server clock plus the moment it was received, for local ticking. */
+export interface ClockState extends AttemptClock {
+  syncedAt: number;
+}
 
 // PRACTICE returns keys only for questions whose feedback was revealed.
 function initialFeedback(attempt: ToeicAttempt) {
@@ -47,6 +55,12 @@ export function useToeicAttempt(id: string) {
   const latest = useRef(attempt);
   const busy = useRef(false);
   const revealed = useRef<Record<string, AnswerFeedback>>({});
+  const [clock, setClock] = useState<ClockState | null>(null);
+  const [clockBusy, setClockBusy] = useState(false);
+  // The learner pressed Pause: showing the page again must not resume.
+  const manualPause = useRef(false);
+  const [pausedByUser, setPausedByUser] = useState(false);
+  const clockQueue = useRef<Promise<unknown>>(Promise.resolve());
 
   const flush = useCallback(() => {
     if (timer.current) clearTimeout(timer.current);
@@ -97,6 +111,14 @@ export function useToeicAttempt(id: string) {
         revealed.current = restored;
         setFeedback(restored);
         setError(false);
+        if (value.status === "IN_PROGRESS")
+          setClock({
+            status: value.status,
+            activeSeconds: value.activeSeconds,
+            remainingSeconds: value.remainingSeconds,
+            paused: true,
+            syncedAt: Date.now(),
+          });
       })
       .catch(() => {
         if (active) setError(true);
@@ -118,6 +140,97 @@ export function useToeicAttempt(id: string) {
       void flush().catch(() => {});
     };
   }, [id, flush]);
+
+  // Clock requests run one at a time so a pause never overtakes a resume.
+  const runClock = useCallback(
+    (request: () => Promise<AttemptClock>) => {
+      const work = clockQueue.current
+        .catch(() => {})
+        .then(request)
+        .then(async (next) => {
+          setClock({ ...next, syncedAt: Date.now() });
+          // A timed attempt that ran out was graded by the server.
+          if (next.status !== "IN_PROGRESS") {
+            const value = await api.get(id);
+            latest.current = value;
+            setAttempt(value);
+          }
+          return next;
+        });
+      clockQueue.current = work;
+      return work;
+    },
+    [id],
+  );
+
+  const inProgress = attempt?.status === "IN_PROGRESS";
+  useEffect(() => {
+    if (!inProgress) return;
+    const visible = () => document.visibilityState === "visible";
+    const start = () => {
+      if (!manualPause.current && visible())
+        void runClock(() => api.resume(id)).catch(() => {});
+    };
+    const stop = (keepalive: boolean) =>
+      void runClock(() => api.pause(id, { keepalive })).catch(() => {});
+    const onVisibility = () => {
+      if (visible()) start();
+      else {
+        void flush().catch(() => {});
+        stop(true);
+      }
+    };
+    const onPageHide = () => stop(true);
+    start();
+    const beat = setInterval(() => {
+      if (!manualPause.current && visible())
+        void runClock(() => api.heartbeat(id)).catch(() => {});
+    }, HEARTBEAT_MS);
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", onPageHide);
+    return () => {
+      clearInterval(beat);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", onPageHide);
+      // Leaving the attempt page (in-app navigation) stops the clock; a
+      // submitted attempt has nothing left to pause.
+      if (latest.current?.status === "IN_PROGRESS") stop(true);
+      // Lists elsewhere (exam page, history) must show the attempt as unfinished.
+      void queryClient.invalidateQueries({
+        predicate: (query) =>
+          typeof query.queryKey[0] === "string" &&
+          query.queryKey[0].startsWith("toeic-"),
+      });
+    };
+  }, [id, inProgress, flush, runClock, queryClient]);
+
+  async function pauseAttempt() {
+    if (manualPause.current) return;
+    manualPause.current = true;
+    setPausedByUser(true);
+    setClockBusy(true);
+    try {
+      await flush().catch(() => {});
+      await runClock(() => api.pause(id));
+    } catch {
+      setError(true);
+    } finally {
+      setClockBusy(false);
+    }
+  }
+
+  async function resumeAttempt() {
+    setClockBusy(true);
+    try {
+      await runClock(() => api.resume(id));
+      manualPause.current = false;
+      setPausedByUser(false);
+    } catch {
+      setError(true);
+    } finally {
+      setClockBusy(false);
+    }
+  }
 
   function change(update: (value: ToeicAttempt) => ToeicAttempt) {
     if (
@@ -262,5 +375,10 @@ export function useToeicAttempt(id: string) {
     checkAnswer,
     submitAttempt,
     playAudio,
+    clock,
+    clockBusy,
+    pausedByUser,
+    pauseAttempt,
+    resumeAttempt,
   };
 }

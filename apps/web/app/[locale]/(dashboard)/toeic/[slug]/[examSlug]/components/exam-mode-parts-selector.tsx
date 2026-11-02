@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { PlayCircle, Info, PauseCircle } from 'lucide-react';
+import { BookOpen, Headphones, Info, Loader2, PauseCircle, PlayCircle, type LucideIcon } from 'lucide-react';
 import { ToeicExamPart } from '@/services/toeic.service';
 import { Button } from '@/components/ui/button';
 import { surface } from '@/components/ui/page';
@@ -10,21 +10,96 @@ import { cn } from '@/lib/utils';
 
 type Mode = 'TEST' | 'PRACTICE';
 
-/* ── Checkbox atom ─────────────────────────────────────────────────────────── */
-function Checkbox({ checked, onChange }: { checked: boolean; onChange: () => void }) {
-  return <input type="checkbox" checked={checked} onChange={onChange}
-    className="h-[18px] w-[18px] shrink-0 cursor-pointer accent-blue-600" />;
+function ModeOption({
+  active,
+  label,
+  description,
+  onSelect,
+}: {
+  active: boolean;
+  label: string;
+  description: string;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={active}
+      onClick={onSelect}
+      className={cn(
+        'flex cursor-pointer items-start gap-2.5 rounded-lg border p-3 text-left outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-blue-500/60',
+        active
+          ? 'border-blue-500 bg-blue-50/60 ring-1 ring-blue-500'
+          : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50',
+      )}
+    >
+      <span
+        aria-hidden
+        className={cn(
+          'mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
+          active ? 'border-blue-600' : 'border-slate-300',
+        )}
+      >
+        {active && <span className="size-1.5 rounded-full bg-blue-600" />}
+      </span>
+      <span className="min-w-0">
+        <span className={cn('block text-sm font-semibold', active ? 'text-blue-700' : 'text-slate-800')}>
+          {label}
+        </span>
+        <span className="mt-0.5 block text-xs leading-snug text-slate-500">{description}</span>
+      </span>
+    </button>
+  );
 }
 
-/* ── Radio atom ────────────────────────────────────────────────────────────── */
-function Radio({ checked }: { checked: boolean }) {
+function PartGroup({
+  label,
+  icon: Icon,
+  tone,
+  parts,
+  selected,
+  togglePart,
+}: {
+  label: string;
+  icon: LucideIcon;
+  tone: string;
+  parts: ToeicExamPart[];
+  selected: Set<string>;
+  togglePart: (id: string) => void;
+}) {
+  if (!parts.length) return null;
   return (
-    <div
-      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition
-        ${checked ? 'border-blue-600' : 'border-slate-300'}`}
-    >
-      {checked && <div className="h-2.5 w-2.5 rounded-full bg-blue-600" />}
-    </div>
+    <fieldset>
+      <legend className={cn('mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider', tone)}>
+        <Icon className="h-3.5 w-3.5" aria-hidden />
+        {label}
+      </legend>
+      <div className="space-y-0.5">
+        {parts.map((p) => {
+          const checked = selected.has(p._id);
+          return (
+            <label
+              key={p._id}
+              className={cn(
+                'flex min-h-10 cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 text-sm transition-colors duration-150 hover:bg-slate-50',
+                checked && 'bg-slate-50',
+              )}
+            >
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={() => togglePart(p._id)}
+                className="size-4 shrink-0 cursor-pointer rounded accent-blue-600"
+              />
+              <span className="w-12 shrink-0 font-medium text-slate-800">Part {p.part}</span>
+              <span className="min-w-0 flex-1 truncate text-slate-500">{p.type}</span>
+              <span className="shrink-0 text-xs font-medium text-slate-500 tabular-nums">{p.totalQuestions}</span>
+            </label>
+          );
+        })}
+      </div>
+    </fieldset>
   );
 }
 
@@ -64,147 +139,72 @@ export function ExamModePartsSelector({
   onContinue,
 }: ExamModePartsSelectorProps) {
   const { t } = useTranslation('toeic');
+  const allSelected = selectedCount === listeningParts.length + readingParts.length;
 
   return (
-    <div className="space-y-5">
-      {/* — Chế độ làm bài — */}
-      <div>
-        <h2 className="mb-3 text-base font-semibold text-slate-900">{t('exam_detail.mode_title')}</h2>
-        <div className="grid grid-cols-2 gap-3">
-          {/* Luyện thi */}
-          <button
-            type="button"
-            onClick={() => setMode('TEST')}
-            aria-pressed={mode === 'TEST'}
-            className={`flex items-start gap-3 rounded-xl border p-4 text-left transition cursor-pointer
-              ${mode === 'TEST'
-                ? 'border-blue-500 bg-blue-50/40 shadow-sm ring-1 ring-blue-500'
-                : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'}`}
-          >
-            <Radio checked={mode === 'TEST'} />
-            <div className="min-w-0">
-              <p className={`text-sm font-semibold leading-tight ${mode === 'TEST' ? 'text-blue-700' : 'text-slate-800'}`}>
-                {t('exam_detail.mode_exam_label')}
-              </p>
-              <p className="mt-1 text-xs leading-snug text-slate-500">
-                {t('exam_detail.mode_exam_desc')}
-              </p>
-            </div>
-          </button>
-
-          {/* Luyện tập */}
-          <button
-            type="button"
-            onClick={() => setMode('PRACTICE')}
-            aria-pressed={mode === 'PRACTICE'}
-            className={`flex items-start gap-3 rounded-xl border p-4 text-left transition cursor-pointer
-              ${mode === 'PRACTICE'
-                ? 'border-blue-500 bg-blue-50/40 shadow-sm ring-1 ring-blue-500'
-                : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'}`}
-          >
-            <Radio checked={mode === 'PRACTICE'} />
-            <div className="min-w-0">
-              <p className={`text-sm font-semibold leading-tight ${mode === 'PRACTICE' ? 'text-blue-700' : 'text-slate-800'}`}>
-                {t('exam_detail.mode_practice_label')}
-              </p>
-              <p className="mt-1 text-xs leading-snug text-slate-500">
-                {t('exam_detail.mode_practice_desc')}
-              </p>
-            </div>
-          </button>
+    <section aria-labelledby="exam-start-title" className={cn(surface, 'divide-y divide-slate-100')}>
+      <div className="p-5">
+        <h2 id="exam-start-title" className="text-base font-semibold text-slate-900">
+          {t('exam_detail.mode_title')}
+        </h2>
+        <div role="radiogroup" aria-labelledby="exam-start-title" className="mt-3 grid grid-cols-2 gap-2">
+          <ModeOption
+            active={mode === 'TEST'}
+            label={t('exam_detail.mode_exam_label')}
+            description={t('exam_detail.mode_exam_desc')}
+            onSelect={() => setMode('TEST')}
+          />
+          <ModeOption
+            active={mode === 'PRACTICE'}
+            label={t('exam_detail.mode_practice_label')}
+            description={t('exam_detail.mode_practice_desc')}
+            onSelect={() => setMode('PRACTICE')}
+          />
         </div>
       </div>
 
-      {/* — Chọn phần muốn làm — */}
-      <div>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-slate-900">{t('exam_detail.parts_title')}</h2>
-          <div className="flex items-center gap-1">
-            <Button type="button" variant="ghost" size="sm" onClick={selectAll} className="text-blue-600 hover:text-blue-700">
-              {t('exam_detail.select_all')}
-            </Button>
-            <Button type="button" variant="ghost" size="sm" onClick={deselectAll}>
-              {t('exam_detail.deselect')}
-            </Button>
-          </div>
+      <div className="p-5">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-slate-900">{t('exam_detail.parts_title')}</h3>
+          <button
+            type="button"
+            onClick={allSelected ? deselectAll : selectAll}
+            className="cursor-pointer rounded text-xs font-semibold text-blue-600 outline-none hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-blue-500/60"
+          >
+            {t(allSelected ? 'exam_detail.deselect' : 'exam_detail.select_all')}
+          </button>
         </div>
-
-        <div className={cn(surface, 'overflow-hidden')}>
-          <div className="space-y-4 p-5">
-            {/* LISTENING section */}
-            {listeningParts.length > 0 && (
-              <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-blue-600">
-                  LISTENING
-                </p>
-                <div className="space-y-2">
-                  {listeningParts.map((p) => {
-                    const checked = selected.has(p._id);
-                    return (
-                      <label key={p._id} className="flex cursor-pointer items-center gap-2.5">
-                        <Checkbox checked={checked} onChange={() => togglePart(p._id)} />
-                        <span className="text-sm text-slate-700">
-                          P{p.part} — {p.type}{' '}
-                          <span className="font-semibold text-blue-600">({p.totalQuestions})</span>
-                        </span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* READING section */}
-            {readingParts.length > 0 && (
-              <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-emerald-600">
-                  READING
-                </p>
-                <div className="space-y-2">
-                  {readingParts.map((p) => {
-                    const checked = selected.has(p._id);
-                    return (
-                      <label key={p._id} className="flex cursor-pointer items-center gap-2.5">
-                        <Checkbox checked={checked} onChange={() => togglePart(p._id)} />
-                        <span className="text-sm text-slate-700">
-                          P{p.part} — {p.type}{' '}
-                          <span className="font-semibold text-blue-600">({p.totalQuestions})</span>
-                        </span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Summary */}
-            {selectedCount > 0 && (
-              <div className="rounded-lg border border-blue-100 bg-blue-50 px-3.5 py-2.5 text-xs font-semibold text-blue-700">
-                {t('exam_detail.summary', {
-                  parts: selectedCount,
-                  questions: selectedQuestions,
-                  minutes: selectedMinutes,
-                })}
-              </div>
-            )}
-
-            {/* Hints */}
-            <div className="space-y-1.5 text-xs text-slate-500">
-              <p className="flex items-start gap-2">
-                <Info className="h-3.5 w-3.5 mt-px shrink-0" />
-                {t('attempt.mode_hint')}
-              </p>
-              <p className="flex items-start gap-2">
-                <PauseCircle className="h-3.5 w-3.5 mt-px shrink-0" />
-                {t('attempt.resume_hint')}
-              </p>
-            </div>
-          </div>
+        <div className="space-y-4">
+          <PartGroup
+            label="Listening"
+            icon={Headphones}
+            tone="text-blue-600"
+            parts={listeningParts}
+            selected={selected}
+            togglePart={togglePart}
+          />
+          <PartGroup
+            label="Reading"
+            icon={BookOpen}
+            tone="text-emerald-600"
+            parts={readingParts}
+            selected={selected}
+            togglePart={togglePart}
+          />
         </div>
       </div>
 
-      {/* — CTA — */}
-      <div className="space-y-2">
+      <div className="space-y-3 p-5">
+        <p className="flex items-center justify-between text-sm">
+          <span className="text-slate-500">
+            {t('exam_detail.summary', { parts: selectedCount, questions: selectedQuestions })}
+          </span>
+          {selectedMinutes > 0 && (
+            <span className="font-medium text-slate-700 tabular-nums">
+              ~{selectedMinutes} {t('exam_detail.minutes')}
+            </span>
+          )}
+        </p>
         {isInProgress && (
           <Button id="btn-continue-exam" type="button" variant="secondary" size="lg" onClick={onContinue} className="w-full">
             <PlayCircle />
@@ -217,12 +217,22 @@ export function ExamModePartsSelector({
           size="lg"
           disabled={selectedCount === 0 || starting}
           onClick={onStart}
-          className="h-12 w-full"
+          className="h-11 w-full"
         >
-          <PlayCircle />
+          {starting ? <Loader2 className="animate-spin" /> : <PlayCircle />}
           {t(starting ? 'attempt.starting' : 'exam_detail.btn_start')}
         </Button>
+        <div className="space-y-1.5 pt-1 text-xs leading-relaxed text-slate-500">
+          <p className="flex items-start gap-2">
+            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+            {t('attempt.mode_hint')}
+          </p>
+          <p className="flex items-start gap-2">
+            <PauseCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+            {t('attempt.resume_hint')}
+          </p>
+        </div>
       </div>
-    </div>
+    </section>
   );
 }

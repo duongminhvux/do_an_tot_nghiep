@@ -19,8 +19,9 @@ import { ExamStructureTable } from './components/exam-structure-table';
 import { ExamModePartsSelector } from './components/exam-mode-parts-selector';
 import { ExamLeaderboard } from './components/exam-leaderboard';
 import { ExamComments } from './components/exam-comments';
+import { InProgressAttempt } from './components/in-progress-attempt';
 import { AttemptHistory } from '@/features/toeic/attempt/attempt-history';
-import { toeicAttemptService, ExamMode } from '@/services/toeic-attempt.service';
+import { toeicAttemptService, ExamMode, isAttemptInProgressError } from '@/services/toeic-attempt.service';
 
 function unwrapOne<T>(value: any): T | null {
   if (!value) return null;
@@ -83,10 +84,12 @@ export default function ToeicExamDetailPage() {
     queryFn:  () => toeicService.getExamParts(examSlug),
     enabled:  !!examSlug,
   });
-  const { data: attemptsData } = useQuery({
+  // Always fresh: an attempt left a moment ago must show as unfinished here.
+  const { data: attemptsData, refetch: refetchAttempts } = useQuery({
     queryKey: ['toeic-exam-attempts', examSlug],
     queryFn:  () => toeicService.getAttempts({ examId: examSlug, limit: 10 }),
-    staleTime: 10_000,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const group       = unwrapOne<any>(groupData);
@@ -111,7 +114,8 @@ export default function ToeicExamDetailPage() {
   const selectedQuestions = selectedParts.reduce((s, p) => s + p.totalQuestions, 0);
   const selectedMinutes   = selectedParts.reduce((s, p) => s + (PART_TIME_MAP[p.part] ?? 0), 0);
   const selectedCount     = selectedParts.length;
-  const latestAttempt     = rawAttempts.find((a) => a.status === 'IN_PROGRESS');
+  // A timed attempt with no time left is graded when opened; it no longer blocks a new start.
+  const latestAttempt     = rawAttempts.find((a) => a.status === 'IN_PROGRESS' && a.remainingSeconds !== 0);
   const isInProgress      = !!latestAttempt;
   const isLoading         = isExamLoading || isPartsLoading;
 
@@ -132,7 +136,12 @@ export default function ToeicExamDetailPage() {
     try {
       const attempt = await toeicAttemptService.create(exam._id, mode, selectedParts.map(p => p.part));
       router.push(`/${locale}/toeic/attempts/${attempt._id}`);
-    } catch { setStartError(true); setStarting(false); }
+    } catch (error) {
+      setStarting(false);
+      // Another tab or page started one meanwhile: show it instead of failing.
+      if (isAttemptInProgressError(error)) void refetchAttempts();
+      else setStartError(true);
+    }
   };
   const handleContinue = () => {
     if (latestAttempt) router.push(`/${locale}/toeic/attempts/${latestAttempt._id}`);
@@ -202,14 +211,18 @@ export default function ToeicExamDetailPage() {
           <LoadingState />
         </Card>
       ) : (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
-            <ExamStructureTable parts={parts} partTimeMap={PART_TIME_MAP} />
-
-            <div className="space-y-3">
-              {exam?.description && <p className="text-sm text-slate-600">{exam.description}</p>}
-              {startError && <ErrorState message={t('attempt.start_error')} />}
-              {!parts.length && <p className="text-sm text-slate-500">{t('attempt.no_parts')}</p>}
+        // Start panel on the right (first on mobile); reference content on the left.
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_400px]">
+          <aside className="min-w-0 space-y-3 lg:order-2">
+            {startError && <ErrorState message={t('attempt.start_error')} />}
+            {!parts.length && <p className="text-sm text-slate-500">{t('attempt.no_parts')}</p>}
+            {latestAttempt ? (
+              <InProgressAttempt
+                attempt={latestAttempt}
+                examName={exam?.name || ''}
+                onContinue={handleContinue}
+              />
+            ) : (
               <ExamModePartsSelector
                 starting={starting}
                 mode={mode}
@@ -227,12 +240,23 @@ export default function ToeicExamDetailPage() {
                 onStart={handleStart}
                 onContinue={handleContinue}
               />
-            </div>
-          </div>
+            )}
+          </aside>
 
-          <ExamLeaderboard key={exam!._id} examId={exam!._id} viewerId={user?._id} />
-          <Card><h2 className="mb-4 font-semibold">{t('attempt.history')}</h2><AttemptHistory attempts={rawAttempts} locale={locale} /></Card>
-          <ExamComments key={`${exam!._id}:${user?._id}`} examId={exam!._id} viewerId={user?._id} />
+          <div className="min-w-0 space-y-6 lg:order-1">
+            {exam?.description && (
+              <Card className="p-5 text-sm leading-relaxed text-slate-600">{exam.description}</Card>
+            )}
+            <ExamStructureTable parts={parts} partTimeMap={PART_TIME_MAP} />
+            <Card className="overflow-hidden">
+              <h2 className="border-b border-slate-200 px-5 py-4 text-base font-semibold text-slate-900">
+                {t('attempt.history')}
+              </h2>
+              <AttemptHistory attempts={rawAttempts} locale={locale} />
+            </Card>
+            <ExamLeaderboard key={exam!._id} examId={exam!._id} viewerId={user?._id} />
+            <ExamComments key={`${exam!._id}:${user?._id}`} examId={exam!._id} viewerId={user?._id} />
+          </div>
         </div>
       )}
     </PageShell>

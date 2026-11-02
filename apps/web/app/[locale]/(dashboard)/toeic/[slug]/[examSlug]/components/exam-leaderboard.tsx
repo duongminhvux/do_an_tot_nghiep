@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { surface } from "@/components/ui/page";
+import { ErrorState, surface } from "@/components/ui/page";
 import { cn } from "@/lib/utils";
 import { toeicCommunityService } from "@/services/toeic-community.service";
 
@@ -26,34 +26,37 @@ export function ExamLeaderboard({
   return (
     <section className={cn(surface, "overflow-hidden")}>
       <div className="border-b border-slate-200 px-5 py-4">
-        <h2 className="font-semibold text-slate-900">
+        <h2 className="text-base font-semibold text-slate-900">
           {t("community.rankingTitle")}
         </h2>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-0.5 text-sm text-slate-500">
           {t("community.rankingRule")}
         </p>
       </div>
       {!viewerId ? (
-        <p className="p-5 text-sm">{t("community.login")}</p>
+        <p className="p-5 text-sm text-slate-500">{t("community.login")}</p>
       ) : query.isPending ? (
         <div
           role="status"
           aria-label={t("community.loading")}
-          className="m-5 h-40 animate-pulse rounded bg-slate-100"
+          className="m-5 h-40 animate-pulse rounded-lg bg-slate-100"
         />
       ) : query.isError ? (
-        <div role="alert" className="p-5">
-          <p>{t("community.loadError")}</p>
-          <Button variant="outline" onClick={() => void query.refetch()}>
-            {t("community.retry")}
-          </Button>
+        <div className="p-5">
+          <ErrorState
+            message={t("community.loadError")}
+            onRetry={() => void query.refetch()}
+            retryLabel={t("community.retry")}
+          />
         </div>
       ) : (
         data && (
           <>
-            <div className="flex flex-wrap justify-between gap-2 bg-blue-50 px-5 py-3 text-sm">
-              <span>{t("community.participants", { count: data.total })}</span>
-              <span>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/70 px-5 py-2.5 text-sm">
+              <span className="text-slate-500">
+                {t("community.participants", { count: data.total })}
+              </span>
+              <span className="font-medium text-blue-700">
                 {data.mine
                   ? t("community.myRank", {
                       rank: data.mine.rank,
@@ -64,14 +67,14 @@ export function ExamLeaderboard({
               </span>
             </div>
             {!data.items.length ? (
-              <p className="p-6 text-sm text-slate-500">
+              <p className="px-5 py-10 text-center text-sm text-slate-500">
                 {t("community.rankingEmpty")}
               </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-slate-50">
-                    <tr>
+                  <thead>
+                    <tr className="border-b border-slate-200 text-xs text-slate-500">
                       {[
                         "rank",
                         "learner",
@@ -83,40 +86,63 @@ export function ExamLeaderboard({
                         <th
                           key={key}
                           scope="col"
-                          className="whitespace-nowrap p-3"
+                          className={cn(
+                            "whitespace-nowrap px-4 py-2.5 font-medium first:pl-5 last:pr-5",
+                            ["result", "score", "duration"].includes(key) &&
+                              "text-right",
+                          )}
                         >
                           {t(`community.columns.${key}`)}
                         </th>
                       ))}
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-slate-100">
                     {data.items.map((row) => (
                       <tr
                         key={row.userId}
                         className={cn(
-                          "border-t border-slate-100",
-                          row.isMe && "bg-blue-50",
+                          "transition-colors hover:bg-slate-50",
+                          row.isMe && "bg-blue-50/70 hover:bg-blue-50",
                         )}
                       >
-                        <td className="p-3 font-semibold">#{row.rank}</td>
-                        <td className="p-3">
-                          {row.username ?? t("community.learner")}
-                          {row.isMe && (
-                            <span className="ml-2 text-blue-700">
-                              ({t("community.you")})
-                            </span>
-                          )}
+                        <td className="py-2.5 pl-5 pr-4">
+                          <span
+                            className={cn(
+                              "inline-flex size-7 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
+                              row.rank === 1
+                                ? "bg-amber-100 text-amber-700"
+                                : row.rank === 2
+                                  ? "bg-slate-200 text-slate-700"
+                                  : row.rank === 3
+                                    ? "bg-orange-100 text-orange-700"
+                                    : "text-slate-500",
+                            )}
+                          >
+                            {row.rank}
+                          </span>
                         </td>
-                        <td className="p-3 font-medium">
+                        <td className="max-w-[14rem] px-4 py-2.5">
+                          <span className="block truncate font-medium text-slate-800">
+                            {row.username ?? t("community.learner")}
+                            {row.isMe && (
+                              <span className="ml-1.5 text-xs font-medium text-blue-700">
+                                ({t("community.you")})
+                              </span>
+                            )}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5 text-right font-semibold text-slate-900 tabular-nums">
                           {row.correct}/{row.total}
                         </td>
-                        <td className="p-3">{row.estimatedScore ?? "—"}</td>
-                        <td className="whitespace-nowrap p-3">
+                        <td className="px-4 py-2.5 text-right text-slate-700 tabular-nums">
+                          {row.estimatedScore ?? "—"}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-2.5 text-right text-slate-500 tabular-nums">
                           {Math.floor(row.durationSpent / 60)}:
                           {String(row.durationSpent % 60).padStart(2, "0")}
                         </td>
-                        <td className="whitespace-nowrap p-3">
+                        <td className="whitespace-nowrap py-2.5 pl-4 pr-5 text-slate-500">
                           {new Date(row.completedAt).toLocaleDateString(
                             i18n.language === "en" ? "en-GB" : "vi-VN",
                           )}
@@ -127,7 +153,7 @@ export function ExamLeaderboard({
                 </table>
               </div>
             )}
-            <div className="flex items-center justify-end gap-3 border-t p-3">
+            <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-5 py-3">
               <Button
                 variant="outline"
                 size="sm"
@@ -136,7 +162,7 @@ export function ExamLeaderboard({
               >
                 {t("community.previous")}
               </Button>
-              <span className="text-sm">
+              <span className="text-sm text-slate-500 tabular-nums">
                 {page}/{Math.max(1, Math.ceil(data.total / data.pageSize))}
               </span>
               <Button

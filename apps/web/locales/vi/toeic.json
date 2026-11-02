@@ -239,7 +239,14 @@
     "filter_qa": "Hỏi đáp",
     "filter_newest": "Mới nhất",
     "reply_action": "Trả lời",
-    "like_action": "Thích"
+    "like_action": "Thích",
+    "in_progress_title": "Bạn đang làm dở đề này",
+    "in_progress_answered": "Đã làm {{answered}}/{{total}} câu",
+    "in_progress_time_left": "Còn {{time}}",
+    "in_progress_time_spent": "Đã làm {{time}}",
+    "in_progress_hint": "Thời gian đang tạm dừng. Tiếp tục để làm tiếp, hoặc dừng bài này để bắt đầu lượt mới.",
+    "btn_stop_attempt": "Dừng làm bài",
+    "total": "Tổng"
   },
   "pages": {
     "practice": "Luyện thi TOEIC",
@@ -345,7 +352,7 @@
     "no_parts": "Đề thi chưa có câu hỏi khả dụng.",
     "starting": "Đang bắt đầu…",
     "mode_hint": "TEST: xem đáp án sau khi nộp. PRACTICE: kiểm tra đáp án khi luyện tập.",
-    "resume_hint": "Câu trả lời và tiến độ được lưu tự động. Tiếp tục bài từ lịch sử.",
+    "resume_hint": "Câu trả lời được lưu tự động. Thời gian chỉ tính khi bạn đang ở trang làm bài; thoát ra là tạm dừng.",
     "in_progress": "Đang làm",
     "finished": "Đã hoàn thành",
     "abandoned": "Đã dừng",
@@ -378,7 +385,12 @@
     "time_up_title": "Hết giờ làm bài",
     "time_up_desc": "Đang tự động nộp bài của bạn...",
     "answer_locked": "Bạn đã xem đáp án. Câu này đã khóa và không thể đổi lựa chọn.",
-    "answer_changeable": "Bạn có thể đổi đáp án khi bài thi còn thời gian và chưa nộp."
+    "answer_changeable": "Bạn có thể đổi đáp án khi bài thi còn thời gian và chưa nộp.",
+    "pause": "Tạm dừng",
+    "pause_hint": "Tạm dừng bài làm. Thời gian sẽ không được tính cho đến khi bạn tiếp tục.",
+    "paused_title": "Bài làm đang tạm dừng",
+    "paused_desc": "Thời gian chỉ được tính khi bạn đang làm bài. Câu trả lời đã được lưu, bạn có thể tiếp tục bất cứ lúc nào.",
+    "resume": "Tiếp tục làm bài"
   },
   "result": {
     "title": "Kết quả bài làm",
@@ -429,7 +441,8 @@
     "suggest_vocab": "Ôn tập từ vựng",
     "suggest_vocab_desc": "Củng cố vốn từ để làm tốt hơn phần Nghe và Đọc",
     "map_title": "Bản đồ câu hỏi",
-    "questions_count": "{{count}} câu"
+    "questions_count": "{{count}} câu",
+    "open_attempt": "Bạn đang có một bài làm dở của đề này. Hãy làm tiếp hoặc dừng bài đó trước khi bắt đầu lượt mới."
   },
   "duration": {
     "hours_minutes": "{{h}} giờ {{m}} phút",

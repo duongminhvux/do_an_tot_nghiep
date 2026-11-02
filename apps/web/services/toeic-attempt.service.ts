@@ -1,3 +1,4 @@
+import { isAxiosError } from "axios";
 import apiClient from "@/lib/axios";
 import type { RawToeicResult } from "./toeic.service";
 
@@ -48,9 +49,14 @@ export interface ToeicAttempt {
   status: "IN_PROGRESS" | "FINISHED" | "ABANDONED";
   startedAt: string;
   submittedAt?: string;
-  /** Full-test mode only: answers are refused after this moment. */
+  /** Projected deadline at the last resume; use remainingSeconds instead. */
   expiresAt?: string;
   timeLimitSeconds?: number;
+  /** Time spent on the attempt page; time away from it does not count. */
+  activeSeconds?: number;
+  /** Timed attempts only. */
+  remainingSeconds?: number;
+  paused?: boolean;
   score?: number;
   scoreMax?: number;
   listeningScore?: number;
@@ -72,6 +78,13 @@ export interface ToeicAttempt {
   readingResult?: RawToeicResult;
 }
 
+export interface AttemptClock {
+  status: ToeicAttempt["status"];
+  activeSeconds?: number;
+  remainingSeconds?: number;
+  paused: boolean;
+}
+
 function normalizeAttempt(attempt: ToeicAttempt): ToeicAttempt {
   return {
     ...attempt,
@@ -80,6 +93,15 @@ function normalizeAttempt(attempt: ToeicAttempt): ToeicAttempt {
     flaggedQuestions: attempt.flaggedQuestions ?? [],
     currentQuestionIndex: attempt.currentQuestionIndex ?? 0,
   };
+}
+
+/** The API refuses a new attempt while one of the same exam is unfinished. */
+export function isAttemptInProgressError(error: unknown) {
+  return (
+    isAxiosError(error) &&
+    error.response?.status === 409 &&
+    error.response.data?.error === "ATTEMPT_IN_PROGRESS"
+  );
 }
 
 export const toeicAttemptService = {
@@ -129,6 +151,23 @@ export const toeicAttemptService = {
         { questionId },
       )
     ).data.data;
+  },
+  /** Start counting time: the attempt page is open and visible. */
+  async resume(id: string) {
+    return (await apiClient.post<{ data: AttemptClock }>(`/attempts/${id}/resume`)).data.data;
+  },
+  /** Stop counting time. `keepalive` lets the request finish while the page unloads. */
+  async pause(id: string, { keepalive = false } = {}) {
+    return (
+      await apiClient.post<{ data: AttemptClock }>(
+        `/attempts/${id}/pause`,
+        undefined,
+        keepalive ? { adapter: "fetch", fetchOptions: { keepalive: true } } : undefined,
+      )
+    ).data.data;
+  },
+  async heartbeat(id: string) {
+    return (await apiClient.post<{ data: AttemptClock }>(`/attempts/${id}/heartbeat`)).data.data;
   },
   async abandon(id: string) {
     await apiClient.post(`/attempts/${id}/abandon`);

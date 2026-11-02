@@ -8,8 +8,8 @@ import {
   FolderKanban,
   FileText,
   BookOpen,
-  Sparkles,
   TrendingUp,
+  Volume2,
 } from 'lucide-react';
 
 export default function VocabularyStats() {
@@ -65,7 +65,7 @@ export default function VocabularyStats() {
       title: t('sec_pronunciation', { defaultValue: 'Audio Pronunciations' }),
       value: 'US & UK',
       subtitle: 'Audio streaming (US / UK)',
-      icon: Sparkles,
+      icon: Volume2,
       color: 'amber',
       bgColor: 'bg-amber-50',
       textColor: 'text-amber-600',

@@ -209,7 +209,7 @@ export default function DictationDetailPage() {
 
   return (
     <div className="min-h-screen bg-slate-50/50 p-4 sm:p-6 md:p-8">
-      <div className="mx-auto max-w-7xl space-y-6">
+      <div className="w-full space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <Link href={`/${locale}/dictation`} className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-slate-900"><ArrowLeft className="h-4 w-4" /></Link>

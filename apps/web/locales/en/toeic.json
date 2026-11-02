@@ -239,7 +239,14 @@
     "filter_qa": "Q&A",
     "filter_newest": "Newest",
     "reply_action": "Reply",
-    "like_action": "Like"
+    "like_action": "Like",
+    "in_progress_title": "You have an unfinished attempt",
+    "in_progress_answered": "{{answered}}/{{total}} questions answered",
+    "in_progress_time_left": "{{time}} left",
+    "in_progress_time_spent": "{{time}} spent",
+    "in_progress_hint": "The clock is paused. Continue where you left off, or stop this attempt to start a new one.",
+    "btn_stop_attempt": "Stop attempt",
+    "total": "Total"
   },
   "pages": {
     "practice": "TOEIC practice",
@@ -345,7 +352,7 @@
     "no_parts": "No questions are available in this exam yet.",
     "starting": "Starting…",
     "mode_hint": "TEST: review after submitting. PRACTICE: check answers while learning.",
-    "resume_hint": "Answers and progress are saved automatically. Resume from history.",
+    "resume_hint": "Answers are saved automatically. Time only counts while you are on the test page; leaving it pauses the clock.",
     "in_progress": "In progress",
     "finished": "Finished",
     "abandoned": "Abandoned",
@@ -378,7 +385,12 @@
     "time_up_title": "Time is up",
     "time_up_desc": "Submitting your answers automatically...",
     "answer_locked": "The answer has been revealed. This question is locked and your choice cannot be changed.",
-    "answer_changeable": "You can change your answer while time remains and before submitting."
+    "answer_changeable": "You can change your answer while time remains and before submitting.",
+    "pause": "Pause",
+    "pause_hint": "Pause the attempt. Time is not counted until you resume.",
+    "paused_title": "Attempt paused",
+    "paused_desc": "Time only counts while you are taking the test. Your answers are saved; resume whenever you are ready.",
+    "resume": "Resume attempt"
   },
   "result": {
     "title": "Test result",
@@ -429,7 +441,8 @@
     "suggest_vocab": "Review vocabulary",
     "suggest_vocab_desc": "Build vocabulary to improve Listening and Reading",
     "map_title": "Question map",
-    "questions_count": "{{count}} questions"
+    "questions_count": "{{count}} questions",
+    "open_attempt": "You have an unfinished attempt of this exam. Continue it, or stop it before starting a new one."
   },
   "duration": {
     "hours_minutes": "{{h}}h {{m}}m",

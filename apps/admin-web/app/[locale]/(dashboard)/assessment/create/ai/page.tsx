@@ -13,8 +13,8 @@ import {
   Headphones,
   Loader2,
   ScanText,
-  Sparkles,
   UploadCloud,
+  ScanSearch,
 } from "lucide-react";
 import { pdfAiService, type PdfAiJob } from "@/services/pdf-ai.service";
 import { examService } from "@/services/assessment.service";
@@ -275,7 +275,7 @@ export default function CreateExamAiPage() {
     router.replace(`/${locale}/assessment/create/ai${groupId ? `?groupId=${encodeURIComponent(groupId)}` : ""}`);
   };
   return (
-    <main className="mx-auto w-full max-w-6xl space-y-6 p-5 md:p-8">
+    <main className="w-full space-y-6 p-5 md:p-8">
       <Link
         href={`/${locale}/assessment`}
         className="inline-flex items-center gap-2 text-sm text-slate-500"
@@ -286,7 +286,7 @@ export default function CreateExamAiPage() {
       <Link href={`/${locale}/assessment/ai-learning`} className="ml-5 inline-flex text-sm text-blue-600 underline">Dữ liệu sửa lỗi bộ đọc PDF</Link>
       <header className="flex items-start gap-4">
         <div className="rounded-2xl bg-blue-600 p-3 text-white">
-          <Sparkles className="size-7" />
+          <ScanText className="size-7" />
         </div>
         <div>
           <h1 className="text-2xl font-bold text-slate-900">
@@ -458,7 +458,7 @@ export default function CreateExamAiPage() {
               {running ? (
                 <Loader2 className="size-4 animate-spin" />
               ) : (
-                <Sparkles className="size-4" />
+                <ScanSearch className="size-4" />
               )}
               {files.lc_script ? tr("Phân tích 5 PDF", "Analyze 5 PDFs") : tr("Phân tích 4 PDF", "Analyze 4 PDFs")}
             </button>

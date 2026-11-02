@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ArrowRight, FilePenLine, Sparkles } from "lucide-react";
+import { ArrowRight, FilePenLine, ScanText } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -67,7 +67,7 @@ export function CreateExamChoiceDialog({
             onClick={() => choose(true)}
             className="group rounded-xl border border-blue-200 bg-blue-50/50 p-5 text-left transition hover:border-blue-500 hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-blue-600"
           >
-            <Sparkles className="mb-5 size-10 rounded-lg bg-blue-600 p-2 text-white" />
+            <ScanText className="mb-5 size-10 rounded-lg bg-blue-600 p-2 text-white" />
             <h3 className="font-semibold text-slate-900">
               {en ? "Import with local AI" : "Tạo bằng AI local"}
             </h3>

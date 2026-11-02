@@ -175,11 +175,8 @@ function AttemptCard({ attempt, locale }: { attempt: ToeicAttemptSummary; locale
     },
   });
   const exam = typeof attempt.examId === 'object' && attempt.examId ? attempt.examId : null;
-  // A timed test past its deadline is graded by the API when it is opened.
-  const timedOut =
-    attempt.status === 'IN_PROGRESS' &&
-    Boolean(attempt.expiresAt) &&
-    new Date(attempt.expiresAt!).getTime() < Date.now();
+  // A timed test with no time left is graded by the API when it is opened.
+  const timedOut = attempt.status === 'IN_PROGRESS' && attempt.remainingSeconds === 0;
   const inProgress = attempt.status === 'IN_PROGRESS' && !timedOut;
   const finished = attempt.status === 'FINISHED' || attempt.status === 'COMPLETED';
   const total = attempt.totalQuestions ?? 0;

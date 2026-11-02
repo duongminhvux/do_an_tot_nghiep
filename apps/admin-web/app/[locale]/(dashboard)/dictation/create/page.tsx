@@ -10,9 +10,8 @@ import {
   FileAudio,
   Loader2,
   PlayCircle,
-  Sparkles,
   Upload,
-  WandSparkles,
+  CirclePlay,
 } from 'lucide-react';
 import { dictationService } from '@/services/dictation.service';
 import {
@@ -136,7 +135,7 @@ export default function CreateDictationPage() {
 
   return (
     <div className="min-h-screen bg-slate-50/50 p-4 sm:p-6 md:p-8">
-      <div className="mx-auto max-w-6xl space-y-6">
+      <div className="w-full space-y-6">
         <div className="flex items-center gap-3">
           <Link href={`/${locale}/dictation`} className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-slate-900">
             <ArrowLeft className="h-4 w-4" />
@@ -192,7 +191,7 @@ export default function CreateDictationPage() {
               <h2 className="text-sm font-bold text-slate-900">Nguồn audio</h2>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <button type="button" onClick={() => { setAudioSource('TTS'); setPublishAfter(true); }} className={`rounded-xl border p-4 text-left transition ${audioSource === 'TTS' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'}`}>
-                  <div className="flex items-center gap-2 text-sm font-bold text-slate-800"><Sparkles className="h-4 w-4 text-blue-600" /> Kokoro TTS</div>
+                  <div className="flex items-center gap-2 text-sm font-bold text-slate-800"><AudioLines className="h-4 w-4 text-blue-600" /> Kokoro TTS</div>
                   <p className="mt-2 text-xs leading-5 text-slate-500">Admin nhập transcript, backend generate từng segment trong memory rồi ghép thành một WAV duy nhất.</p>
                 </button>
                 <button type="button" onClick={() => { setAudioSource('UPLOAD'); setPublishAfter(false); }} className={`rounded-xl border p-4 text-left transition ${audioSource === 'UPLOAD' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'}`}>
@@ -210,7 +209,7 @@ export default function CreateDictationPage() {
                     <p className="mt-1 text-xs text-slate-500">Dán cả đoạn văn. Xuống dòng để ép một speaker turn thành một segment.</p>
                   </div>
                   <button type="button" disabled={!sourceText.trim() || previewMutation.isPending} onClick={() => previewMutation.mutate()} className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-blue-200 px-3 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-50">
-                    {previewMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <WandSparkles className="h-3.5 w-3.5" />}
+                    {previewMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CirclePlay className="h-3.5 w-3.5" />}
                     Xem cách tách câu
                   </button>
                 </div>
@@ -267,7 +266,7 @@ export default function CreateDictationPage() {
               {error && <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</div>}
 
               <button type="submit" disabled={createMutation.isPending || !canSubmit} className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-bold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">
-                {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : audioSource === 'TTS' ? <Sparkles className="h-4 w-4" /> : <Upload className="h-4 w-4" />}
+                {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : audioSource === 'TTS' ? <AudioLines className="h-4 w-4" /> : <Upload className="h-4 w-4" />}
                 {createMutation.isPending ? (audioSource === 'TTS' ? 'Kokoro đang generate & ghép audio...' : 'Faster Whisper đang phân tích audio...') : (audioSource === 'TTS' ? 'Tạo bài & Generate Audio' : 'Tạo bài & Phân tích Audio')}
               </button>
               <div className="mt-3 flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-[11px] leading-5 text-amber-700">

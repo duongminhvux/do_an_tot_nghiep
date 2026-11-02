@@ -208,6 +208,16 @@
     "samples": "Responses",
     "errors": "Mistakes",
     "rate": "Error rate",
-    "practiceUnavailable": "This activity is currently unavailable for practice. You can still review the completed result."
+    "practiceUnavailable": "This activity is currently unavailable for practice. You can still review the completed result.",
+    "searchPlaceholder": "Search by content…",
+    "emptyFiltered": "No mistakes match these filters.",
+    "clearFilters": "Clear filters",
+    "hideExplain": "Hide explanation"
+  },
+  "nav_groups": {
+    "learn": "Learn",
+    "practice": "Practice & review",
+    "main": "Main navigation",
+    "account": "Account"
   }
 }

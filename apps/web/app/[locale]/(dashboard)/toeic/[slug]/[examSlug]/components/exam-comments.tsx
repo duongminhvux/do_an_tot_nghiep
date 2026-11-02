@@ -8,7 +8,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { isAxiosError } from "axios";
 import { Button } from "@/components/ui/button";
-import { surface } from "@/components/ui/page";
+import { ErrorState, surface } from "@/components/ui/page";
 import { cn } from "@/lib/utils";
 import {
   COMMENT_EMOJIS,
@@ -88,7 +88,7 @@ function CommentComposer({
         value={body}
         onChange={(event) => setBody(event.target.value)}
         placeholder={t("exam_detail.comments_placeholder")}
-        className="w-full resize-y rounded-lg border border-slate-200 p-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+        className="block w-full resize-y rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-800 outline-none transition-colors placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
       />
       <div className="flex flex-wrap items-center gap-2">
         <Button
@@ -101,7 +101,7 @@ function CommentComposer({
         >
           {t("community.addEmoji")}
         </Button>
-        <span className="mr-auto text-xs text-slate-400">
+        <span className="mr-auto text-xs text-slate-400 tabular-nums">
           {body.length}/2000
         </span>
         {onCancel && (
@@ -131,7 +131,7 @@ function CommentComposer({
         <div
           role="group"
           aria-label={t("community.emojiPicker")}
-          className="flex flex-wrap gap-1 rounded-lg border p-2"
+          className="flex flex-wrap gap-1 rounded-lg border border-slate-200 bg-white p-2"
         >
           {[...COMMENT_EMOJIS, "😊", "💪", "🔥", "🙏", "✅", "📚"].map(
             (emoji) => (
@@ -141,7 +141,7 @@ function CommentComposer({
                 disabled={send.isPending}
                 aria-label={t("community.insertEmoji", { emoji })}
                 onClick={() => insertEmoji(emoji)}
-                className="rounded p-2 text-xl hover:bg-slate-100 focus-visible:ring-2"
+                className="cursor-pointer rounded-md p-2 text-xl outline-none hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-500/60"
               >
                 {emoji}
               </button>
@@ -195,13 +195,29 @@ function CommentCard({
   });
   const name = item.username || t("community.learner");
   return (
-    <div className="space-y-3">
+    <div className="flex gap-3">
+      <span
+        aria-hidden
+        className={cn(
+          "flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
+          item.deleted
+            ? "bg-slate-100 text-slate-400"
+            : item.isMine
+              ? "bg-blue-600 text-white"
+              : "bg-slate-200 text-slate-700",
+        )}
+      >
+        {item.deleted ? "?" : name[0]?.toUpperCase()}
+      </span>
+    <div className="min-w-0 flex-1 space-y-2">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
         <span className="text-sm font-semibold text-slate-800">
           {item.deleted ? t("community.deleted") : name}
         </span>
         {item.isMine && (
-          <span className="text-blue-700">{t("community.you")}</span>
+          <span className="rounded bg-blue-50 px-1.5 py-0.5 font-medium text-blue-700">
+            {t("community.you")}
+          </span>
         )}
         <time className="text-slate-400" dateTime={item.createdAt}>
           {new Date(item.createdAt).toLocaleString(
@@ -227,7 +243,7 @@ function CommentCard({
           <div
             role="group"
             aria-label={t("community.reactions")}
-            className="flex flex-wrap items-center gap-2"
+            className="flex flex-wrap items-center gap-1.5"
           >
             {COMMENT_EMOJIS.map((emoji) => (
               <button
@@ -238,10 +254,10 @@ function CommentCard({
                 disabled={react.isPending}
                 onClick={() => react.mutate(emoji)}
                 className={cn(
-                  "rounded-full border px-2 py-1 text-xs transition hover:bg-blue-50 disabled:opacity-50",
+                  "cursor-pointer rounded-full border px-2 py-0.5 text-xs tabular-nums outline-none transition-colors hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-blue-500/60 disabled:opacity-50",
                   item.myReaction === emoji
-                    ? "border-blue-400 bg-blue-50 text-blue-700"
-                    : "border-slate-200",
+                    ? "border-blue-300 bg-blue-50 text-blue-700"
+                    : "border-slate-200 text-slate-600",
                 )}
               >
                 <span aria-hidden="true">{emoji}</span>{" "}
@@ -274,7 +290,7 @@ function CommentCard({
           )}
           {confirmDelete && (
             <div className="flex flex-wrap items-center gap-2 rounded-lg bg-slate-50 p-3">
-              <p className="mr-auto text-xs">{t("community.deleteConfirm")}</p>
+              <p className="mr-auto text-xs text-slate-600">{t("community.deleteConfirm")}</p>
               <Button
                 size="sm"
                 variant="outline"
@@ -285,6 +301,7 @@ function CommentCard({
               </Button>
               <Button
                 size="sm"
+                variant="destructive"
                 disabled={remove.isPending}
                 onClick={() => remove.mutate()}
               >
@@ -313,6 +330,7 @@ function CommentCard({
           )}
         </>
       )}
+    </div>
     </div>
   );
 }
@@ -348,6 +366,7 @@ function CommentThread({
           type="button"
           variant="ghost"
           size="sm"
+          className="ml-9 text-blue-600 hover:text-blue-700 sm:ml-11"
           aria-expanded={expanded}
           onClick={() => setExpanded((open) => !open)}
         >
@@ -357,28 +376,23 @@ function CommentThread({
         </Button>
       )}
       {expanded && (
-        <div className="ml-2 space-y-4 border-l-2 border-slate-100 pl-3 sm:ml-5 sm:pl-5">
+        <div className="ml-4 space-y-3 border-l-2 border-slate-100 pl-4 sm:ml-11">
           {replies.isPending && (
             <p role="status" className="text-xs text-slate-400">
               {t("community.loading")}
             </p>
           )}
           {replies.isError && (
-            <div role="alert">
-              <p className="text-xs">{t("community.loadError")}</p>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => void replies.refetch()}
-              >
-                {t("community.retry")}
-              </Button>
-            </div>
+            <ErrorState
+              message={t("community.loadError")}
+              onRetry={() => void replies.refetch()}
+              retryLabel={t("community.retry")}
+            />
           )}
           {replies.data?.pages
             .flatMap((page) => page.items)
             .map((reply) => (
-              <div key={reply.id} className="rounded-lg bg-slate-50 p-3">
+              <div key={reply.id} className="rounded-lg bg-slate-50/80 p-3">
                 <CommentCard item={reply} examId={examId} />
               </div>
             ))}
@@ -416,7 +430,7 @@ export function ExamComments({
   });
   return (
     <section className={cn(surface, "space-y-4 p-5 sm:p-6")}>
-      <h2 className="font-semibold text-slate-900">
+      <h2 className="text-base font-semibold text-slate-900">
         {t("exam_detail.comments_title")}{" "}
         {query.data && (
           <span className="text-sm font-normal text-slate-500">
@@ -425,7 +439,7 @@ export function ExamComments({
         )}
       </h2>
       {!viewerId ? (
-        <p className="text-sm">{t("community.login")}</p>
+        <p className="text-sm text-slate-500">{t("community.login")}</p>
       ) : (
         <>
           <CommentComposer examId={examId} />
@@ -437,15 +451,14 @@ export function ExamComments({
             />
           )}
           {query.isError && (
-            <div role="alert">
-              <p>{t("community.loadError")}</p>
-              <Button variant="outline" onClick={() => void query.refetch()}>
-                {t("community.retry")}
-              </Button>
-            </div>
+            <ErrorState
+              message={t("community.loadError")}
+              onRetry={() => void query.refetch()}
+              retryLabel={t("community.retry")}
+            />
           )}
           {query.data?.pages[0]?.total === 0 && (
-            <p className="py-4 text-sm text-slate-500">
+            <p className="rounded-lg border border-dashed border-slate-200 py-8 text-center text-sm text-slate-500">
               {t("community.commentsEmpty")}
             </p>
           )}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Download, Loader2, Sparkles } from "lucide-react";
+import { Download, Loader2, ScanText } from "lucide-react";
 import type { ExamItem } from "@/types";
 import { pdfAiService, type PdfAiJob } from "@/services/pdf-ai.service";
 import { ImportQuestionsWizard } from "./import-questions-wizard";
@@ -137,7 +137,7 @@ export function PdfAiImport({
     <section className="space-y-5">
       <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-5 space-y-4">
         <h2 className="flex items-center gap-2 font-semibold">
-          <Sparkles className="size-5 text-blue-600" />
+          <ScanText className="size-5 text-blue-600" />
           {tr(
             "Nhập đề TOEIC từ PDF bằng AI local",
             "Import TOEIC PDF with local AI",

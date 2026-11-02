@@ -3,7 +3,7 @@ import {PublicationBar} from '@/components/publication/publication-controls';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, ChevronUp, Loader2, Plus, Trash2, Upload, Volume2, WandSparkles } from 'lucide-react';
+import { ChevronDown, ChevronUp, Loader2, Plus, Trash2, Upload, Volume2, AudioLines } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { wordService } from '@/services/vocabulary.service';
@@ -188,7 +188,7 @@ export function EditWordDialog({ wordId, open, onOpenChange }: Props) {
         {status === 'FAILED' && meta?.error && <p className="text-xs text-rose-600 line-clamp-2">{meta.error}</p>}
         <div className="flex flex-wrap gap-2">
           <button type="button" disabled={!!audioBusy} onClick={() => generate(accent)} className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60">
-            {audioBusy === accent ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <WandSparkles className="h-3.5 w-3.5" />} {url ? 'Regenerate' : 'Generate'}
+            {audioBusy === accent ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <AudioLines className="h-3.5 w-3.5" />} {url ? 'Regenerate' : 'Generate'}
           </button>
           <button type="button" disabled={!!audioBusy} onClick={() => (accent === 'us' ? usInput.current : ukInput.current)?.click()} className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 disabled:opacity-60"><Upload className="h-3.5 w-3.5" /> Upload</button>
           <input ref={accent === 'us' ? usInput : ukInput} type="file" accept="audio/*" className="hidden" onChange={(e) => { void upload(accent, e.target.files?.[0]); e.currentTarget.value = ''; }} />

@@ -76,7 +76,7 @@ export function StudyHeader({
   return (
     // Sticks just below the dashboard shell's own sticky top bar (h-14, z-30).
     <header className="sticky top-14 z-20 border-b border-slate-200 bg-white/95 backdrop-blur-md">
-      <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-3 px-4 py-2.5 sm:px-6 lg:px-8">
+      <div className="flex items-center justify-between gap-3 px-4 py-2.5 sm:px-6 lg:px-8">
         {/* Left: Back & Title */}
         <div className="flex min-w-0 items-center gap-3">
           <Button asChild variant="outline" size="icon" className="shrink-0" title={t('back')}>

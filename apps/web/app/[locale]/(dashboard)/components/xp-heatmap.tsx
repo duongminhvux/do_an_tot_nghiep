@@ -84,50 +84,52 @@ export function XpHeatmap({
         count: home.heatmap.length,
       })}
     >
-      <div className="min-w-0 p-1">
-        <div className="grid w-full max-w-80 grid-cols-[auto_repeat(13,minmax(0,1fr))] gap-1 sm:gap-1.5">
-          <div className="grid grid-rows-7 gap-1.5 pr-1 text-[11px] text-slate-400">
-            {weekdayLabels.map((d) => (
-              <span key={d} className="flex h-4 items-center">
-                {t(`activity_map.days.${d}`)}
-              </span>
-            ))}
-          </div>
-          {weeks.map((week, w) => (
-            <div key={w} className="grid min-w-0 grid-rows-7 gap-1.5">
-              {week.map(({ date, future, day }) => (
-                <button
-                  key={date}
-                  type="button"
-                  disabled={future}
-                  aria-label={`${dateLabel(date)}: ${day?.xp ?? 0} XP`}
-                  onMouseEnter={() => setHovered(date)}
-                  onFocus={() => setHovered(date)}
-                  onMouseLeave={() => setHovered(null)}
-                  className={`h-4 w-full max-w-4 rounded-[3px] transition ${
-                    future
-                      ? "bg-transparent"
-                      : `${LEVELS[level(day?.xp ?? 0, home.today.goalXp)]} hover:ring-2 hover:ring-slate-400`
-                  } ${date === home.today.date ? "ring-2 ring-blue-500 ring-offset-1" : ""}`}
-                />
-              ))}
-            </div>
+      {/* One grid, filled column by column: the weekday labels form the first
+          column, then one column per week, so rows always line up. */}
+      <div className="min-w-0 max-w-[30rem]">
+        <div className="grid grid-flow-col grid-cols-[auto_repeat(13,minmax(0,1fr))] grid-rows-7 gap-1 sm:gap-[5px]">
+          {weekdayLabels.map((d, i) => (
+            <span
+              key={d}
+              className={`flex items-center pr-1.5 text-[11px] leading-none text-slate-400 ${i % 2 ? "invisible sm:visible" : ""}`}
+            >
+              {t(`activity_map.days.${d}`)}
+            </span>
+          ))}
+          {weeks.flat().map(({ date, future, day }) => (
+            <button
+              key={date}
+              type="button"
+              disabled={future}
+              aria-label={`${dateLabel(date)}: ${day?.xp ?? 0} XP`}
+              onMouseEnter={() => setHovered(date)}
+              onFocus={() => setHovered(date)}
+              onMouseLeave={() => setHovered(null)}
+              className={`aspect-square w-full rounded-[4px] outline-none transition-shadow duration-150 focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                future
+                  ? "bg-transparent"
+                  : `${LEVELS[level(day?.xp ?? 0, home.today.goalXp)]} cursor-pointer hover:ring-2 hover:ring-slate-300`
+              } ${date === home.today.date ? "ring-2 ring-blue-500 ring-offset-1" : ""}`}
+            />
           ))}
         </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500">
-        <span className="flex items-center gap-1">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+        <span className="flex items-center gap-1.5">
           {t("activity_map.less")}
           {LEVELS.map((c) => (
-            <span key={c} className={`h-3 w-3 rounded-[3px] ${c}`} />
+            <span key={c} aria-hidden className={`h-3 w-3 rounded-[3px] ${c}`} />
           ))}
           {t("activity_map.more")}
         </span>
         <span>{t("activity_map.goal_hint", { goal: home.today.goalXp })}</span>
       </div>
 
-      <div className="mt-3 min-h-[52px] rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+      <div
+        aria-live="polite"
+        className="mt-3 min-h-[52px] rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-slate-600"
+      >
         {hovered ? (
           <>
             <p className="font-semibold text-slate-800">

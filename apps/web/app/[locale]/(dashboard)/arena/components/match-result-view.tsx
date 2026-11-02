@@ -11,7 +11,6 @@ import {
   Layers,
   RotateCcw,
   Shield,
-  Sparkles,
   Swords,
   Target,
   Trophy,
@@ -157,7 +156,6 @@ export function MatchResultView({
               {won ? (
                 <>
                   <Trophy className="size-10" />
-                  <Sparkles className="absolute -right-2 -top-2 size-5 text-amber-500" />
                   <Crown className="absolute -left-2 -top-3 size-5 -rotate-12 text-amber-500" />
                 </>
               ) : isDraw ? (

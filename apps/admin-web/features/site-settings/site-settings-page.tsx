@@ -15,6 +15,7 @@ import {
   X,
   Trash2,
   AppWindow,
+  Check,
 } from "lucide-react";
 import type { SiteSettings } from "@repo/shared-types/site-settings";
 import { siteSettingsService } from "@/services/site-settings.service";
@@ -354,31 +355,37 @@ function BrandingImageCard({
   };
 
   return (
-    <div className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-4.5 shadow-xs transition-colors hover:border-slate-300">
-      <div>
-        {/* Header */}
-        <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
-          <div className="flex items-center gap-2.5">
+    <div className="flex h-full flex-col rounded-xl border border-slate-200 bg-white p-4.5 shadow-xs transition-colors hover:border-slate-300">
+      <div className="flex flex-1 flex-col">
+        {/* Header: never wraps, so every preview starts at the same height. */}
+        <div className="mb-3 flex items-start justify-between gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2.5">
             <div
               className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border shadow-2xs ${meta.iconColor}`}
             >
               <Icon className="size-4" />
             </div>
-            <div>
-              <h3 className="text-sm font-semibold text-slate-800">
+            <div className="min-w-0">
+              <h3 className="truncate text-sm font-semibold text-slate-800">
                 {t(imageKey)}
               </h3>
-              <p className="text-[11px] text-slate-500">{t(`${imageKey}Hint`)}</p>
+              <p
+                className="line-clamp-2 min-h-[2lh] text-[11px] leading-snug text-slate-500"
+                title={t(`${imageKey}Hint`)}
+              >
+                {t(`${imageKey}Hint`)}
+              </p>
             </div>
           </div>
           <span
-            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border shrink-0 ${
+            className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-medium ${
               hasImage
                 ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                 : "bg-slate-100 text-slate-500 border-slate-200"
             }`}
           >
-            {hasImage ? "✓ Đang sử dụng" : "Mặc định"}
+            {hasImage && <Check className="size-3" aria-hidden />}
+            {hasImage ? "Đang sử dụng" : "Mặc định"}
           </span>
         </div>
 
@@ -444,8 +451,9 @@ function BrandingImageCard({
         </div>
 
         {/* Quick action buttons if image exists */}
+        <div className="mt-2.5 flex min-h-8 items-center justify-between gap-2">
         {hasImage && !isUploading && (
-          <div className="mt-2.5 flex items-center justify-between gap-2">
+          <>
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
@@ -462,8 +470,9 @@ function BrandingImageCard({
               <Trash2 className="size-3.5" />
               {t("remove")}
             </button>
-          </div>
+          </>
         )}
+        </div>
 
         {previewError && hasImage && (
           <p role="alert" className="mt-2 text-xs font-medium text-red-600">
@@ -472,7 +481,7 @@ function BrandingImageCard({
         )}
 
         {/* Direct URL Input */}
-        <div className="mt-3.5 space-y-1.5">
+        <div className="mt-auto space-y-1.5 pt-3.5">
           <label
             htmlFor={`input-${imageKey}`}
             className="block text-xs font-semibold text-slate-600"

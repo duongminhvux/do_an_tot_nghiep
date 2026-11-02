@@ -10,7 +10,6 @@ import {
   Layers,
   Link2,
   Loader2,
-  Sparkles,
   Swords,
   UserRound,
   X,
@@ -178,7 +177,7 @@ export function FriendlyInvitations() {
                 {invite.username}
               </h2>
               <p className="mt-0.5 text-xs text-blue-100/90 flex items-center gap-1">
-                <Sparkles className="size-3.5 text-amber-300" />
+                <Swords className="size-3.5 text-amber-300" aria-hidden />
                 {vi
                   ? "gửi lời mời khiêu chiến đến bạn"
                   : "challenged you to a battle"}

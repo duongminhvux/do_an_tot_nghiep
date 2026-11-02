@@ -37,7 +37,7 @@ export default function InfrastructurePage() {
     finally {setBusy(false);}
   }
   return (
-    <main className="mx-auto max-w-5xl space-y-6 p-5">
+    <main className="w-full space-y-6 p-5">
       <header>
         <h1 className="text-2xl font-semibold">Worker & Queue Management</h1>
         <p className="mt-1 text-sm text-slate-600">Monitor the audio queue and configure the optional secondary worker.</p>

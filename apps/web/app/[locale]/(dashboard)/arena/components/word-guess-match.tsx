@@ -2,7 +2,7 @@
 import { GameAudioToggle } from "@/features/minigames/shared/game-audio-toggle";
 
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, Delete, Send, Sparkles, Trophy } from "lucide-react";
+import { ArrowLeft, Delete, Send, Trophy, Puzzle } from "lucide-react";
 import { arenaSocket } from "@/lib/arena-socket";
 import { friendlyRequest, type FriendSnapshot } from "@/lib/friendly-arena";
 import { FriendlyAvatar } from "./friendly-avatar";
@@ -174,7 +174,7 @@ export function WordGuessMatch({
             {text("Đấu trường", "Arena")}
           </Button>
           <Badge tone="blue" className="px-3 py-1 text-sm">
-            <Sparkles className="size-4" />
+            <Puzzle className="size-4" />
             {text("Đoán từ", "Word guess")}
           </Badge>
         </header>

@@ -31,11 +31,14 @@ try {
   const duplicates=await Promise.allSettled(['A','B'].map(answer=>service.saveAnswer(userId,duplicateId,{questionId:questionIds[0],answer})));
   assert.equal(duplicates.filter(result=>result.status==='fulfilled').length,2,'TEST answers remain editable before submission');
   assert.ok(['A','B'].includes((await service.findOne(userId,duplicateId)).answers[questionIds[0]]));
+  await assert.rejects(service.create(userId,{examId,mode:'PRACTICE',selectedParts:[5]}),(error)=>error.status===409,'A second unfinished attempt of the same exam must be refused');
+  await service.abandon(userId,duplicateId);
   const practiceId=await fresh('PRACTICE');
   await service.saveAnswer(userId,practiceId,{questionId:questionIds[0],answer:'A'});
   await service.checkAnswer(userId,practiceId,questionIds[0]);
   const locked=await Promise.allSettled(['B','C'].map(answer=>service.saveAnswer(userId,practiceId,{questionId:questionIds[0],answer})));
   assert.ok(locked.every(result=>result.status==='rejected'&&/already been answered/.test(result.reason.message)),'Revealed PRACTICE answers must stay locked');
+  await service.abandon(userId,practiceId);
   const raceId=await fresh();
   await Promise.allSettled([service.saveAnswer(userId,raceId,{questionId:questionIds[0],answer:'A'}),service.submit(userId,raceId)]);
   const final=await service.findOne(userId,raceId);

@@ -28,7 +28,6 @@ import {
   Trash2,
   Eye,
   Loader2,
-  Sparkles,
   Activity,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';

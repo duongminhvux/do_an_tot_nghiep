@@ -96,8 +96,8 @@ function MediaCard({
     );
   } catch {}
   return (
-    <article className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
-      <div className="flex min-h-40 items-center justify-center border-b border-slate-100 bg-slate-50 p-3">
+    <article className="flex h-full min-w-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
+      <div className="flex h-44 shrink-0 items-center justify-center border-b border-slate-100 bg-slate-50 p-3">
         {failed ? (
           <p role="status" className="p-4 text-center text-sm text-red-600">
             {english
@@ -117,7 +117,7 @@ function MediaCard({
               alt={asset.usages[0]?.[english ? "labelEn" : "label"] || name}
               loading="lazy"
               referrerPolicy="no-referrer"
-              className="mx-auto h-40 max-w-full object-contain"
+              className="mx-auto h-38 max-w-full object-contain"
               onError={() => setFailed(true)}
             />
           </a>
@@ -137,7 +137,7 @@ function MediaCard({
           </div>
         )}
       </div>
-      <div className="space-y-3 p-4">
+      <div className="flex flex-1 flex-col gap-3 p-4">
         <div className="flex min-w-0 items-start gap-2">
           {asset.type === "image" ? (
             <FileImage className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
@@ -146,17 +146,20 @@ function MediaCard({
           )}
           <p
             title={name}
-            className="break-all text-sm font-semibold text-slate-800"
+            className="line-clamp-2 min-h-[2lh] break-all text-sm font-semibold leading-snug text-slate-800"
           >
             {name}
           </p>
         </div>
-        <details
-          className="text-xs text-slate-500"
-          open={asset.usages.length <= 2}
-        >
-          <summary className="cursor-pointer font-medium">
+        <details className="text-xs text-slate-500">
+          <summary className="cursor-pointer truncate font-medium">
             {english ? "Used in" : "Vị trí sử dụng"} ({asset.usages.length})
+            {asset.usages[0] && (
+              <span className="font-normal text-slate-400">
+                {" · "}
+                {english ? asset.usages[0].labelEn : asset.usages[0].label}
+              </span>
+            )}
           </summary>
           <ul className="mt-2 max-h-36 space-y-1 overflow-y-auto pl-3">
             {asset.usages.map((usage) => (
@@ -169,7 +172,7 @@ function MediaCard({
             ))}
           </ul>
         </details>
-        <div className="flex flex-wrap gap-2">
+        <div className="mt-auto flex flex-wrap gap-2">
           <a
             href={asset.url}
             target="_blank"
@@ -295,7 +298,7 @@ export default function MediaLibraryPage() {
   const loading = id ? detail.isLoading : list.isLoading;
   const failed = id ? detail.isError : list.isError;
   return (
-    <main className="mx-auto w-full max-w-7xl space-y-5 p-4 sm:p-6">
+    <main className="w-full space-y-5 p-4 sm:p-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">

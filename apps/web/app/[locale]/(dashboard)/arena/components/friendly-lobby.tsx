@@ -18,11 +18,11 @@ import {
   Settings,
   Share2,
   ShieldCheck,
-  Sparkles,
   Swords,
   UserPlus,
   Users,
   Zap,
+  Puzzle,
 } from "lucide-react";
 import { useAppSelector } from "@/redux/hooks";
 import {
@@ -378,7 +378,7 @@ export function FriendlyLobby({
         return {
           title: text("Đoán từ bí mật", "Word Guess"),
           sub: text("5 ký tự / 5 lượt", "5 letters / 5 tries"),
-          icon: Sparkles,
+          icon: Puzzle,
           color:
             "from-amber-500 to-orange-500 text-amber-500 border-amber-500/20 bg-amber-50/70",
         };
@@ -1250,7 +1250,7 @@ export function FriendlyLobby({
                                 "Đoán từ 5 ký tự",
                                 "5-letter secret word",
                               ),
-                              icon: Sparkles,
+                              icon: Puzzle,
                             },
                             {
                               id: "WORD_CHAIN" as FriendMode,

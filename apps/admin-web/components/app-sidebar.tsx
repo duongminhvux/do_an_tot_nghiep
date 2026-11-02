@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { SiteLogo } from "@/components/site-logo";
 import { useSiteSettings } from "@/providers/site-settings-provider";
 
@@ -55,6 +55,7 @@ import LanguageSwitcher from "@/components/language-switcher";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { logout } from "@/redux/features/auth/authSlice";
 import { authService } from "@/services";
+import { cn } from "@/lib/utils";
 type NavLink = {
   label: string;
   href: string;
@@ -95,6 +96,8 @@ export function AppSidebar() {
   const arenaBase = `/${locale}/arena`;
   const arenaIcons = [BarChart3, Trophy, Users, DoorOpen, Settings];
   const items: NavItem[] = [
+    // Daily work first (people, then content in the learner sidebar order),
+    // then analytics, then system tools.
     {
       label: t("nav.dashboard"),
       href: `/${locale}`,
@@ -102,86 +105,31 @@ export function AppSidebar() {
       active: pathname === `/${locale}`,
     },
     {
-      label: t('recommendations.learningManagement'),
-      icon: BookOpen,
-      active: active(`/${locale}/learning`),
-      children: [{
-        label: t('mistakes.adminTitle'),
-        href: `/${locale}/learning/mistakes`,
-        icon: ClipboardCheck,
-        active: active(`/${locale}/learning/mistakes`),
-      }, {
-        label: t('recommendations.title'),
-        href: `/${locale}/learning/recommendations`,
-        icon: Settings,
-        active: active(`/${locale}/learning/recommendations`),
-      }],
-    },
-    {
-      label: t('contentQuality.content'),
-      icon: ClipboardCheck,
-      active: active(`/${locale}/content`),
-      children: [{ label: t('contentQuality.title'), href: `/${locale}/content/quality`, icon: ClipboardCheck, active: active(`/${locale}/content/quality`) }],
-    },
-    {
-      label: t("nav.games"),
-      href: `/${locale}/games`,
-      icon: Gamepad2,
-      active: active(`/${locale}/games`),
-      children: [
-        {
-          label: t("nav.gameManagement"),
-          href: `/${locale}/games`,
-          icon: Gamepad2,
-          active: pathname === `/${locale}/games`,
-        },
-        {
-          label: t("nav.gameScores"),
-          href: `/${locale}/games/scores`,
-          icon: Trophy,
-          active: active(`/${locale}/games/scores`),
-        },
-        {
-          label: t("nav.gameStatistics"),
-          href: `/${locale}/games/statistics`,
-          icon: BarChart3,
-          active: active(`/${locale}/games/statistics`),
-        },
-      ],
-    },
-    {
-      label: t("nav.arena"),
-      icon: Swords,
-      active: active(arenaBase),
-      children: ["dashboard", "matches", "players", "rooms", "settings"].map(
-        (key, index) => {
-          const href = arenaBase + (key === "dashboard" ? "" : "/" + key);
-          return {
-            label: t("arena:" + key),
-            href,
-            icon: arenaIcons[index]!,
-            active: key === "dashboard" ? pathname === href : active(href),
-          };
-        },
-      ),
-    },
-    {
-      label: "Workers & Queue",
-      href: `/${locale}/infrastructure`,
-      icon: Settings,
-      active: active(`/${locale}/infrastructure`),
-    },
-    {
-      label: locale === 'en' ? 'Media library' : 'Quản lý media',
-      href: `/${locale}/media`,
-      icon: Images,
-      active: active(`/${locale}/media`),
-    },
-    {
       label: t("nav.users"),
       href: `/${locale}/users`,
       icon: Users,
       active: active(`/${locale}/users`),
+    },
+    {
+      label: t("nav.assessment"),
+      icon: ClipboardCheck,
+      active: active(`/${locale}/assessment`),
+      children: [
+        {
+          label: t("nav.exam_groups"),
+          href: `/${locale}/assessment/groups`,
+          icon: Layers,
+          active: active(`/${locale}/assessment/groups`),
+        },
+        {
+          label: t("nav.exams"),
+          href: `/${locale}/assessment`,
+          icon: FileText,
+          active:
+            active(`/${locale}/assessment`) &&
+            !active(`/${locale}/assessment/groups`),
+        },
+      ],
     },
     {
       label: t("nav.vocabulary"),
@@ -230,25 +178,80 @@ export function AppSidebar() {
       ],
     },
     {
-      label: t("nav.assessment"),
-      icon: ClipboardCheck,
-      active: active(`/${locale}/assessment`),
+      label: t("nav.games"),
+      href: `/${locale}/games`,
+      icon: Gamepad2,
+      active: active(`/${locale}/games`),
       children: [
         {
-          label: t("nav.exam_groups"),
-          href: `/${locale}/assessment/groups`,
-          icon: Layers,
-          active: active(`/${locale}/assessment/groups`),
+          label: t("nav.gameManagement"),
+          href: `/${locale}/games`,
+          icon: Gamepad2,
+          active: pathname === `/${locale}/games`,
         },
         {
-          label: t("nav.exams"),
-          href: `/${locale}/assessment`,
-          icon: FileText,
-          active:
-            active(`/${locale}/assessment`) &&
-            !active(`/${locale}/assessment/groups`),
+          label: t("nav.gameScores"),
+          href: `/${locale}/games/scores`,
+          icon: Trophy,
+          active: active(`/${locale}/games/scores`),
+        },
+        {
+          label: t("nav.gameStatistics"),
+          href: `/${locale}/games/statistics`,
+          icon: BarChart3,
+          active: active(`/${locale}/games/statistics`),
         },
       ],
+    },
+    {
+      label: t("nav.arena"),
+      icon: Swords,
+      active: active(arenaBase),
+      children: ["dashboard", "matches", "players", "rooms", "settings"].map(
+        (key, index) => {
+          const href = arenaBase + (key === "dashboard" ? "" : "/" + key);
+          return {
+            label: t("arena:" + key),
+            href,
+            icon: arenaIcons[index]!,
+            active: key === "dashboard" ? pathname === href : active(href),
+          };
+        },
+      ),
+    },
+    {
+      label: t('recommendations.learningManagement'),
+      icon: BookOpen,
+      active: active(`/${locale}/learning`),
+      children: [{
+        label: t('mistakes.adminTitle'),
+        href: `/${locale}/learning/mistakes`,
+        icon: ClipboardCheck,
+        active: active(`/${locale}/learning/mistakes`),
+      }, {
+        label: t('recommendations.title'),
+        href: `/${locale}/learning/recommendations`,
+        icon: Settings,
+        active: active(`/${locale}/learning/recommendations`),
+      }],
+    },
+    {
+      label: t('contentQuality.content'),
+      icon: ClipboardCheck,
+      active: active(`/${locale}/content`),
+      children: [{ label: t('contentQuality.title'), href: `/${locale}/content/quality`, icon: ClipboardCheck, active: active(`/${locale}/content/quality`) }],
+    },
+    {
+      label: locale === 'en' ? 'Media library' : 'Quản lý media',
+      href: `/${locale}/media`,
+      icon: Images,
+      active: active(`/${locale}/media`),
+    },
+    {
+      label: "Workers & Queue",
+      href: `/${locale}/infrastructure`,
+      icon: Settings,
+      active: active(`/${locale}/infrastructure`),
     },
     {
       label: t("nav.systemSettings"),
@@ -260,26 +263,50 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="border-r border-slate-200 bg-white">
-      {/* Brand Header - perfectly aligned with menu items */}
-      <SidebarHeader className="border-b border-slate-100 px-2 h-14 flex items-center justify-between">
-        <div className="flex items-center gap-2.5 min-w-0 w-full">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg  text-white shadow-sm shadow-blue-500/20">
-            <SiteLogo compact fallback={<Shield className="h-4.5 w-4.5" />} />
-          </div>
-          <div className="flex flex-col overflow-hidden group-data-[collapsible=icon]:hidden">
-            <div className="flex items-center gap-1.5">
-              <span className="font-bold text-sm tracking-tight text-slate-900 truncate">
-                <SiteLogo fallback={siteSettings.siteName} />
+      {/* Brand: the uploaded wordmark already contains the icon, so it is shown
+          alone when expanded and the square icon alone when collapsed. The
+          icon square sits on the same 8px inset as the menu buttons. */}
+      <SidebarHeader className="h-14 shrink-0 justify-center border-b border-slate-100 px-2">
+        <Link
+          href={`/${locale}`}
+          aria-label={siteSettings.siteName}
+          className="flex min-w-0 items-center gap-2 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
+        >
+          {siteSettings.logoUrl ? (
+            <>
+              <span className="hidden size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg group-data-[collapsible=icon]:flex">
+                <SiteLogo compact fallback={<Shield className="size-4" />} />
               </span>
-              <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 shrink-0">
-                {t("admin")}
+              <span className="flex min-w-0 group-data-[collapsible=icon]:hidden">
+                <SiteLogo
+                  fallback={
+                    <span className="truncate text-sm font-bold tracking-tight text-slate-900">
+                      {siteSettings.siteName}
+                    </span>
+                  }
+                  className="h-10 w-auto max-w-40 object-contain object-left"
+                />
               </span>
-            </div>
-            <span className="text-[11px] text-slate-500 truncate">
-              {t("management_portal")}
-            </span>
-          </div>
-        </div>
+            </>
+          ) : (
+            <>
+              <span
+                className={cn(
+                  "flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg",
+                  !siteSettings.iconUrl && "bg-blue-600 text-white",
+                )}
+              >
+                <SiteLogo compact fallback={<Shield className="size-4" />} />
+              </span>
+              <span className="min-w-0 truncate text-sm font-bold tracking-tight text-slate-900 group-data-[collapsible=icon]:hidden">
+                {siteSettings.siteName}
+              </span>
+            </>
+          )}
+          <span className="ml-auto shrink-0 rounded-full border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-700 group-data-[collapsible=icon]:hidden">
+            {t("admin")}
+          </span>
+        </Link>
       </SidebarHeader>
 
       {/* Navigation Content */}

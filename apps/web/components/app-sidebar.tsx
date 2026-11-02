@@ -11,13 +11,9 @@ import {
   LayoutDashboard,
   Headphones,
   LogOut,
-  Globe,
   Search,
   Bookmark,
   ChevronDown,
-  ChevronUp,
-  ChevronRight,
-  Dumbbell,
   TrendingUp,
   GraduationCap,
   FileText,
@@ -25,6 +21,8 @@ import {
   BarChart3,
   Swords,
   Gamepad2,
+  NotebookPen,
+  type LucideIcon,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -38,8 +36,10 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarRail,
-  SidebarSeparator,
 } from '@/components/ui/sidebar';
 import LanguageSwitcher from '@/components/language-switcher';
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
@@ -47,22 +47,133 @@ import { logout } from '@/redux/features/auth/authSlice';
 import { authService } from '@/services';
 import { cn } from '@/lib/utils';
 
+/** A leaf link; `active` is computed from the pathname by the caller. */
+interface NavLink {
+  label: string;
+  href: string;
+  icon: LucideIcon;
+  active: boolean;
+}
+
+/** A collapsible section whose children are leaf links. */
+interface NavSection {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  items: NavLink[];
+}
+
+// One visual language for every row: neutral by default, a blue tint when
+// active. Collapsed (icon) mode keeps a 32px square target with a tooltip.
+const rowClass =
+  'h-9 gap-2.5 rounded-lg px-2.5 text-sm font-medium text-slate-600 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-blue-500/60 [&>svg]:size-[18px] [&>svg]:text-slate-400 hover:[&>svg]:text-slate-600 data-[active=true]:bg-blue-50 data-[active=true]:font-semibold data-[active=true]:text-blue-700 data-[active=true]:[&>svg]:text-blue-600';
+
+function NavLinkRow({ item }: { item: NavLink }) {
+  const Icon = item.icon;
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton asChild isActive={item.active} tooltip={item.label} className={rowClass}>
+        <Link href={item.href} aria-current={item.active ? 'page' : undefined}>
+          <Icon aria-hidden />
+          <span>{item.label}</span>
+        </Link>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
+}
+
+function NavSectionRow({
+  section,
+  open,
+  onToggle,
+}: {
+  section: NavSection;
+  open: boolean;
+  onToggle: (open: boolean) => void;
+}) {
+  const { state, setOpen, isMobile } = useSidebar();
+  const Icon = section.icon;
+  const sectionActive = section.items.some((item) => item.active);
+  const collapsed = state === 'collapsed' && !isMobile;
+  const submenuId = `sidebar-section-${section.id}`;
+
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        type="button"
+        tooltip={section.label}
+        aria-expanded={collapsed ? false : open}
+        aria-controls={submenuId}
+        // In icon mode the submenu is hidden, so a click expands the sidebar
+        // and reveals this section instead of toggling something invisible.
+        isActive={collapsed && sectionActive}
+        onClick={() => {
+          if (collapsed) {
+            setOpen(true);
+            onToggle(true);
+          } else onToggle(!open);
+        }}
+        className={cn(
+          rowClass,
+          'cursor-pointer',
+          sectionActive && 'text-slate-900 [&>svg]:text-blue-600',
+        )}
+      >
+        <Icon aria-hidden />
+        <span className="flex-1 truncate">{section.label}</span>
+        <ChevronDown
+          aria-hidden
+          className={cn(
+            '!size-4 shrink-0 text-slate-400 transition-transform duration-200 group-data-[collapsible=icon]:hidden motion-reduce:transition-none',
+            open && 'rotate-180',
+          )}
+        />
+      </SidebarMenuButton>
+
+      {open && (
+        <SidebarMenuSub
+          id={submenuId}
+          className="ml-[19px] mr-0 mt-1 mb-1.5 gap-0.5 border-slate-200 pl-2.5 pr-0"
+        >
+          {section.items.map((item) => {
+            const ItemIcon = item.icon;
+            return (
+              <SidebarMenuSubItem key={item.href}>
+                <SidebarMenuSubButton
+                  asChild
+                  isActive={item.active}
+                  className={cn(
+                    'relative h-8 gap-2 rounded-md px-2 text-[13px] font-medium text-slate-500 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-blue-500/60 [&>svg]:size-4 [&>svg]:text-slate-400',
+                    'data-[active=true]:bg-blue-50 data-[active=true]:font-semibold data-[active=true]:text-blue-700 data-[active=true]:[&>svg]:text-blue-600',
+                    // Marker on the guide line for the current page.
+                    'data-[active=true]:before:absolute data-[active=true]:before:-left-[11px] data-[active=true]:before:inset-y-1.5 data-[active=true]:before:w-0.5 data-[active=true]:before:rounded-full data-[active=true]:before:bg-blue-600',
+                  )}
+                >
+                  <Link href={item.href} aria-current={item.active ? 'page' : undefined}>
+                    <ItemIcon aria-hidden />
+                    <span>{item.label}</span>
+                  </Link>
+                </SidebarMenuSubButton>
+              </SidebarMenuSubItem>
+            );
+          })}
+        </SidebarMenuSub>
+      )}
+    </SidebarMenuItem>
+  );
+}
+
 export function AppSidebar() {
   const siteSettings = useSiteSettings();
   const router = useRouter();
   const pathname = usePathname();
-  const { setOpenMobile, state, setOpen, isMobile } = useSidebar();
+  const { setOpenMobile } = useSidebar();
   React.useEffect(() => { setOpenMobile(false); }, [pathname, setOpenMobile]);
   const params = useParams();
   const locale = (params?.locale as string) || 'vi';
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
   const { t } = useTranslation('common');
-
-  const [vocabMenuOpen, setVocabMenuOpen] = useState(true);
-  const [toeicMenuOpen, setToeicMenuOpen] = useState(true);
-  const [gamesMenuOpen, setGamesMenuOpen] = useState(true);
-  const [dictationMenuOpen, setDictationMenuOpen] = useState(true);
 
   const handleLogout = async () => {
     try {
@@ -78,18 +189,13 @@ export function AppSidebar() {
   const isHomeActive = pathname === `/${locale}`;
   const isVocabExploreActive =
     pathname === `/${locale}/vocabulary` || pathname === `/${locale}/vocabulary/`;
-  const isVocabMyWordsActive = pathname === `/${locale}/vocabulary/my-words`;
-  const isVocabSectionActive = isVocabExploreActive || isVocabMyWordsActive || pathname?.startsWith(`/${locale}/vocabulary`);
+  const isVocabMyWordsActive = !!pathname?.startsWith(`/${locale}/vocabulary/my-words`);
   const isPracticeActive =
     pathname === `/${locale}/dictation` ||
     (pathname?.startsWith(`/${locale}/dictation/`) && !pathname?.startsWith(`/${locale}/dictation/progress`));
   const isProgressActive = pathname?.startsWith(`/${locale}/dictation/progress`);
-  React.useEffect(() => {
-    if (pathname?.startsWith(`/${locale}/dictation`)) setDictationMenuOpen(true);
-  }, [pathname, locale]);
   const isArenaActive = pathname === `/${locale}/arena` || pathname?.startsWith(`/${locale}/arena/`);
   const isGamesListActive = pathname === `/${locale}/games` || pathname?.startsWith(`/${locale}/games/`);
-  const isGamesSectionActive = isArenaActive || isGamesListActive;
 
   const isToeicExamsActive =
     pathname === `/${locale}/toeic` ||
@@ -101,397 +207,198 @@ export function AppSidebar() {
   const isToeicStatsActive =
     pathname?.startsWith(`/${locale}/toeic/stats`) ||
     pathname?.startsWith(`/${locale}/toeic/analytics`);
-  const isToeicSectionActive =
-    pathname?.startsWith(`/${locale}/toeic`) ||
-    isToeicExamsActive ||
-    isToeicHistoryActive ||
-    isToeicStatsActive;
+
+  const isMistakesActive = pathname?.startsWith(`/${locale}/learning/mistakes`);
+
+  const home: NavLink = {
+    label: t('nav.home', 'Trang chủ'),
+    href: `/${locale}`,
+    icon: LayoutDashboard,
+    active: isHomeActive,
+  };
+  const learnSections: NavSection[] = [
+    {
+      id: 'toeic',
+      label: t('nav.toeic', 'TOEIC'),
+      icon: GraduationCap,
+      items: [
+        { label: t('nav.toeic_exams', 'Đề thi'), href: `/${locale}/toeic`, icon: FileText, active: !!isToeicExamsActive },
+        { label: t('nav.toeic_history', 'Lịch sử làm bài'), href: `/${locale}/toeic/history`, icon: History, active: !!isToeicHistoryActive },
+        { label: t('nav.toeic_stats', 'Thống kê'), href: `/${locale}/toeic/stats`, icon: BarChart3, active: !!isToeicStatsActive },
+      ],
+    },
+    {
+      id: 'vocabulary',
+      label: t('nav.vocabulary', 'Vocabulary'),
+      icon: BookOpen,
+      items: [
+        // The section stays highlighted on deeper vocabulary pages via the explore link.
+        { label: t('nav.explore', 'Khám phá'), href: `/${locale}/vocabulary`, icon: Search, active: !!isVocabExploreActive || (!!pathname?.startsWith(`/${locale}/vocabulary/`) && !isVocabMyWordsActive) },
+        { label: t('nav.my_words', 'Từ vựng của tôi'), href: `/${locale}/vocabulary/my-words`, icon: Bookmark, active: isVocabMyWordsActive },
+      ],
+    },
+    {
+      id: 'dictation',
+      label: t('nav.dictation', 'Dictation'),
+      icon: Headphones,
+      items: [
+        { label: t('nav.dictation', 'Dictation'), href: `/${locale}/dictation`, icon: Headphones, active: !!isPracticeActive },
+        { label: t('nav.dictation_progress'), href: `/${locale}/dictation/progress`, icon: TrendingUp, active: !!isProgressActive },
+      ],
+    },
+  ];
+  const practiceSections: NavSection[] = [
+    {
+      id: 'games',
+      label: t('nav.games', 'Trò chơi'),
+      icon: Gamepad2,
+      items: [
+        { label: t('nav.arena', 'Đấu trường từ vựng'), href: `/${locale}/arena`, icon: Swords, active: !!isArenaActive },
+        { label: t('nav.game_list', 'Danh sách trò chơi'), href: `/${locale}/games`, icon: Gamepad2, active: !!isGamesListActive },
+      ],
+    },
+  ];
+  const mistakes: NavLink = {
+    label: t('mistakes.title'),
+    href: `/${locale}/learning/mistakes`,
+    icon: NotebookPen,
+    active: !!isMistakesActive,
+  };
+
+  // Sections start open; navigating into a section re-opens it if the learner
+  // had collapsed it.
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    toeic: true,
+    vocabulary: true,
+    dictation: true,
+    games: true,
+  });
+  const activeSectionId = [...learnSections, ...practiceSections].find((section) =>
+    section.items.some((item) => item.active),
+  )?.id;
+  React.useEffect(() => {
+    if (activeSectionId) setOpenSections((prev) => (prev[activeSectionId] ? prev : { ...prev, [activeSectionId]: true }));
+  }, [activeSectionId]);
+  const renderSection = (section: NavSection) => (
+    <NavSectionRow
+      key={section.id}
+      section={section}
+      open={!!openSections[section.id]}
+      onToggle={(open) => setOpenSections((prev) => ({ ...prev, [section.id]: open }))}
+    />
+  );
+
+  const displayName = (user as any)?.fullName || user?.username || user?.email?.split('@')[0] || t('student', 'Học viên');
+  const secondaryLine = user?.email || t('student', 'Học viên');
+  const groupLabelClass = 'h-7 px-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400';
 
   return (
     <Sidebar collapsible="icon" className="border-r border-slate-200 bg-white">
-      {/* Brand Header */}
-      <SidebarHeader className="border-b border-slate-100 px-3.5 h-16 flex items-center justify-between">
-        <div className="flex items-center gap-3 min-w-0 w-full">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white shadow-sm">
-            <SiteLogo compact fallback={<BookOpen className="h-5 w-5" />} />
-          </div>
-          <div className="flex flex-col overflow-hidden group-data-[collapsible=icon]:hidden">
-            <div className="flex items-center gap-1.5">
-              <span className="font-bold text-base tracking-tight text-slate-900 truncate">
-                <SiteLogo fallback={siteSettings.siteName} />
+      {/* Brand — same height as the page top bar so the two lines align. The
+          uploaded wordmark already contains the icon, so it is shown alone when
+          expanded and the square icon alone when collapsed. */}
+      <SidebarHeader className="h-14 shrink-0 justify-center border-b border-slate-200/80 px-3 group-data-[collapsible=icon]:px-2.5">
+        <Link
+          href={`/${locale}`}
+          aria-label={siteSettings.siteName}
+          className="flex min-w-0 items-center gap-2.5 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60"
+        >
+          {siteSettings.logoUrl ? (
+            <>
+              <span className="hidden size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg group-data-[collapsible=icon]:flex">
+                <SiteLogo compact fallback={<BookOpen className="size-[18px]" aria-hidden />} />
               </span>
-              <span className="text-[11px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 shrink-0">
-                {t('student', 'Học viên')}
+              <span className="flex min-w-0 group-data-[collapsible=icon]:hidden">
+                <SiteLogo
+                  fallback={
+                    <span className="truncate text-[15px] font-semibold tracking-tight text-slate-900">
+                      {siteSettings.siteName}
+                    </span>
+                  }
+                  className="h-10 w-auto max-w-44 object-contain object-left"
+                />
               </span>
-            </div>
-            <span className="text-xs text-slate-500 truncate">
-              {t('portal', 'Cổng học tập')}
-            </span>
-          </div>
-        </div>
+            </>
+          ) : (
+            <>
+              <span
+                className={cn(
+                  'flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg',
+                  !siteSettings.iconUrl && 'bg-blue-600 text-white',
+                )}
+              >
+                <SiteLogo compact fallback={<BookOpen className="size-[18px]" aria-hidden />} />
+              </span>
+              <span className="flex min-w-0 flex-col leading-tight group-data-[collapsible=icon]:hidden">
+                <span className="truncate text-[15px] font-semibold tracking-tight text-slate-900">
+                  {siteSettings.siteName}
+                </span>
+                <span className="truncate text-xs text-slate-500">{t('portal', 'Cổng học tập')}</span>
+              </span>
+            </>
+          )}
+        </Link>
       </SidebarHeader>
 
-      {/* Navigation Content */}
-      <SidebarContent className="px-3 py-4 space-y-4">
+      <SidebarContent
+        aria-label={t('nav_groups.main')}
+        className="gap-0 px-3 py-3 group-data-[collapsible=icon]:px-2.5"
+      >
         <SidebarGroup className="p-0">
-          <SidebarGroupContent className="space-y-1">
-            <SidebarMenu className="space-y-1.5">
-              {/* 1. Trang chủ */}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={isHomeActive}
-                  tooltip={t('nav.home', 'Trang chủ')}
-                  className={cn(
-                    'h-10 px-3 rounded-lg text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-all font-medium text-sm',
-                    isHomeActive && 'bg-blue-50/80 text-blue-600 font-semibold shadow-xs'
-                  )}
-                >
-                  <Link href={`/${locale}`} className="flex items-center gap-3">
-                    <LayoutDashboard
-                      className={cn(
-                        'h-5 w-5 shrink-0',
-                        isHomeActive ? 'text-blue-600' : 'text-slate-500'
-                      )}
-                    />
-                    <span className="truncate group-data-[collapsible=icon]:hidden">
-                      {t('nav.home', 'Trang chủ')}
-                    </span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+          <SidebarGroupContent>
+            <SidebarMenu className="gap-0.5">
+              <NavLinkRow item={home} />
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
 
-              {/* 2. TOEIC (Collapsible Level 1 with 3 sub-pages: Đề thi, Lịch sử làm bài, Thống kê) */}
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname.startsWith(`/${locale}/learning/mistakes`)} tooltip={t('mistakes.title')} className="h-10 rounded-lg px-3 text-sm font-medium">
-                  <Link href={`/${locale}/learning/mistakes`}><Bookmark className="h-5 w-5 shrink-0" /><span>{t('mistakes.title')}</span></Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <div>
-                  <button
-                    type="button"
-                    onClick={() => setToeicMenuOpen(!toeicMenuOpen)}
-                    className={cn(
-                      'w-full flex items-center justify-between h-10 px-3 rounded-lg text-slate-700 hover:text-blue-600 hover:bg-slate-50 transition-all font-semibold text-sm cursor-pointer group',
-                      isToeicSectionActive && 'text-blue-600'
-                    )}
-                    title={t('nav.toeic', 'TOEIC')}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <GraduationCap
-                        className={cn(
-                          'h-5 w-5 shrink-0',
-                          isToeicSectionActive ? 'text-blue-600' : 'text-slate-500'
-                        )}
-                      />
-                      <span className="truncate group-data-[collapsible=icon]:hidden font-semibold">
-                        {t('nav.toeic', 'TOEIC')}
-                      </span>
-                    </div>
-                    <div className="group-data-[collapsible=icon]:hidden text-slate-400 group-hover:text-blue-600 transition-colors">
-                      {toeicMenuOpen ? (
-                        <ChevronUp className="w-4 h-4" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4" />
-                      )}
-                    </div>
-                  </button>
+        <SidebarGroup className="mt-4 p-0 group-data-[collapsible=icon]:mt-2">
+          <SidebarGroupLabel className={groupLabelClass}>{t('nav_groups.learn')}</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu className="gap-0.5">{learnSections.map(renderSection)}</SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
 
-                  {/* Submenu: Đề thi, Lịch sử làm bài, Thống kê */}
-                  {toeicMenuOpen && (
-                    <div className="pl-7 pr-1 pt-1.5 space-y-1 group-data-[collapsible=icon]:hidden">
-                      <Link
-                        href={`/${locale}/toeic`}
-                        className={cn(
-                          'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all',
-                          isToeicExamsActive
-                            ? 'bg-blue-50 text-blue-600 font-semibold'
-                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                        )}
-                      >
-                        <FileText
-                          className={cn(
-                            'w-4 h-4 shrink-0',
-                            isToeicExamsActive ? 'text-blue-600' : 'text-slate-400'
-                          )}
-                        />
-                        <span>{t('nav.toeic_exams', 'Đề thi')}</span>
-                      </Link>
-
-                      <Link
-                        href={`/${locale}/toeic/history`}
-                        className={cn(
-                          'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all',
-                          isToeicHistoryActive
-                            ? 'bg-blue-50 text-blue-600 font-semibold'
-                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                        )}
-                      >
-                        <History
-                          className={cn(
-                            'w-4 h-4 shrink-0',
-                            isToeicHistoryActive ? 'text-blue-600' : 'text-slate-400'
-                          )}
-                        />
-                        <span>{t('nav.toeic_history', 'Lịch sử làm bài')}</span>
-                      </Link>
-
-                      <Link
-                        href={`/${locale}/toeic/stats`}
-                        className={cn(
-                          'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all',
-                          isToeicStatsActive
-                            ? 'bg-blue-50 text-blue-600 font-semibold'
-                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                        )}
-                      >
-                        <BarChart3
-                          className={cn(
-                            'w-4 h-4 shrink-0',
-                            isToeicStatsActive ? 'text-blue-600' : 'text-slate-400'
-                          )}
-                        />
-                        <span>{t('nav.toeic_stats', 'Thống kê')}</span>
-                      </Link>
-                    </div>
-                  )}
-                </div>
-              </SidebarMenuItem>
-
-              {/* 3. Trò chơi (Collapsible with Vocabulary Arena & Game List) */}
-              <SidebarMenuItem>
-                <div>
-                  <button
-                    type="button"
-                    onClick={() => setGamesMenuOpen(!gamesMenuOpen)}
-                    className={cn(
-                      'w-full flex items-center justify-between h-10 px-3 rounded-lg text-slate-700 hover:text-blue-600 hover:bg-slate-50 transition-all font-semibold text-sm cursor-pointer group',
-                      isGamesSectionActive && 'text-blue-600'
-                    )}
-                    title={t('nav.games', 'Trò chơi')}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <Gamepad2
-                        className={cn(
-                          'h-5 w-5 shrink-0',
-                          isGamesSectionActive ? 'text-blue-600' : 'text-slate-500'
-                        )}
-                      />
-                      <span className="truncate group-data-[collapsible=icon]:hidden font-semibold">
-                        {t('nav.games', 'Trò chơi')}
-                      </span>
-                    </div>
-                    <div className="group-data-[collapsible=icon]:hidden text-slate-400 group-hover:text-blue-600 transition-colors">
-                      {gamesMenuOpen ? (
-                        <ChevronUp className="w-4 h-4" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4" />
-                      )}
-                    </div>
-                  </button>
-
-                  {gamesMenuOpen && (
-                    <div className="pl-7 pr-1 pt-1.5 space-y-1 group-data-[collapsible=icon]:hidden">
-                      <Link
-                        href={`/${locale}/arena`}
-                        className={cn(
-                          'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all',
-                          isArenaActive
-                            ? 'bg-blue-50 text-blue-600 font-semibold'
-                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                        )}
-                      >
-                        <Swords
-                          className={cn(
-                            'w-4 h-4 shrink-0',
-                            isArenaActive ? 'text-blue-600' : 'text-slate-400'
-                          )}
-                        />
-                        <span>{t('nav.arena', 'Đấu trường từ vựng')}</span>
-                      </Link>
-
-                      <Link
-                        href={`/${locale}/games`}
-                        className={cn(
-                          'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all',
-                          isGamesListActive
-                            ? 'bg-blue-50 text-blue-600 font-semibold'
-                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                        )}
-                      >
-                        <Gamepad2
-                          className={cn(
-                            'w-4 h-4 shrink-0',
-                            isGamesListActive ? 'text-blue-600' : 'text-slate-400'
-                          )}
-                        />
-                        <span>{t('nav.game_list', 'Danh sách trò chơi')}</span>
-                      </Link>
-
-
-                    </div>
-                  )}
-                </div>
-              </SidebarMenuItem>
-
-              {/* 3. Vocabulary (Collapsible with Explore & My Words) */}
-              <SidebarMenuItem>
-                <div>
-                  <button
-                    type="button"
-                    onClick={() => setVocabMenuOpen(!vocabMenuOpen)}
-                    className={cn(
-                      'w-full flex items-center justify-between h-10 px-3 rounded-lg text-slate-700 hover:text-blue-600 hover:bg-slate-50 transition-all font-semibold text-sm cursor-pointer group',
-                      isVocabSectionActive && 'text-blue-600'
-                    )}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <BookOpen
-                        className={cn(
-                          'h-5 w-5 shrink-0',
-                          isVocabSectionActive ? 'text-blue-600' : 'text-slate-500'
-                        )}
-                      />
-                      <span className="truncate group-data-[collapsible=icon]:hidden font-semibold">
-                        {t('nav.vocabulary', 'Vocabulary')}
-                      </span>
-                    </div>
-                    <div className="group-data-[collapsible=icon]:hidden text-slate-400 group-hover:text-blue-600 transition-colors">
-                      {vocabMenuOpen ? (
-                        <ChevronUp className="w-4 h-4" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4" />
-                      )}
-                    </div>
-                  </button>
-
-                  {/* Submenu: Khám phá & Từ vựng của tôi */}
-                  {vocabMenuOpen && (
-                    <div className="pl-7 pr-1 pt-1.5 space-y-1 group-data-[collapsible=icon]:hidden">
-                      <Link
-                        href={`/${locale}/vocabulary`}
-                        className={cn(
-                          'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all',
-                          isVocabExploreActive
-                            ? 'bg-blue-50 text-blue-600 font-semibold'
-                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                        )}
-                      >
-                        <Search
-                          className={cn(
-                            'w-4 h-4 shrink-0',
-                            isVocabExploreActive ? 'text-blue-600' : 'text-slate-400'
-                          )}
-                        />
-                        <span>{t('nav.explore', 'Khám phá')}</span>
-                      </Link>
-
-                      <Link
-                        href={`/${locale}/vocabulary/my-words`}
-                        className={cn(
-                          'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all',
-                          isVocabMyWordsActive
-                            ? 'bg-blue-50 text-blue-600 font-semibold'
-                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                        )}
-                      >
-                        <Bookmark
-                          className={cn(
-                            'w-4 h-4 shrink-0',
-                            isVocabMyWordsActive ? 'text-blue-600' : 'text-slate-400'
-                          )}
-                        />
-                        <span>{t('nav.my_words', 'Từ vựng của tôi')}</span>
-                      </Link>
-                    </div>
-                  )}
-                </div>
-              </SidebarMenuItem>
-
-              {/* 3. Luyện tập */}
-              <SidebarMenuItem>
-                <div>
-                  <SidebarMenuButton
-                    onClick={() => {
-                      if (state === 'collapsed' && !isMobile) {
-                        setOpen(true);
-                        setDictationMenuOpen(true);
-                      } else setDictationMenuOpen(open => !open);
-                    }}
-                    isActive={!!(isPracticeActive || isProgressActive)}
-                    tooltip={t('nav.dictation', 'Dictation')}
-                    aria-expanded={dictationMenuOpen}
-                    aria-controls="dictation-submenu"
-                    className={cn('h-10 rounded-lg px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600',
-                      (isPracticeActive || isProgressActive) && 'text-blue-600')}
-                  >
-                    <Headphones className="h-5 w-5 shrink-0" />
-                    <span className="flex-1 truncate group-data-[collapsible=icon]:hidden">{t('nav.dictation', 'Dictation')}</span>
-                    <ChevronDown className={cn('h-4 w-4 transition-transform group-data-[collapsible=icon]:hidden', dictationMenuOpen && 'rotate-180')} />
-                  </SidebarMenuButton>
-                  {dictationMenuOpen && (
-                    <div id="dictation-submenu" className="space-y-1 pl-7 pr-1 pt-1.5 group-data-[collapsible=icon]:hidden">
-                      <Link href={`/${locale}/dictation`} aria-current={isPracticeActive ? 'page' : undefined}
-                        className={cn('flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all',
-                          isPracticeActive ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900')}>
-                        <Headphones className="h-4 w-4 shrink-0" />
-                        <span>{t('nav.dictation', 'Dictation')}</span>
-                      </Link>
-                      <Link href={`/${locale}/dictation/progress`} aria-current={isProgressActive ? 'page' : undefined}
-                        className={cn('flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all',
-                          isProgressActive ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900')}>
-                        <TrendingUp className="h-4 w-4 shrink-0" />
-                        <span>{t('nav.dictation_progress')}</span>
-                      </Link>
-                    </div>
-                  )}
-                </div>
-              </SidebarMenuItem>
+        <SidebarGroup className="mt-4 p-0 group-data-[collapsible=icon]:mt-2">
+          <SidebarGroupLabel className={groupLabelClass}>{t('nav_groups.practice')}</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu className="gap-0.5">
+              {practiceSections.map(renderSection)}
+              <NavLinkRow item={mistakes} />
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
 
-      {/* Footer */}
-      <SidebarFooter className="border-t border-slate-100 p-3 space-y-3 group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:space-y-0 group-data-[collapsible=icon]:items-center">
-        {/* Language Switcher */}
-        <div className="flex items-center justify-between px-1 group-data-[collapsible=icon]:hidden">
-          <span className="text-sm text-slate-600 font-medium flex items-center gap-2">
-            <Globe className="h-4 w-4 text-slate-400" />
-            {t('language', 'Ngôn ngữ')}
-          </span>
+      <SidebarFooter className="gap-2 border-t border-slate-200/80 p-3 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-2.5">
+        <div className="flex items-center justify-between gap-2 pl-1 group-data-[collapsible=icon]:hidden">
+          <span className="text-xs font-medium text-slate-500">{t('language', 'Ngôn ngữ')}</span>
           <LanguageSwitcher />
         </div>
 
-        <SidebarSeparator className="my-1 group-data-[collapsible=icon]:hidden" />
-
-        {/* User Card Matching Mockup */}
-        <div className="flex items-center justify-between gap-2.5 p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-colors group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:border-0 cursor-pointer">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white font-bold text-sm shadow-xs">
-              {(user?.username?.[0] || 'N').toUpperCase()}
-            </div>
-            <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
-              <p className="text-sm font-bold text-slate-900 truncate">
-                {(user as any)?.fullName || user?.username || 'Nguyễn Văn A'}
-              </p>
-              <p className="text-xs text-slate-400 truncate">
-                Student
-              </p>
-            </div>
+        <div
+          aria-label={t('nav_groups.account')}
+          className="flex items-center gap-2.5 rounded-lg p-1.5 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:p-0"
+        >
+          <span
+            aria-hidden
+            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-900 text-[13px] font-semibold text-white"
+          >
+            {(displayName[0] || 'U').toUpperCase()}
+          </span>
+          <div className="min-w-0 flex-1 leading-tight group-data-[collapsible=icon]:hidden">
+            <p className="truncate text-sm font-semibold text-slate-900">{displayName}</p>
+            <p className="truncate text-xs text-slate-500">{secondaryLine}</p>
           </div>
-          <div className="flex items-center gap-1.5 shrink-0 group-data-[collapsible=icon]:hidden">
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
-              title={t('logout', 'Đăng xuất')}
-            >
-              <LogOut className="h-4 w-4" />
-            </button>
-            <ChevronRight className="w-4.5 h-4.5 text-slate-300" />
-          </div>
+          <button
+            type="button"
+            onClick={handleLogout}
+            aria-label={t('logout', 'Đăng xuất')}
+            title={t('logout', 'Đăng xuất')}
+            className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-slate-400 outline-none transition-colors duration-150 hover:bg-red-50 hover:text-red-600 focus-visible:ring-2 focus-visible:ring-red-500/50"
+          >
+            <LogOut className="size-4" aria-hidden />
+          </button>
         </div>
       </SidebarFooter>
 

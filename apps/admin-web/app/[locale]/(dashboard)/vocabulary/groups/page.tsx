@@ -304,7 +304,7 @@ export default function VocabularyGroupsPage() {
   if (groupsError || collectionsError || lessonsError) return <LoadError onRetry={() => { if (groupsError) void retryGroups(); if (collectionsError) void retryCollections(); if (lessonsError) void retryLessons(); }} />;
 
   return (
-    <div className="w-full max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8">
+    <div className="w-full p-4 sm:p-6 lg:p-8">
       <header className='flex items-center justify-between pb-6'>
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900">

@@ -36,7 +36,7 @@ export default function LearningPage() {
       await load();
     } catch (e) { fail(e); } finally { setBusy(false); }
   };
-  return <main className="mx-auto max-w-6xl space-y-5 p-6">
+  return <main className="w-full space-y-5 p-6">
     <Link href={`/${locale}/assessment/create/ai`} className="text-blue-600">← Tạo đề bằng AI</Link>
     <h1 className="text-2xl font-bold">Dữ liệu sửa lỗi bộ đọc PDF</h1>
     <p>Mỗi lần lưu nội dung đã sửa tạo một mẫu chờ duyệt. Đối chiếu PDF trước khi xác nhận đúng; chỉ mẫu đã xác nhận mới được xuất để kiểm tra bộ đọc. Hệ thống chưa tự huấn luyện lại AI.</p>

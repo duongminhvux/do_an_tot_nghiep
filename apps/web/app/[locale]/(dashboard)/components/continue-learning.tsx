@@ -1,13 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import type { HomeData } from "../hooks/use-home-data";
 import type { LearningModule } from "@/services/learning-activity.service";
 import type { DictationLessonSummary } from "@/types/dictation";
 import { MODULE_META, MODULES, moduleName } from "./module-meta";
 import { surface } from "@/components/ui/page";
-import { buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
@@ -34,24 +33,26 @@ function ModuleCard({
   const meta = MODULE_META[module];
   const Icon = meta.icon;
   const totals = home.data?.byModule[module];
+  // The whole card is the link: one large target, one tab stop.
   return (
-    <article
+    <Link
+      href={`/${locale}${content.href}`}
       className={cn(
         surface,
-        "flex flex-col p-5 transition hover:border-blue-300 hover:shadow-md",
+        "group flex flex-col p-4 outline-none transition-[border-color,box-shadow] duration-200 hover:border-slate-300 hover:shadow-md focus-visible:ring-2 focus-visible:ring-blue-500/60 sm:p-5",
       )}
     >
       <div className="flex items-center gap-3">
         <span
-          className={`flex h-10 w-10 items-center justify-center rounded-xl ${meta.tone}`}
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${meta.tone}`}
         >
-          <Icon className="h-5 w-5" />
+          <Icon className="h-[18px] w-[18px]" aria-hidden />
         </span>
         <div className="min-w-0">
-          <h3 className="text-base font-semibold text-slate-900">
+          <h3 className="truncate text-sm font-semibold text-slate-900">
             {moduleName(t, module)}
           </h3>
-          <p className="text-xs text-slate-500">
+          <p className="truncate text-xs text-slate-500 tabular-nums">
             {t("modules.totals", {
               count: totals?.count ?? 0,
               xp: totals?.xp ?? 0,
@@ -60,7 +61,7 @@ function ModuleCard({
         </div>
       </div>
 
-      <div className="mt-4 flex-1 space-y-1.5">
+      <div className="mt-4 flex-1 space-y-2">
         {loading ? (
           <>
             <Skeleton className="h-4 w-3/4" />
@@ -68,7 +69,7 @@ function ModuleCard({
           </>
         ) : (
           <>
-            <p className="line-clamp-2 text-sm font-medium text-slate-800">
+            <p className="line-clamp-2 text-sm font-medium leading-snug text-slate-800">
               {content.headline}
             </p>
             {content.detail && (
@@ -77,7 +78,7 @@ function ModuleCard({
             {content.progress !== undefined && (
               <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
                 <div
-                  className="h-full rounded-full bg-blue-500"
+                  className="h-full rounded-full bg-blue-600"
                   style={{
                     width: `${Math.min(100, Math.max(0, content.progress))}%`,
                   }}
@@ -88,17 +89,14 @@ function ModuleCard({
         )}
       </div>
 
-      <Link
-        href={`/${locale}${content.href}`}
-        className={cn(
-          buttonVariants({ variant: "secondary", size: "sm" }),
-          "mt-4 w-full justify-between",
-        )}
-      >
+      <span className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-sm font-semibold text-blue-600">
         {content.cta}
-        <ChevronRight className="h-3.5 w-3.5" />
-      </Link>
-    </article>
+        <ArrowRight
+          className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
+          aria-hidden
+        />
+      </span>
+    </Link>
   );
 }
 
@@ -234,11 +232,14 @@ export function ContinueLearning({ data }: { data: HomeData }) {
   };
 
   return (
-    <section className="space-y-3">
-      <h2 className="text-lg font-semibold text-slate-900">
+    <section aria-labelledby="continue-learning-title" className="space-y-3">
+      <h2
+        id="continue-learning-title"
+        className="text-base font-semibold text-slate-900"
+      >
         {t("modules.title")}
       </h2>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
         {MODULES.map((module) => (
           <ModuleCard
             key={module}

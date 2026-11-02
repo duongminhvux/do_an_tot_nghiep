@@ -13,12 +13,12 @@ import {
   BarChart2,
   CheckCircle2,
   Clock,
-  Sparkles,
   Package,
   Award,
   Target,
   FileQuestion,
   AlertCircle,
+  Rocket,
 } from 'lucide-react';
 import {
   toeicService,
@@ -63,7 +63,7 @@ const PRESET_ICON_MAP: Record<string, { icon: any; tone: Tone }> = {
   'practice-tests': { icon: Layers, tone: 'violet' },
   'by-level': { icon: Award, tone: 'amber' },
   'by-topic': { icon: Target, tone: 'pink' },
-  advanced: { icon: Sparkles, tone: 'red' },
+  advanced: { icon: Rocket, tone: 'red' },
 };
 
 const DEFAULT_ICON: { icon: any; tone: Tone } = { icon: Headphones, tone: 'blue' };

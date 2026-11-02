@@ -3,7 +3,8 @@
 import Link from "next/link";
 import type { TFunction } from "i18next";
 import type { RecentActivity } from "@/services/learning-activity.service";
-import { Panel } from "@/components/ui/page";
+import { History } from "lucide-react";
+import { EmptyState, Panel } from "@/components/ui/page";
 import { PanelSkeleton } from "./dashboard-feedback";
 import { MODULE_META, formatStudyTime } from "./module-meta";
 
@@ -62,11 +63,13 @@ export function RecentActivityList({
   return (
     <Panel title={t("recent.title")}>
       {!items?.length ? (
-        <p className="py-6 text-center text-sm text-slate-400">
-          {t("recent.empty")}
-        </p>
+        <EmptyState
+          icon={History}
+          title={t("recent.empty")}
+          className="border-0 py-8"
+        />
       ) : (
-        <ul className="-my-2 divide-y divide-slate-100">
+        <ul className="-mx-2 -my-1.5">
           {items.map((item) => {
             const meta = MODULE_META[item.module];
             const Icon = meta.icon;
@@ -75,7 +78,7 @@ export function RecentActivityList({
                 <span
                   className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${meta.tone}`}
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon className="h-4 w-4" aria-hidden />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium text-slate-800">
@@ -91,10 +94,10 @@ export function RecentActivityList({
                   </span>
                 </span>
                 <span className="shrink-0 text-right">
-                  <span className="block text-xs font-bold text-amber-600">
+                  <span className="block text-xs font-semibold text-amber-600 tabular-nums">
                     +{item.xp} XP
                   </span>
-                  <span className="block text-[11px] text-slate-400">
+                  <span className="mt-0.5 block text-xs text-slate-400">
                     {timeAgo(item.occurredAt, locale)}
                   </span>
                 </span>
@@ -105,12 +108,12 @@ export function RecentActivityList({
                 {item.link ? (
                   <Link
                     href={`/${locale}${item.link}`}
-                    className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-2.5 transition hover:bg-slate-50"
+                    className="flex items-center gap-3 rounded-lg px-2 py-2.5 outline-none transition-colors duration-150 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-blue-500/60"
                   >
                     {body}
                   </Link>
                 ) : (
-                  <div className="flex items-center gap-3 py-2.5">{body}</div>
+                  <div className="flex items-center gap-3 px-2 py-2.5">{body}</div>
                 )}
               </li>
             );

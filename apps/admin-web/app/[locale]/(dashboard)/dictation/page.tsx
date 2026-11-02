@@ -17,8 +17,8 @@ import {
   Loader2,
   Plus,
   Search,
-  Sparkles,
   Trash2,
+  CirclePlay,
 } from 'lucide-react';
 import { dictationService } from '@/services/dictation.service';
 import { DictationLesson, DictationStatus } from '@/types/dictation';
@@ -80,7 +80,7 @@ export default function AdminDictationPage() {
   const statCards: Array<{ label: string; value: number; Icon: LucideIcon }> = [
     { label: 'Tổng bài', value: stats.total, Icon: FileAudio },
     { label: 'Đã xuất bản', value: stats.published, Icon: CheckCircle2 },
-    { label: 'Sẵn sàng', value: stats.ready, Icon: Sparkles },
+    { label: 'Sẵn sàng', value: stats.ready, Icon: CirclePlay },
     { label: 'Tổng số câu', value: stats.sentences, Icon: AudioLines },
   ];
 

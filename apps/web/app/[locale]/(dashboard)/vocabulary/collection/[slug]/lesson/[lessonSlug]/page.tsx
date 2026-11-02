@@ -944,7 +944,7 @@ export default function LessonStudyPage() {
       />
 
       {/* 2. Main Content: Sidebar + Study Card */}
-      <div className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8">
+      <div className="w-full px-4 py-6 sm:px-6 lg:px-8">
         <div className="flex flex-col items-start gap-6 lg:flex-row">
           {/* Left Sidebar: Topics */}
           <TopicSidebar

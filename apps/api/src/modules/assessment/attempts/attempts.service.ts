@@ -45,6 +45,14 @@ SaveAnswerDto,
 UpdateAttemptDto
 } from './dto/update-attempt.dto.js';
 import { Attempt } from './rows/attempt.row.js';
+import {
+activeSeconds,
+isPaused,
+isStale,
+pausedClock,
+remainingSeconds,
+runningClock
+} from './attempt-clock.js';
 
 export function publicQuestion(question: SnapshotQuestion, review = false) {
   const {
@@ -195,8 +203,19 @@ constructor(
         : null;
     const correct = attempt.correctAnswers ?? attempt.totalCorrect ?? 0;
     const total = attempt.totalQuestions ?? 0;
+    const inProgress = attempt.status === ToeicAttemptStatus.IN_PROGRESS;
     return {
       ...summary,
+      activeSince: undefined,
+      lastSeenAt: undefined,
+      // Time spent on the attempt page only; pauses do not count.
+      activeSeconds: inProgress && attempt.startedAt
+        ? activeSeconds(attempt)
+        : (attempt.durationSpent ?? undefined),
+      remainingSeconds: inProgress && attempt.startedAt
+        ? remainingSeconds(attempt)
+        : undefined,
+      paused: inProgress && attempt.startedAt ? isPaused(attempt) : false,
       examId: attempt.examId || attempt.examSnapshot || null,
       answers,
       audioPlayCounts: attempt.audioPlayCounts ?? {},
@@ -223,6 +242,24 @@ constructor(
       readingScore: scaled?.reading ?? undefined };
   }
 
+  /** One unfinished attempt per exam: the learner continues it or stops it
+   *  before starting another. Timed attempts that ran out are graded here. */
+  private async assertNoOpenAttempt(userId: string, examId: string) {
+    const open = await this.attempts.select(sql`user_id=${this.uuid(userId)}::uuid AND exam_id=${examId}::uuid AND status='IN_PROGRESS'`);
+    for (const attempt of open) {
+      // Legacy rows without a snapshot can be neither continued nor graded.
+      if (!attempt.questionSnapshot?.length) continue;
+      if (this.expired(attempt)) {
+        await this.grade(attempt);
+        continue;
+      }
+      throw new ConflictException({
+        message: 'Finish or stop your unfinished attempt of this exam first',
+        error: 'ATTEMPT_IN_PROGRESS',
+      });
+    }
+  }
+
   async create(userId: string, dto: CreateAttemptDto) {
     if (
       !Object.values(ExamMode).includes(dto.mode) ||
@@ -237,6 +274,7 @@ constructor(
     }
     const exam=await this.exams.one(sql`id=${this.uuid(dto.examId)}::uuid AND type='TOEIC' AND publication_status='PUBLISHED' AND is_deleted IS NOT TRUE AND is_active IS NOT FALSE`);
     if (!exam) throw new NotFoundException('Exam not found');
+    await this.assertNoOpenAttempt(userId, String(exam._id));
     const questions = await this.questions.select(sql`("exam_id" = ${exam._id}) AND ("is_active" IS DISTINCT FROM ${false}) AND ("part"=ANY(${dto.selectedParts}::double precision[]))`, sql`ORDER BY "part" ASC NULLS FIRST,"order" ASC NULLS FIRST,"source_order" ASC NULLS FIRST,"id" ASC NULLS FIRST`);
     if (dto.selectedParts.some((p) => !questions.some((q) => q.part === p)))
       throw new BadRequestException('Part is not available in this exam');
@@ -298,6 +336,7 @@ constructor(
       questionSnapshot,
       status: ToeicAttemptStatus.IN_PROGRESS,
       startedAt,
+      ...runningClock({ startedAt, activeSeconds: 0 }, startedAt),
       timeLimitSeconds,
       expiresAt: timeLimitSeconds
         ? new Date(startedAt.getTime() + timeLimitSeconds * 1000)
@@ -504,8 +543,8 @@ constructor(
   private expired(attempt: Attempt) {
     return Boolean(
       attempt.status === ToeicAttemptStatus.IN_PROGRESS &&
-      attempt.expiresAt &&
-      new Date(attempt.expiresAt).getTime() + TIME_LIMIT_GRACE_MS < Date.now(),
+      attempt.timeLimitSeconds &&
+      activeSeconds(attempt) * 1000 > attempt.timeLimitSeconds * 1000 + TIME_LIMIT_GRACE_MS,
     );
   }
 
@@ -515,8 +554,10 @@ constructor(
       const records=new SqlRecords(createConnection(session.client as any),'attempts');
       const current=await records.one(sql`id=${attempt._id}::uuid`,sql`FOR UPDATE`);
       if(!current||current.status!==ToeicAttemptStatus.IN_PROGRESS)return;
-      const result=calculateAttemptResult(current.questionSnapshot,current.selectedParts,current.answers??{},current.startedAt);
-      const graded=await records.patch(sql`id=${attempt._id}::uuid AND status='IN_PROGRESS'`,result);
+      const now=new Date(), spent=activeSeconds(current,now);
+      const duration=current.timeLimitSeconds?Math.min(spent,current.timeLimitSeconds):spent;
+      const result=calculateAttemptResult(current.questionSnapshot,current.selectedParts,current.answers??{},current.startedAt,now,duration);
+      const graded=await records.patch(sql`id=${attempt._id}::uuid AND status='IN_PROGRESS'`,{...result,...pausedClock(current,now)});
       if(!graded)return;
       const correct = graded.correctAnswers ?? 0;
       await this.domainOutbox!.enqueue('learning.activity.recorded.v1', String(graded.userId), {
@@ -671,9 +712,10 @@ constructor(
     );
     if (!question || !question.options.some((o) => o.key === dto.answer))
       throw new BadRequestException('Invalid question or answer');
+    if (this.expired(attempt))
+      throw new ConflictException('Time is up for this attempt');
     const result=await this.attempts.patch(sql`id=${attempt._id}::uuid AND user_id=${attempt.userId}::uuid AND status='IN_PROGRESS'
-      AND (mode<>'PRACTICE' OR NOT (COALESCE(revealed_answers,answers,'{}') ? ${dto.questionId}))
-      AND (expires_at IS NULL OR expires_at>${new Date(Date.now()-TIME_LIMIT_GRACE_MS)})`,{},
+      AND (mode<>'PRACTICE' OR NOT (COALESCE(revealed_answers,answers,'{}') ? ${dto.questionId}))`,{},
       {answers:sql`COALESCE(answers,'{}')||jsonb_build_object(${dto.questionId}::text,${dto.answer}::text)`,
        ...(attempt.mode===ExamMode.PRACTICE?{revealedAnswers:sql`COALESCE(revealed_answers,answers,'{}')`}:{}),});
     if (!result) {
@@ -743,6 +785,49 @@ constructor(
     return { ...answerFeedback(question, selectedAnswer), selectedAnswer };
   }
 
+  /** Persist a clock change; a timed attempt that ran out is graded instead. */
+  private async setClock(userId: string, id: string, next: (attempt: Attempt, now: Date) => Record<string, unknown> | null) {
+    const attempt = await this.owned(userId, id);
+    this.inProgress(attempt);
+    if (this.expired(attempt)) {
+      await this.grade(attempt);
+      return this.clock(await this.owned(userId, id));
+    }
+    const now = new Date();
+    const patch = next(attempt, now);
+    if (!patch) return this.clock(attempt);
+    const updated = await this.attempts.patch(sql`id=${attempt._id}::uuid AND status='IN_PROGRESS'`, patch);
+    if (!updated) throw new ConflictException('Attempt is no longer in progress');
+    return this.clock(updated);
+  }
+
+  private clock(attempt: Attempt) {
+    const { status, activeSeconds, remainingSeconds, paused } = this.summary(attempt);
+    return { status, activeSeconds, remainingSeconds, paused };
+  }
+
+  /** The attempt page is open: count time from now. */
+  resume(userId: string, id: string) {
+    return this.setClock(userId, id, (attempt, now) => {
+      const clock = runningClock(attempt, now);
+      const left = remainingSeconds({ ...attempt, ...clock }, now);
+      return { ...clock, expiresAt: left === undefined ? undefined : new Date(now.getTime() + left * 1000) };
+    });
+  }
+
+  /** The attempt page was left, hidden or paused by the learner. */
+  pause(userId: string, id: string) {
+    return this.setClock(userId, id, (attempt, now) =>
+      isPaused(attempt) ? null : pausedClock(attempt, now));
+  }
+
+  /** The attempt page is still visible. After a gap (sleep, lost network) the
+   *  missed time is dropped and counting restarts now. */
+  heartbeat(userId: string, id: string) {
+    return this.setClock(userId, id, (attempt, now) =>
+      isPaused(attempt) ? null : isStale(attempt, now) ? runningClock(attempt, now) : { lastSeenAt: now });
+  }
+
   async submit(userId: string, id: string) {
     const attempt = await this.owned(userId, id);
     if (attempt.status === ToeicAttemptStatus.FINISHED)
@@ -755,7 +840,7 @@ constructor(
   async abandon(userId: string, id: string) {
     const attempt = await this.owned(userId, id);
     this.inProgress(attempt);
-    const result=await this.attempts.patch(sql`id=${attempt._id}::uuid AND status='IN_PROGRESS'`,{status:ToeicAttemptStatus.ABANDONED,completedAt:new Date()});
+    const result=await this.attempts.patch(sql`id=${attempt._id}::uuid AND status='IN_PROGRESS'`,{status:ToeicAttemptStatus.ABANDONED,completedAt:new Date(),...pausedClock(attempt)});
     if (!result)
       throw new ConflictException('Attempt is no longer in progress');
     return this.summary({ ...attempt, status: ToeicAttemptStatus.ABANDONED });

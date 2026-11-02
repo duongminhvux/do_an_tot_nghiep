@@ -18,6 +18,8 @@ import {
   Loader2,
   PanelRightClose,
   PanelRightOpen,
+  Pause,
+  Play,
 } from "lucide-react";
 import {
   Dialog,
@@ -32,30 +34,7 @@ import { useToeicAttempt } from "./use-toeic-attempt";
 import { groupByPassage } from "./group-by-passage";
 import { QuestionMedia, ToeicQuestion } from "./toeic-question";
 import { ToeicAudioPolicyProvider } from "./toeic-audio-policy";
-import { TestCountdown } from "./test-countdown";
-
-function ElapsedTime({ start, end }: { start: string; end?: string }) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (end) return;
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, [end]);
-  const seconds = Math.max(
-    0,
-    Math.floor(
-      ((end ? new Date(end).getTime() : now) - new Date(start).getTime()) /
-        1000,
-    ),
-  );
-  return (
-    <span className="tabular-nums">
-      {String(Math.floor(seconds / 3600)).padStart(2, "0")}:
-      {String(Math.floor(seconds / 60) % 60).padStart(2, "0")}:
-      {String(seconds % 60).padStart(2, "0")}
-    </span>
-  );
-}
+import { AttemptTimer } from "./test-countdown";
 
 export function ToeicAttemptShell() {
   const { attemptId, locale } = useParams<{
@@ -293,24 +272,27 @@ export function ToeicAttemptShell() {
               </div>
             </div>
             <div
-              title={t(attempt.expiresAt ? "attempt.time_left" : "attempt.time")}
+              title={t(attempt.timeLimitSeconds ? "attempt.time_left" : "attempt.time")}
               className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 font-mono text-sm font-semibold"
             >
               <Clock3 className="size-4 text-slate-500" />
               <span className="sr-only">
-                {t(attempt.expiresAt ? "attempt.time_left" : "attempt.time")}:{" "}
+                {t(attempt.timeLimitSeconds ? "attempt.time_left" : "attempt.time")}:{" "}
               </span>
-              {attempt.expiresAt && !locked ? (
-                <TestCountdown
-                  deadline={attempt.expiresAt}
-                  onExpire={() => void submitOnTimeUp()}
-                />
-              ) : (
-                <ElapsedTime
-                  start={attempt.startedAt}
-                  end={attempt.submittedAt}
-                />
-              )}
+              <AttemptTimer
+                clock={
+                  state.clock && !locked
+                    ? state.clock
+                    : {
+                        status: attempt.status,
+                        activeSeconds: attempt.activeSeconds ?? attempt.durationSpent ?? 0,
+                        remainingSeconds: locked ? undefined : attempt.remainingSeconds,
+                        paused: true,
+                        syncedAt: 0,
+                      }
+                }
+                onExpire={() => void submitOnTimeUp()}
+              />
             </div>
             <div className="flex items-center gap-2">
               {!restrictedAudio && (
@@ -334,7 +316,19 @@ export function ToeicAttemptShell() {
                 </label>
               )}
               {!locked && (
-                <Button disabled={busy} onClick={() => setConfirm(true)}>
+                <Button
+                  variant="outline"
+                  disabled={busy || state.clockBusy || state.pausedByUser}
+                  onClick={() => void state.pauseAttempt()}
+                  title={t("attempt.pause_hint")}
+                >
+                  <Pause />
+                  <span className="hidden sm:inline">{t("attempt.pause")}</span>
+                  <span className="sr-only sm:hidden">{t("attempt.pause")}</span>
+                </Button>
+              )}
+              {!locked && (
+                <Button disabled={busy || state.pausedByUser} onClick={() => setConfirm(true)}>
                   {submitLabel}
                 </Button>
               )}
@@ -347,7 +341,7 @@ export function ToeicAttemptShell() {
               </Button>
             </div>
           </div>
-          {!finished && (
+          {!finished && !state.pausedByUser && (
             <nav
               aria-label={t("attempt.parts")}
               className="flex items-center gap-1 overflow-x-auto border-t border-slate-100 px-3 py-2 lg:px-5"
@@ -400,6 +394,46 @@ export function ToeicAttemptShell() {
           </div>
         )}
 
+        {state.pausedByUser ? (
+          // Questions (and their audio) are unmounted while paused, so time
+          // off the clock cannot be spent reading the test.
+          <div className="grid min-h-0 flex-1 place-items-center overflow-y-auto p-4 sm:p-6">
+            <section
+              aria-labelledby="attempt-paused-title"
+              className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm sm:p-8"
+            >
+              <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                <Pause className="size-6" aria-hidden />
+              </span>
+              <h2
+                id="attempt-paused-title"
+                className="mt-4 text-lg font-semibold text-slate-900"
+              >
+                {t("attempt.paused_title")}
+              </h2>
+              <p className="mt-1.5 text-sm text-slate-500">
+                {t("attempt.paused_desc")}
+              </p>
+              <p className="mt-4 text-sm font-medium text-slate-700 tabular-nums">
+                {answered}/{attempt.totalQuestions} {t("attempt.answered")}
+              </p>
+              <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-center">
+                <Button asChild size="lg" variant="outline">
+                  <Link href={`/${locale}/toeic/history`}>{t("attempt.exit")}</Link>
+                </Button>
+                <Button
+                  size="lg"
+                  disabled={state.clockBusy}
+                  onClick={() => void state.resumeAttempt()}
+                >
+                  {state.clockBusy ? <Loader2 className="animate-spin" /> : <Play />}
+                  {t("attempt.resume")}
+                </Button>
+              </div>
+            </section>
+          </div>
+        ) : (
+        <>
         <div className="relative flex min-h-0 flex-1">
           <div
             className="min-w-0 flex-1 overflow-y-auto overscroll-contain"
@@ -709,6 +743,8 @@ export function ToeicAttemptShell() {
               <ChevronRight />
             </Button>
           </footer>
+        )}
+        </>
         )}
 
         <Dialog open={mobilePaletteOpen} onOpenChange={setMobilePaletteOpen}>

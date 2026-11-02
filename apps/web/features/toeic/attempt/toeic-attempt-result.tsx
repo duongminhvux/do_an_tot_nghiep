@@ -23,6 +23,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import {
   toeicAttemptService,
+  isAttemptInProgressError,
   type AnswerFeedback,
   type AttemptQuestion,
   type ExamMode,
@@ -187,6 +188,8 @@ export function ToeicAttemptResult() {
   const [scrollTarget, setScrollTarget] = useState<string | null>(null);
   const [retrying, setRetrying] = useState<"retry" | "weak" | null>(null);
   const [retryError, setRetryError] = useState(false);
+  // Set when the API refused a new attempt because one of this exam is unfinished.
+  const [openAttemptId, setOpenAttemptId] = useState<string | null>(null);
   const reviewRef = useRef<HTMLElement | null>(null);
 
   // The attempt can hold either a plain id or the legacy exam snapshot.
@@ -226,7 +229,7 @@ export function ToeicAttemptResult() {
     );
   if (!attempt || state.error)
     return (
-      <PageShell width="narrow">
+      <PageShell>
         <PageHeader
           back={{ href: `/${locale}/toeic/history`, label: t("attempt.history") }}
           title={t("result.page_title")}
@@ -244,7 +247,7 @@ export function ToeicAttemptResult() {
 
   if (!finished)
     return (
-      <PageShell width="narrow">
+      <PageShell>
         <PageHeader
           back={{ href: `/${locale}/toeic/history`, label: t("result.back") }}
           title={t("result.page_title")}
@@ -341,9 +344,19 @@ export function ToeicAttemptResult() {
     try {
       const created = await toeicAttemptService.create(examId, mode, selectedParts);
       router.push(`/${locale}/toeic/attempts/${created._id}`);
-    } catch {
-      setRetryError(true);
+    } catch (error) {
       setRetrying(null);
+      if (isAttemptInProgressError(error)) {
+        const open = await toeicService
+          .getAttempts({ examId, status: "IN_PROGRESS", limit: 1 })
+          .catch(() => null);
+        const id = Array.isArray(open?.data) ? open.data[0]?._id : undefined;
+        if (id) {
+          setOpenAttemptId(id);
+          return;
+        }
+      }
+      setRetryError(true);
     }
   }
 
@@ -373,6 +386,19 @@ export function ToeicAttemptResult() {
         />
 
         {retryError && <ErrorState message={t("result.retry_error")} />}
+        {openAttemptId && (
+          <div
+            role="alert"
+            className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+          >
+            <span className="min-w-0 flex-1">{t("result.open_attempt")}</span>
+            <Button asChild size="sm">
+              <Link href={`/${locale}/toeic/attempts/${openAttemptId}`}>
+                {t("exam_detail.btn_continue_attempt")}
+              </Link>
+            </Button>
+          </div>
+        )}
 
         {/* Score */}
         <Card className="p-5 sm:p-6">

@@ -10,8 +10,8 @@ import {
   ArrowRight,
   BookOpen,
   Layers,
-  Sparkles,
   UploadCloud,
+  Check,
 } from 'lucide-react';
 
 export default function VocabularyQuickNav() {
@@ -104,7 +104,7 @@ export default function VocabularyQuickNav() {
                     key={fIdx}
                     className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 bg-slate-50 border border-slate-200/80 px-2.5 py-1 rounded-lg"
                   >
-                    <Sparkles className="w-3 h-3 text-blue-500" />
+                    <Check className="w-3 h-3 text-blue-500" />
                     <span>{feat}</span>
                   </span>
                 ))}

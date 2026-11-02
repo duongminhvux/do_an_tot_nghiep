@@ -29,7 +29,6 @@ import {
   Loader2,
   Calendar,
   Layers,
-  Sparkles,
   CheckCircle2,
   XCircle,
   FolderPlus,
@@ -308,7 +307,7 @@ export default function CollectionsPage() {
   if (collectionsError || lessonsError || targetLessonError) return <LoadError onRetry={() => { if (collectionsError) void retryCollections(); if (lessonsError) void retryLessons(); if (targetLessonError) void retryTargetLesson(); }} />;
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full max-w-[1600px] mx-auto">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

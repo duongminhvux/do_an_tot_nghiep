@@ -413,7 +413,7 @@ export default function FriendlyMatchPage() {
   }
   return (
     <main className="min-h-[calc(100dvh-3.5rem)] bg-background px-3 py-4 text-slate-900 sm:px-6">
-      <div className="mx-auto max-w-7xl">
+      <div className="w-full">
         <header className="mb-5 flex items-center justify-between gap-3">
           <GameAudioToggle enabled={game.audioEnabled} />
           <div className="flex items-center gap-3">

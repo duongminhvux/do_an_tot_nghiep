@@ -670,7 +670,7 @@ export default function SrsReviewPage() {
       />
 
       {/* 2. Main Content Area (Focused centered workspace without topic sidebar) */}
-      <div className="mx-auto w-full max-w-4xl space-y-4 px-4 py-6 sm:px-6 lg:px-8">
+      <div className="w-full space-y-4 px-4 py-6 sm:px-6 lg:px-8">
         {/* Top Progress Bar & HUD */}
         <div className={cn(surface, 'flex items-center justify-between gap-4 px-4 py-3')}>
           <div className="flex-1 space-y-1">

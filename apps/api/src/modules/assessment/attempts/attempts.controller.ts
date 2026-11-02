@@ -94,6 +94,21 @@ export class AttemptsController {
     return this.attemptsService.playAudio(String(req.user._id), id, dto);
   }
 
+  @Post(':id/resume')
+  resume(@Req() req: UserRequest, @Param('id') id: string) {
+    return this.attemptsService.resume(String(req.user._id), id);
+  }
+
+  @Post(':id/pause')
+  pause(@Req() req: UserRequest, @Param('id') id: string) {
+    return this.attemptsService.pause(String(req.user._id), id);
+  }
+
+  @Post(':id/heartbeat')
+  heartbeat(@Req() req: UserRequest, @Param('id') id: string) {
+    return this.attemptsService.heartbeat(String(req.user._id), id);
+  }
+
   @Post(':id/abandon')
   abandon(@Req() req: UserRequest, @Param('id') id: string) {
     return this.attemptsService.abandon(String(req.user._id), id);

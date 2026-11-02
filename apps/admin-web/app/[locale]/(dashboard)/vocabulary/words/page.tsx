@@ -32,8 +32,8 @@ import {
   Loader2,
   Plus,
   CheckCircle2,
-  WandSparkles,
   CircleAlert,
+  AudioLines,
 } from 'lucide-react';
 
 const LEVEL_OPTIONS = ['All levels', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
@@ -504,7 +504,7 @@ export default function WordsPage() {
               onClick={() => bulkAudioMutation.mutate('us')}
               className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold rounded-[6px] transition-colors cursor-pointer inline-flex items-center gap-1.5"
             >
-              <WandSparkles className="w-3.5 h-3.5" /> US audio
+              <AudioLines className="w-3.5 h-3.5" /> US audio
             </button>
             <button
               type="button"
@@ -512,7 +512,7 @@ export default function WordsPage() {
               onClick={() => bulkAudioMutation.mutate('uk')}
               className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-semibold rounded-[6px] transition-colors cursor-pointer inline-flex items-center gap-1.5"
             >
-              <WandSparkles className="w-3.5 h-3.5" /> UK audio
+              <AudioLines className="w-3.5 h-3.5" /> UK audio
             </button>
 
             <button

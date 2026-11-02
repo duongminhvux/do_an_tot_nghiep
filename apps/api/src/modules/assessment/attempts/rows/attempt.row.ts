@@ -37,6 +37,10 @@ export interface Attempt {
     completedAt?: Date;
     expiresAt?: Date;
     timeLimitSeconds?: number;
+    /** Active-time clock, kept in payload; see attempt-clock.ts. */
+    activeSeconds?: number;
+    activeSince?: Date | string | null;
+    lastSeenAt?: Date | string | null;
     submittedAt?: Date;
     totalQuestions: number;
     answeredQuestions: number;

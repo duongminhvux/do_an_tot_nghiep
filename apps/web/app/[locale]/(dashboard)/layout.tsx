@@ -83,10 +83,10 @@ export default function DashboardLayout({
           <AppSidebar />
           <SidebarInset className="bg-background min-h-dvh flex flex-col">
             {/* Top Bar with Sidebar Trigger - Sticky Fixed to top */}
-            <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-slate-200 bg-white/95 px-4 sm:px-6 backdrop-blur-md shadow-xs">
+            <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-slate-200/80 bg-white/90 px-4 backdrop-blur-md sm:px-6">
               <SidebarTrigger className="-ml-1 text-slate-600 hover:text-slate-900 cursor-pointer" />
               <Separator orientation="vertical" className="mr-2 h-4" />
-              <span className="min-w-0 truncate text-sm font-semibold text-slate-700">
+              <span className="min-w-0 truncate text-sm font-semibold text-slate-900">
                 {getPageTitle()}
               </span>
             </header>

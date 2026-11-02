@@ -94,8 +94,9 @@ export class MistakeSourceController {
         reviewUrl: `/toeic/attempts/${input.sourceRefId}/result#result-question-${input.sourceItemId}`,
         actionUrl:
           row.live_question &&
-          row.publication_status === 'PUBLISHED' && row.is_active &&
-          row.group_active &&
+          // NULL flags mean active, as in every exam query (`IS NOT FALSE`).
+          row.publication_status === 'PUBLISHED' && row.is_active !== false &&
+          row.group_active !== false &&
           !row.group_deleted &&
           row.group_slug
             ? `/toeic/${row.group_slug}/${row.slug}?practicePart=${q.part}`

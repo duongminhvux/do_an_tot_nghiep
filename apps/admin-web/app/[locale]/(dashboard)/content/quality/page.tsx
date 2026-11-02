@@ -47,7 +47,7 @@ export default function ContentQualityPage() {
       ? new Date(value).toLocaleString(lang === "en" ? "en-GB" : "vi-VN")
       : "—";
   return (
-    <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
+    <div className="w-full space-y-6 p-4 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">{t("contentQuality.title")}</h1>

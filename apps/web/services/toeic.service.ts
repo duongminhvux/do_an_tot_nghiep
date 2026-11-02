@@ -57,6 +57,10 @@ export interface ToeicAttemptSummary {
   listeningScore?: number;
   readingScore?: number;
   expiresAt?: string;
+  /** Timed attempts in progress: time left, counting only time spent on the page. */
+  remainingSeconds?: number;
+  activeSeconds?: number;
+  paused?: boolean;
   totalCorrect?: number;
   totalQuestions?: number;
   durationSpent?: number;

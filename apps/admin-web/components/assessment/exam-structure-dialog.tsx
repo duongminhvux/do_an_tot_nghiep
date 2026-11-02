@@ -10,7 +10,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { AlertCircle, Clock, BookOpen, Headphones, Info, Sparkles } from 'lucide-react';
+import { AlertCircle, Clock, BookOpen, Headphones, Info } from 'lucide-react';
 
 interface ExamStructureDialogProps {
   open: boolean;
