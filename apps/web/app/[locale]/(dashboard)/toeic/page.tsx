@@ -338,7 +338,7 @@ export default function ToeicExamsPage() {
               ))}
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-100 pt-3 text-xs text-slate-600">
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1 border-t border-slate-100 pt-3 text-xs text-slate-600">
               <div className="space-y-1.5">
                 {[1, 2, 3, 4].map((n) => (
                   <p key={n}>

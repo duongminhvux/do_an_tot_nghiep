@@ -109,7 +109,7 @@ function SettingsForm({ initial }: { initial: SiteSettings }) {
   });
   return (
     <form
-      className="space-y-6"
+      className="space-y-8"
       onSubmit={(event) => {
         event.preventDefault();
         if (uploading || mutation.isPending) return;
@@ -124,7 +124,7 @@ function SettingsForm({ initial }: { initial: SiteSettings }) {
     >
       <fieldset
         disabled={mutation.isPending || uploading !== null}
-        className="space-y-6"
+        className="space-y-8"
       >
         <section className="space-y-5 rounded-xl border border-slate-200 bg-white p-5 shadow-xs sm:p-6">
           <div className="flex items-center gap-2.5 border-b border-slate-100 pb-4">
@@ -136,7 +136,7 @@ function SettingsForm({ initial }: { initial: SiteSettings }) {
               <p className="text-xs text-slate-500">Cấu hình tên hệ thống, mô tả giới thiệu và múi giờ hiển thị</p>
             </div>
           </div>
-          <div className="gap-5">
+          <div className="grid items-start gap-x-6 gap-y-6 md:grid-cols-2">
             <label className="block min-w-0 space-y-2 text-sm font-medium text-slate-700">
               <span>{t("siteName")}</span>
               <input

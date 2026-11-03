@@ -175,7 +175,7 @@ export default function ToeicGroupDetailPage() {
         description={isLoading ? <span className="inline-block animate-pulse rounded-md bg-slate-100 align-middle h-4 w-72" /> : groupDescription}
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard
           icon={FileText}
           tone="blue"

@@ -96,7 +96,7 @@ export function RecentMatches({
                 setSelectedMatch(match);
                 setPanel("match");
               }}
-              className="grid w-full min-w-0 cursor-pointer grid-cols-[minmax(0,1fr)_52px_48px_16px] items-center gap-1.5 rounded-lg border-b border-slate-100 px-1 py-2.5 text-left transition-colors last:border-0 hover:bg-slate-50 @min-[520px]/matches:grid-cols-[minmax(0,1fr)_64px_65px_110px_16px] @min-[520px]/matches:gap-2 @min-[520px]/matches:px-2"
+              className="grid w-full min-w-0 cursor-pointer grid-cols-[minmax(0,1fr)_auto_auto_16px] items-center gap-1.5 rounded-lg border-b border-slate-100 px-1 py-2.5 text-left transition-colors last:border-0 hover:bg-slate-50 @min-[520px]/matches:grid-cols-[minmax(0,1fr)_64px_65px_110px_16px] @min-[520px]/matches:gap-2 @min-[520px]/matches:px-2"
             >
               <div className="flex min-w-0 items-center gap-2.5">
                 <Avatar
@@ -124,7 +124,7 @@ export function RecentMatches({
                     ? text("Thắng", "Win")
                     : text("Thua", "Loss")}
               </Badge>
-              <span className="text-center text-sm font-semibold tabular-nums text-slate-700">
+              <span className="whitespace-nowrap text-center text-sm font-semibold tabular-nums text-slate-700">
                 {match.mode === "word-chain"
                   ? text("Nối từ", "Word Chain")
                   : `${match.score[0]} - ${match.score[1]}`}

@@ -109,7 +109,7 @@ export function WordsTable({
   };
 
   return (
-    <div className="lg:col-span-9 flex flex-col overflow-hidden border border-slate-200 rounded-[6px] bg-white shadow-none">
+    <div className="min-w-0 lg:col-span-9 flex flex-col overflow-hidden border border-slate-200 rounded-[6px] bg-white shadow-none">
       {/* Header bảng hoặc Thanh Bulk Action */}
       <div className="p-3 border-b border-slate-100 flex items-center justify-between gap-3 bg-slate-50/50 shrink-0">
         {selectedWordIds.length > 0 ? (
@@ -195,7 +195,7 @@ export function WordsTable({
       </div>
 
       {/* Bảng từ vựng */}
-      <div className="flex-1 overflow-y-auto min-h-0">
+      <div>
         {isLoadingLessonWords ? (
           <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-2">
             <Loader2 className="w-6 h-6 animate-spin text-blue-600" />

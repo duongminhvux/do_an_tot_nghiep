@@ -46,7 +46,7 @@ export function GroupsSidebar({
   };
 
   return (
-    <div className="lg:col-span-3 flex flex-col justify-between p-4 bg-white border border-slate-200 rounded-[6px] shadow-none overflow-y-auto">
+    <div className="lg:col-span-3 lg:sticky lg:top-0 flex flex-col gap-3 p-4 bg-white border border-slate-200 rounded-[6px] shadow-none">
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div>

@@ -246,10 +246,11 @@ export default function VocabularyPage() {
               {t('catalog.featured_title')}
             </h2>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {/* Phones: swipeable row so four large covers don't fill several screens. */}
+            <div className="-mx-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-3 pb-1 scrollbar-none sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-4">
               {isColsLoading
                 ? [1, 2, 3, 4].map((i) => (
-                    <div key={i} className={cn(surface, 'space-y-3 p-4')}>
+                    <div key={i} className={cn(surface, 'w-[78%] shrink-0 snap-start space-y-3 p-4 sm:w-auto')}>
                       <Skeleton className="aspect-[16/9] w-full rounded-lg" />
                       <Skeleton className="h-4 w-20" />
                       <Skeleton className="h-4 w-32" />
@@ -260,7 +261,7 @@ export default function VocabularyPage() {
                     <EmptyState
                       icon={FolderKanban}
                       title={t('catalog.no_featured')}
-                      className="col-span-full py-10"
+                      className="col-span-full w-full py-10"
                     />
                   ) : (
                     featuredCollections.map((col) => {
@@ -276,7 +277,7 @@ export default function VocabularyPage() {
                           href={`/${locale}/vocabulary/collection/${col.slug || col._id}`}
                           className={cn(
                             surface,
-                            'group flex flex-col justify-between p-4 transition-colors hover:border-blue-300',
+                            'group flex w-[78%] shrink-0 snap-start flex-col justify-between p-4 transition-colors hover:border-blue-300 sm:w-auto',
                           )}
                         >
                           <div className="space-y-2.5">

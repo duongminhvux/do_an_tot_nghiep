@@ -154,11 +154,31 @@
     display: none;
   }
 }
+/* Landing page: gentle bobbing of the hero chips. */
+@keyframes landing-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.landing-float {
+  animation: landing-float 5s ease-in-out infinite;
+}
+.landing-float-delayed {
+  animation: landing-float 5s ease-in-out 2.5s infinite;
+}
 @media (prefers-reduced-motion: reduce) {
   .animate-in,
-  .animate-wiggle {
+  .animate-wiggle,
+  .landing-float,
+  .landing-float-delayed {
     animation: none;
   }
+}
+html:has(.landing-root) {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  html:has(.landing-root) { scroll-behavior: auto; }
 }
 
 /* Tiptap Content & Reading Passages */

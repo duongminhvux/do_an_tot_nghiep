@@ -61,9 +61,9 @@ export function CollectionLessonsTab({
                     href={`/${locale}/vocabulary/collection/${slug}/lesson/${lesson.slug || lesson._id}`}
                     className={cn(surface, 'group flex flex-col justify-between p-4 transition-colors hover:border-blue-300')}
                   >
-                    <div className="space-y-2.5">
-                      {/* 16:9 Lesson Thumbnail */}
-                      <div className="relative aspect-[16/9] w-full overflow-hidden rounded-lg border border-slate-100 bg-blue-50">
+                    {/* Phones: compact row (small thumbnail beside the text); larger screens: card. */}
+                    <div className="flex gap-3 sm:block">
+                      <div className="relative aspect-[4/3] w-24 shrink-0 overflow-hidden rounded-lg border border-slate-100 bg-blue-50 sm:aspect-[16/9] sm:w-full">
                         {lesson.coverUrl ? (
                           <img
                             src={lesson.coverUrl}
@@ -73,13 +73,14 @@ export function CollectionLessonsTab({
                         ) : (
                           <div className="flex h-full w-full flex-col items-center justify-center p-3 text-center text-blue-600">
                             <BookOpen className="mb-1 h-6 w-6" />
-                            <span className="max-w-full truncate text-xs font-semibold text-blue-700">
+                            <span className="hidden max-w-full truncate text-xs font-semibold text-blue-700 sm:block">
                               {lesson.title}
                             </span>
                           </div>
                         )}
                       </div>
 
+                      <div className="min-w-0 flex-1 space-y-1.5 sm:mt-2.5 sm:space-y-2.5">
                       {/* Unit Label */}
                       <span className="block text-xs font-semibold uppercase tracking-wider text-blue-600">
                         {unitLabel}
@@ -105,6 +106,7 @@ export function CollectionLessonsTab({
                             </div>
                           </>
                         )}
+                      </div>
                       </div>
                     </div>
 

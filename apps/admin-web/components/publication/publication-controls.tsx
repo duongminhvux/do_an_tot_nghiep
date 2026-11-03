@@ -59,11 +59,14 @@ export function PublicationBar({
   id,
   version,
   dirty = false,
+  compact = false,
 }: {
   kind: PublicationKind;
   id: string;
   version?: unknown;
   dirty?: boolean;
+  /** Single-row layout for use inside dialogs. */
+  compact?: boolean;
 }) {
   const { t } = useTranslation("common");
   const { locale = "vi" } = useParams<{ locale: string }>();
@@ -94,23 +97,77 @@ export function PublicationBar({
     query.data.publicationValidation?.revision ===
       query.data.publicationRevision &&
     !issues.some((issue) => issue.severity === "error");
+  const actions = (
+        <div className="flex flex-wrap gap-2">
+          <Button
+            size={compact ? "sm" : undefined}
+            className={compact ? "h-7 px-2.5 text-xs" : undefined}
+            type="button"
+            variant="outline"
+            disabled={dirty || !query.data || mutation.isPending}
+            onClick={() => mutation.mutate("validate")}
+          >
+            {t("publication.validate")}
+          </Button>
+          <Button
+            size={compact ? "sm" : undefined}
+            className={compact ? "h-7 px-2.5 text-xs" : undefined}
+            type="button"
+            variant="outline"
+            disabled={dirty || !query.data || mutation.isPending}
+            onClick={() => setPreviewOpen(true)}
+          >
+            {t("publication.preview")}
+          </Button>
+          <Button
+            size={compact ? "sm" : undefined}
+            className={compact ? "h-7 px-2.5 text-xs" : undefined}
+            type="button"
+            disabled={dirty || !canPublish || mutation.isPending}
+            onClick={() => mutation.mutate("publish")}
+          >
+            {t("publication.publish")}
+          </Button>
+          {query.data?.publicationStatus === "PUBLISHED" && (
+            <Button
+            size={compact ? "sm" : undefined}
+            className={compact ? "h-7 px-2.5 text-xs" : undefined}
+              type="button"
+              variant="secondary"
+              disabled={mutation.isPending || dirty}
+              onClick={() => mutation.mutate("unpublish")}
+            >
+              {t("publication.unpublish")}
+            </Button>
+          )}
+        </div>
+  );
   return (
     <section
-      className="space-y-3 rounded-xl border border-slate-200 bg-white p-4"
+      className={
+        compact
+          ? "space-y-2 rounded-[6px] border border-slate-200 bg-slate-50/60 px-3 py-2.5"
+          : "space-y-3 rounded-xl border border-slate-200 bg-white p-4"
+      }
       aria-label={t("publication.title")}
     >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="font-semibold text-slate-900">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <div className={compact ? "flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1" : ""}>
+          <h2 className={compact ? "text-sm font-semibold text-slate-900" : "font-semibold text-slate-900"}>
             {t("publication.title")}
           </h2>
-          <p className="mt-1 text-xs text-slate-500">
-            {t("publication.savedOnly")}
-          </p>
+          {compact ? (
+            query.data && <PublicationBadge item={query.data} />
+          ) : (
+            <p className="mt-1 text-xs text-slate-500">
+              {t("publication.savedOnly")}
+            </p>
+          )}
         </div>
-        {query.data && <PublicationBadge item={query.data} />}
+        {!compact && query.data && <PublicationBadge item={query.data} />}
+        {compact && actions}
       </div>
-      <ol className="flex flex-wrap gap-3 text-xs text-slate-500">
+      <ol className={compact ? "flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-500" : "flex flex-wrap gap-3 text-xs text-slate-500"}>
         {states.map((state, index) => (
           <li
             key={state}
@@ -149,41 +206,7 @@ export function PublicationBar({
           {t("publication.unsaved")}
         </p>
       )}
-      <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          disabled={dirty || !query.data || mutation.isPending}
-          onClick={() => mutation.mutate("validate")}
-        >
-          {t("publication.validate")}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={dirty || !query.data || mutation.isPending}
-          onClick={() => setPreviewOpen(true)}
-        >
-          {t("publication.preview")}
-        </Button>
-        <Button
-          type="button"
-          disabled={dirty || !canPublish || mutation.isPending}
-          onClick={() => mutation.mutate("publish")}
-        >
-          {t("publication.publish")}
-        </Button>
-        {query.data?.publicationStatus === "PUBLISHED" && (
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={mutation.isPending || dirty}
-            onClick={() => mutation.mutate("unpublish")}
-          >
-            {t("publication.unpublish")}
-          </Button>
-        )}
-      </div>
+      {!compact && actions}
       {mutation.isPending && (
         <p role="status" className="text-sm">
           {t("publication.saving")}

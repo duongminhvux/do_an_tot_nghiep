@@ -113,18 +113,18 @@ export function ArenaStats({ text, number, profile }: Props) {
         return (
           <article
             key={stat.title}
-            className={cn(surface, "flex min-w-0 items-center gap-3 p-4 @min-[340px]/arena:last:col-span-2 @min-[640px]/arena:p-5 @min-[640px]/arena:last:col-span-1")}
+            className={cn(surface, "flex min-w-0 flex-col items-start gap-2.5 p-4 sm:flex-row sm:items-center sm:gap-3 @min-[340px]/arena:last:col-span-2 @min-[640px]/arena:p-5 @min-[640px]/arena:last:col-span-1")}
           >
             <span
               className={cn(
-                "flex size-10 shrink-0 items-center justify-center rounded-xl @min-[640px]/arena:size-11",
+                "flex size-9 shrink-0 items-center justify-center rounded-lg sm:size-10 sm:rounded-xl @min-[640px]/arena:size-11",
                 stat.color,
               )}
             >
-              <stat.icon className="size-5" />
+              <stat.icon className="size-4 sm:size-5" />
             </span>
 
-            <div className="min-w-0 flex-1">
+            <div className="w-full min-w-0 flex-1">
               <p className="text-xs font-medium text-slate-500">
                 {stat.title}
               </p>

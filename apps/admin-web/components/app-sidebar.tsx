@@ -26,6 +26,8 @@ import {
   DoorOpen,
   Settings,
   Images,
+  LayoutTemplate,
+  SlidersHorizontal,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -255,9 +257,22 @@ export function AppSidebar() {
     },
     {
       label: t("nav.systemSettings"),
-      href: `/${locale}/settings`,
       icon: Settings,
       active: active(`/${locale}/settings`),
+      children: [
+        {
+          label: t("siteSettings:landing.navGeneral"),
+          href: `/${locale}/settings`,
+          icon: SlidersHorizontal,
+          active: pathname === `/${locale}/settings`,
+        },
+        {
+          label: t("siteSettings:landing.nav"),
+          href: `/${locale}/settings/landing`,
+          icon: LayoutTemplate,
+          active: active(`/${locale}/settings/landing`),
+        },
+      ],
     },
   ];
 

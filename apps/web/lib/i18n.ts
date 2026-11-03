@@ -12,12 +12,14 @@ import viVocabulary from '../locales/vi/vocabulary.json';
 import viProgress from '../locales/vi/progress.json';
 import viToeic from '../locales/vi/toeic.json';
 import viHome from '../locales/vi/home.json';
+import viLanding from '../locales/vi/landing.json';
 import enCommon from '../locales/en/common.json';
 import enAuth from '../locales/en/auth.json';
 import enVocabulary from '../locales/en/vocabulary.json';
 import enProgress from '../locales/en/progress.json';
 import enToeic from '../locales/en/toeic.json';
 import enHome from '../locales/en/home.json';
+import enLanding from '../locales/en/landing.json';
 
 const resources = {
   vi: {
@@ -29,6 +31,7 @@ const resources = {
     progress: viProgress,
     toeic: viToeic,
     home: viHome,
+    landing: viLanding,
   },
   en: {
     common: enCommon,
@@ -39,6 +42,7 @@ const resources = {
     progress: enProgress,
     toeic: enToeic,
     home: enHome,
+    landing: enLanding,
   },
 };
 

@@ -238,7 +238,6 @@ export default function CreateExamAiPage() {
         totalQuestions: 200,
         isActive: false,
         groupId,
-        description: `ETS · Test ${testNumber} · AI PDF import`,
       });
       const created = response.data;
       setExam(created);

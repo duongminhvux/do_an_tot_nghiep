@@ -57,6 +57,9 @@ export default function DashboardLayout({
     if (pathname?.includes('/dictation')) {
       return t('nav.dictation', 'Dictation');
     }
+    if (pathname?.includes('/learning/mistakes')) {
+      return t('mistakes.title');
+    }
     if (pathname?.includes('/lessons')) {
       return t('nav.lessons', isEn ? 'Lessons' : 'Bài học');
     }

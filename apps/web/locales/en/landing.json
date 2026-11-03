@@ -1,0 +1,108 @@
+{
+  "nav": {
+    "features": "Features",
+    "how": "How it works",
+    "login": "Log in",
+    "register": "Create account",
+    "dashboard": "Go to dashboard",
+    "menu": "Open menu",
+    "close": "Close menu",
+    "main": "Main navigation"
+  },
+  "hero": {
+    "eyebrow": "An all-in-one English practice platform",
+    "titleStart": "Learn English",
+    "titleHighlight": "a little every day",
+    "titleEnd": ", and see real progress.",
+    "subtitle": "Topic-based vocabulary, TOEIC practice tests, dictation and head-to-head word games – all in one place, with study suggestions based on your own results.",
+    "primary": "Start learning",
+    "secondary": "I already have an account",
+    "continue": "Continue learning",
+    "point1": "Spaced-repetition review",
+    "point2": "Automatic TOEIC scoring",
+    "point3": "Clear progress tracking",
+    "imageAlt": "Illustration of the English learning platform"
+  },
+  "preview": {
+    "label": "Today's flashcard",
+    "word": "resilient",
+    "phonetic": "/rɪˈzɪliənt/",
+    "meaning": "able to recover quickly",
+    "example": "She stayed resilient after every setback.",
+    "progress": "Lesson progress",
+    "again": "Again",
+    "good": "Got it",
+    "chipReview": "Due for review",
+    "chipStreak": "Day streak"
+  },
+  "features": {
+    "eyebrow": "Every skill you need",
+    "title": "One platform, five ways to practise",
+    "subtitle": "Each area is built for its own goal, yet they share one learning record so you always know where you stand.",
+    "explore": "Explore now",
+    "vocabulary": {
+      "tag": "Vocabulary",
+      "title": "Remember words longer with spaced repetition",
+      "body": "Study topic collections, save your own words and get reminded to review right before you forget.",
+      "point1": "Collections by topic and level",
+      "point2": "Automatic daily review schedule",
+      "point3": "A personal notebook for new words",
+      "imageAlt": "Vocabulary learning illustration"
+    },
+    "toeic": {
+      "tag": "TOEIC",
+      "title": "TOEIC practice that feels like the real test",
+      "body": "Take single parts or timed full tests, then see your converted score and explanations right after you submit.",
+      "point1": "Listening & Reading tests by Part",
+      "point2": "Converted scores and attempt history",
+      "point3": "Strength and weakness statistics",
+      "imageAlt": "TOEIC practice illustration"
+    },
+    "dictation": {
+      "tag": "Dictation",
+      "title": "Dictation for natural listening comprehension",
+      "body": "Listen sentence by sentence, type what you hear and get detailed feedback on every word you miss.",
+      "point1": "Everyday listening topics",
+      "point2": "Replay sentences and change speed",
+      "point3": "Pinpoints exactly which words you missed",
+      "imageAlt": "Dictation practice illustration"
+    },
+    "games": {
+      "tag": "Games",
+      "title": "Review through games",
+      "body": "Speed typing, word shooting, meaning guessing – turn review into short, fun rounds.",
+      "imageAlt": "Vocabulary games illustration"
+    },
+    "arena": {
+      "tag": "Arena",
+      "title": "Challenge friends in the arena",
+      "body": "Play ranked matches or open a room with friends, answer fast and accurately to climb the leaderboard.",
+      "imageAlt": "Vocabulary arena illustration"
+    }
+  },
+  "dictationPreview": {
+    "sentence1": "Could you",
+    "missing": "recommend",
+    "sentence2": "a good place to eat?",
+    "speed": "Speed 0.75×"
+  },
+  "how": {
+    "eyebrow": "Getting started is easy",
+    "title": "Three steps to get into the habit",
+    "step1Title": "Create an account",
+    "step1Body": "Sign up with email or Google in under a minute.",
+    "step2Title": "Pick what to study",
+    "step2Body": "Start with a vocabulary collection, a TOEIC test or a listening lesson that suits you.",
+    "step3Title": "Keep going and track it",
+    "step3Body": "Keep your streak, get review suggestions and watch your progress week by week."
+  },
+  "cta": {
+    "title": "Ready for your first lesson?",
+    "subtitle": "Create an account and start with a few minutes a day. Progress comes from consistency.",
+    "primary": "Create account",
+    "secondary": "Log in"
+  },
+  "footer": {
+    "rights": "All rights reserved."
+  }
+}

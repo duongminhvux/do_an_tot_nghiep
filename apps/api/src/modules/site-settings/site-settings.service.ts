@@ -10,6 +10,11 @@ type SiteSettings,
 type TimezoneOption,
 } from '@repo/shared-types/site-settings';
 import {
+LANDING_PAGE_SETTINGS_ID,
+normalizeLandingPageSettings,
+type LandingPageSettings,
+} from '@repo/shared-types/landing-page';
+import {
 InjectPgConnection,
 type PgConnection,
 } from '../../postgres/connection.js';
@@ -94,5 +99,22 @@ export class SiteSettingsService {
       [SITE_SETTINGS_ID, JSON.stringify({ key: 'website', settings })],
     );
     return normalizeSiteSettings(result.rows[0]?.payload?.settings);
+  }
+  async readLanding(): Promise<LandingPageSettings> {
+    const result = await this.connection.query(
+      'SELECT payload FROM public.system_settings WHERE id = $1',
+      [LANDING_PAGE_SETTINGS_ID],
+    );
+    return normalizeLandingPageSettings(result.rows[0]?.payload?.settings);
+  }
+  async saveLanding(input: LandingPageSettings): Promise<LandingPageSettings> {
+    const settings = normalizeLandingPageSettings(input);
+    const result = await this.connection.query(
+      `INSERT INTO public.system_settings (id, payload) VALUES ($1, $2::jsonb)
+       ON CONFLICT (id) DO UPDATE SET payload = EXCLUDED.payload
+       RETURNING payload`,
+      [LANDING_PAGE_SETTINGS_ID, JSON.stringify({ key: 'landing-page', settings })],
+    );
+    return normalizeLandingPageSettings(result.rows[0]?.payload?.settings);
   }
 }

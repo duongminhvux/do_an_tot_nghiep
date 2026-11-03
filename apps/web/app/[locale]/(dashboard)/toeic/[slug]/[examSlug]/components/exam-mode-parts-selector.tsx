@@ -28,7 +28,7 @@ function ModeOption({
       aria-checked={active}
       onClick={onSelect}
       className={cn(
-        'flex cursor-pointer items-start gap-2.5 rounded-lg border p-3 text-left outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-blue-500/60',
+        'flex min-w-0 cursor-pointer items-start gap-3 rounded-xl border p-4 text-left outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-blue-500/60',
         active
           ? 'border-blue-500 bg-blue-50/60 ring-1 ring-blue-500'
           : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50',
@@ -37,17 +37,17 @@ function ModeOption({
       <span
         aria-hidden
         className={cn(
-          'mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
+          'mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
           active ? 'border-blue-600' : 'border-slate-300',
         )}
       >
-        {active && <span className="size-1.5 rounded-full bg-blue-600" />}
+        {active && <span className="size-2 rounded-full bg-blue-600" />}
       </span>
       <span className="min-w-0">
-        <span className={cn('block text-sm font-semibold', active ? 'text-blue-700' : 'text-slate-800')}>
+        <span className={cn('block text-[15px] font-semibold', active ? 'text-blue-700' : 'text-slate-800')}>
           {label}
         </span>
-        <span className="mt-0.5 block text-xs leading-snug text-slate-500">{description}</span>
+        <span className="mt-1 block text-sm leading-relaxed text-slate-500">{description}</span>
       </span>
     </button>
   );
@@ -143,11 +143,11 @@ export function ExamModePartsSelector({
 
   return (
     <section aria-labelledby="exam-start-title" className={cn(surface, 'divide-y divide-slate-100')}>
-      <div className="p-5">
-        <h2 id="exam-start-title" className="text-base font-semibold text-slate-900">
+      <div className="p-5 sm:p-6">
+        <h2 id="exam-start-title" className="text-lg font-semibold text-slate-900">
           {t('exam_detail.mode_title')}
         </h2>
-        <div role="radiogroup" aria-labelledby="exam-start-title" className="mt-3 grid grid-cols-2 gap-2">
+        <div role="radiogroup" aria-labelledby="exam-start-title" className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
           <ModeOption
             active={mode === 'TEST'}
             label={t('exam_detail.mode_exam_label')}

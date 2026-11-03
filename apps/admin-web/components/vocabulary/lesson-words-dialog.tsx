@@ -325,19 +325,20 @@ export function LessonWordsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl w-[calc(100vw-2rem)] p-5 sm:p-8 rounded-[6px] border border-slate-200 shadow-none bg-white max-h-[92dvh] flex flex-col">
+      {/* Fixed header + ONE scroll area for the body (no nested scrollbars). */}
+      <DialogContent className="flex h-[92dvh] max-h-[92dvh] w-[calc(100vw-2rem)] max-w-6xl flex-col gap-0 overflow-hidden rounded-[6px] border border-slate-200 bg-white p-0 shadow-none">
         {/* ======================================================== */}
         {/* 1. HEADER */}
         {/* ======================================================== */}
-        <DialogHeader className="space-y-1 pb-4 border-b border-slate-100 shrink-0">
+        <DialogHeader className="shrink-0 space-y-1 border-b border-slate-200 px-4 py-3 pr-12 sm:px-6 sm:pr-14">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             {/* Title & Stats */}
             <div className="flex items-start gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-[6px] bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0 mt-0.5">
-                <BookOpen className="w-5 h-5" />
+              <div className="w-8 h-8 rounded-[4px] bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0 mt-0.5">
+                <BookOpen className="w-4 h-4" />
               </div>
               <div className="min-w-0">
-                <DialogTitle className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2 flex-wrap">
+                <DialogTitle className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2 flex-wrap">
                   <span className="truncate">{lesson?.title || 'Unit 2 - Thinking learning'}</span>
                   <span className="text-xs font-semibold px-2.5 py-0.5 rounded-[4px] bg-purple-50 text-purple-700 border border-purple-100">
                     {lessonWords.length} {t('words_label', 'từ')}
@@ -362,11 +363,12 @@ export function LessonWordsDialog({
             </div>
           </div>
         </DialogHeader>
-        {lesson && <PublicationBar kind="lessons" id={lesson._id} version={lessonWords.length} />}
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6">
+        {lesson && <PublicationBar compact kind="lessons" id={lesson._id} version={lessonWords.length} />}
 
         {/* Global Error Alert */}
         {errorMessage && (
-          <div className="mt-2 p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-[6px] flex items-center justify-between gap-2 font-medium shrink-0">
+          <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-[6px] flex items-center justify-between gap-2 font-medium shrink-0">
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
               <span>{errorMessage}</span>
@@ -427,7 +429,7 @@ export function LessonWordsDialog({
         {/* ======================================================== */}
         {/* 2. TOOLBAR: Tìm kiếm + Lọc trình độ */}
         {/* ======================================================== */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-3 shrink-0">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
           {/* Search Input */}
           <div className="relative flex-1">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -482,7 +484,7 @@ export function LessonWordsDialog({
         {/* ======================================================== */}
         {/* 3. MAIN 2-COLUMN LAYOUT: 75% BẢNG TỪ VỰNG + 25% SIDEBAR NHÓM */}
         {/* ======================================================== */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden pt-1 min-h-0">
+        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-12">
           {/* CỘT TRÁI: BẢNG DANH SÁCH TỪ VỰNG */}
           <WordsTable
             paginationKey={`${lesson?._id}:${searchQuery}:${filterLevel}:${filterSection}:${open}`}
@@ -518,6 +520,7 @@ export function LessonWordsDialog({
             onDeleteSectionRequest={(sectionId, sectionName) => setDeleteConfirmState({ type: 'section', sectionId, sectionName })}
             onOpenCreateGroupModal={() => setIsCreateGroupModalOpen(true)}
           />
+        </div>
         </div>
 
         {/* ======================================================== */}

@@ -38,7 +38,7 @@ export default function DictationProgressPage() {
         <ErrorState message={t('load_error')} onRetry={() => void refetch()} retryLabel={t('retry')} />
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             {statCards.map(({ label, value, Icon, tone }) => (
               <StatCard key={label} icon={Icon} tone={tone} label={String(label)} value={String(value)} />
             ))}

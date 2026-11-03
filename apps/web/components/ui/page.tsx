@@ -88,7 +88,8 @@ export function PageHeader({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="flex min-w-0 items-start gap-3">
           {Icon && (
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+            // Hidden on phones so the title gets the full width.
+            <span className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 sm:flex">
               <Icon className="h-6 w-6" />
             </span>
           )}
@@ -178,15 +179,16 @@ export function StatCard({
   className?: string;
 }) {
   return (
-    <div className={cn(surface, "flex items-start gap-4 p-5", className)}>
+    // Phones: icon above the text so narrow two-column grids don't squeeze the label.
+    <div className={cn(surface, "flex flex-col items-start gap-2.5 p-4 sm:flex-row sm:gap-4 sm:p-5", className)}>
       {Icon && (
-        <span className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl", tones[tone])}>
-          <Icon className="h-5 w-5" />
+        <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg sm:size-11 sm:rounded-xl", tones[tone])}>
+          <Icon className="size-4 sm:size-5" />
         </span>
       )}
       <div className="min-w-0 flex-1">
-        <p className="text-sm text-slate-500">{label}</p>
-        <p className="mt-0.5 text-2xl font-bold tracking-tight text-slate-900">{value}</p>
+        <p className="text-[13px] leading-snug text-slate-500 sm:text-sm">{label}</p>
+        <p className="mt-0.5 text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">{value}</p>
         {hint && <div className="mt-1 text-xs text-slate-500">{hint}</div>}
       </div>
     </div>
@@ -249,7 +251,7 @@ export function Tabs<T extends string>({
           aria-selected={value === item.value}
           onClick={() => onChange(item.value)}
           className={cn(
-            "-mb-px cursor-pointer whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors",
+            "-mb-px shrink-0 cursor-pointer whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-semibold transition-colors sm:px-4",
             value === item.value
               ? "border-blue-600 text-blue-600"
               : "border-transparent text-slate-500 hover:text-slate-800",
@@ -275,7 +277,7 @@ export function Segmented<T extends string | number>({
   className?: string;
 }) {
   return (
-    <div className={cn("inline-flex rounded-lg bg-slate-100 p-1", className)}>
+    <div className={cn("inline-flex max-w-full overflow-x-auto rounded-lg bg-slate-100 p-1 scrollbar-none", className)}>
       {items.map((item) => (
         <button
           key={String(item.value)}
@@ -283,7 +285,7 @@ export function Segmented<T extends string | number>({
           aria-pressed={value === item.value}
           onClick={() => onChange(item.value)}
           className={cn(
-            "cursor-pointer rounded-md px-3 py-1.5 text-xs font-semibold transition-colors",
+            "shrink-0 cursor-pointer whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-semibold transition-colors",
             value === item.value ? "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-800",
           )}
         >

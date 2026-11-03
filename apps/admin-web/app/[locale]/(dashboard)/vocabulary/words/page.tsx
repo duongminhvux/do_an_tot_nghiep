@@ -63,7 +63,8 @@ export default function WordsPage() {
   const [selectedLevel, setSelectedLevel] = useState('All levels');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [page, setPage] = useState(1);
-  const pageSize = 10;
+  // Compact rows: show more words per page.
+  const pageSize = 20;
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [viewingWordId, setViewingWordId] = useState<string | null>(null);
@@ -554,8 +555,8 @@ export default function WordsPage() {
         <div className="min-w-0 max-w-full overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50/70 text-xs font-semibold text-slate-500 uppercase tracking-wider select-none">
-                <th className="py-4 px-4 w-12 text-center">
+              <tr className="border-b border-slate-200 bg-slate-50/70 text-[11px] font-semibold text-slate-500 uppercase tracking-wider select-none">
+                <th className="py-2 px-3 w-12 text-center">
                   <input
                     type="checkbox"
                     checked={allCurrentSelected}
@@ -563,15 +564,15 @@ export default function WordsPage() {
                     className="w-4 h-4 text-blue-600 rounded-sm border-slate-300 focus:ring-blue-500 cursor-pointer"
                   />
                 </th>
-                <th className="py-4 px-4 min-w-[220px]">{t('th_word_phonetic')}</th>
-                <th className="py-4 px-4 min-w-[340px]">{t('th_meanings')}</th>
-                <th className="py-4 px-4 min-w-[100px] text-center">{t('th_level')}</th>
-                <th className="py-4 px-4 min-w-[120px] text-center">{t('th_status')}</th>
-                <th className="py-4 px-4 min-w-[130px] text-right">{t('th_actions')}</th>
+                <th className="py-2 px-3 min-w-[180px]">{t('th_word_phonetic')}</th>
+                <th className="py-2 px-3 min-w-[300px]">{t('th_meanings')}</th>
+                <th className="py-2 px-3 min-w-[100px] text-center">{t('th_level')}</th>
+                <th className="py-2 px-3 min-w-[120px] text-center">{t('th_status')}</th>
+                <th className="py-2 px-3 min-w-[130px] text-right">{t('th_actions')}</th>
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-slate-100 text-sm">
+            <tbody className="divide-y divide-slate-100 text-[13px]">
               {isLoading ? (
                 <tr>
                   <td colSpan={6} className="py-20 text-center text-slate-400">
@@ -604,7 +605,7 @@ export default function WordsPage() {
                       }`}
                     >
                       {/* Checkbox */}
-                      <td className="py-4 px-4 text-center">
+                      <td className="py-2 px-3 text-center">
                         <input
                           type="checkbox"
                           checked={isSelected}
@@ -614,16 +615,16 @@ export default function WordsPage() {
                       </td>
 
                       {/* Word + Phonetic (US / UK) + audio status */}
-                      <td className="py-3.5 px-4">
-                        <div className="text-base font-bold tracking-tight text-slate-900">{item.word}</div><PublicationBadge item={item} />
-                        <div className="mt-1 space-y-0.5 text-xs">
+                      <td className="py-2 px-3">
+                        <div className="flex flex-wrap items-center gap-1.5"><span className="text-sm font-bold tracking-tight text-slate-900">{item.word}</span><PublicationBadge item={item} /></div>
+                        <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px]">
                           {(['us', 'uk'] as const).map((accent) => {
                             const ipa = item.ipa?.[accent];
                             const audioUrl = item.audio?.[accent];
                             if (!ipa && !audioUrl) return null;
                             const status = getAudioStatus(item, accent);
                             return (
-                              <div key={accent} className="flex items-center gap-1.5 text-slate-600">
+                              <div key={accent} className="flex items-center gap-1 text-slate-600">
                                 <button
                                   type="button"
                                   onClick={() => playAudio(audioUrl)}
@@ -631,9 +632,9 @@ export default function WordsPage() {
                                   title={audioUrl ? t(accent === 'us' ? 'play_us' : 'play_uk') : t('no_audio')}
                                   className="text-blue-500 hover:text-blue-700 disabled:opacity-30 disabled:hover:text-blue-500 transition-colors cursor-pointer disabled:cursor-not-allowed"
                                 >
-                                  <Volume2 className="w-3.5 h-3.5" />
+                                  <Volume2 className="w-3 h-3" />
                                 </button>
-                                <span className="w-6 text-[10px] font-semibold uppercase text-slate-400">{accent}</span>
+                                <span className="text-[10px] font-semibold uppercase text-slate-400">{accent}</span>
                                 <span className="font-mono text-slate-700">{ipa || '—'}</span>
                                 <span
                                   className={`h-1.5 w-1.5 shrink-0 rounded-full ${AUDIO_STATUS_DOT[status] || AUDIO_STATUS_DOT.NONE}`}
@@ -649,28 +650,28 @@ export default function WordsPage() {
                       </td>
 
                       {/* Meanings: VI translation first, EN definition below */}
-                      <td className="py-3.5 px-4">
+                      <td className="py-2 px-3">
                         {(() => {
                           const summary = getMeaningSummary(item);
                           if (!summary) return <span className="text-slate-400">—</span>;
                           return (
-                            <div className="w-[360px] max-w-[360px] space-y-1.5">
-                              {summary.slice(0, 3).map((entry, idx) => {
+                            <div className="w-[320px] max-w-[320px] space-y-1">
+                              {summary.slice(0, 2).map((entry, idx) => {
                                 const primary = entry.translations.length > 0
                                   ? entry.translations.join(', ')
                                   : entry.definition;
                                 const secondary = entry.translations.length > 0 ? entry.definition : undefined;
                                 return (
                                   <div key={idx} className="flex min-w-0 items-start gap-1.5 leading-snug">
-                                    <span className="mt-0.5 w-12 shrink-0 truncate rounded bg-blue-50 px-1.5 py-0.5 text-center text-[10px] font-bold uppercase text-blue-600">
+                                    <span className="w-10 shrink-0 truncate rounded bg-blue-50 px-1 py-px text-center text-[10px] font-bold uppercase text-blue-600">
                                       {entry.pos}
                                     </span>
                                     <div className="min-w-0 flex-1">
-                                      <p className="truncate text-sm text-slate-700" title={primary}>
+                                      <p className="truncate text-[13px] text-slate-700" title={primary}>
                                         {primary}
                                       </p>
                                       {secondary && (
-                                        <p className="truncate text-xs italic text-slate-400" title={secondary}>
+                                        <p className="truncate text-[11px] italic text-slate-400" title={secondary}>
                                           {secondary}
                                         </p>
                                       )}
@@ -678,9 +679,9 @@ export default function WordsPage() {
                                   </div>
                                 );
                               })}
-                              {summary.length > 3 && (
-                                <span className="text-[11px] text-slate-400">
-                                  {t('more_pos', { n: summary.length - 3 })}
+                              {summary.length > 2 && (
+                                <span className="text-[10px] text-slate-400">
+                                  {t('more_pos', { n: summary.length - 2 })}
                                 </span>
                               )}
                             </div>
@@ -689,9 +690,9 @@ export default function WordsPage() {
                       </td>
 
                       {/* Level */}
-                      <td className="py-4 px-4 text-center">
+                      <td className="py-2 px-3 text-center">
                         <span
-                          className={`inline-block px-2.5 py-0.5 rounded-[4px] text-xs font-semibold border ${getLevelBadgeClass(
+                          className={`inline-block px-2 py-px rounded-[4px] text-[11px] font-semibold border ${getLevelBadgeClass(
                             item.level
                           )}`}
                         >
@@ -700,7 +701,7 @@ export default function WordsPage() {
                       </td>
 
                       {/* Status Toggle Switch */}
-                      <td className="py-4 px-4 text-center">
+                      <td className="py-2 px-3 text-center">
                         <button
                           type="button"
                           onClick={() => handleToggleActive(item._id, item.isActive !== false)}
@@ -713,21 +714,21 @@ export default function WordsPage() {
                           }
                         >
                           <div
-                            className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                            className={`relative inline-flex h-4 w-7 shrink-0 items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
                               item.isActive !== false
                                 ? 'bg-emerald-500 group-hover:bg-emerald-600'
                                 : 'bg-slate-300 group-hover:bg-slate-400'
                             }`}
                           >
                             <span
-                              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white transition duration-200 ease-in-out ${
-                                item.isActive !== false ? 'translate-x-4' : 'translate-x-0'
+                              className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white transition duration-200 ease-in-out ${
+                                item.isActive !== false ? 'translate-x-3' : 'translate-x-0'
                               }`}
                             />
                           </div>
 
                           <span
-                            className={`text-xs transition-colors min-w-[70px] text-left ${
+                            className={`text-[11px] transition-colors min-w-[70px] text-left ${
                               item.isActive !== false
                                 ? 'text-emerald-700 font-semibold'
                                 : 'text-slate-500 font-normal'
@@ -745,16 +746,16 @@ export default function WordsPage() {
                       </td>
 
                       {/* Actions */}
-                      <td className="py-4 px-4 text-right">
-                        <div className="inline-flex items-center justify-end gap-1.5">
+                      <td className="py-2 px-3 text-right">
+                        <div className="inline-flex items-center justify-end gap-1">
                           {/* View details */}
                           <button
                             type="button"
                             onClick={() => setViewingWordId(item._id)}
                             title={t('view_details')}
-                            className="p-1.5 rounded-[6px] border border-blue-100 bg-blue-50/40 text-blue-600 hover:bg-blue-100/70 hover:text-blue-700 transition-colors cursor-pointer"
+                            className="p-1 rounded-[4px] border border-blue-100 bg-blue-50/40 text-blue-600 hover:bg-blue-100/70 hover:text-blue-700 transition-colors cursor-pointer"
                           >
-                            <Eye className="w-4 h-4" />
+                            <Eye className="w-3.5 h-3.5" />
                           </button>
 
                           {/* Edit */}
@@ -762,9 +763,9 @@ export default function WordsPage() {
                             type="button"
                             onClick={() => setEditingWordId(item._id)}
                             title={t('edit_word')}
-                            className="p-1.5 rounded-[6px] border border-blue-100 bg-blue-50/40 text-blue-600 hover:bg-blue-100/70 hover:text-blue-700 transition-colors cursor-pointer"
+                            className="p-1 rounded-[4px] border border-blue-100 bg-blue-50/40 text-blue-600 hover:bg-blue-100/70 hover:text-blue-700 transition-colors cursor-pointer"
                           >
-                            <Pencil className="w-4 h-4" />
+                            <Pencil className="w-3.5 h-3.5" />
                           </button>
 
                           {/* Delete */}
@@ -772,9 +773,9 @@ export default function WordsPage() {
                             type="button"
                             onClick={() => setDeletingWord(item)}
                             title={t('delete_word')}
-                            className="p-1.5 rounded-[6px] border border-rose-100 bg-rose-50/40 text-rose-500 hover:bg-rose-100/70 hover:text-rose-600 transition-colors cursor-pointer"
+                            className="p-1 rounded-[4px] border border-rose-100 bg-rose-50/40 text-rose-500 hover:bg-rose-100/70 hover:text-rose-600 transition-colors cursor-pointer"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </td>

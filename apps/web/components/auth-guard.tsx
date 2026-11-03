@@ -17,7 +17,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
 
   useEffect(() => {
     if (isInitialized && !isAuthenticated) {
-      router.replace(`/${locale}/login`);
+      router.replace(`/${locale}/welcome`);
     }
   }, [isAuthenticated, isInitialized, router, locale]);
 

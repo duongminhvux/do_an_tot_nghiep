@@ -96,20 +96,21 @@ export default function ToeicHistoryPage() {
         description={t('history.description')}
       />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {cards.map(({ key, value, icon, tone }) => (
           <StatCard key={key} icon={icon} tone={tone} label={t(`history.card_${key}`)} value={value ?? '—'} />
         ))}
       </div>
 
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      {/* Phones: tabs take the full row and the sort toggle sits below, right-aligned. */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <Tabs
-          className="min-w-0 flex-1"
+          className="min-w-0 sm:flex-1"
           value={tab}
           onChange={setTab}
           items={(Object.keys(TAB_QUERY) as Tab[]).map((key) => ({ value: key, label: t(`history.tab_${key}`) }))}
         />
-        <div className="mb-1.5" role="group" aria-label={t('history.sort_label')}>
+        <div className="self-end sm:mb-1.5" role="group" aria-label={t('history.sort_label')}>
           <Segmented
             value={sort}
             onChange={setSort}

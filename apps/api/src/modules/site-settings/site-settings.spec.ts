@@ -8,7 +8,14 @@ import {
   normalizeSiteSettings,
 } from '@repo/shared-types/site-settings';
 import { RolesGuard } from '../auth/guards/roles.guard.js';
-import { UpdateSiteSettingsDto } from './site-settings.dto.js';
+import {
+  DEFAULT_LANDING_PAGE_SETTINGS,
+  LANDING_PAGE_SETTINGS_ID,
+} from '@repo/shared-types/landing-page';
+import {
+  UpdateLandingPageSettingsDto,
+  UpdateSiteSettingsDto,
+} from './site-settings.dto.js';
 import {
   AdminSiteSettingsController,
   PublicSiteSettingsController,
@@ -208,5 +215,79 @@ describe('website system settings', () => {
         AdminSiteSettingsController.prototype.save,
       ),
     ).not.toBe(true);
+  });
+  describe('landing page images', () => {
+    it('defaults to empty images and ignores unsafe stored values', async () => {
+      const query = vi.fn(async () => ({
+        rows: [
+          {
+            payload: {
+              settings: {
+                heroImageUrl: ' /media/hero.png ',
+                toeicImageUrl: 'javascript:alert(1)',
+                extra: 'private',
+              },
+            },
+          },
+        ],
+      }));
+      const service = new SiteSettingsService({ query } as never);
+      const settings = await service.readLanding();
+      expect(settings).toEqual({
+        ...DEFAULT_LANDING_PAGE_SETTINGS,
+        heroImageUrl: '/media/hero.png',
+      });
+      expect(query.mock.calls[0]).toEqual([
+        'SELECT payload FROM public.system_settings WHERE id = $1',
+        [LANDING_PAGE_SETTINGS_ID],
+      ]);
+    });
+    it('persists landing images in their own singleton row', async () => {
+      let payload: unknown;
+      const query = vi.fn(async (sql: string, params: unknown[]) => {
+        if (sql.startsWith('INSERT')) payload = JSON.parse(params[1] as string);
+        return { rows: [{ payload }] };
+      });
+      const service = new SiteSettingsService({ query } as never);
+      const saved = await service.saveLanding({
+        ...DEFAULT_LANDING_PAGE_SETTINGS,
+        heroImageUrl: 'https://cdn.example.com/hero.webp',
+      });
+      expect(saved.heroImageUrl).toBe('https://cdn.example.com/hero.webp');
+      const [, params] = query.mock.calls[0]!;
+      expect(params[0]).toBe(LANDING_PAGE_SETTINGS_ID);
+      expect(params[0]).not.toBe(SITE_SETTINGS_ID);
+      expect(JSON.parse(params[1] as string)).toEqual({
+        key: 'landing-page',
+        settings: saved,
+      });
+    });
+    it('validates landing image URLs', async () => {
+      const ok = plainToInstance(UpdateLandingPageSettingsDto, {
+        ...DEFAULT_LANDING_PAGE_SETTINGS,
+        heroImageUrl: ' /media/hero.png ',
+      });
+      expect(
+        await validate(ok, { whitelist: true, forbidNonWhitelisted: true }),
+      ).toEqual([]);
+      expect(ok.heroImageUrl).toBe('/media/hero.png');
+      for (const value of ['javascript:alert(1)', '//evil.test/x.png', null]) {
+        const errors = await validate(
+          plainToInstance(UpdateLandingPageSettingsDto, {
+            ...DEFAULT_LANDING_PAGE_SETTINGS,
+            arenaImageUrl: value,
+          }),
+        );
+        expect(errors.some((error) => error.property === 'arenaImageUrl')).toBe(true);
+      }
+    });
+    it('exposes the landing read publicly and keeps the save admin-only', () => {
+      expect(
+        Reflect.getMetadata('isPublic', PublicSiteSettingsController.prototype.readLanding),
+      ).toBe(true);
+      expect(
+        Reflect.getMetadata('isPublic', AdminSiteSettingsController.prototype.saveLanding),
+      ).not.toBe(true);
+    });
   });
 });

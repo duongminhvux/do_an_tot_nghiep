@@ -1,3 +1,4 @@
+import { applyDecorators } from '@nestjs/common';
 import { Transform } from 'class-transformer';
 import {
 IsNotEmpty,
@@ -27,4 +28,20 @@ export class UpdateSiteSettingsDto {
   @Matches(/^(?:$|https?:\/\/[^\s]+|\/(?!\/)[^\s\\]*)$/)
   faviconUrl: string;
   @Transform(trim) @IsTimeZone() timezone: string;
+}
+
+const imageUrl = () =>
+  applyDecorators(
+    Transform(trim),
+    IsString(),
+    MaxLength(2000),
+    Matches(/^(?:$|https?:\/\/[^\s]+|\/(?!\/)[^\s\\]*)$/),
+  );
+export class UpdateLandingPageSettingsDto {
+  @imageUrl() heroImageUrl: string;
+  @imageUrl() vocabularyImageUrl: string;
+  @imageUrl() toeicImageUrl: string;
+  @imageUrl() dictationImageUrl: string;
+  @imageUrl() gamesImageUrl: string;
+  @imageUrl() arenaImageUrl: string;
 }

@@ -1,0 +1,108 @@
+{
+  "nav": {
+    "features": "Tính năng",
+    "how": "Cách học",
+    "login": "Đăng nhập",
+    "register": "Tạo tài khoản",
+    "dashboard": "Vào trang học",
+    "menu": "Mở menu",
+    "close": "Đóng menu",
+    "main": "Điều hướng chính"
+  },
+  "hero": {
+    "eyebrow": "Nền tảng luyện tiếng Anh toàn diện",
+    "titleStart": "Học tiếng Anh",
+    "titleHighlight": "mỗi ngày một chút",
+    "titleEnd": ", tiến bộ thấy rõ.",
+    "subtitle": "Từ vựng theo chủ đề, luyện đề TOEIC, nghe chép chính tả và trò chơi đối kháng – tất cả trong một nơi, với lộ trình gợi ý dựa trên chính kết quả học của bạn.",
+    "primary": "Bắt đầu học ngay",
+    "secondary": "Tôi đã có tài khoản",
+    "continue": "Tiếp tục học",
+    "point1": "Ôn tập lặp lại ngắt quãng",
+    "point2": "Chấm điểm TOEIC tự động",
+    "point3": "Theo dõi tiến độ trực quan",
+    "imageAlt": "Hình minh hoạ nền tảng học tiếng Anh"
+  },
+  "preview": {
+    "label": "Thẻ từ hôm nay",
+    "word": "resilient",
+    "phonetic": "/rɪˈzɪliənt/",
+    "meaning": "kiên cường, mau phục hồi",
+    "example": "She stayed resilient after every setback.",
+    "progress": "Tiến độ bài học",
+    "again": "Học lại",
+    "good": "Đã nhớ",
+    "chipReview": "Đến hạn ôn tập",
+    "chipStreak": "Chuỗi ngày học"
+  },
+  "features": {
+    "eyebrow": "Mọi kỹ năng bạn cần",
+    "title": "Một nền tảng, năm cách để luyện tập",
+    "subtitle": "Mỗi khu vực được thiết kế cho một mục tiêu riêng, nhưng cùng chia sẻ một tiến trình học để bạn luôn biết mình đang ở đâu.",
+    "explore": "Khám phá ngay",
+    "vocabulary": {
+      "tag": "Từ vựng",
+      "title": "Ghi nhớ từ vựng lâu hơn với lặp lại ngắt quãng",
+      "body": "Học theo bộ sưu tập chủ đề, lưu từ của riêng bạn và để hệ thống nhắc ôn đúng lúc bạn sắp quên.",
+      "point1": "Bộ từ theo chủ đề và cấp độ",
+      "point2": "Lịch ôn tập tự động mỗi ngày",
+      "point3": "Sổ từ cá nhân để lưu từ mới",
+      "imageAlt": "Minh hoạ học từ vựng"
+    },
+    "toeic": {
+      "tag": "TOEIC",
+      "title": "Luyện đề TOEIC sát với bài thi thật",
+      "body": "Làm đề theo từng phần hoặc full test có tính giờ, xem điểm quy đổi và giải thích ngay sau khi nộp bài.",
+      "point1": "Đề Listening & Reading theo từng Part",
+      "point2": "Điểm quy đổi và lịch sử làm bài",
+      "point3": "Thống kê điểm mạnh, điểm yếu",
+      "imageAlt": "Minh hoạ luyện đề TOEIC"
+    },
+    "dictation": {
+      "tag": "Dictation",
+      "title": "Nghe chép chính tả để nghe hiểu tự nhiên",
+      "body": "Nghe từng câu, gõ lại những gì bạn nghe được và nhận phản hồi chi tiết cho từng từ sai.",
+      "point1": "Bài nghe theo chủ đề đời sống",
+      "point2": "Phát lại từng câu, điều chỉnh tốc độ",
+      "point3": "Đánh dấu chính xác từ nghe sai",
+      "imageAlt": "Minh hoạ nghe chép chính tả"
+    },
+    "games": {
+      "tag": "Trò chơi",
+      "title": "Ôn từ qua trò chơi",
+      "body": "Gõ nhanh, bắn từ, đoán nghĩa – biến việc ôn tập thành những ván chơi ngắn đầy hứng thú.",
+      "imageAlt": "Minh hoạ trò chơi học từ vựng"
+    },
+    "arena": {
+      "tag": "Đấu trường",
+      "title": "Thử thách bạn bè ở đấu trường",
+      "body": "Đấu xếp hạng hoặc mở phòng với bạn bè, trả lời nhanh và chính xác để leo bảng xếp hạng.",
+      "imageAlt": "Minh hoạ đấu trường từ vựng"
+    }
+  },
+  "dictationPreview": {
+    "sentence1": "Could you",
+    "missing": "recommend",
+    "sentence2": "a good place to eat?",
+    "speed": "Tốc độ 0.75×"
+  },
+  "how": {
+    "eyebrow": "Bắt đầu thật đơn giản",
+    "title": "Ba bước để vào guồng học",
+    "step1Title": "Tạo tài khoản",
+    "step1Body": "Đăng ký bằng email hoặc Google chỉ trong chưa đầy một phút.",
+    "step2Title": "Chọn nội dung muốn học",
+    "step2Body": "Bắt đầu với bộ từ vựng, một đề TOEIC hay bài nghe phù hợp với bạn.",
+    "step3Title": "Duy trì và theo dõi",
+    "step3Body": "Giữ chuỗi ngày học, nhận gợi ý ôn tập và xem tiến độ qua từng tuần."
+  },
+  "cta": {
+    "title": "Sẵn sàng cho buổi học đầu tiên?",
+    "subtitle": "Tạo tài khoản và bắt đầu với vài phút mỗi ngày. Tiến bộ sẽ đến từ sự đều đặn.",
+    "primary": "Tạo tài khoản",
+    "secondary": "Đăng nhập"
+  },
+  "footer": {
+    "rights": "Mọi quyền được bảo lưu."
+  }
+}

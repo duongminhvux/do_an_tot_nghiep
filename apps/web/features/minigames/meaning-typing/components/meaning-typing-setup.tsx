@@ -56,12 +56,12 @@ export function MeaningTypingSetup({
             className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
           />
         </div>
-        <div className="mt-4 grid max-h-80 gap-2 overflow-y-auto sm:grid-cols-2 2xl:grid-cols-3">
+        <div className="mt-4 grid max-h-80 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2 2xl:grid-cols-3">
           {shown.map((source) => (
             <label
               key={key(source)}
               className={cn(
-                "flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors",
+                "flex min-w-0 cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors",
                 selected.includes(key(source))
                   ? "border-blue-400 bg-blue-50/60"
                   : "border-slate-200 hover:border-blue-300",

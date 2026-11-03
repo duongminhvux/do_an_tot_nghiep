@@ -182,7 +182,8 @@ export function AppSidebar() {
       // Ignore errors on logout
     } finally {
       dispatch(logout());
-      router.replace(`/${locale}/login`);
+      // Same destination as AuthGuard, which also reacts to the logged-out state.
+      router.replace(`/${locale}/welcome`);
     }
   };
 

@@ -118,6 +118,8 @@ export default function ToeicExamDetailPage() {
   const latestAttempt     = rawAttempts.find((a) => a.status === 'IN_PROGRESS' && a.remainingSeconds !== 0);
   const isInProgress      = !!latestAttempt;
   const isLoading         = isExamLoading || isPartsLoading;
+  // The AI PDF importer used to store an internal note ("ETS · Test 2 · AI PDF import") as the description.
+  const description       = exam?.description && !/·\s*AI PDF import\s*$/i.test(exam.description) ? exam.description : '';
 
   const togglePart = (id: string) =>
     setSelected((prev) => {
@@ -212,7 +214,7 @@ export default function ToeicExamDetailPage() {
         </Card>
       ) : (
         // Start panel on the right (first on mobile); reference content on the left.
-        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_400px]">
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_400px] xl:grid-cols-[minmax(0,1fr)_460px]">
           <aside className="min-w-0 space-y-3 lg:order-2">
             {startError && <ErrorState message={t('attempt.start_error')} />}
             {!parts.length && <p className="text-sm text-slate-500">{t('attempt.no_parts')}</p>}
@@ -244,8 +246,8 @@ export default function ToeicExamDetailPage() {
           </aside>
 
           <div className="min-w-0 space-y-6 lg:order-1">
-            {exam?.description && (
-              <Card className="p-5 text-sm leading-relaxed text-slate-600">{exam.description}</Card>
+            {description && (
+              <Card className="p-5 text-sm leading-relaxed text-slate-600">{description}</Card>
             )}
             <ExamStructureTable parts={parts} partTimeMap={PART_TIME_MAP} />
             <Card className="overflow-hidden">

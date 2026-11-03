@@ -13,6 +13,7 @@
     "./toeic-score": "./src/toeic-score.mjs",
     "./learning-xp": "./src/learning-xp.mjs",
     "./site-settings": "./src/site-settings.mjs",
+    "./landing-page": "./src/landing-page.mjs",
     "./active-time": "./src/active-time.mjs"
   },
   "scripts": {

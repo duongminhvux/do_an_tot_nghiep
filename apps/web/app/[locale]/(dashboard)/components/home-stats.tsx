@@ -20,7 +20,7 @@ import { formatStudyTime } from "./module-meta";
 // One card split into four cells reads as a single summary rather than four
 // competing tiles; colour is reserved for the icon and the trend.
 const grid =
-  "grid grid-cols-1 divide-y divide-slate-100 sm:grid-cols-2 sm:divide-y-0 xl:grid-cols-4";
+  "grid grid-cols-2 xl:grid-cols-4";
 
 function Kpi({
   icon: Icon,
@@ -38,12 +38,12 @@ function Kpi({
   className?: string;
 }) {
   return (
-    <div className={cn("min-w-0 p-5", className)}>
-      <p className="flex items-center gap-2 text-sm font-medium text-slate-500">
+    <div className={cn("min-w-0 p-3.5 sm:p-5", className)}>
+      <p className="flex items-center gap-2 text-xs font-medium text-slate-500 sm:text-sm">
         <Icon className={cn("h-4 w-4 shrink-0", iconClass)} aria-hidden />
         <span className="truncate">{label}</span>
       </p>
-      <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 tabular-nums">
+      <p className="mt-2 text-xl font-semibold tracking-tight sm:text-2xl text-slate-900 tabular-nums">
         {value}
       </p>
       <div className="mt-1.5 text-xs text-slate-500">{hint}</div>
@@ -78,9 +78,9 @@ function Growth({ t, value }: { t: TFunction; value: number | null }) {
 // Hairlines between cells for the 2×2 (sm) and 1×4 (xl) layouts.
 const cellBorders = [
   "border-slate-100",
-  "border-slate-100 sm:border-l",
-  "border-slate-100 sm:border-t xl:border-l xl:border-t-0",
-  "border-slate-100 sm:border-l sm:border-t xl:border-t-0",
+  "border-slate-100 border-l",
+  "border-slate-100 border-t xl:border-l xl:border-t-0",
+  "border-slate-100 border-l border-t xl:border-t-0",
 ];
 
 export function HomeStats({
@@ -96,7 +96,7 @@ export function HomeStats({
     return (
       <div className={cn(surface, grid)} aria-busy="true">
         {cellBorders.map((border, i) => (
-          <div key={i} className={cn("space-y-3 p-5", border)}>
+          <div key={i} className={cn("space-y-3 p-3.5 sm:p-5", border)}>
             <Skeleton className="h-4 w-28" />
             <Skeleton className="h-7 w-20" />
             <Skeleton className="h-3 w-32" />

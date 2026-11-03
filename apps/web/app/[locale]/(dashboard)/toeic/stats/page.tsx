@@ -98,7 +98,7 @@ export default function ToeicStatsPage() {
         title={t('stats.title')}
         description={t('stats.description')}
         actions={
-          <div role="group" aria-label={t('stats.period_label')}>
+          <div role="group" aria-label={t('stats.period_label')} className="min-w-0 max-w-full">
             <Segmented
               value={days}
               onChange={setDays}
