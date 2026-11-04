@@ -1,7 +1,5 @@
 'use client';
 
-import { useListPagination } from '@/hooks/use-list-pagination';
-import { ListPagination } from '@/components/ui/list-pagination';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SectionItem } from '@/types/vocabulary';
@@ -29,7 +27,6 @@ export function GroupsSidebar({
   onOpenCreateGroupModal,
 }: GroupsSidebarProps) {
   const { t } = useTranslation('vocabulary');
-  const sectionPage = useListPagination(sections, '');
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [editingSectionName, setEditingSectionName] = useState('');
 
@@ -88,7 +85,7 @@ export function GroupsSidebar({
           </button>
 
           {/* Danh sách các nhóm */}
-          {sectionPage.items.map((sec) => {
+          {sections.map((sec) => {
             const count = sectionCounts[sec._id] || 0;
             const isActive = filterSection === sec._id;
             const isInlineEditing = editingSectionId === sec._id;
@@ -170,7 +167,6 @@ export function GroupsSidebar({
               </div>
             );
           })}
-          <ListPagination pagination={sectionPage} />
         </div>
       </div>
 

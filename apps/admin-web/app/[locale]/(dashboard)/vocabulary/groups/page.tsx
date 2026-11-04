@@ -2,8 +2,6 @@
 import { LoadError } from '@/components/ui/load-error';
 
 import { loadListPages } from '@/lib/load-list-pages';
-import { useListPagination } from '@/hooks/use-list-pagination';
-import { ListPagination } from '@/components/ui/list-pagination';
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -12,12 +10,10 @@ import { useTranslation } from 'react-i18next';
 import {
   vocabularyGroupService,
   collectionService,
-  lessonService,
 } from '@/services/vocabulary.service';
 import {
   VocabularyGroupItem,
   CollectionItem,
-  LessonItem,
 } from '@/types/vocabulary';
 import { CreateGroupDialog } from '@/components/vocabulary/create-group-dialog';
 import { EditGroupDialog } from '@/components/vocabulary/edit-group-dialog';
@@ -109,7 +105,6 @@ export default function VocabularyGroupsPage() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(urlGroupId);
-  const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
 
   // Active dropdown menu trackers
   const [groupHeaderMenuOpen, setGroupHeaderMenuOpen] = useState(false);
@@ -176,33 +171,6 @@ export default function VocabularyGroupsPage() {
   const collections: CollectionItem[] = useMemo(() => {
     return collectionsResponse?.data?.data || selectedGroup?.collections || [];
   }, [collectionsResponse, selectedGroup]);
-  const collectionPage = useListPagination(collections, selectedGroupId ?? '');
-
-  useEffect(() => {
-    if (!collections.length) {
-      setSelectedCollectionId(null);
-      return;
-    }
-    if (!selectedCollectionId || !collections.some((collection) => collection._id === selectedCollectionId)) {
-      setSelectedCollectionId(collections[0]!._id);
-    }
-  }, [collections, selectedCollectionId]);
-
-  const selectedCollection = useMemo(() =>
-    collections.find((collection) => collection._id === selectedCollectionId) || null,
-  [collections, selectedCollectionId]);
-
-  const { data: lessonsResponse, isLoading: isLessonsLoading, isError: lessonsError, refetch: retryLessons } = useQuery({
-    queryKey: ['lessons', 'curriculum', selectedCollectionId],
-    queryFn: () => lessonService.getAll(selectedCollectionId || undefined),
-    enabled: !!selectedCollectionId,
-  });
-
-  const lessons: LessonItem[] = useMemo(() => {
-    const payload: any = lessonsResponse;
-    return Array.isArray(payload?.data) ? payload.data : [];
-  }, [lessonsResponse]);
-  const lessonPage = useListPagination(lessons, selectedCollectionId ?? '');
 
   // Filter groups by search query
   const filteredGroups: VocabularyGroupItem[] = useMemo(() => {
@@ -214,7 +182,6 @@ export default function VocabularyGroupsPage() {
         (g.description && g.description.toLowerCase().includes(q))
     );
   }, [groups, searchQuery]);
-  const groupPage = useListPagination(filteredGroups, searchQuery);
 
   // Total stats across all groups
   const totalCollectionsAll = useMemo(() => {
@@ -232,7 +199,6 @@ export default function VocabularyGroupsPage() {
 
   const selectGroup = (id: string) => {
     setSelectedGroupId(id);
-    setSelectedCollectionId(null);
     const newParams = new URLSearchParams(searchParams.toString());
     newParams.set('groupId', id);
     router.replace(`/${locale}/vocabulary/groups?${newParams.toString()}`);
@@ -301,7 +267,7 @@ export default function VocabularyGroupsPage() {
     setDragOverGroupId(null);
   };
 
-  if (groupsError || collectionsError || lessonsError) return <LoadError onRetry={() => { if (groupsError) void retryGroups(); if (collectionsError) void retryCollections(); if (lessonsError) void retryLessons(); }} />;
+  if (groupsError || collectionsError) return <LoadError onRetry={() => { if (groupsError) void retryGroups(); if (collectionsError) void retryCollections(); }} />;
 
   return (
     <div className="w-full p-4 sm:p-6 lg:p-8">
@@ -409,7 +375,7 @@ export default function VocabularyGroupsPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {groupPage.items.map((group: VocabularyGroupItem, idx: number) => {
+              {filteredGroups.map((group: VocabularyGroupItem, idx: number) => {
                 const isSelected = group._id === selectedGroupId;
                 const isDragging = draggedGroupId === group._id;
                 const isDragOver = dragOverGroupId === group._id;
@@ -467,7 +433,7 @@ export default function VocabularyGroupsPage() {
 
                       {/* Order Badge */}
                       <span className="w-5 h-5 rounded-[4px] bg-slate-100 text-slate-500 text-[10px] font-semibold flex items-center justify-center shrink-0">
-                        {group.order ?? ((idx + groupPage.offset) + 1)}
+                        {group.order ?? (idx + 1)}
                       </span>
 
                       {/* Group Icon Badge */}
@@ -509,7 +475,6 @@ export default function VocabularyGroupsPage() {
                   </div>
                 );
               })}
-              <ListPagination pagination={groupPage} />
             </div>
           )}
         </div>
@@ -683,15 +648,10 @@ export default function VocabularyGroupsPage() {
                   </div>
                 ) : (
                   <div className="space-y-2.5">
-                    {collectionPage.items.map((col: CollectionItem) => (
+                    {collections.map((col: CollectionItem) => (
                       <div
                         key={col._id}
-                        onClick={() => setSelectedCollectionId(col._id)}
-                        className={`group rounded-[6px] border p-3 transition-colors flex items-center justify-between gap-3 cursor-pointer ${
-                          selectedCollectionId === col._id
-                            ? 'border-blue-400 bg-blue-50/60'
-                            : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50'
-                        }`}
+                        className="group rounded-[6px] border border-slate-200 bg-white p-3 flex items-center justify-between gap-3"
                       >
                         {/* Left: Thumbnail & Info */}
                         <div className="flex items-center gap-3 min-w-0">
@@ -713,7 +673,7 @@ export default function VocabularyGroupsPage() {
                           {/* Info */}
                           <div className="min-w-0">
                             <h4
-                              className={`text-sm font-bold transition-colors truncate ${selectedCollectionId === col._id ? 'text-blue-700' : 'text-slate-900'}`}
+                              className="text-sm font-bold truncate text-slate-900"
                             >
                               {col.name}
                             </h4>
@@ -794,67 +754,15 @@ export default function VocabularyGroupsPage() {
                         </div>
                       </div>
                     ))}
-                    <ListPagination pagination={collectionPage} />
                   </div>
                 )}
               </div>
-
-              {/* Selected collection quick workspace */}
-              {selectedCollection && (
-                <div className="rounded-[6px] border border-slate-200 bg-slate-50/40 overflow-hidden">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
-                    <div className="min-w-0">
-                      <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{locale === 'en' ? 'Selected collection' : 'Bộ sưu tập đang chọn'}</p>
-                      <h3 className="mt-0.5 truncate text-sm font-bold text-slate-900">{selectedCollection.name}</h3>
-                      <p className="mt-0.5 text-xs text-slate-500">{lessons.length} {locale === 'en' ? 'lessons' : 'bài học'} · {selectedCollection.wordsCount || 0} {locale === 'en' ? 'words' : 'từ'}</p>
-                    </div>
-                    <Link
-                      href={`/${locale}/vocabulary/collections?collectionId=${selectedCollection._id}`}
-                      className="inline-flex items-center justify-center rounded-[6px] bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-blue-700"
-                    >
-                      {locale === 'en' ? 'Manage lessons & sections' : 'Quản lý lesson & section'}
-                    </Link>
-                  </div>
-
-                  <div className="p-3">
-                    {isLessonsLoading ? (
-                      <div className="space-y-2">{[1, 2, 3].map((item) => <div key={item} className="h-14 animate-pulse rounded-[6px] border border-slate-200 bg-white" />)}</div>
-                    ) : lessons.length === 0 ? (
-                      <div className="rounded-[6px] border border-dashed border-slate-300 bg-white px-4 py-8 text-center">
-                        <GraduationCap className="mx-auto h-6 w-6 text-slate-300" />
-                        <p className="mt-2 text-sm font-semibold text-slate-700">{locale === 'en' ? 'No lessons yet' : 'Chưa có bài học'}</p>
-                        <p className="mt-1 text-xs text-slate-500">{locale === 'en' ? 'Open collection management to create the first lesson.' : 'Mở quản lý bộ sưu tập để tạo lesson đầu tiên.'}</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {lessonPage.items.map((lesson, index) => (
-                          <Link
-                            key={lesson._id}
-                            href={`/${locale}/vocabulary/collections?collectionId=${selectedCollection._id}&lessonId=${lesson._id}`}
-                            className="flex items-center justify-between gap-3 rounded-[6px] border border-slate-200 bg-white px-3 py-2.5 hover:border-blue-300 hover:bg-blue-50/30 transition-colors"
-                          >
-                            <div className="flex min-w-0 items-center gap-3">
-                              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-slate-100 text-xs font-bold text-slate-500">{(index + lessonPage.offset) + 1}</span>
-                              <div className="min-w-0">
-                                <p className="truncate text-sm font-semibold text-slate-800">{lesson.title}</p>
-                                <p className="mt-0.5 text-[11px] text-slate-500">{lesson.sectionsCount || 0} section · {lesson.wordsCount || 0} {locale === 'en' ? 'words' : 'từ'}{lesson.isActive === false ? ` · ${locale === 'en' ? 'inactive' : 'đang tắt'}` : ''}</p>
-                              </div>
-                            </div>
-                            <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
-                          </Link>
-                        ))}
-                        <ListPagination pagination={lessonPage} />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
 
               <div className="rounded-[6px] p-3 bg-[#F4F9FF] border border-blue-100 flex items-start gap-2.5">
                 <Lightbulb className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
                 <div className="text-xs leading-relaxed text-slate-700">
                   <p className="font-semibold text-slate-900">{locale === 'en' ? 'Simpler workflow' : 'Luồng quản lý gọn hơn'}</p>
-                  <p className="text-slate-600 text-[11px] mt-0.5">{locale === 'en' ? 'Choose a group, choose a collection, then open the lesson you need. Dictionary is separated for reusable words.' : 'Chọn Nhóm → Bộ sưu tập → Lesson ngay tại đây. Từ điển được tách riêng để quản lý kho từ dùng chung.'}</p>
+                  <p className="text-slate-600 text-[11px] mt-0.5">{locale === 'en' ? 'Choose a group, then open collection details to manage lessons and sections. Use the dictionary to manage reusable words.' : 'Chọn nhóm, sau đó mở Chi tiết bộ sưu tập để quản lý bài học và section. Mở từ điển để quản lý kho từ dùng chung.'}</p>
                 </div>
               </div>
             </>

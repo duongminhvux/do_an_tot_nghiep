@@ -3,6 +3,7 @@ import { LoadError } from '@/components/ui/load-error';
 import { loadListPages } from '@/lib/load-list-pages';
 import { useListPagination } from '@/hooks/use-list-pagination';
 import { ListPagination } from '@/components/ui/list-pagination';
+import { Input } from '@/components/ui/input';
 import {PublicationBadge,PublicationFilter} from '@/components/publication/publication-controls';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -657,23 +658,24 @@ export default function CollectionsPage() {
 
                 {
                   activeTab === 'lessons' && (
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-4">
-                      <div className="relative w-full sm:w-72">
+                    <div className="flex flex-col gap-3 px-6 py-4 sm:flex-row sm:flex-wrap sm:items-center">
+                      <div className="relative w-full min-w-0 sm:w-auto sm:min-w-48 sm:flex-1">
                         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input
-                          type="text"
+                        <Input
+                          type="search"
+                          aria-label={t('search_lessons_placeholder', { defaultValue: 'Search lessons in this collection...' })}
                           value={searchLesson}
                           onChange={(e) => setSearchLesson(e.target.value)}
                           placeholder={t('search_lessons_placeholder', { defaultValue: 'Search lessons in this collection...' })}
-                          className="w-full pl-9 pr-3.5 py-2 text-xs rounded-[6px] border border-slate-200 focus:outline-none focus:border-blue-500 transition-all placeholder:text-slate-400 bg-slate-50/50"
+                          className="h-10 rounded-[6px] border-slate-200 bg-slate-50/50 pl-9 pr-3.5 text-sm placeholder:text-slate-400"
                         />
                       </div>
 
-                      <PublicationFilter value={publicationFilter} onChange={setPublicationFilter} />
+                      <PublicationFilter value={publicationFilter} onChange={setPublicationFilter} className="h-10 w-full rounded-[6px] bg-slate-50/50 sm:w-48 sm:shrink-0" />
                       <button
                         type="button"
                         onClick={() => setCreateLessonOpen(true)}
-                        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-[6px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium text-xs transition-colors cursor-pointer"
+                        className="h-10 w-full sm:w-auto shrink-0 inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-[6px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium text-xs transition-colors cursor-pointer"
                       >
                         <BookPlus className="w-3.5 h-3.5" />
                         <span>{t('add_lesson', { defaultValue: 'Add Lesson' })}</span>

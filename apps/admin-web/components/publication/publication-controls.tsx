@@ -13,7 +13,15 @@ import {
   type PublicationPreview,
 } from "@/services/publication.service";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 const states = ["DRAFT", "IN_REVIEW", "PUBLISHED"] as const;
 export function PublicationBadge({ item }: { item: Partial<PublicationInfo> }) {
   const { t } = useTranslation("common");
@@ -33,25 +41,33 @@ export function PublicationBadge({ item }: { item: Partial<PublicationInfo> }) {
 export function PublicationFilter({
   value,
   onChange,
+  className,
 }: {
   value: string;
   onChange: (value: string) => void;
+  className?: string;
 }) {
   const { t } = useTranslation("common");
   return (
-    <select
-      aria-label={t("publication.filter")}
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm"
+    <Select
+      value={value || "ALL"}
+      onValueChange={(nextValue) => onChange(nextValue === "ALL" ? "" : nextValue)}
     >
-      <option value="">{t("publication.all")}</option>
-      {states.map((state) => (
-        <option key={state} value={state}>
-          {t(`publication.${state}`)}
-        </option>
-      ))}
-    </select>
+      <SelectTrigger
+        aria-label={t("publication.filter")}
+        className={cn("h-10 w-auto rounded-lg", className)}
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="ALL">{t("publication.all")}</SelectItem>
+        {states.map((state) => (
+          <SelectItem key={state} value={state}>
+            {t(`publication.${state}`)}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 export function PublicationBar({
@@ -298,21 +314,27 @@ function PublicationPreviewDialog({
         if (!open) onClose();
       }}
     >
-      <DialogContent className="max-h-[90dvh] max-w-3xl overflow-y-auto">
-        <DialogTitle>{t("publication.preview")}</DialogTitle>
-        <p className="text-sm text-slate-500">{t("publication.previewHint")}</p>
-        {query.isPending ? (
-          <p role="status">{t("publication.loading")}</p>
-        ) : query.isError ? (
-          <div role="alert">
-            <p>{t("publication.error")}</p>
-            <Button type="button" onClick={() => void query.refetch()}>
-              {t("publication.retry")}
-            </Button>
-          </div>
-        ) : (
-          query.data && <PreviewContent data={query.data} />
-        )}
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-6xl flex-col gap-0 overflow-hidden p-0">
+        <header className="shrink-0 space-y-2 border-b border-slate-200 px-4 py-5 pr-12 sm:px-6 sm:pr-14">
+          <DialogTitle>{t("publication.preview")}</DialogTitle>
+          <DialogDescription className="text-sm text-slate-500">
+            {t("publication.previewHint")}
+          </DialogDescription>
+        </header>
+        <div className="min-h-0 min-w-0 overflow-y-auto overscroll-contain p-4 [overflow-wrap:anywhere] sm:p-6">
+          {query.isPending ? (
+            <p role="status">{t("publication.loading")}</p>
+          ) : query.isError ? (
+            <div role="alert" className="space-y-3">
+              <p>{t("publication.error")}</p>
+              <Button type="button" onClick={() => void query.refetch()}>
+                {t("publication.retry")}
+              </Button>
+            </div>
+          ) : (
+            query.data && <PreviewContent data={query.data} />
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -321,10 +343,10 @@ function PreviewContent({ data }: { data: PublicationPreview }) {
   const { t } = useTranslation("common");
   const [revealed, setRevealed] = useState(false);
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4 [overflow-wrap:anywhere]">
       <h3 className="text-xl font-bold">{data.title}</h3>
       {data.questions?.map((q, index) => (
-        <article key={q._id} className="space-y-3 rounded-xl border p-4">
+        <article key={q._id} className="min-w-0 space-y-3 rounded-xl border p-3 sm:p-5">
           <h4 className="font-medium">
             {t("publication.question", { count: index + 1 })} · Part {q.part}
           </h4>
@@ -338,11 +360,11 @@ function PreviewContent({ data }: { data: PublicationPreview }) {
                   height={480}
                   src={p.imageUrl}
                   alt={t("publication.image")}
-                  className="max-h-80 max-w-full object-contain"
+                  className="h-auto max-h-[32rem] w-auto max-w-full rounded-lg object-contain"
                 />
               )}
               {p.audioUrl && (
-                <audio controls src={p.audioUrl} className="w-full" />
+                <audio controls src={p.audioUrl} className="block w-full min-w-0 max-w-full" />
               )}
             </div>
           ))}
@@ -353,21 +375,21 @@ function PreviewContent({ data }: { data: PublicationPreview }) {
               height={480}
               src={q.imageUrl}
               alt={t("publication.image")}
-              className="max-h-80 max-w-full object-contain"
+              className="h-auto max-h-[32rem] w-auto max-w-full rounded-lg object-contain"
             />
           )}
-          {q.audioUrl && <audio controls src={q.audioUrl} className="w-full" />}
+          {q.audioUrl && <audio controls src={q.audioUrl} className="block w-full min-w-0 max-w-full" />}
           <p className="whitespace-pre-line">{q.content}</p>
           {q.options.map((option) => (
-            <label key={option.key} className="flex gap-2 rounded border p-2">
-              <input type="radio" name={`preview-${q._id}`} />
-              {option.key}. {option.text}
+            <label key={option.key} className="flex min-w-0 items-start gap-2 rounded border p-2">
+              <input type="radio" name={`preview-${q._id}`} className="mt-1 shrink-0" />
+              <span className="min-w-0 flex-1">{option.key}. {option.text}</span>
             </label>
           ))}
         </article>
       ))}
       {data.fullAudioUrl && (
-        <audio controls src={data.fullAudioUrl} className="w-full" />
+        <audio controls src={data.fullAudioUrl} className="block w-full min-w-0 max-w-full" />
       )}
       {data.segments?.map((s, index) => (
         <div key={s.id} className="space-y-2 rounded-lg border p-3">
@@ -391,7 +413,7 @@ function PreviewContent({ data }: { data: PublicationPreview }) {
         <audio
           controls
           src={data.audio.us || data.audio.uk}
-          className="w-full"
+          className="block w-full min-w-0 max-w-full"
         />
       )}
       {data.parts && (
