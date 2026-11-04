@@ -259,9 +259,7 @@ export function PublicationBar({
           {new Intl.DateTimeFormat(locale, {
             dateStyle: "medium",
             timeStyle: "short",
-          }).format(new Date(query.data.publishedAt))}{" "}
-          · {t("publication.by")}:{" "}
-          {query.data.publishedBy ?? t("publication.legacy")}
+          }).format(new Date(query.data.publishedAt))}
         </p>
       )}
       {!!query.data?.audit?.length && (
@@ -272,7 +270,7 @@ export function PublicationBar({
           <ul className="mt-2 space-y-1">
             {query.data.audit.map((item, index) => (
               <li key={index} className="break-all">
-                {t(`publication.${item.action}`)} · {item.actorId} ·{" "}
+                {t(`publication.${item.action}`)} ·{" "}
                 {new Intl.DateTimeFormat(locale, {
                   dateStyle: "short",
                   timeStyle: "short",
