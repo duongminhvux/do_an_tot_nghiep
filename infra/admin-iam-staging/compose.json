@@ -1,0 +1,962 @@
+{
+  "name": "vocalearn-iam-phase6",
+  "services": {
+    "postgres": {
+      "image": "postgres:17-alpine",
+      "labels": {
+        "vocalearn.purpose": "admin-iam-phase6-staging"
+      },
+      "environment": {
+        "POSTGRES_USER": "iam_stage",
+        "POSTGRES_PASSWORD": "${POSTGRES_PASSWORD}",
+        "PG_IDENTITY_PASSWORD": "${PG_IDENTITY_PASSWORD}",
+        "PG_CONTENT_PASSWORD": "${PG_CONTENT_PASSWORD}",
+        "PG_ASSESSMENT_PASSWORD": "${PG_ASSESSMENT_PASSWORD}",
+        "PG_ARENA_PASSWORD": "${PG_ARENA_PASSWORD}",
+        "PG_LEARNING_PASSWORD": "${PG_LEARNING_PASSWORD}",
+        "PG_MEDIA_PASSWORD": "${PG_MEDIA_PASSWORD}",
+        "PG_AI_IMPORT_PASSWORD": "${PG_AI_IMPORT_PASSWORD}",
+        "PG_NOTIFICATION_PASSWORD": "${PG_NOTIFICATION_PASSWORD}"
+      },
+      "command": [
+        "postgres",
+        "-c",
+        "cluster_name=admin-iam-phase6-staging"
+      ],
+      "volumes": [
+        "stage_pgdata:/var/lib/postgresql/data",
+        "./init.sh:/docker-entrypoint-initdb.d/10-owners.sh:ro"
+      ],
+      "ports": [
+        "127.0.0.1:57532:5432"
+      ],
+      "healthcheck": {
+        "test": [
+          "CMD-SHELL",
+          "pg_isready -U iam_stage -d postgres"
+        ],
+        "interval": "3s",
+        "timeout": "3s",
+        "retries": 30
+      }
+    },
+    "rehearsal-db": {
+      "image": "postgres:17-alpine",
+      "labels": {
+        "vocalearn.purpose": "admin-iam-phase6-restore-only"
+      },
+      "environment": {
+        "POSTGRES_USER": "iam_stage",
+        "POSTGRES_PASSWORD": "${POSTGRES_PASSWORD}",
+        "PG_IDENTITY_PASSWORD": "${PG_IDENTITY_PASSWORD}",
+        "PG_CONTENT_PASSWORD": "${PG_CONTENT_PASSWORD}",
+        "PG_ASSESSMENT_PASSWORD": "${PG_ASSESSMENT_PASSWORD}",
+        "PG_ARENA_PASSWORD": "${PG_ARENA_PASSWORD}",
+        "PG_LEARNING_PASSWORD": "${PG_LEARNING_PASSWORD}",
+        "PG_MEDIA_PASSWORD": "${PG_MEDIA_PASSWORD}",
+        "PG_AI_IMPORT_PASSWORD": "${PG_AI_IMPORT_PASSWORD}",
+        "PG_NOTIFICATION_PASSWORD": "${PG_NOTIFICATION_PASSWORD}"
+      },
+      "command": [
+        "postgres",
+        "-c",
+        "cluster_name=admin-iam-phase6-restore-only"
+      ],
+      "volumes": [
+        "rehearsal_pgdata:/var/lib/postgresql/data",
+        "./init.sh:/docker-entrypoint-initdb.d/10-owners.sh:ro"
+      ],
+      "networks": [
+        "restore-only"
+      ]
+    },
+    "rabbitmq": {
+      "image": "rabbitmq:4-management-alpine",
+      "labels": {
+        "vocalearn.purpose": "admin-iam-phase6-staging"
+      },
+      "environment": {
+        "RABBITMQ_DEFAULT_USER": "iamstage",
+        "RABBITMQ_DEFAULT_PASS": "${RABBITMQ_PASSWORD}"
+      },
+      "volumes": [
+        "stage_rabbit:/var/lib/rabbitmq"
+      ],
+      "ports": [
+        "127.0.0.1:57672:5672",
+        "127.0.0.1:57673:15672"
+      ],
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "rabbitmq-diagnostics",
+          "-q",
+          "ping"
+        ],
+        "interval": "5s",
+        "timeout": "5s",
+        "retries": 30
+      }
+    },
+    "mailpit": {
+      "image": "axllent/mailpit:v1.27",
+      "labels": {
+        "vocalearn.purpose": "admin-iam-phase6-staging"
+      },
+      "environment": {
+        "MP_MAX_MESSAGES": "1000"
+      },
+      "ports": [
+        "127.0.0.1:57825:8025"
+      ]
+    },
+    "redis": {
+      "image": "redis:7-alpine",
+      "labels": {
+        "vocalearn.purpose": "admin-iam-phase6-staging"
+      }
+    },
+    "objectstore": {
+      "image": "chrislusf/seaweedfs:4.30",
+      "labels": {
+        "vocalearn.purpose": "admin-iam-phase6-staging"
+      },
+      "command": [
+        "mini",
+        "-dir=/data",
+        "-s3.port=9000"
+      ],
+      "environment": {
+        "AWS_ACCESS_KEY_ID": "${S3_ACCESS_KEY}",
+        "AWS_SECRET_ACCESS_KEY": "${S3_SECRET_KEY}",
+        "S3_BUCKET": "iam-stage"
+      },
+      "volumes": [
+        "stage_objects:/data"
+      ]
+    },
+    "media-bridge": {
+      "image": "vocalearn-postgres-media-bridge:latest",
+      "pull_policy": "never",
+      "labels": {
+        "vocalearn.purpose": "admin-iam-phase6-staging"
+      },
+      "environment": {
+        "NODE_ENV": "production",
+        "PGHOST": "postgres",
+        "PGPORT": "5432",
+        "JWT_ACCESS_SECRET": "${JWT_ACCESS_SECRET}",
+        "JWT_REFRESH_SECRET": "${JWT_REFRESH_SECRET}",
+        "JWT_ACCESS_TOKEN_EXPIRES": "15m",
+        "JWT_REFRESH_TOKEN_EXPIRES": "1d",
+        "INTERNAL_SERVICE_TOKEN": "${INTERNAL_SERVICE_TOKEN}",
+        "IDENTITY_INTERNAL_TOKEN": "${IDENTITY_INTERNAL_TOKEN}",
+        "IDENTITY_INTROSPECTION_URL": "http://identity-service:5000/api/_internal/identity/introspect",
+        "NOTIFICATION_INTERNAL_URL": "http://notification-service:5000",
+        "IDENTITY_INTERNAL_URL": "http://identity-service:5000",
+        "CONTENT_INTERNAL_URL": "http://content-service:5000",
+        "ASSESSMENT_INTERNAL_URL": "http://assessment-service:5000",
+        "LEARNING_INTERNAL_URL": "http://learning-service:5000",
+        "ARENA_INTERNAL_URL": "http://arena-service:5000",
+        "MEDIA_JOBS_INTERNAL_URL": "http://media-jobs-service:5000",
+        "AI_IMPORT_INTERNAL_URL": "http://ai-import-service:5000",
+        "ADMIN_URL": "https://localhost:57443",
+        "FRONTEND_URL": "https://localhost:57443",
+        "CORS_ALLOWED_ORIGINS": "https://localhost:57443",
+        "TRUST_PROXY_HOPS": "2",
+        "COOKIE_SECURE": "true",
+        "COOKIE_SAME_SITE": "lax",
+        "MEDIA_STORAGE_BACKEND": "s3",
+        "MEDIA_BRIDGE_URL": "http://media-bridge:8010",
+        "MEDIA_INTERNAL_TOKEN": "${INTERNAL_SERVICE_TOKEN}",
+        "MEDIA_PUBLIC_BASE_URL": "https://localhost:57443/media",
+        "REDIS_URL": "redis://redis:6379",
+        "S3_ENDPOINT": "http://objectstore:9000",
+        "S3_BUCKET": "iam-stage",
+        "S3_ACCESS_KEY": "${S3_ACCESS_KEY}",
+        "S3_SECRET_KEY": "${S3_SECRET_KEY}",
+        "S3_FORCE_PATH_STYLE": "true"
+      },
+      "depends_on": [
+        "objectstore"
+      ]
+    },
+    "migrator": {
+      "image": "vocalearn-iam-phase6-api:staging",
+      "build": {
+        "context": "../..",
+        "dockerfile": "infra/admin-iam-staging/Dockerfile.api"
+      },
+      "labels": {
+        "vocalearn.purpose": "admin-iam-phase6-staging"
+      },
+      "command": [
+        "node",
+        "scripts/migrate.mjs",
+        "--all"
+      ],
+      "environment": {
+        "PG_IDENTITY_PASSWORD": "${PG_IDENTITY_PASSWORD}",
+        "PG_CONTENT_PASSWORD": "${PG_CONTENT_PASSWORD}",
+        "PG_ASSESSMENT_PASSWORD": "${PG_ASSESSMENT_PASSWORD}",
+        "PG_ARENA_PASSWORD": "${PG_ARENA_PASSWORD}",
+        "PG_LEARNING_PASSWORD": "${PG_LEARNING_PASSWORD}",
+        "PG_MEDIA_PASSWORD": "${PG_MEDIA_PASSWORD}",
+        "PG_AI_IMPORT_PASSWORD": "${PG_AI_IMPORT_PASSWORD}",
+        "PG_NOTIFICATION_PASSWORD": "${PG_NOTIFICATION_PASSWORD}",
+        "PGHOST": "postgres",
+        "PGPORT": "5432"
+      },
+      "depends_on": {
+        "postgres": {
+          "condition": "service_healthy"
+        }
+      }
+    },
+    "identity-service": {
+      "image": "vocalearn-iam-phase6-api:staging",
+      "labels": {
+        "vocalearn.purpose": "admin-iam-phase6-staging"
+      },
+      "command": [
+        "node",
+        "apps/api/dist/entrypoints/identity.js"
+      ],
+      "environment": {
+        "NODE_ENV": "production",
+        "PGHOST": "postgres",
+        "PGPORT": "5432",
+        "JWT_ACCESS_SECRET": "${JWT_ACCESS_SECRET}",
+        "JWT_REFRESH_SECRET": "${JWT_REFRESH_SECRET}",
+        "JWT_ACCESS_TOKEN_EXPIRES": "15m",
+        "JWT_REFRESH_TOKEN_EXPIRES": "1d",
+        "INTERNAL_SERVICE_TOKEN": "${INTERNAL_SERVICE_TOKEN}",
+        "IDENTITY_INTERNAL_TOKEN": "${IDENTITY_INTERNAL_TOKEN}",
+        "IDENTITY_INTROSPECTION_URL": "http://identity-service:5000/api/_internal/identity/introspect",
+        "NOTIFICATION_INTERNAL_URL": "http://notification-service:5000",
+        "IDENTITY_INTERNAL_URL": "http://identity-service:5000",
+        "CONTENT_INTERNAL_URL": "http://content-service:5000",
+        "ASSESSMENT_INTERNAL_URL": "http://assessment-service:5000",
+        "LEARNING_INTERNAL_URL": "http://learning-service:5000",
+        "ARENA_INTERNAL_URL": "http://arena-service:5000",
+        "MEDIA_JOBS_INTERNAL_URL": "http://media-jobs-service:5000",
+        "AI_IMPORT_INTERNAL_URL": "http://ai-import-service:5000",
+        "ADMIN_URL": "https://localhost:57443",
+        "FRONTEND_URL": "https://localhost:57443",
+        "CORS_ALLOWED_ORIGINS": "https://localhost:57443",
+        "TRUST_PROXY_HOPS": "2",
+        "COOKIE_SECURE": "true",
+        "COOKIE_SAME_SITE": "lax",
+        "MEDIA_STORAGE_BACKEND": "s3",
+        "MEDIA_BRIDGE_URL": "http://media-bridge:8010",
+        "MEDIA_INTERNAL_TOKEN": "${INTERNAL_SERVICE_TOKEN}",
+        "MEDIA_PUBLIC_BASE_URL": "https://localhost:57443/media",
+        "REDIS_URL": "redis://redis:6379",
+        "S3_ENDPOINT": "http://objectstore:9000",
+        "S3_BUCKET": "iam-stage",
+        "S3_ACCESS_KEY": "${S3_ACCESS_KEY}",
+        "S3_SECRET_KEY": "${S3_SECRET_KEY}",
+        "SERVICE_ROLE": "identity",
+        "PORT": "5000",
+        "PGDATABASE": "identity_db",
+        "PGUSER": "vl_identity",
+        "PGPASSWORD": "${PG_IDENTITY_PASSWORD}",
+        "ADMIN_WEB_URL": "https://localhost:57443/en/",
+        "ADMIN_ACTIVATION_TOKEN_KEY": "${ADMIN_ACTIVATION_TOKEN_KEY}",
+        "ADMIN_ACTIVATION_DELIVERY_ENABLED": "${STAGING_DELIVERY_ENABLED}",
+        "ADMIN_ACTIVATION_CONSUMER_READY": "${STAGING_CONSUMER_READY}"
+      },
+      "depends_on": {
+        "migrator": {
+          "condition": "service_completed_successfully"
+        }
+      },
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:5000/api/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        ],
+        "interval": "8s",
+        "timeout": "5s",
+        "retries": 20,
+        "start_period": "10s"
+      }
+    },
+    "content-service": {
+      "image": "vocalearn-iam-phase6-api:staging",
+      "labels": {
+        "vocalearn.purpose": "admin-iam-phase6-staging"
+      },
+      "command": [
+        "node",
+        "apps/api/dist/entrypoints/content.js"
+      ],
+      "environment": {
+        "NODE_ENV": "production",
+        "PGHOST": "postgres",
+        "PGPORT": "5432",
+        "JWT_ACCESS_SECRET": "${JWT_ACCESS_SECRET}",
+        "JWT_REFRESH_SECRET": "${JWT_REFRESH_SECRET}",
+        "JWT_ACCESS_TOKEN_EXPIRES": "15m",
+        "JWT_REFRESH_TOKEN_EXPIRES": "1d",
+        "INTERNAL_SERVICE_TOKEN": "${INTERNAL_SERVICE_TOKEN}",
+        "IDENTITY_INTERNAL_TOKEN": "${IDENTITY_INTERNAL_TOKEN}",
+        "IDENTITY_INTROSPECTION_URL": "http://identity-service:5000/api/_internal/identity/introspect",
+        "NOTIFICATION_INTERNAL_URL": "http://notification-service:5000",
+        "IDENTITY_INTERNAL_URL": "http://identity-service:5000",
+        "CONTENT_INTERNAL_URL": "http://content-service:5000",
+        "ASSESSMENT_INTERNAL_URL": "http://assessment-service:5000",
+        "LEARNING_INTERNAL_URL": "http://learning-service:5000",
+        "ARENA_INTERNAL_URL": "http://arena-service:5000",
+        "MEDIA_JOBS_INTERNAL_URL": "http://media-jobs-service:5000",
+        "AI_IMPORT_INTERNAL_URL": "http://ai-import-service:5000",
+        "ADMIN_URL": "https://localhost:57443",
+        "FRONTEND_URL": "https://localhost:57443",
+        "CORS_ALLOWED_ORIGINS": "https://localhost:57443",
+        "TRUST_PROXY_HOPS": "2",
+        "COOKIE_SECURE": "true",
+        "COOKIE_SAME_SITE": "lax",
+        "MEDIA_STORAGE_BACKEND": "s3",
+        "MEDIA_BRIDGE_URL": "http://media-bridge:8010",
+        "MEDIA_INTERNAL_TOKEN": "${INTERNAL_SERVICE_TOKEN}",
+        "MEDIA_PUBLIC_BASE_URL": "https://localhost:57443/media",
+        "REDIS_URL": "redis://redis:6379",
+        "S3_ENDPOINT": "http://objectstore:9000",
+        "S3_BUCKET": "iam-stage",
+        "S3_ACCESS_KEY": "${S3_ACCESS_KEY}",
+        "S3_SECRET_KEY": "${S3_SECRET_KEY}",
+        "SERVICE_ROLE": "content",
+        "PORT": "5000",
+        "PGDATABASE": "content_db",
+        "PGUSER": "vl_content",
+        "PGPASSWORD": "${PG_CONTENT_PASSWORD}"
+      },
+      "depends_on": {
+        "migrator": {
+          "condition": "service_completed_successfully"
+        }
+      },
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:5000/api/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        ],
+        "interval": "8s",
+        "timeout": "5s",
+        "retries": 20,
+        "start_period": "10s"
+      }
+    },
+    "assessment-service": {
+      "image": "vocalearn-iam-phase6-api:staging",
+      "labels": {
+        "vocalearn.purpose": "admin-iam-phase6-staging"
+      },
+      "command": [
+        "node",
+        "apps/api/dist/entrypoints/assessment.js"
+      ],
+      "environment": {
+        "NODE_ENV": "production",
+        "PGHOST": "postgres",
+        "PGPORT": "5432",
+        "JWT_ACCESS_SECRET": "${JWT_ACCESS_SECRET}",
+        "JWT_REFRESH_SECRET": "${JWT_REFRESH_SECRET}",
+        "JWT_ACCESS_TOKEN_EXPIRES": "15m",
+        "JWT_REFRESH_TOKEN_EXPIRES": "1d",
+        "INTERNAL_SERVICE_TOKEN": "${INTERNAL_SERVICE_TOKEN}",
+        "IDENTITY_INTERNAL_TOKEN": "${IDENTITY_INTERNAL_TOKEN}",
+        "IDENTITY_INTROSPECTION_URL": "http://identity-service:5000/api/_internal/identity/introspect",
+        "NOTIFICATION_INTERNAL_URL": "http://notification-service:5000",
+        "IDENTITY_INTERNAL_URL": "http://identity-service:5000",
+        "CONTENT_INTERNAL_URL": "http://content-service:5000",
+        "ASSESSMENT_INTERNAL_URL": "http://assessment-service:5000",
+        "LEARNING_INTERNAL_URL": "http://learning-service:5000",
+        "ARENA_INTERNAL_URL": "http://arena-service:5000",
+        "MEDIA_JOBS_INTERNAL_URL": "http://media-jobs-service:5000",
+        "AI_IMPORT_INTERNAL_URL": "http://ai-import-service:5000",
+        "ADMIN_URL": "https://localhost:57443",
+        "FRONTEND_URL": "https://localhost:57443",
+        "CORS_ALLOWED_ORIGINS": "https://localhost:57443",
+        "TRUST_PROXY_HOPS": "2",
+        "COOKIE_SECURE": "true",
+        "COOKIE_SAME_SITE": "lax",
+        "MEDIA_STORAGE_BACKEND": "s3",
+        "MEDIA_BRIDGE_URL": "http://media-bridge:8010",
+        "MEDIA_INTERNAL_TOKEN": "${INTERNAL_SERVICE_TOKEN}",
+        "MEDIA_PUBLIC_BASE_URL": "https://localhost:57443/media",
+        "REDIS_URL": "redis://redis:6379",
+        "S3_ENDPOINT": "http://objectstore:9000",
+        "S3_BUCKET": "iam-stage",
+        "S3_ACCESS_KEY": "${S3_ACCESS_KEY}",
+        "S3_SECRET_KEY": "${S3_SECRET_KEY}",
+        "SERVICE_ROLE": "assessment",
+        "PORT": "5000",
+        "PGDATABASE": "assessment_db",
+        "PGUSER": "vl_assessment",
+        "PGPASSWORD": "${PG_ASSESSMENT_PASSWORD}"
+      },
+      "depends_on": {
+        "migrator": {
+          "condition": "service_completed_successfully"
+        }
+      },
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:5000/api/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        ],
+        "interval": "8s",
+        "timeout": "5s",
+        "retries": 20,
+        "start_period": "10s"
+      }
+    },
+    "learning-service": {
+      "image": "vocalearn-iam-phase6-api:staging",
+      "labels": {
+        "vocalearn.purpose": "admin-iam-phase6-staging"
+      },
+      "command": [
+        "node",
+        "apps/api/dist/entrypoints/learning.js"
+      ],
+      "environment": {
+        "NODE_ENV": "production",
+        "PGHOST": "postgres",
+        "PGPORT": "5432",
+        "JWT_ACCESS_SECRET": "${JWT_ACCESS_SECRET}",
+        "JWT_REFRESH_SECRET": "${JWT_REFRESH_SECRET}",
+        "JWT_ACCESS_TOKEN_EXPIRES": "15m",
+        "JWT_REFRESH_TOKEN_EXPIRES": "1d",
+        "INTERNAL_SERVICE_TOKEN": "${INTERNAL_SERVICE_TOKEN}",
+        "IDENTITY_INTERNAL_TOKEN": "${IDENTITY_INTERNAL_TOKEN}",
+        "IDENTITY_INTROSPECTION_URL": "http://identity-service:5000/api/_internal/identity/introspect",
+        "NOTIFICATION_INTERNAL_URL": "http://notification-service:5000",
+        "IDENTITY_INTERNAL_URL": "http://identity-service:5000",
+        "CONTENT_INTERNAL_URL": "http://content-service:5000",
+        "ASSESSMENT_INTERNAL_URL": "http://assessment-service:5000",
+        "LEARNING_INTERNAL_URL": "http://learning-service:5000",
+        "ARENA_INTERNAL_URL": "http://arena-service:5000",
+        "MEDIA_JOBS_INTERNAL_URL": "http://media-jobs-service:5000",
+        "AI_IMPORT_INTERNAL_URL": "http://ai-import-service:5000",
+        "ADMIN_URL": "https://localhost:57443",
+        "FRONTEND_URL": "https://localhost:57443",
+        "CORS_ALLOWED_ORIGINS": "https://localhost:57443",
+        "TRUST_PROXY_HOPS": "2",
+        "COOKIE_SECURE": "true",
+        "COOKIE_SAME_SITE": "lax",
+        "MEDIA_STORAGE_BACKEND": "s3",
+        "MEDIA_BRIDGE_URL": "http://media-bridge:8010",
+        "MEDIA_INTERNAL_TOKEN": "${INTERNAL_SERVICE_TOKEN}",
+        "MEDIA_PUBLIC_BASE_URL": "https://localhost:57443/media",
+        "REDIS_URL": "redis://redis:6379",
+        "S3_ENDPOINT": "http://objectstore:9000",
+        "S3_BUCKET": "iam-stage",
+        "S3_ACCESS_KEY": "${S3_ACCESS_KEY}",
+        "S3_SECRET_KEY": "${S3_SECRET_KEY}",
+        "SERVICE_ROLE": "learning",
+        "PORT": "5000",
+        "PGDATABASE": "learning_db",
+        "PGUSER": "vl_learning",
+        "PGPASSWORD": "${PG_LEARNING_PASSWORD}"
+      },
+      "depends_on": {
+        "migrator": {
+          "condition": "service_completed_successfully"
+        }
+      },
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:5000/api/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        ],
+        "interval": "8s",
+        "timeout": "5s",
+        "retries": 20,
+        "start_period": "10s"
+      }
+    },
+    "arena-service": {
+      "image": "vocalearn-iam-phase6-api:staging",
+      "labels": {
+        "vocalearn.purpose": "admin-iam-phase6-staging"
+      },
+      "command": [
+        "node",
+        "apps/api/dist/entrypoints/arena.js"
+      ],
+      "environment": {
+        "NODE_ENV": "production",
+        "PGHOST": "postgres",
+        "PGPORT": "5432",
+        "JWT_ACCESS_SECRET": "${JWT_ACCESS_SECRET}",
+        "JWT_REFRESH_SECRET": "${JWT_REFRESH_SECRET}",
+        "JWT_ACCESS_TOKEN_EXPIRES": "15m",
+        "JWT_REFRESH_TOKEN_EXPIRES": "1d",
+        "INTERNAL_SERVICE_TOKEN": "${INTERNAL_SERVICE_TOKEN}",
+        "IDENTITY_INTERNAL_TOKEN": "${IDENTITY_INTERNAL_TOKEN}",
+        "IDENTITY_INTROSPECTION_URL": "http://identity-service:5000/api/_internal/identity/introspect",
+        "NOTIFICATION_INTERNAL_URL": "http://notification-service:5000",
+        "IDENTITY_INTERNAL_URL": "http://identity-service:5000",
+        "CONTENT_INTERNAL_URL": "http://content-service:5000",
+        "ASSESSMENT_INTERNAL_URL": "http://assessment-service:5000",
+        "LEARNING_INTERNAL_URL": "http://learning-service:5000",
+        "ARENA_INTERNAL_URL": "http://arena-service:5000",
+        "MEDIA_JOBS_INTERNAL_URL": "http://media-jobs-service:5000",
+        "AI_IMPORT_INTERNAL_URL": "http://ai-import-service:5000",
+        "ADMIN_URL": "https://localhost:57443",
+        "FRONTEND_URL": "https://localhost:57443",
+        "CORS_ALLOWED_ORIGINS": "https://localhost:57443",
+        "TRUST_PROXY_HOPS": "2",
+        "COOKIE_SECURE": "true",
+        "COOKIE_SAME_SITE": "lax",
+        "MEDIA_STORAGE_BACKEND": "s3",
+        "MEDIA_BRIDGE_URL": "http://media-bridge:8010",
+        "MEDIA_INTERNAL_TOKEN": "${INTERNAL_SERVICE_TOKEN}",
+        "MEDIA_PUBLIC_BASE_URL": "https://localhost:57443/media",
+        "REDIS_URL": "redis://redis:6379",
+        "S3_ENDPOINT": "http://objectstore:9000",
+        "S3_BUCKET": "iam-stage",
+        "S3_ACCESS_KEY": "${S3_ACCESS_KEY}",
+        "S3_SECRET_KEY": "${S3_SECRET_KEY}",
+        "SERVICE_ROLE": "arena",
+        "PORT": "5000",
+        "PGDATABASE": "arena_db",
+        "PGUSER": "vl_arena",
+        "PGPASSWORD": "${PG_ARENA_PASSWORD}"
+      },
+      "depends_on": {
+        "migrator": {
+          "condition": "service_completed_successfully"
+        }
+      },
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:5000/api/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        ],
+        "interval": "8s",
+        "timeout": "5s",
+        "retries": 20,
+        "start_period": "10s"
+      }
+    },
+    "media-jobs-service": {
+      "image": "vocalearn-iam-phase6-api:staging",
+      "labels": {
+        "vocalearn.purpose": "admin-iam-phase6-staging"
+      },
+      "command": [
+        "node",
+        "apps/api/dist/entrypoints/media-jobs.js"
+      ],
+      "environment": {
+        "NODE_ENV": "production",
+        "PGHOST": "postgres",
+        "PGPORT": "5432",
+        "JWT_ACCESS_SECRET": "${JWT_ACCESS_SECRET}",
+        "JWT_REFRESH_SECRET": "${JWT_REFRESH_SECRET}",
+        "JWT_ACCESS_TOKEN_EXPIRES": "15m",
+        "JWT_REFRESH_TOKEN_EXPIRES": "1d",
+        "INTERNAL_SERVICE_TOKEN": "${INTERNAL_SERVICE_TOKEN}",
+        "IDENTITY_INTERNAL_TOKEN": "${IDENTITY_INTERNAL_TOKEN}",
+        "IDENTITY_INTROSPECTION_URL": "http://identity-service:5000/api/_internal/identity/introspect",
+        "NOTIFICATION_INTERNAL_URL": "http://notification-service:5000",
+        "IDENTITY_INTERNAL_URL": "http://identity-service:5000",
+        "CONTENT_INTERNAL_URL": "http://content-service:5000",
+        "ASSESSMENT_INTERNAL_URL": "http://assessment-service:5000",
+        "LEARNING_INTERNAL_URL": "http://learning-service:5000",
+        "ARENA_INTERNAL_URL": "http://arena-service:5000",
+        "MEDIA_JOBS_INTERNAL_URL": "http://media-jobs-service:5000",
+        "AI_IMPORT_INTERNAL_URL": "http://ai-import-service:5000",
+        "ADMIN_URL": "https://localhost:57443",
+        "FRONTEND_URL": "https://localhost:57443",
+        "CORS_ALLOWED_ORIGINS": "https://localhost:57443",
+        "TRUST_PROXY_HOPS": "2",
+        "COOKIE_SECURE": "true",
+        "COOKIE_SAME_SITE": "lax",
+        "MEDIA_STORAGE_BACKEND": "s3",
+        "MEDIA_BRIDGE_URL": "http://media-bridge:8010",
+        "MEDIA_INTERNAL_TOKEN": "${INTERNAL_SERVICE_TOKEN}",
+        "MEDIA_PUBLIC_BASE_URL": "https://localhost:57443/media",
+        "REDIS_URL": "redis://redis:6379",
+        "S3_ENDPOINT": "http://objectstore:9000",
+        "S3_BUCKET": "iam-stage",
+        "S3_ACCESS_KEY": "${S3_ACCESS_KEY}",
+        "S3_SECRET_KEY": "${S3_SECRET_KEY}",
+        "SERVICE_ROLE": "media-jobs",
+        "PORT": "5000",
+        "PGDATABASE": "media_db",
+        "PGUSER": "vl_media",
+        "PGPASSWORD": "${PG_MEDIA_PASSWORD}"
+      },
+      "depends_on": {
+        "migrator": {
+          "condition": "service_completed_successfully"
+        }
+      },
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:5000/api/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        ],
+        "interval": "8s",
+        "timeout": "5s",
+        "retries": 20,
+        "start_period": "10s"
+      }
+    },
+    "ai-import-service": {
+      "image": "vocalearn-iam-phase6-api:staging",
+      "labels": {
+        "vocalearn.purpose": "admin-iam-phase6-staging"
+      },
+      "command": [
+        "node",
+        "apps/api/dist/entrypoints/ai-import.js"
+      ],
+      "environment": {
+        "NODE_ENV": "production",
+        "PGHOST": "postgres",
+        "PGPORT": "5432",
+        "JWT_ACCESS_SECRET": "${JWT_ACCESS_SECRET}",
+        "JWT_REFRESH_SECRET": "${JWT_REFRESH_SECRET}",
+        "JWT_ACCESS_TOKEN_EXPIRES": "15m",
+        "JWT_REFRESH_TOKEN_EXPIRES": "1d",
+        "INTERNAL_SERVICE_TOKEN": "${INTERNAL_SERVICE_TOKEN}",
+        "IDENTITY_INTERNAL_TOKEN": "${IDENTITY_INTERNAL_TOKEN}",
+        "IDENTITY_INTROSPECTION_URL": "http://identity-service:5000/api/_internal/identity/introspect",
+        "NOTIFICATION_INTERNAL_URL": "http://notification-service:5000",
+        "IDENTITY_INTERNAL_URL": "http://identity-service:5000",
+        "CONTENT_INTERNAL_URL": "http://content-service:5000",
+        "ASSESSMENT_INTERNAL_URL": "http://assessment-service:5000",
+        "LEARNING_INTERNAL_URL": "http://learning-service:5000",
+        "ARENA_INTERNAL_URL": "http://arena-service:5000",
+        "MEDIA_JOBS_INTERNAL_URL": "http://media-jobs-service:5000",
+        "AI_IMPORT_INTERNAL_URL": "http://ai-import-service:5000",
+        "ADMIN_URL": "https://localhost:57443",
+        "FRONTEND_URL": "https://localhost:57443",
+        "CORS_ALLOWED_ORIGINS": "https://localhost:57443",
+        "TRUST_PROXY_HOPS": "2",
+        "COOKIE_SECURE": "true",
+        "COOKIE_SAME_SITE": "lax",
+        "MEDIA_STORAGE_BACKEND": "s3",
+        "MEDIA_BRIDGE_URL": "http://media-bridge:8010",
+        "MEDIA_INTERNAL_TOKEN": "${INTERNAL_SERVICE_TOKEN}",
+        "MEDIA_PUBLIC_BASE_URL": "https://localhost:57443/media",
+        "REDIS_URL": "redis://redis:6379",
+        "S3_ENDPOINT": "http://objectstore:9000",
+        "S3_BUCKET": "iam-stage",
+        "S3_ACCESS_KEY": "${S3_ACCESS_KEY}",
+        "S3_SECRET_KEY": "${S3_SECRET_KEY}",
+        "SERVICE_ROLE": "ai-import",
+        "PORT": "5000",
+        "PGDATABASE": "ai_import_db",
+        "PGUSER": "vl_ai_import",
+        "PGPASSWORD": "${PG_AI_IMPORT_PASSWORD}"
+      },
+      "depends_on": {
+        "migrator": {
+          "condition": "service_completed_successfully"
+        }
+      },
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:5000/api/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        ],
+        "interval": "8s",
+        "timeout": "5s",
+        "retries": 20,
+        "start_period": "10s"
+      }
+    },
+    "notification-service": {
+      "image": "vocalearn-iam-phase6-api:staging",
+      "labels": {
+        "vocalearn.purpose": "admin-iam-phase6-staging"
+      },
+      "command": [
+        "node",
+        "apps/api/dist/entrypoints/notification.js"
+      ],
+      "environment": {
+        "NODE_ENV": "production",
+        "PGHOST": "postgres",
+        "PGPORT": "5432",
+        "JWT_ACCESS_SECRET": "${JWT_ACCESS_SECRET}",
+        "JWT_REFRESH_SECRET": "${JWT_REFRESH_SECRET}",
+        "JWT_ACCESS_TOKEN_EXPIRES": "15m",
+        "JWT_REFRESH_TOKEN_EXPIRES": "1d",
+        "INTERNAL_SERVICE_TOKEN": "${INTERNAL_SERVICE_TOKEN}",
+        "IDENTITY_INTERNAL_TOKEN": "${IDENTITY_INTERNAL_TOKEN}",
+        "IDENTITY_INTROSPECTION_URL": "http://identity-service:5000/api/_internal/identity/introspect",
+        "NOTIFICATION_INTERNAL_URL": "http://notification-service:5000",
+        "IDENTITY_INTERNAL_URL": "http://identity-service:5000",
+        "CONTENT_INTERNAL_URL": "http://content-service:5000",
+        "ASSESSMENT_INTERNAL_URL": "http://assessment-service:5000",
+        "LEARNING_INTERNAL_URL": "http://learning-service:5000",
+        "ARENA_INTERNAL_URL": "http://arena-service:5000",
+        "MEDIA_JOBS_INTERNAL_URL": "http://media-jobs-service:5000",
+        "AI_IMPORT_INTERNAL_URL": "http://ai-import-service:5000",
+        "ADMIN_URL": "https://localhost:57443",
+        "FRONTEND_URL": "https://localhost:57443",
+        "CORS_ALLOWED_ORIGINS": "https://localhost:57443",
+        "TRUST_PROXY_HOPS": "2",
+        "COOKIE_SECURE": "true",
+        "COOKIE_SAME_SITE": "lax",
+        "MEDIA_STORAGE_BACKEND": "s3",
+        "MEDIA_BRIDGE_URL": "http://media-bridge:8010",
+        "MEDIA_INTERNAL_TOKEN": "${INTERNAL_SERVICE_TOKEN}",
+        "MEDIA_PUBLIC_BASE_URL": "https://localhost:57443/media",
+        "REDIS_URL": "redis://redis:6379",
+        "S3_ENDPOINT": "http://objectstore:9000",
+        "S3_BUCKET": "iam-stage",
+        "S3_ACCESS_KEY": "${S3_ACCESS_KEY}",
+        "S3_SECRET_KEY": "${S3_SECRET_KEY}",
+        "SERVICE_ROLE": "notification",
+        "PORT": "5000",
+        "PGDATABASE": "notification_db",
+        "PGUSER": "vl_notification",
+        "PGPASSWORD": "${PG_NOTIFICATION_PASSWORD}",
+        "ADMIN_ACTIVATION_EMAIL_WORKER_ENABLED": "${STAGING_WORKER_ENABLED}",
+        "MAIL_TRANSPORT": "smtp",
+        "SMTP_HOST": "mailpit",
+        "SMTP_PORT": "1025",
+        "SMTP_SECURE": "false",
+        "MAIL_SANDBOX_ONLY": "true",
+        "MAIL_USERNAME": "noreply@example.test",
+        "MAIL_FROM": "IAM Staging"
+      },
+      "depends_on": {
+        "migrator": {
+          "condition": "service_completed_successfully"
+        }
+      },
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:5000/api/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        ],
+        "interval": "8s",
+        "timeout": "5s",
+        "retries": 20,
+        "start_period": "10s"
+      }
+    },
+    "relay-identity": {
+      "image": "vocalearn-iam-phase6-events:staging",
+      "build": {
+        "context": "../..",
+        "dockerfile": "services/domain-events/Dockerfile"
+      },
+      "labels": {
+        "vocalearn.purpose": "admin-iam-phase6-staging"
+      },
+      "command": [
+        "python",
+        "relay.py"
+      ],
+      "environment": {
+        "PGHOST": "postgres",
+        "PGPORT": "5432",
+        "PGDATABASE": "identity_db",
+        "PGUSER": "vl_identity",
+        "PGPASSWORD": "${PG_IDENTITY_PASSWORD}",
+        "RABBITMQ_URL": "amqp://iamstage:${RABBITMQ_PASSWORD}@rabbitmq:5672/%2F"
+      },
+      "depends_on": {
+        "migrator": {
+          "condition": "service_completed_successfully"
+        },
+        "rabbitmq": {
+          "condition": "service_healthy"
+        }
+      }
+    },
+    "consumer-notification": {
+      "image": "vocalearn-iam-phase6-events:staging",
+      "build": {
+        "context": "../..",
+        "dockerfile": "services/domain-events/Dockerfile"
+      },
+      "labels": {
+        "vocalearn.purpose": "admin-iam-phase6-staging"
+      },
+      "command": [
+        "python",
+        "consumer.py"
+      ],
+      "environment": {
+        "PGHOST": "postgres",
+        "PGPORT": "5432",
+        "PGDATABASE": "notification_db",
+        "PGUSER": "vl_notification",
+        "PGPASSWORD": "${PG_NOTIFICATION_PASSWORD}",
+        "RABBITMQ_URL": "amqp://iamstage:${RABBITMQ_PASSWORD}@rabbitmq:5672/%2F",
+        "CONSUMER_NAME": "notification"
+      },
+      "depends_on": {
+        "migrator": {
+          "condition": "service_completed_successfully"
+        },
+        "rabbitmq": {
+          "condition": "service_healthy"
+        }
+      }
+    },
+    "consumer-arena": {
+      "image": "vocalearn-iam-phase6-events:staging",
+      "build": {
+        "context": "../..",
+        "dockerfile": "services/domain-events/Dockerfile"
+      },
+      "labels": {
+        "vocalearn.purpose": "admin-iam-phase6-staging"
+      },
+      "command": [
+        "python",
+        "consumer.py"
+      ],
+      "environment": {
+        "PGHOST": "postgres",
+        "PGPORT": "5432",
+        "PGDATABASE": "arena_db",
+        "PGUSER": "vl_arena",
+        "PGPASSWORD": "${PG_ARENA_PASSWORD}",
+        "RABBITMQ_URL": "amqp://iamstage:${RABBITMQ_PASSWORD}@rabbitmq:5672/%2F",
+        "CONSUMER_NAME": "arena"
+      },
+      "depends_on": {
+        "migrator": {
+          "condition": "service_completed_successfully"
+        },
+        "rabbitmq": {
+          "condition": "service_healthy"
+        }
+      }
+    },
+    "consumer-learning": {
+      "image": "vocalearn-iam-phase6-events:staging",
+      "build": {
+        "context": "../..",
+        "dockerfile": "services/domain-events/Dockerfile"
+      },
+      "labels": {
+        "vocalearn.purpose": "admin-iam-phase6-staging"
+      },
+      "command": [
+        "python",
+        "consumer.py"
+      ],
+      "environment": {
+        "PGHOST": "postgres",
+        "PGPORT": "5432",
+        "PGDATABASE": "learning_db",
+        "PGUSER": "vl_learning",
+        "PGPASSWORD": "${PG_LEARNING_PASSWORD}",
+        "RABBITMQ_URL": "amqp://iamstage:${RABBITMQ_PASSWORD}@rabbitmq:5672/%2F",
+        "CONSUMER_NAME": "learning"
+      },
+      "depends_on": {
+        "migrator": {
+          "condition": "service_completed_successfully"
+        },
+        "rabbitmq": {
+          "condition": "service_healthy"
+        }
+      }
+    },
+    "rehearsal-migrator": {
+      "image": "vocalearn-iam-phase6-api:staging",
+      "labels": {
+        "vocalearn.purpose": "admin-iam-phase6-restore-only"
+      },
+      "command": [
+        "node",
+        "scripts/migrate.mjs",
+        "--all"
+      ],
+      "environment": {
+        "PG_IDENTITY_PASSWORD": "${PG_IDENTITY_PASSWORD}",
+        "PG_CONTENT_PASSWORD": "${PG_CONTENT_PASSWORD}",
+        "PG_ASSESSMENT_PASSWORD": "${PG_ASSESSMENT_PASSWORD}",
+        "PG_ARENA_PASSWORD": "${PG_ARENA_PASSWORD}",
+        "PG_LEARNING_PASSWORD": "${PG_LEARNING_PASSWORD}",
+        "PG_MEDIA_PASSWORD": "${PG_MEDIA_PASSWORD}",
+        "PG_AI_IMPORT_PASSWORD": "${PG_AI_IMPORT_PASSWORD}",
+        "PG_NOTIFICATION_PASSWORD": "${PG_NOTIFICATION_PASSWORD}",
+        "PGHOST": "rehearsal-db",
+        "PGPORT": "5432"
+      },
+      "networks": [
+        "restore-only"
+      ]
+    },
+    "admin-web": {
+      "image": "vocalearn-iam-phase6-web:staging",
+      "build": {
+        "context": "../..",
+        "dockerfile": "infra/admin-iam-staging/Dockerfile.web",
+        "args": {
+          "NEXT_PUBLIC_API_URL": "/api"
+        }
+      },
+      "labels": {
+        "vocalearn.purpose": "admin-iam-phase6-staging"
+      },
+      "environment": {
+        "NODE_ENV": "production",
+        "NEXT_PUBLIC_API_URL": "/api",
+        "API_INTERNAL_URL": "http://gateway:5000/api",
+        "MEDIA_JOBS_INTERNAL_URL": "http://media-jobs-service:5000"
+      }
+    },
+    "gateway": {
+      "image": "nginx:1.27-alpine",
+      "labels": {
+        "vocalearn.purpose": "admin-iam-phase6-staging"
+      },
+      "volumes": [
+        "${STAGING_ROOT}/nginx.conf:/etc/nginx/nginx.conf:ro",
+        "${STAGING_ROOT}/tls:/etc/nginx/tls:ro"
+      ],
+      "ports": [
+        "127.0.0.1:57443:443"
+      ],
+      "depends_on": [
+        "identity-service",
+        "admin-web"
+      ]
+    }
+  },
+  "volumes": {
+    "stage_pgdata": {},
+    "stage_rabbit": {},
+    "stage_objects": {},
+    "rehearsal_pgdata": {}
+  },
+  "networks": {
+    "default": {},
+    "restore-only": {
+      "internal": true
+    }
+  }
+}

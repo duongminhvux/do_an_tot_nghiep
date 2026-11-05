@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { collectionService } from '@/services/vocabulary.service';
+import { useImageCropper } from '@/components/image-cropper/image-cropper-provider';
+import { imageCropPresets } from '@/components/image-cropper/image-crop-presets';
 import { uploadService } from '@/services/upload.service';
 import { CreateCollectionDto } from '@/types/vocabulary';
 import {
@@ -119,14 +121,18 @@ export function CreateCollectionDialog({
     },
   });
 
+  const cropImage = useImageCropper();
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    let file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
 
     try {
       setIsUploading(true);
       setErrorMessage(null);
-      const res = await uploadService.uploadFile(file);
+      const cropped = await cropImage(file, imageCropPresets.collection);
+      if (!cropped) return;
+      const res = await uploadService.uploadFile(cropped);
       if (res?.url) {
         // If replacing previously uploaded image in this session, delete previous image from managed media immediately
         tempUploadedUrls.current.forEach((prevUrl) => {

@@ -1,3 +1,4 @@
+import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator.js';
 import {
 Body,
 Delete,
@@ -17,21 +18,25 @@ import { WordsService } from './words.service.js';
 export class AdminWordsController {
   constructor(private readonly wordsService: WordsService) {}
 
+  @RequirePermissions('vocabulary.create')
   @Post()
   create(@Body() createWordDto: CreateWordDto) {
     return this.wordsService.create(createWordDto);
   }
 
+  @RequirePermissions('vocabulary.read')
   @Get()
   findAll(@Query() query: QueryWordDto) {
     return this.wordsService.findAll(query);
   }
 
+  @RequirePermissions('vocabulary.read')
   @Post('bulk-lookup')
   bulkLookup(@Body('words') words: string[]) {
     return this.wordsService.bulkLookup(words);
   }
 
+  @RequirePermissions('vocabulary.update')
   @Patch('bulk-active')
   bulkToggleActive(
     @Body('ids') ids: string[],
@@ -40,16 +45,19 @@ export class AdminWordsController {
     return this.wordsService.bulkToggleActive(ids, isActive);
   }
 
+  @RequirePermissions('vocabulary.read')
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.wordsService.findOne(id);
   }
 
+  @RequirePermissions('vocabulary.update')
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateWordDto: UpdateWordDto) {
     return this.wordsService.update(id, updateWordDto);
   }
 
+  @RequirePermissions('vocabulary.update')
   @Patch(':id/active')
   toggleActive(
     @Param('id') id: string,
@@ -58,11 +66,13 @@ export class AdminWordsController {
     return this.wordsService.toggleActive(id, isActive);
   }
 
+  @RequirePermissions('vocabulary.delete')
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.wordsService.remove(id);
   }
 
+  @RequirePermissions('vocabulary.restore')
   @Patch(':id/restore')
   restore(@Param('id') id: string) {
     return this.wordsService.restore(id);

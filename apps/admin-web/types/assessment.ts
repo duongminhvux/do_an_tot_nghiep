@@ -55,8 +55,14 @@ export interface ExamItem extends Partial<PublicationInfo> {
   order: number;
   groupId?: string | null;
   group?: ExamGroupItem;
+  timingSettings?: TimingSettings;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface TimingSettings {
+  testDurationMinutes: number;
+  practiceDurationMinutes: number;
 }
 
 export interface RawAttemptResult {
@@ -104,6 +110,7 @@ export interface CreateExamDto {
   totalQuestions?: number;
   order?: number;
   groupId?: string | null;
+  timingSettings?: TimingSettings;
 }
 
 export interface UpdateExamDto extends Partial<CreateExamDto> {}

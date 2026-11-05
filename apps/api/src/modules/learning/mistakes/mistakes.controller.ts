@@ -1,3 +1,4 @@
+import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator.js';
 import {
 Body,
 Controller,
@@ -58,6 +59,7 @@ export class AdminMistakesController {
   constructor(
     @Inject(MistakesService) private readonly mistakes: MistakesService,
   ) {}
+  @RequirePermissions('learning_mistakes.read')
   @Get('statistics') statistics() {
     return this.mistakes.statistics();
   }

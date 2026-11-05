@@ -213,6 +213,19 @@ constructor(
 
     const { groupId, order, ...restDto } = updateExamDto;
     const updateData: Record<string, any> = { ...restDto };
+    const current=await this.examModel.one(sql`id=${id}::uuid AND is_deleted IS NOT TRUE`);
+    if(!current) throw new NotFoundException(await this.i18n.t('exam.EXAM_NOT_FOUND',{lang}));
+    if(updateExamDto.timingSettings!==undefined){
+      const timing=updateExamDto.timingSettings;
+      if(!timing || !Number.isInteger(timing.testDurationMinutes) || timing.testDurationMinutes<1 || timing.testDurationMinutes>1440 || !Number.isInteger(timing.practiceDurationMinutes) || timing.practiceDurationMinutes<0 || timing.practiceDurationMinutes>1440) throw new BadRequestException('Invalid exam timing');
+      if(updateExamDto.durationMinutes!==undefined && updateExamDto.durationMinutes!==timing.testDurationMinutes) throw new BadRequestException('Conflicting exam durations');
+      updateData.timingSettings={testDurationMinutes:timing.testDurationMinutes,practiceDurationMinutes:timing.practiceDurationMinutes};
+      updateData.durationMinutes=timing.testDurationMinutes;
+    }else if(updateExamDto.durationMinutes!==undefined && current.timingSettings){
+      if(!Number.isInteger(updateExamDto.durationMinutes)||updateExamDto.durationMinutes<1||updateExamDto.durationMinutes>1440)throw new BadRequestException('Invalid configured test duration');
+      updateData.timingSettings={...current.timingSettings,testDurationMinutes:updateExamDto.durationMinutes};
+    }
+
 
     if (updateExamDto.name) {
       const trimmedName = updateExamDto.name.trim();

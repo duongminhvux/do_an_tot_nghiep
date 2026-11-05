@@ -1,3 +1,4 @@
+import { PermissionsGuard } from './guards/permissions.guard.js';
 import { Global,Injectable,Module,ServiceUnavailableException,UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
@@ -12,8 +13,11 @@ export class IdentityTokenVerifier {
   constructor(private readonly jwt: JwtService, private readonly config: ConfigService) {}
   async verifyToken(raw: string): Promise<any> {
     if (typeof raw !== 'string' || !raw.trim()) throw new UnauthorizedException('Missing token');
-    try { await this.jwt.verifyAsync(raw, {
+    let claims: any;
+    try { claims=await this.jwt.verifyAsync(raw, {
       secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET') }); } catch { throw new UnauthorizedException('Invalid or expired token'); }
+    if (!claims || !['USER','ADMIN'].includes(claims.role) || typeof claims._id!=='string') throw new UnauthorizedException('Invalid token principal');
+    if (claims.role==='ADMIN' && (!Number.isInteger(claims.auth_version) || claims.auth_version<1)) throw new UnauthorizedException('ADMIN_REAUTH_REQUIRED');
     const url = this.config.get<string>('IDENTITY_INTROSPECTION_URL')
       || 'http://identity-service:5000/api/_internal/identity/introspect';
     const token = this.config.get<string>('IDENTITY_INTERNAL_TOKEN');
@@ -28,11 +32,18 @@ export class IdentityTokenVerifier {
     } catch { throw new ServiceUnavailableException('Identity service unavailable'); }
     if (response.status === 401 || response.status === 403) throw new UnauthorizedException('Account inactive or token invalid');
     if (!response.ok) throw new ServiceUnavailableException('Identity validation unavailable');
-    const principal = (await response.json()) as any;
+    let principal: any;
+    try { principal=await response.json(); } catch { throw new ServiceUnavailableException('Invalid identity response'); }
     // Nest's TransformInterceptor currently wraps data for some endpoints.
     const result = principal?.data ?? principal;
     if (!result || typeof result._id !== 'string' || !['USER','ADMIN'].includes(result.role)) {
       throw new UnauthorizedException('Identity response invalid');
+    }
+    if (result.role!==claims.role || result._id!==claims._id) throw new UnauthorizedException('Identity principal mismatch');
+    if (result.role==='ADMIN' && (result.status!=='ACTIVE' || result.authVersion!==claims.auth_version
+      || !Array.isArray(result.permissions) || result.permissions.some((code: unknown)=>typeof code!=='string')
+      || !Array.isArray(result.roleCodes) || typeof result.isSuperAdmin!=='boolean')) {
+      throw new UnauthorizedException('ADMIN_REAUTH_REQUIRED');
     }
     return result;
   }
@@ -59,6 +70,7 @@ export class ServiceJwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   providers: [
     IdentityTokenVerifier,
     ServiceJwtStrategy, { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: PermissionsGuard },
   ],
   exports: [IdentityTokenVerifier] })
 export class ServiceJwtModule {}

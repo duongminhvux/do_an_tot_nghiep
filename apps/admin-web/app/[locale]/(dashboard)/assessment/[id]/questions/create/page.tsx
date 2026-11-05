@@ -6,6 +6,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { examService } from '@/services/assessment.service';
+import { useImageCropper } from '@/components/image-cropper/image-cropper-provider';
+import { imageCropPresets } from '@/components/image-cropper/image-crop-presets';
 import { uploadService } from '@/services/upload.service';
 import { useDraftUploads } from '@/hooks/use-draft-uploads';
 import { QuestionSavingStatus } from '@/components/assessment/question-saving-status';
@@ -307,6 +309,7 @@ export default function CreateQuestionPage() {
     ...readingPassages.map((p) => p.imageUrl),
   ]);
 
+  const cropImage = useImageCropper();
   const handlePassageImageUpload = async (file: File) => {
     if (!file || uploadInProgress.current || isSubmitting) return;
 
@@ -322,7 +325,9 @@ export default function CreateQuestionPage() {
     try {
       setIsUploading(true);
       setErrorMessage(null);
-      const res = await uploadService.uploadFile(file);
+      const cropped = await cropImage(file, imageCropPresets.content, MAX_IMAGE_SIZE);
+      if (!cropped) return;
+      const res = await uploadService.uploadFile(cropped);
       if (res?.url) {
         const target = readingPassagesRef.current.find((p) => p.id === targetId);
         if (!target || target.inputMode !== 'IMAGE' || target.imageUrl !== previousUrl) {
@@ -444,7 +449,9 @@ export default function CreateQuestionPage() {
     try {
       setIsUploading(true);
       setErrorMessage(null);
-      const res = await uploadService.uploadFile(file);
+      const cropped = isImage ? await cropImage(file, imageCropPresets.content, MAX_IMAGE_SIZE) : file;
+      if (!cropped) return;
+      const res = await uploadService.uploadFile(cropped);
       if (res?.url) {
         if (!draftUploads.track(res.url)) return;
         const sizeFormatted = `${(file.size / 1024).toFixed(1)} KB`;

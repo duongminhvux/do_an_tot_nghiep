@@ -1,3 +1,4 @@
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator.js';
 import {
 Get,
 NotFoundException,
@@ -14,26 +15,31 @@ import { QueryActivityStatsDto } from './dto/query-activity-stats.dto.js';
 export class AdminActivityLogsController {
   constructor(private readonly activityLogsService: ActivityLogsService, private readonly i18n: I18nService) {}
 
+  @RequirePermissions('audit.read')
   @Get()
   async getLogs(@Query() query: QueryActivityLogsDto) {
     return this.activityLogsService.findAll(query);
   }
 
+  @RequirePermissions('audit.read')
   @Get('stats')
   async getStats(@Query() query: QueryActivityStatsDto) {
     return this.activityLogsService.getStats(query, query.lang);
   }
 
+  @RequirePermissions('audit.read')
   @Get('filters')
   async getFilterOptions(@Query('lang') lang?: string) {
     return this.activityLogsService.getFilterOptions(lang);
   }
 
+  @RequirePermissions('audit.read')
   @Get('i18n')
   async getI18n(@Query('lang') lang?: string) {
     return this.activityLogsService.getI18n(lang);
   }
 
+  @RequirePermissions('audit.read')
   @Get(':id')
   async getLogById(@Param('id') id: string, @Query('lang') lang?: string) {
     const log = await this.activityLogsService.findById(id, lang);

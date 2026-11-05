@@ -23,6 +23,8 @@ export default function DashboardLayout({
   const { t } = useTranslation('common');
 
   const getPageTitle = () => {
+    if (pathname?.includes('/iam/admins')) return t('iam:admins');
+    if (pathname?.includes('/iam/roles')) return t('iam:roles');
     if (pathname?.includes('/media')) return locale === 'en' ? 'Media library' : 'Quản lý media';
     if (pathname?.includes('/arena')) return t('nav.arena');
     if (pathname?.includes('/games')) return t('nav.games');

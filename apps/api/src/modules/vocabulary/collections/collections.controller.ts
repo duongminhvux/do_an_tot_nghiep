@@ -1,3 +1,4 @@
+import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator.js';
 import { Body,Controller,Delete,Get,Param,Patch,Post,Query,UseGuards } from '@nestjs/common';
 import { Roles } from '../../auth/decorators/roles.decorator.js';
 import { RolesGuard } from '../../auth/guards/roles.guard.js';
@@ -11,6 +12,7 @@ import { UpdateCollectionDto } from './dto/update-collection.dto.js';
 export class CollectionsController {
   constructor(private readonly collectionsService: CollectionsService) {}
 
+  @RequirePermissions('vocabulary.create')
   @Roles('ADMIN')
   @Post()
   create(@Body() createCollectionDto: CreateCollectionDto) {
@@ -32,12 +34,14 @@ export class CollectionsController {
     return this.collectionsService.findOne(id);
   }
 
+  @RequirePermissions('vocabulary.update')
   @Roles('ADMIN')
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateCollectionDto: UpdateCollectionDto) {
     return this.collectionsService.update(id, updateCollectionDto);
   }
 
+  @RequirePermissions('vocabulary.delete')
   @Roles('ADMIN')
   @Delete(':id')
   remove(@Param('id') id: string) {

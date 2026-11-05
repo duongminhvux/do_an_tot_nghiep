@@ -1,3 +1,4 @@
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator.js';
 import { Get,Query } from '@nestjs/common';
 import { AdminController } from '../auth/decorators/admin-controller.decorator.js';
 import { DashboardService } from './dashboard.service.js';
@@ -6,6 +7,7 @@ import { DashboardService } from './dashboard.service.js';
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
+  @RequirePermissions('dashboard.read')
   @Get('overview')
   getOverview(@Query('days') days?: string, @Query('lang') lang?: string) {
     return this.dashboardService.getOverview(Number(days) || 7, lang);

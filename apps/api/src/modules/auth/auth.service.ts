@@ -301,6 +301,8 @@ export class AuthService {
       const payload = await this.jwtService.verifyAsync(refreshToken, {
         secret: this.configService.get<string>('JWT_REFRESH_SECRET') });
 
+      if (payload.role !== 'USER') throw new UnauthorizedException('Invalid learner refresh token');
+
       const user = await this.usersService.findByEmail(payload.email);
       if (!user || user.isDeleted) {
         throw new UnauthorizedException(await this.i18n.t('auth.INVALID_REFRESH_TOKEN'));

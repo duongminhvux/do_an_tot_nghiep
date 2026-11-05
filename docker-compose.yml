@@ -216,6 +216,10 @@ services:
       CONTENT_INTERNAL_URL: http://content-service:5000
       ASSESSMENT_INTERNAL_URL: http://assessment-service:5000
       SERVICE_ROLE: identity
+      ADMIN_ACTIVATION_DELIVERY_ENABLED: ${ADMIN_ACTIVATION_DELIVERY_ENABLED:-false}
+      ADMIN_ACTIVATION_CONSUMER_READY: ${ADMIN_ACTIVATION_CONSUMER_READY:-false}
+      ADMIN_ACTIVATION_TOKEN_KEY: ${ADMIN_ACTIVATION_TOKEN_KEY:-}
+      ADMIN_WEB_URL: ${ADMIN_WEB_URL:-}
       NOTIFICATION_INTERNAL_URL: http://notification-service:5000
       LEARNING_INTERNAL_URL: http://learning-service:5000
       PGHOST: postgres
@@ -799,6 +803,8 @@ services:
       CONTENT_INTERNAL_URL: http://content-service:5000
       ASSESSMENT_INTERNAL_URL: http://assessment-service:5000
       SERVICE_ROLE: notification
+      ADMIN_ACTIVATION_EMAIL_WORKER_ENABLED: ${ADMIN_ACTIVATION_EMAIL_WORKER_ENABLED:-false}
+      IDENTITY_INTERNAL_URL: http://identity-service:5000
       NOTIFICATION_INTERNAL_URL: http://notification-service:5000
       LEARNING_INTERNAL_URL: http://learning-service:5000
       PGHOST: postgres

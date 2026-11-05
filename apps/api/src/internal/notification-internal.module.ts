@@ -1,3 +1,5 @@
+import { AdminActivationEmailWorker } from '../modules/gmail/admin-activation-email.worker.js';
+import { ServiceUnavailableException } from '@nestjs/common';
 import { BadRequestException,Body,Controller,ForbiddenException,Headers,Module,Post } from '@nestjs/common';
 import { timingSafeEqual } from 'node:crypto';
 import { ActivityLogsModule } from '../modules/activity-logs/activity-logs.module.js';
@@ -30,9 +32,9 @@ export class InternalNotificationController {
     if(!body || typeof body.to!=='string' || !/^\S+@\S+\.\S+$/.test(body.to) ||
        typeof body.subject!=='string'||body.subject.length>300||
        typeof body.html!=='string'||body.html.length>100_000) throw new BadRequestException();
-    await this.mail.sendEmail(body.to,body.subject,body.html);
+    try { await this.mail.sendEmail(body.to,body.subject,body.html); } catch { throw new ServiceUnavailableException('Email transport unavailable'); }
     return {ok:true};
   }
 }
-@Module({imports:[GmailModule,ActivityLogsModule],controllers:[InternalNotificationController]})
+@Module({providers:[AdminActivationEmailWorker],imports:[GmailModule,ActivityLogsModule],controllers:[InternalNotificationController]})
 export class NotificationInternalModule {}

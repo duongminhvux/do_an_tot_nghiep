@@ -1,0 +1,5 @@
+FROM vocalearn-clean-api:local
+WORKDIR /app
+COPY . .
+RUN pnpm --dir apps/api exec tsc -p tsconfig.docker.json && mkdir -p apps/api/dist/i18n && cp -r apps/api/src/i18n/. apps/api/dist/i18n/
+ENV NODE_ENV=production

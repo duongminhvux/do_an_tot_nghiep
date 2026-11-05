@@ -34,6 +34,7 @@ describe('TOEIC community HTTP', () => {
       },
     ],
   }));
+  let verifiedAdminPermissions: string[] = [];
   const auth = async (role = 'USER') =>
     `Bearer ${await jwt.signAsync({ _id: actor, role }, { secret, expiresIn: '5m' })}`;
   beforeAll(async () => {
@@ -48,7 +49,10 @@ describe('TOEIC community HTTP', () => {
           useValue: new ServiceJwtStrategy(
             new ConfigService({ JWT_ACCESS_SECRET: secret }),
             {
-              verifyToken: (raw: string) => jwt.verifyAsync(raw, { secret }),
+              verifyToken: async (raw: string) => {
+                const principal = await jwt.verifyAsync(raw, { secret });
+                return {...principal, permissions: principal.role === 'ADMIN' ? verifiedAdminPermissions : []};
+              },
             } as never,
           ),
         },
@@ -154,7 +158,11 @@ describe('TOEIC community HTTP', () => {
       .delete(`${base}/comments/${id}`)
       .set('Authorization', await auth('ADMIN'))
       .expect(200);
+    expect(remove).toHaveBeenLastCalledWith(id, id, actor, false);
+    verifiedAdminPermissions = ['toeic.comments.moderate'];
+    await request(app.getHttpServer()).delete(`/api/exams/${id}/comments/${id}`).set('Authorization', await auth('ADMIN')).expect(200);
     expect(remove).toHaveBeenLastCalledWith(id, id, actor, true);
+    verifiedAdminPermissions = [];
   });
   it('preserves Vietnamese translations and matching community keys', () => {
     const read = (language: string) =>

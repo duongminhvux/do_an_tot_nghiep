@@ -1,3 +1,4 @@
+import { PermissionCondition, PermissionExemption, RequirePermissions } from '../auth/decorators/require-permissions.decorator.js';
 import { Body,Controller,Get,Post,Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { Public } from '../auth/decorators/public.decorator.js';
@@ -11,18 +12,22 @@ import { TtsService,type TtsAudioResult } from './tts.service.js';
 export class TtsController {
   constructor(private readonly ttsService: TtsService) {}
 
+  @PermissionExemption('E6')
   @Public()
   @Get('health')
   health() {
     return this.ttsService.health();
   }
 
+  @PermissionExemption('E6')
   @Public()
   @Get('voices')
   voices() {
     return this.ttsService.voices();
   }
 
+  @RequirePermissions('audio.generate')
+  @PermissionCondition('C4')
   @Post('synthesize')
   async synthesize(
     @Body() payload: SynthesizeTtsDto,
@@ -32,6 +37,8 @@ export class TtsController {
     this.sendAudio(response, result);
   }
 
+  @RequirePermissions('audio.generate')
+  @PermissionCondition('C4')
   @Post('synthesize-sequence')
   async synthesizeSequence(
     @Body() payload: SynthesizeSequenceTtsDto,

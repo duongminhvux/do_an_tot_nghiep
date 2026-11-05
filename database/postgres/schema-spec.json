@@ -1,7 +1,7 @@
 {
   "version": 1,
   "description": "Fresh PostgreSQL database design. This is a generated starting model; review against each NestJS DTO/service before production.",
-  "id_strategy": "UUID for all business ids; cross-service references remain UUID without cross-database foreign keys.",
+  "id_strategy": "UUID business ids; admin_roles and role_permissions use composite primary keys. Cross-service references remain UUID without cross-database foreign keys.",
   "domains": {
     "identity": {
       "tables": {
@@ -23,7 +23,8 @@
             "is_deleted": {
               "type": "boolean",
               "required": true,
-              "default": false
+              "default": false,
+              "defaultSql": "false"
             },
             "deleted_at": {
               "type": "timestamptz",
@@ -31,15 +32,110 @@
             },
             "password_hash": {
               "type": "text",
-              "required": true
+              "required": false
+            },
+            "status": {
+              "type": "text",
+              "required": true,
+              "defaultSql": "'PENDING_ACTIVATION'::text"
+            },
+            "auth_version": {
+              "type": "integer",
+              "required": true,
+              "defaultSql": "1"
+            },
+            "created_by": {
+              "type": "uuid",
+              "required": false
+            },
+            "activated_at": {
+              "type": "timestamptz",
+              "required": false
+            },
+            "last_login_at": {
+              "type": "timestamptz",
+              "required": false
             }
           },
           "indexes": [
             {
-              "columns": [
-                "email"
-              ],
-              "unique": true
+              "name": "admins_created_by_idx",
+              "unique": false,
+              "columns": "{created_by}",
+              "definition": "CREATE INDEX admins_created_by_idx ON public.admins USING btree (created_by)"
+            },
+            {
+              "name": "admins_email_canonical_uq",
+              "unique": true,
+              "columns": "{}",
+              "expressions": "lower(btrim(email))",
+              "definition": "CREATE UNIQUE INDEX admins_email_canonical_uq ON public.admins USING btree (lower(btrim(email)))"
+            },
+            {
+              "name": "admins_pkey",
+              "unique": true,
+              "columns": "{id}",
+              "definition": "CREATE UNIQUE INDEX admins_pkey ON public.admins USING btree (id)"
+            },
+            {
+              "name": "admins_username_canonical_uq",
+              "unique": true,
+              "columns": "{}",
+              "expressions": "lower(btrim(username))",
+              "definition": "CREATE UNIQUE INDEX admins_username_canonical_uq ON public.admins USING btree (lower(btrim(username)))"
+            },
+            {
+              "name": "idx_admins_1",
+              "unique": true,
+              "columns": "{email}",
+              "definition": "CREATE UNIQUE INDEX idx_admins_1 ON public.admins USING btree (email)"
+            }
+          ],
+          "constraints": [
+            {
+              "name": "admins_active_password_ck",
+              "type": "c",
+              "definition": "CHECK (((status <> 'ACTIVE'::text) OR ((password_hash IS NOT NULL) AND (btrim(password_hash) <> ''::text))))"
+            },
+            {
+              "name": "admins_auth_version_ck",
+              "type": "c",
+              "definition": "CHECK ((auth_version > 0))"
+            },
+            {
+              "name": "admins_created_by_fkey",
+              "type": "f",
+              "definition": "FOREIGN KEY (created_by) REFERENCES admins(id) ON DELETE RESTRICT"
+            },
+            {
+              "name": "admins_deleted_status_ck",
+              "type": "c",
+              "definition": "CHECK (((NOT is_deleted) OR (status = 'DISABLED'::text)))"
+            },
+            {
+              "name": "admins_email_canonical_ck",
+              "type": "c",
+              "definition": "CHECK (((email = lower(btrim(email))) AND (email <> ''::text)))"
+            },
+            {
+              "name": "admins_pending_password_ck",
+              "type": "c",
+              "definition": "CHECK (((status <> 'PENDING_ACTIVATION'::text) OR (password_hash IS NULL)))"
+            },
+            {
+              "name": "admins_pkey",
+              "type": "p",
+              "definition": "PRIMARY KEY (id)"
+            },
+            {
+              "name": "admins_status_ck",
+              "type": "c",
+              "definition": "CHECK ((status = ANY (ARRAY['PENDING_ACTIVATION'::text, 'ACTIVE'::text, 'SUSPENDED'::text, 'DISABLED'::text])))"
+            },
+            {
+              "name": "admins_username_canonical_ck",
+              "type": "c",
+              "definition": "CHECK (((username = btrim(username)) AND (username <> ''::text) AND (username !~ '[[:space:]@]'::text)))"
             }
           ]
         },
@@ -125,6 +221,368 @@
               ],
               "unique": true,
               "where": "\"gg_id\" IS NOT NULL"
+            }
+          ]
+        },
+        "roles": {
+          "comment": "Identity-owned native Admin IAM table; no JSONB payload or cross-database reference.",
+          "fields": {
+            "id": {
+              "type": "uuid",
+              "required": true,
+              "defaultSql": "gen_random_uuid()"
+            },
+            "code": {
+              "type": "text",
+              "required": true
+            },
+            "name": {
+              "type": "text",
+              "required": true
+            },
+            "description": {
+              "type": "text",
+              "required": false
+            },
+            "is_system": {
+              "type": "boolean",
+              "required": true,
+              "defaultSql": "false"
+            },
+            "created_at": {
+              "type": "timestamptz",
+              "required": true,
+              "defaultSql": "now()"
+            },
+            "updated_at": {
+              "type": "timestamptz",
+              "required": true,
+              "defaultSql": "now()"
+            }
+          },
+          "indexes": [
+            {
+              "name": "roles_code_key",
+              "unique": true,
+              "columns": "{code}",
+              "definition": "CREATE UNIQUE INDEX roles_code_key ON public.roles USING btree (code)"
+            },
+            {
+              "name": "roles_pkey",
+              "unique": true,
+              "columns": "{id}",
+              "definition": "CREATE UNIQUE INDEX roles_pkey ON public.roles USING btree (id)"
+            }
+          ],
+          "constraints": [
+            {
+              "name": "roles_code_check",
+              "type": "c",
+              "definition": "CHECK ((code ~ '^[A-Z][A-Z0-9_]*$'::text))"
+            },
+            {
+              "name": "roles_code_key",
+              "type": "u",
+              "definition": "UNIQUE (code)"
+            },
+            {
+              "name": "roles_name_check",
+              "type": "c",
+              "definition": "CHECK ((btrim(name) <> ''::text))"
+            },
+            {
+              "name": "roles_pkey",
+              "type": "p",
+              "definition": "PRIMARY KEY (id)"
+            },
+            {
+              "name": "roles_super_admin_system_ck",
+              "type": "c",
+              "definition": "CHECK (((code <> 'SUPER_ADMIN'::text) OR is_system))"
+            }
+          ]
+        },
+        "permissions": {
+          "comment": "Identity-owned native Admin IAM table; no JSONB payload or cross-database reference.",
+          "fields": {
+            "id": {
+              "type": "uuid",
+              "required": true,
+              "defaultSql": "gen_random_uuid()"
+            },
+            "code": {
+              "type": "text",
+              "required": true
+            },
+            "resource": {
+              "type": "text",
+              "required": true
+            },
+            "action": {
+              "type": "text",
+              "required": true
+            },
+            "description": {
+              "type": "text",
+              "required": true
+            }
+          },
+          "indexes": [
+            {
+              "name": "permissions_code_key",
+              "unique": true,
+              "columns": "{code}",
+              "definition": "CREATE UNIQUE INDEX permissions_code_key ON public.permissions USING btree (code)"
+            },
+            {
+              "name": "permissions_pkey",
+              "unique": true,
+              "columns": "{id}",
+              "definition": "CREATE UNIQUE INDEX permissions_pkey ON public.permissions USING btree (id)"
+            }
+          ],
+          "constraints": [
+            {
+              "name": "permissions_code_ck",
+              "type": "c",
+              "definition": "CHECK (((code ~ '^[a-z_]+(\\.[a-z_]+)+$'::text) AND (code = ((resource || '.'::text) || action))))"
+            },
+            {
+              "name": "permissions_code_key",
+              "type": "u",
+              "definition": "UNIQUE (code)"
+            },
+            {
+              "name": "permissions_pkey",
+              "type": "p",
+              "definition": "PRIMARY KEY (id)"
+            }
+          ]
+        },
+        "admin_roles": {
+          "comment": "Identity-owned native Admin IAM table; no JSONB payload or cross-database reference.",
+          "fields": {
+            "admin_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "role_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "assigned_by": {
+              "type": "uuid",
+              "required": false
+            },
+            "assigned_at": {
+              "type": "timestamptz",
+              "required": true,
+              "defaultSql": "now()"
+            }
+          },
+          "indexes": [
+            {
+              "name": "admin_roles_assigned_by_idx",
+              "unique": false,
+              "columns": "{assigned_by}",
+              "definition": "CREATE INDEX admin_roles_assigned_by_idx ON public.admin_roles USING btree (assigned_by)"
+            },
+            {
+              "name": "admin_roles_pkey",
+              "unique": true,
+              "columns": "{admin_id,role_id}",
+              "definition": "CREATE UNIQUE INDEX admin_roles_pkey ON public.admin_roles USING btree (admin_id, role_id)"
+            },
+            {
+              "name": "admin_roles_role_admin_idx",
+              "unique": false,
+              "columns": "{role_id,admin_id}",
+              "definition": "CREATE INDEX admin_roles_role_admin_idx ON public.admin_roles USING btree (role_id, admin_id)"
+            }
+          ],
+          "constraints": [
+            {
+              "name": "admin_roles_admin_id_fkey",
+              "type": "f",
+              "definition": "FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE RESTRICT"
+            },
+            {
+              "name": "admin_roles_assigned_by_fkey",
+              "type": "f",
+              "definition": "FOREIGN KEY (assigned_by) REFERENCES admins(id) ON DELETE RESTRICT"
+            },
+            {
+              "name": "admin_roles_pkey",
+              "type": "p",
+              "definition": "PRIMARY KEY (admin_id, role_id)"
+            },
+            {
+              "name": "admin_roles_role_id_fkey",
+              "type": "f",
+              "definition": "FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE RESTRICT"
+            }
+          ]
+        },
+        "role_permissions": {
+          "comment": "Identity-owned native Admin IAM table; no JSONB payload or cross-database reference.",
+          "fields": {
+            "role_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "permission_id": {
+              "type": "uuid",
+              "required": true
+            }
+          },
+          "indexes": [
+            {
+              "name": "role_permissions_permission_role_idx",
+              "unique": false,
+              "columns": "{permission_id,role_id}",
+              "definition": "CREATE INDEX role_permissions_permission_role_idx ON public.role_permissions USING btree (permission_id, role_id)"
+            },
+            {
+              "name": "role_permissions_pkey",
+              "unique": true,
+              "columns": "{role_id,permission_id}",
+              "definition": "CREATE UNIQUE INDEX role_permissions_pkey ON public.role_permissions USING btree (role_id, permission_id)"
+            }
+          ],
+          "constraints": [
+            {
+              "name": "role_permissions_permission_id_fkey",
+              "type": "f",
+              "definition": "FOREIGN KEY (permission_id) REFERENCES permissions(id) ON DELETE RESTRICT"
+            },
+            {
+              "name": "role_permissions_pkey",
+              "type": "p",
+              "definition": "PRIMARY KEY (role_id, permission_id)"
+            },
+            {
+              "name": "role_permissions_role_id_fkey",
+              "type": "f",
+              "definition": "FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE RESTRICT"
+            }
+          ]
+        },
+        "admin_activation_tokens": {
+          "comment": "Identity-owned native Admin IAM table; no JSONB payload or cross-database reference.",
+          "fields": {
+            "id": {
+              "type": "uuid",
+              "required": true,
+              "defaultSql": "gen_random_uuid()"
+            },
+            "admin_id": {
+              "type": "uuid",
+              "required": true
+            },
+            "token_hash": {
+              "type": "text",
+              "required": true
+            },
+            "created_at": {
+              "type": "timestamptz",
+              "required": true,
+              "defaultSql": "now()"
+            },
+            "expires_at": {
+              "type": "timestamptz",
+              "required": true,
+              "defaultSql": "(now() + '01:00:00'::interval)"
+            },
+            "used_at": {
+              "type": "timestamptz",
+              "required": false
+            },
+            "revoked_at": {
+              "type": "timestamptz",
+              "required": false
+            },
+            "created_by": {
+              "type": "uuid",
+              "required": false
+            }
+          },
+          "indexes": [
+            {
+              "name": "admin_activation_created_by_idx",
+              "unique": false,
+              "columns": "{created_by}",
+              "definition": "CREATE INDEX admin_activation_created_by_idx ON public.admin_activation_tokens USING btree (created_by)"
+            },
+            {
+              "name": "admin_activation_expires_idx",
+              "unique": false,
+              "columns": "{expires_at}",
+              "definition": "CREATE INDEX admin_activation_expires_idx ON public.admin_activation_tokens USING btree (expires_at)"
+            },
+            {
+              "name": "admin_activation_open_admin_uq",
+              "unique": true,
+              "columns": "{admin_id}",
+              "definition": "CREATE UNIQUE INDEX admin_activation_open_admin_uq ON public.admin_activation_tokens USING btree (admin_id) WHERE ((used_at IS NULL) AND (revoked_at IS NULL))"
+            },
+            {
+              "name": "admin_activation_tokens_pkey",
+              "unique": true,
+              "columns": "{id}",
+              "definition": "CREATE UNIQUE INDEX admin_activation_tokens_pkey ON public.admin_activation_tokens USING btree (id)"
+            },
+            {
+              "name": "admin_activation_tokens_token_hash_key",
+              "unique": true,
+              "columns": "{token_hash}",
+              "definition": "CREATE UNIQUE INDEX admin_activation_tokens_token_hash_key ON public.admin_activation_tokens USING btree (token_hash)"
+            }
+          ],
+          "constraints": [
+            {
+              "name": "admin_activation_revoked_at_ck",
+              "type": "c",
+              "definition": "CHECK (((revoked_at IS NULL) OR (revoked_at >= created_at)))"
+            },
+            {
+              "name": "admin_activation_terminal_ck",
+              "type": "c",
+              "definition": "CHECK (((used_at IS NULL) OR (revoked_at IS NULL)))"
+            },
+            {
+              "name": "admin_activation_tokens_admin_id_fkey",
+              "type": "f",
+              "definition": "FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE RESTRICT"
+            },
+            {
+              "name": "admin_activation_tokens_created_by_fkey",
+              "type": "f",
+              "definition": "FOREIGN KEY (created_by) REFERENCES admins(id) ON DELETE RESTRICT"
+            },
+            {
+              "name": "admin_activation_tokens_pkey",
+              "type": "p",
+              "definition": "PRIMARY KEY (id)"
+            },
+            {
+              "name": "admin_activation_tokens_token_hash_check",
+              "type": "c",
+              "definition": "CHECK ((token_hash ~ '^[a-f0-9]{64}$'::text))"
+            },
+            {
+              "name": "admin_activation_tokens_token_hash_key",
+              "type": "u",
+              "definition": "UNIQUE (token_hash)"
+            },
+            {
+              "name": "admin_activation_ttl_ck",
+              "type": "c",
+              "definition": "CHECK ((expires_at = (created_at + '01:00:00'::interval)))"
+            },
+            {
+              "name": "admin_activation_used_at_ck",
+              "type": "c",
+              "definition": "CHECK (((used_at IS NULL) OR (used_at >= created_at)))"
             }
           ]
         }

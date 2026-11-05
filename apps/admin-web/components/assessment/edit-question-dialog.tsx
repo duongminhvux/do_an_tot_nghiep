@@ -242,318 +242,315 @@ export function EditQuestionDialog({
 
   if (!question) return null;
 
+  const hasMedia = part === 1 || part === 2 || part === 6 || part === 7;
+  const hasAudio = part === 1 || part === 2;
+  const hasImage = part === 1 || part === 6 || part === 7;
+  const optionKeys = (part === 2 ? ['A', 'B', 'C'] : ['A', 'B', 'C', 'D']) as Array<'A' | 'B' | 'C' | 'D'>;
+  const optionState: Record<'A' | 'B' | 'C' | 'D', [string, (v: string) => void, string]> = {
+    A: [optionA, setOptionA, 'bg-blue-100 text-blue-700'],
+    B: [optionB, setOptionB, 'bg-emerald-100 text-emerald-700'],
+    C: [optionC, setOptionC, 'bg-amber-100 text-amber-700'],
+    D: [optionD, setOptionD, 'bg-rose-100 text-rose-700'],
+  };
+  const busy = updateMutation.isPending || isUploading;
+  const labelCls = 'text-sm font-semibold text-slate-700';
+  const inputCls =
+    'w-full rounded-lg border border-slate-200 bg-white text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500';
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl max-h-[90dvh] overflow-y-auto rounded border border-slate-200 bg-white p-0 shadow-lg">
-        <DialogHeader className="p-4 bg-slate-50 border-b border-slate-200">
-          <div className="flex items-center gap-2">
-            <span className={`px-2 py-0.5 rounded text-[11px] ${getPartColor(part)}`}>
+      <DialogContent
+        className={`flex max-h-[92dvh] flex-col gap-0 overflow-hidden rounded-xl border border-slate-200 bg-white p-0 shadow-xl ${hasMedia ? 'max-w-6xl' : 'max-w-2xl'}`}
+      >
+        <DialogHeader className="shrink-0 space-y-1 border-b border-slate-200 bg-slate-50 px-6 py-4 text-left">
+          <div className="flex flex-wrap items-center gap-2 pr-8">
+            <span className={`rounded px-2 py-0.5 text-xs font-semibold ${getPartColor(part)}`}>
               Part {part}
             </span>
-            <DialogTitle className="text-sm font-bold text-slate-900">
-              {t('detailPage.editQuestionTitle', { order: question.order })}
-            </DialogTitle>
+            <span className="rounded bg-white px-2 py-0.5 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
+              {section === 'READING' ? 'Reading' : 'Listening'}
+            </span>
+            {question.passageTitle && (
+              <span className="rounded border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                {question.passageTitle}
+              </span>
+            )}
           </div>
-          <DialogDescription className="text-xs text-slate-500 mt-0.5">
+          <DialogTitle className="text-lg font-bold text-slate-900">
+            {t('detailPage.editQuestionTitle', { order: question.order })}
+          </DialogTitle>
+          <DialogDescription className="text-sm text-slate-500">
             {t('detailPage.editQuestionDesc')}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="p-4 space-y-3.5">
-          {errorMessage && (
-            <div
-              id="edit-question-error-alert"
-              tabIndex={-1}
-              role="alert"
-              className="p-3 bg-red-50 border-2 border-red-300 rounded text-xs text-red-700 font-medium"
-            >
-              {errorMessage}
-            </div>
-          )}
-
-          {/* Top Bar: Part & Section Info, Order, Status Toggle */}
-          <div className="flex flex-wrap items-center justify-between gap-3 p-2.5 bg-slate-50 border rounded border-slate-200 text-xs">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className={`px-2 py-0.5 rounded text-xs ${getPartColor(part)}`}>
-                Part {part}
-              </span>
-              <span className="font-semibold text-slate-700">
-                {section === 'READING' ? 'Reading' : 'Listening'}
-              </span>
-              {question.passageTitle && (
-                <span className="px-2 py-0.5 rounded bg-blue-50 border border-blue-200 text-blue-700 font-medium text-[11px]">
-                  {question.passageTitle}
-                </span>
-              )}
-            </div>
-
-            <div className="flex items-center gap-3">
-              {/* Order input */}
-              <div className="flex items-center gap-1.5">
-                <span className="text-slate-500 font-medium">{t('detailPage.tableOrder')}:</span>
-                <input
-                  type="number"
-                  min={1}
-                  value={order}
-                  onChange={(e) => setOrder(Number(e.target.value))}
-                  className="w-14 h-7 px-2 rounded border border-slate-200 bg-white text-slate-900 font-bold text-center text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-5">
+            {errorMessage && (
+              <div
+                id="edit-question-error-alert"
+                tabIndex={-1}
+                role="alert"
+                className="mb-4 rounded-lg border border-red-300 bg-red-50 p-3 text-sm font-medium text-red-700"
+              >
+                {errorMessage}
               </div>
+            )}
 
-              {/* Status Toggle */}
-              <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
-                <span className={`text-[11px] font-semibold ${isActive ? 'text-emerald-700' : 'text-slate-500'}`}>
-                  {isActive ? t('status.active') : t('status.inactive')}
-                </span>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={isActive}
-                    onChange={(e) => setIsActive(e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-7 h-4 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-blue-600"></div>
-                </label>
-              </div>
-            </div>
-          </div>
+            <div className={`grid gap-6 ${hasMedia ? 'lg:grid-cols-[minmax(0,1fr)_minmax(320px,380px)]' : ''}`}>
+              {/* Left: question content */}
+              <div className="min-w-0 space-y-5">
+                {/* Order & status */}
+                <div className="flex flex-wrap items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                  <label className="flex items-center gap-2 text-sm">
+                    <span className="font-medium text-slate-600">{t('detailPage.tableOrder')}</span>
+                    <input
+                      type="number"
+                      min={1}
+                      value={order}
+                      onChange={(e) => setOrder(Number(e.target.value))}
+                      className="h-9 w-20 rounded-lg border border-slate-200 bg-white px-2 text-center text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                    />
+                  </label>
+                  <label className="ml-auto flex cursor-pointer items-center gap-2.5">
+                    <span className={`text-sm font-semibold ${isActive ? 'text-emerald-700' : 'text-slate-500'}`}>
+                      {isActive ? t('status.active') : t('status.inactive')}
+                    </span>
+                    <span className="relative inline-flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={isActive}
+                        onChange={(e) => setIsActive(e.target.checked)}
+                        className="peer sr-only"
+                      />
+                      <span className="h-5 w-9 rounded-full bg-slate-200 transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-slate-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-4 peer-checked:after:border-white peer-focus-visible:ring-2 peer-focus-visible:ring-blue-500/40" />
+                    </span>
+                  </label>
+                </div>
 
-          {/* Question Content */}
-          <div className="space-y-1 text-xs">
-            <label className="font-semibold text-slate-700">
-              {part === 1 || part === 2 ? (i18n.language.startsWith('vi') ? 'Script câu hỏi và lựa chọn' : 'Listening question and answer script') : t('createQuestionPage.questionContentLabel')} <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              rows={part === 5 ? 4 : 3}
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder={
-                part === 1
-                  ? t('createQuestionPage.part1Placeholder')
-                  : part === 2
-                  ? t('createQuestionPage.part2Placeholder')
-                  : t('createQuestionPage.part5Placeholder')
-              }
-              className="w-full p-2.5 rounded border border-slate-200 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none bg-white"
-            />
-          </div>
-
-          {/* Options A, B, C, D */}
-          <div className="space-y-1.5 text-xs">
-            <label className="font-semibold text-slate-700">
-              {t('createQuestionPage.optionsTitle')} {part === 2 && t('createQuestionPage.part2OptionsNotice')}
-            </label>
-            <div className={`grid grid-cols-1 ${part === 2 ? '' : 'sm:grid-cols-2'} gap-2`}>
-              {/* Option A */}
-              <div className="flex items-center gap-1.5">
-                <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 font-bold text-[11px] flex items-center justify-center shrink-0">
-                  A
-                </span>
-                <input
-                  type="text"
-                  value={optionA}
-                  onChange={(e) => setOptionA(e.target.value)}
-                  placeholder={t('createQuestionPage.inputOptionPlaceholder', { key: 'A' })}
-                  className="flex-1 h-8 px-2.5 rounded border border-slate-200 bg-white text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-
-              {/* Option B */}
-              <div className="flex items-center gap-1.5">
-                <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[11px] flex items-center justify-center shrink-0">
-                  B
-                </span>
-                <input
-                  type="text"
-                  value={optionB}
-                  onChange={(e) => setOptionB(e.target.value)}
-                  placeholder={t('createQuestionPage.inputOptionPlaceholder', { key: 'B' })}
-                  className="flex-1 h-8 px-2.5 rounded border border-slate-200 bg-white text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-
-              {/* Option C */}
-              <div className="flex items-center gap-1.5">
-                <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-700 font-bold text-[11px] flex items-center justify-center shrink-0">
-                  C
-                </span>
-                <input
-                  type="text"
-                  value={optionC}
-                  onChange={(e) => setOptionC(e.target.value)}
-                  placeholder={t('createQuestionPage.inputOptionPlaceholder', { key: 'C' })}
-                  className="flex-1 h-8 px-2.5 rounded border border-slate-200 bg-white text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-
-              {/* Option D (Omitted for Part 2) */}
-              {part !== 2 && (
-                <div className="flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded-full bg-rose-100 text-rose-700 font-bold text-[11px] flex items-center justify-center shrink-0">
-                    D
-                  </span>
-                  <input
-                    type="text"
-                    value={optionD}
-                    onChange={(e) => setOptionD(e.target.value)}
-                    placeholder={t('createQuestionPage.inputOptionPlaceholder', { key: 'D' })}
-                    className="flex-1 h-8 px-2.5 rounded border border-slate-200 bg-white text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                {/* Question content / script */}
+                <div className="space-y-1.5">
+                  <label htmlFor="edit-question-content" className={labelCls}>
+                    {part === 1 || part === 2
+                      ? i18n.language.startsWith('vi')
+                        ? 'Script câu hỏi và lựa chọn'
+                        : 'Listening question and answer script'
+                      : t('createQuestionPage.questionContentLabel')}{' '}
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    id="edit-question-content"
+                    rows={part === 1 || part === 2 ? 6 : 5}
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    placeholder={
+                      part === 1
+                        ? t('createQuestionPage.part1Placeholder')
+                        : part === 2
+                          ? t('createQuestionPage.part2Placeholder')
+                          : t('createQuestionPage.part5Placeholder')
+                    }
+                    className={`${inputCls} min-h-28 resize-y p-3 leading-relaxed`}
                   />
                 </div>
+
+                {/* Options */}
+                <fieldset className="space-y-2">
+                  <legend className={`${labelCls} mb-1.5`}>
+                    {t('createQuestionPage.optionsTitle')}{' '}
+                    {part === 2 && (
+                      <span className="font-normal text-slate-500">{t('createQuestionPage.part2OptionsNotice')}</span>
+                    )}
+                  </legend>
+                  <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
+                    {optionKeys.map((key) => {
+                      const [value, setValue, tone] = optionState[key];
+                      return (
+                        <div key={key} className="flex items-center gap-2">
+                          <span className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${tone}`}>
+                            {key}
+                          </span>
+                          <input
+                            type="text"
+                            aria-label={`${t('createQuestionPage.optionsTitle')} ${key}`}
+                            value={value}
+                            onChange={(e) => setValue(e.target.value)}
+                            placeholder={t('createQuestionPage.inputOptionPlaceholder', { key })}
+                            className={`${inputCls} h-10 px-3 ${correctAnswer === key ? 'border-blue-400 bg-blue-50/40' : ''}`}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </fieldset>
+
+                {/* Correct answer */}
+                <div className="space-y-1.5">
+                  <span className={labelCls}>
+                    {t('createQuestionPage.correctAnswerLabel')} <span className="text-red-500">*</span>
+                  </span>
+                  <div className="flex items-center gap-2" role="radiogroup">
+                    {optionKeys.map((key) => (
+                      <button
+                        key={key}
+                        type="button"
+                        role="radio"
+                        aria-checked={correctAnswer === key}
+                        onClick={() => setCorrectAnswer(key as any)}
+                        className={`size-10 cursor-pointer rounded-lg border text-sm font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 ${
+                          correctAnswer === key
+                            ? 'border-blue-600 bg-blue-600 text-white shadow-sm'
+                            : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                        }`}
+                      >
+                        {key}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Explanation */}
+                <div className="space-y-1.5">
+                  <label htmlFor="edit-question-explanation" className={labelCls}>
+                    {t('createQuestionPage.explanationLabel')}
+                  </label>
+                  <textarea
+                    id="edit-question-explanation"
+                    rows={4}
+                    value={explanation}
+                    onChange={(e) => setExplanation(e.target.value)}
+                    placeholder={t('createQuestionPage.explanationPlaceholder')}
+                    className={`${inputCls} resize-y p-3 leading-relaxed`}
+                  />
+                </div>
+              </div>
+
+              {/* Right: media (Part 5 never renders this) */}
+              {hasMedia && (
+                <aside className="min-w-0 space-y-4 lg:border-l lg:border-slate-100 lg:pl-6">
+                  <h3 className={labelCls}>{t('createQuestionPage.questionResourcesCardTitle')}</h3>
+
+                  {hasAudio && (
+                    <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50/70 p-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-1.5 text-sm font-semibold text-slate-800">
+                            <Volume2 className="h-4 w-4 text-blue-600" />
+                            Audio Listening
+                          </div>
+                          <p className="mt-0.5 text-xs text-slate-500">
+                            Part {part === 1 ? '1 đọc A–D bằng 1 giọng' : '2 dùng giọng hỏi + giọng đáp'}.
+                          </p>
+                        </div>
+                        <span
+                          className={`rounded px-2 py-0.5 text-[11px] font-bold ${
+                            audioStatus === 'READY'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : audioStatus === 'STALE'
+                                ? 'bg-amber-100 text-amber-700'
+                                : audioStatus === 'FAILED'
+                                  ? 'bg-red-100 text-red-700'
+                                  : 'bg-slate-200 text-slate-600'
+                          }`}
+                        >
+                          {audioStatus}
+                        </span>
+                      </div>
+
+                      {audioMeta?.status === 'STALE' && (
+                        <div className="flex items-center gap-1.5 rounded-md bg-amber-50 px-2.5 py-2 text-xs text-amber-800">
+                          <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> Nội dung đã đổi, nên generate lại audio.
+                        </div>
+                      )}
+
+                      {audioUrl && <audio controls src={audioUrl} className="h-10 w-full" />}
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={handleGenerateAudio}
+                          disabled={isGeneratingAudio || updateMutation.isPending}
+                          className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                        >
+                          {isGeneratingAudio ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : audioStatus === 'READY' ? (
+                            <RefreshCw className="h-3.5 w-3.5" />
+                          ) : (
+                            <Volume2 className="h-3.5 w-3.5" />
+                          )}
+                          {audioStatus === 'READY' || audioStatus === 'STALE' ? 'Regenerate Kokoro' : 'Generate Kokoro'}
+                        </button>
+                        <label className="inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 focus-within:ring-2 focus-within:ring-blue-500/40">
+                          {isUploadingAudio ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                          Upload audio
+                          <input
+                            type="file"
+                            accept="audio/*"
+                            className="sr-only"
+                            disabled={isUploadingAudio || updateMutation.isPending}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              void handleUploadAudio(file);
+                              e.currentTarget.value = '';
+                            }}
+                          />
+                        </label>
+                      </div>
+
+                      <details className="text-xs text-slate-500">
+                        <summary className="cursor-pointer font-medium">URL thủ công / tương thích dữ liệu cũ</summary>
+                        <input
+                          type="text"
+                          value={audioUrl}
+                          onChange={(e) => setAudioUrl(e.target.value)}
+                          placeholder="/media/... hoặc https://..."
+                          className={`${inputCls} mt-2 h-9 px-3`}
+                        />
+                      </details>
+                      {audioMeta?.source && (
+                        <div className="flex items-center gap-1 text-[11px] text-slate-500">
+                          {audioStatus === 'READY' && <CheckCircle2 className="h-3 w-3 text-emerald-600" />}
+                          Source: {audioMeta.source}
+                          {audioMeta.voiceIds?.length ? ` · ${audioMeta.voiceIds.join(', ')}` : ''}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {hasImage && (
+                    <ImageUploadField
+                      value={imageUrl}
+                      onChange={setImageUrl}
+                      onUploaded={draftUploads.track}
+                      onBusyChange={setIsUploading}
+                      onError={setErrorMessage}
+                      disabled={busy}
+                    />
+                  )}
+                </aside>
               )}
             </div>
           </div>
 
-          {/* Correct Answer Selection */}
-          <div className="space-y-1 text-xs">
-            <label className="font-semibold text-slate-700">
-              {t('createQuestionPage.correctAnswerLabel')} <span className="text-red-500">*</span>
-            </label>
-            <div className="flex items-center gap-2">
-              {(part === 2 ? ['A', 'B', 'C'] : ['A', 'B', 'C', 'D']).map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setCorrectAnswer(key as any)}
-                  className={`w-8 h-8 rounded border text-xs font-bold transition-all cursor-pointer ${
-                    correctAnswer === key
-                      ? 'border-blue-600 bg-blue-600 text-white shadow-2xs'
-                      : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                  }`}
-                >
-                  {key}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Explanation */}
-          <div className="space-y-1 text-xs">
-            <label className="font-semibold text-slate-700">
-              {t('createQuestionPage.explanationLabel')}
-            </label>
-            <textarea
-              rows={2}
-              value={explanation}
-              onChange={(e) => setExplanation(e.target.value)}
-              placeholder={t('createQuestionPage.explanationPlaceholder')}
-              className="w-full p-2.5 rounded border border-slate-200 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none bg-white"
-            />
-          </div>
-
-          {/* Media Links (Image / Audio) - STRICTLY CONDITIONAL: Part 5 NEVER renders this! */}
-          {part !== 5 && (part === 1 || part === 2 || part === 6 || part === 7) && (
-            <div className="space-y-2 pt-1 border-t border-slate-100">
-              <label className="text-xs font-semibold text-slate-700">
-                {t('createQuestionPage.questionResourcesCardTitle')}
-              </label>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                {/* Image URL only for Part 1 or Part 7 */}
-                {(part === 1 || part === 6 || part === 7) && (
-                  <ImageUploadField value={imageUrl} onChange={setImageUrl}
-                    onUploaded={draftUploads.track} onBusyChange={setIsUploading}
-                    onError={setErrorMessage} disabled={updateMutation.isPending || isUploading} />
-                )}
-
-                {/* Audio for Listening parts (Part 1, 2) */}
-                {(part === 1 || part === 2) && (
-                  <div className="space-y-2 rounded border border-slate-200 bg-slate-50/70 p-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-800">
-                          <Volume2 className="h-3.5 w-3.5 text-blue-600" />
-                          Audio Listening
-                        </div>
-                        <p className="mt-0.5 text-[11px] text-slate-500">
-                          Part {part === 1 ? '1 đọc A–D bằng 1 giọng' : '2 dùng giọng hỏi + giọng đáp'}.
-                        </p>
-                      </div>
-                      <span className={`rounded px-2 py-0.5 text-[10px] font-bold ${
-                        audioStatus === 'READY' ? 'bg-emerald-100 text-emerald-700' :
-                        audioStatus === 'STALE' ? 'bg-amber-100 text-amber-700' :
-                        audioStatus === 'FAILED' ? 'bg-red-100 text-red-700' :
-                        'bg-slate-200 text-slate-600'
-                      }`}>
-                        {audioStatus}
-                      </span>
-                    </div>
-
-                    {audioMeta?.status === 'STALE' && (
-                      <div className="flex items-center gap-1.5 rounded bg-amber-50 px-2 py-1.5 text-[11px] text-amber-800">
-                        <AlertTriangle className="h-3.5 w-3.5" /> Nội dung đã đổi, nên generate lại audio.
-                      </div>
-                    )}
-
-                    {audioUrl && <audio controls src={audioUrl} className="w-full h-8" />}
-
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={handleGenerateAudio}
-                        disabled={isGeneratingAudio || updateMutation.isPending}
-                        className="inline-flex items-center gap-1.5 rounded bg-blue-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
-                      >
-                        {isGeneratingAudio ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : audioStatus === 'READY' ? <RefreshCw className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
-                        {audioStatus === 'READY' || audioStatus === 'STALE' ? 'Regenerate Kokoro' : 'Generate Kokoro'}
-                      </button>
-                      <label className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50">
-                        {isUploadingAudio ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                        Upload audio
-                        <input
-                          type="file"
-                          accept="audio/*"
-                          className="hidden"
-                          disabled={isUploadingAudio || updateMutation.isPending}
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            void handleUploadAudio(file);
-                            e.currentTarget.value = '';
-                          }}
-                        />
-                      </label>
-                    </div>
-
-                    <details className="text-[11px] text-slate-500">
-                      <summary className="cursor-pointer font-medium">URL thủ công / tương thích dữ liệu cũ</summary>
-                      <input
-                        type="text"
-                        value={audioUrl}
-                        onChange={(e) => setAudioUrl(e.target.value)}
-                        placeholder="/media/... hoặc https://..."
-                        className="mt-1.5 h-8 w-full rounded border border-slate-200 bg-white px-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      />
-                    </details>
-                    {audioMeta?.source && (
-                      <div className="flex items-center gap-1 text-[10px] text-slate-500">
-                        {audioStatus === 'READY' && <CheckCircle2 className="h-3 w-3 text-emerald-600" />}
-                        Source: {audioMeta.source}{audioMeta.voiceIds?.length ? ` · ${audioMeta.voiceIds.join(', ')}` : ''}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Footer buttons */}
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+          {/* Footer stays visible while the body scrolls */}
+          <div className="flex shrink-0 items-center justify-end gap-2 border-t border-slate-200 bg-white px-6 py-3">
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              disabled={updateMutation.isPending || isUploading}
-              className="px-3.5 py-1.5 rounded border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+              disabled={busy}
+              className="h-10 cursor-pointer rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
             >
               {t('editDialog.cancel')}
             </button>
             <button
               type="submit"
-              disabled={updateMutation.isPending || isUploading}
-              className="px-4 py-1.5 rounded bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 inline-flex items-center gap-1.5 cursor-pointer"
+              disabled={busy}
+              className="inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-lg bg-blue-600 px-5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
             >
               {updateMutation.isPending ? (
                 <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   <span>{t('detailPage.savingQuestion')}</span>
                 </>
               ) : (

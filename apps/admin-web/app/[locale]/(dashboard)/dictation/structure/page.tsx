@@ -1,4 +1,7 @@
 'use client';
+import { useImageCropper } from '@/components/image-cropper/image-cropper-provider';
+import { imageCropPresets } from '@/components/image-cropper/image-crop-presets';
+import { useObjectUrl } from '@/hooks/use-object-url';
 import { LoadError } from '@/components/ui/load-error';
 
 import { useListPagination } from '@/hooks/use-list-pagination';
@@ -27,6 +30,8 @@ function unwrap<T>(value: any): T {
 }
 
 export default function DictationStructurePage() {
+  const cropImage = useImageCropper();
+  const [cropping, setCropping] = useState(false);
   const params = useParams();
   const locale = (params?.locale as string) || 'vi';
   const queryClient = useQueryClient();
@@ -43,6 +48,14 @@ export default function DictationStructurePage() {
   const [topicDescription, setTopicDescription] = useState('');
   const [topicOrder, setTopicOrder] = useState(0);
   const [topicImage, setTopicImage] = useState<File | null>(null);
+  const topicPreview = useObjectUrl(topicImage);
+  async function chooseTopicImage(file?: File) {
+    if (!file || saveTopicMutation.isPending) return;
+    setCropping(true);
+    try { const cropped = await cropImage(file, imageCropPresets.topic); if (cropped) setTopicImage(cropped); }
+    catch (error) { setMessage(error instanceof Error ? error.message : 'Image error'); }
+    finally { setCropping(false); }
+  }
   const [editingTopicId, setEditingTopicId] = useState<string | null>(null);
   const editingTopic = useMemo(
     () => topics.find((topic) => topic._id === editingTopicId) || null,
@@ -203,15 +216,15 @@ export default function DictationStructurePage() {
                 <span className="mt-1.5 flex h-10 items-center gap-2 rounded-lg border border-dashed border-slate-300 px-3 font-medium text-slate-500 hover:border-blue-400">
                   <ImagePlus className="h-4 w-4" /> <span className="truncate">{topicImage?.name || (editingTopic?.thumbnailUrl ? 'Thay ảnh hiện tại' : 'Chọn ảnh')}</span>
                 </span>
-                <input type="file" accept="image/*" className="hidden" onChange={(e) => setTopicImage(e.target.files?.[0] || null)} />
+                <input type="file" accept="image/*" className="hidden" disabled={cropping || saveTopicMutation.isPending} onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; void chooseTopicImage(file); }} />
               </label>
             </div>
             {(topicImage || editingTopic?.thumbnailUrl) && (
               <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
-                <img src={topicImage ? URL.createObjectURL(topicImage) : editingTopic?.thumbnailUrl} alt="Topic preview" className="h-40 w-full object-cover" />
+                <img src={topicImage ? topicPreview || undefined : editingTopic?.thumbnailUrl} alt="Topic preview" className="h-40 w-40 object-cover" />
               </div>
             )}
-            <button type="submit" disabled={saveTopicMutation.isPending || !topicTitle.trim()} className="mt-4 inline-flex h-10 items-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50">
+            <button type="submit" disabled={cropping || saveTopicMutation.isPending || !topicTitle.trim()} className="mt-4 inline-flex h-10 items-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50">
               {saveTopicMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : editingTopicId ? <Save className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
               {editingTopicId ? 'Lưu Topic' : 'Tạo Topic'}
             </button>

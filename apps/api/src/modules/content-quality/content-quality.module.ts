@@ -1,3 +1,4 @@
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator.js';
 import { Get, Header, Headers, Module, Post, Query, Req } from '@nestjs/common';
 import { Type } from 'class-transformer';
 import {
@@ -32,11 +33,13 @@ export class QualitySourceQuery {
 @AdminController('content-quality')
 export class ContentQualityController {
   constructor(private readonly quality: ContentQualityService) {}
+  @RequirePermissions('content_quality.read')
   @Get()
   @Header('Cache-Control', 'private, no-store')
   list(@Query() query: QualityQuery) {
     return this.quality.list(query.category, query.page, query.lang);
   }
+  @RequirePermissions('content_quality.scan')
   @Post('scans')
   scan(@Req() request: { user: { _id: string } }) {
     return this.quality.enqueue(String(request.user._id));

@@ -1,3 +1,4 @@
+import type { ExamTimingSettings } from '@repo/shared-types/exam-timing';
 import type { SqlRow } from '../../../../postgres/row.js';
 export type ExamRow = SqlRow<Exam>;
 export interface Exam {
@@ -10,6 +11,8 @@ export interface Exam {
     totalQuestions?: number;
     description?: string;
     durationMinutes: number;
+    /** @jsonbPayload Saved per-exam timing, no baseline SQL column. */
+    timingSettings?: ExamTimingSettings;
     isActive: boolean;
     order: number;
     groupId?: string | null;

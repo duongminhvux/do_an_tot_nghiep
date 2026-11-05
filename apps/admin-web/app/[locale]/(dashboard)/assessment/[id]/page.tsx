@@ -1,5 +1,5 @@
 'use client';
-import {PublicationBar} from '@/components/publication/publication-controls';
+import { PublicationBar } from '@/components/publication/publication-controls';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
@@ -27,7 +27,6 @@ import { ExamStructureDialog } from '@/components/assessment/exam-structure-dial
 import {
   FileText,
   Users,
-  Search,
   Loader2,
   AlertTriangle,
   ArrowLeft,
@@ -35,7 +34,10 @@ import {
   Volume2,
   RefreshCw,
   CheckCircle2,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export default function ExamDetailPage() {
   const router = useRouter();
@@ -52,6 +54,7 @@ export default function ExamDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [structureOpen, setStructureOpen] = useState(false);
+  const [audioExpanded, setAudioExpanded] = useState(false);
   const [selectedQuestionForDetail, setSelectedQuestionForDetail] = useState<QuestionItem | null>(null);
   const [selectedPassageGroupForDetail, setSelectedPassageGroupForDetail] = useState<PassageGroupDetail | null>(null);
   const [selectedPassageGroupForEdit, setSelectedPassageGroupForEdit] = useState<PassageGroupDetail | null>(null);
@@ -123,6 +126,7 @@ export default function ExamDetailPage() {
     if (Array.isArray(raw?.items)) return raw.items;
     return [];
   }, [questionsResponse]);
+
   useEffect(() => {
     const key = `${examId}:${editQuestionOrder}`;
     if (!Number.isInteger(editQuestionOrder) || editQuestionOrder < 1 || openedQuestionLink.current === key) return;
@@ -209,39 +213,21 @@ export default function ExamDetailPage() {
   // Filtered Questions list
   const filteredQuestions = useMemo(() => {
     return questionsList.filter((q) => {
-      // Part Pill Filter
-      if (selectedPartPill !== 'ALL' && q.part !== selectedPartPill) {
-        return false;
-      }
-
-      // Part Dropdown Filter
-      if (filterPart !== 'ALL' && String(q.part) !== filterPart) {
-        return false;
-      }
-
-      // Status Dropdown Filter
+      if (selectedPartPill !== 'ALL' && q.part !== selectedPartPill) return false;
+      if (filterPart !== 'ALL' && String(q.part) !== filterPart) return false;
       if (filterStatus !== 'ALL') {
         const isQActive = q.isActive || (q.isActive !== false && (q as any).isActive !== false);
         if (filterStatus === 'ACTIVE' && !isQActive) return false;
         if (filterStatus === 'INACTIVE' && isQActive) return false;
       }
-
-      // Passage Dropdown Filter
       if (filterPassage !== 'ALL') {
         if (filterPassage === 'NONE' && (q.passageId || q.passageTitle)) return false;
-        if (filterPassage !== 'NONE' && q.passageTitle !== filterPassage && q.passageId !== filterPassage) {
-          return false;
-        }
+        if (filterPassage !== 'NONE' && q.passageTitle !== filterPassage && q.passageId !== filterPassage) return false;
       }
-
-      // Search Query
       if (questionSearch.trim()) {
         const query = questionSearch.toLowerCase().trim();
-        const matchContent = q.content?.toLowerCase().includes(query);
-        const matchPassage = q.passageTitle?.toLowerCase().includes(query);
-        return matchContent || matchPassage;
+        return q.content?.toLowerCase().includes(query) || q.passageTitle?.toLowerCase().includes(query);
       }
-
       return true;
     });
   }, [questionsList, selectedPartPill, filterPart, filterStatus, filterPassage, questionSearch]);
@@ -253,7 +239,6 @@ export default function ExamDetailPage() {
     return filteredQuestions.slice(start, start + pageSize);
   }, [filteredQuestions, currentPage, pageSize]);
 
-  // Reset all filters
   const handleResetFilters = () => {
     setSelectedPartPill('ALL');
     setQuestionSearch('');
@@ -265,22 +250,14 @@ export default function ExamDetailPage() {
 
   const getPartColor = (partNum: number) => {
     switch (partNum) {
-      case 1:
-        return 'bg-amber-100 text-amber-700 font-bold';
-      case 2:
-        return 'bg-rose-100 text-rose-700 font-bold';
-      case 3:
-        return 'bg-blue-100 text-blue-700 font-bold';
-      case 4:
-        return 'bg-purple-100 text-purple-700 font-bold';
-      case 5:
-        return 'bg-emerald-100 text-emerald-700 font-bold';
-      case 6:
-        return 'bg-teal-100 text-teal-700 font-bold';
-      case 7:
-        return 'bg-indigo-100 text-indigo-700 font-bold';
-      default:
-        return 'bg-slate-100 text-slate-700 font-bold';
+      case 1: return 'bg-amber-100 text-amber-700 font-bold';
+      case 2: return 'bg-rose-100 text-rose-700 font-bold';
+      case 3: return 'bg-blue-100 text-blue-700 font-bold';
+      case 4: return 'bg-purple-100 text-purple-700 font-bold';
+      case 5: return 'bg-emerald-100 text-emerald-700 font-bold';
+      case 6: return 'bg-teal-100 text-teal-700 font-bold';
+      case 7: return 'bg-indigo-100 text-indigo-700 font-bold';
+      default: return 'bg-slate-100 text-slate-700 font-bold';
     }
   };
 
@@ -309,6 +286,9 @@ export default function ExamDetailPage() {
     return { total, ready, stale, missing: Math.max(0, total - ready) };
   }, [questionsList, passagesList]);
 
+  const audioHealthy = listeningAudioStats.total > 0 && listeningAudioStats.missing === 0 && listeningAudioStats.stale === 0;
+  const audioWarning = listeningAudioStats.missing > 0 || listeningAudioStats.stale > 0;
+
   const startListeningAudioJob = async () => {
     if (!examId || isStartingAudioJob) return;
     setAudioJobError(null);
@@ -331,7 +311,6 @@ export default function ExamDetailPage() {
     if (!audioJobId) return;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
-
     const poll = async () => {
       try {
         const response = await audioService.getJob(audioJobId);
@@ -354,7 +333,6 @@ export default function ExamDetailPage() {
         if (!cancelled) setAudioJobError(err?.message || 'Không đọc được trạng thái audio job.');
       }
     };
-
     void poll();
     return () => {
       cancelled = true;
@@ -365,187 +343,190 @@ export default function ExamDetailPage() {
   // Loading state
   if (isExamLoading) {
     return (
-      <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center p-8 space-y-3">
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-        <span className="text-sm font-medium text-slate-500">{t('detailPage.loadingExam')}</span>
+        <span className="text-sm text-slate-500">{t('detailPage.loadingExam')}</span>
       </div>
     );
   }
 
-  // Not found in DB state
+  // Not found state
   if (!exam || isExamError) {
     return (
-      <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center p-8 space-y-4">
-        <div className="w-14 h-14 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center">
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-8">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-500">
           <AlertTriangle className="h-7 w-7" />
         </div>
         <h2 className="text-lg font-bold text-slate-800">{t('detailPage.examNotFoundTitle')}</h2>
-        <p className="text-xs text-slate-500 max-w-sm text-center">
-          {t('detailPage.examNotFoundDesc')}
-        </p>
+        <p className="max-w-sm text-center text-xs text-slate-500">{t('detailPage.examNotFoundDesc')}</p>
         <Link
           href={`/${locale}/assessment`}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold inline-flex items-center gap-2 cursor-pointer shadow-xs"
+          className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700"
         >
           <ArrowLeft className="h-4 w-4" />
-          <span>{t('detailPage.backToExams')}</span>
+          {t('detailPage.backToExams')}
         </Link>
       </div>
     );
   }
 
+  const isAudioJobRunning = audioJob?.state === 'waiting' || audioJob?.state === 'active';
+
   return (
-    <div className="min-h-screen bg-slate-50/50 p-4 sm:p-6 md:p-8 space-y-6 w-full">
-      {/* 1. Breadcrumbs */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-500">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <Link href={`/${locale}/assessment`} className="hover:text-blue-600 transition-colors">
-            {t('detailPage.breadcrumbToeic')}
-          </Link>
-          <span>&rsaquo;</span>
-          <Link href={`/${locale}/assessment`} className="hover:text-blue-600 transition-colors">
-            {t('detailPage.breadcrumbExams')}
-          </Link>
-          <span>&rsaquo;</span>
-          <span className="font-semibold text-slate-900 truncate max-w-xs sm:max-w-md">
-            {exam.name}
-          </span>
-        </div>
-
-        {/* Top right quick search */}
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-          <input
-            type="text"
-            placeholder={t('filters.searchPlaceholder')}
-            className="w-full h-8 pl-8 pr-3 rounded-lg border border-slate-200 bg-white text-xs placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-        </div>
-      </div>
-
-      {/* 2. Exam Banner Card */}
-      <PublicationBar kind="exams" id={examId} version={examResponse} />
-      <ExamBanner
-        exam={exam}
-        locale={locale}
-        examId={examId}
-        questionsCount={questionsList.length}
-        passagesCount={passagesList.length}
-        onEditClick={() => setEditOpen(true)}
-        onImportClick={() => setImportOpen(true)}
-        onViewStructureClick={() => setStructureOpen(true)}
-      />
-
-
-      {/* Listening audio pipeline */}
-      <div className="rounded-xl border border-blue-100 bg-white p-4 shadow-xs">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-                <Volume2 className="h-4 w-4" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">Listening TTS · Part 1–4</h3>
-                <p className="text-[11px] text-slate-500">Kokoro tạo audio vào local storage; Redis xử lý batch tuần tự.</p>
-              </div>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
-              <span className="rounded bg-slate-100 px-2 py-1 text-slate-600">Tổng: {listeningAudioStats.total}</span>
-              <span className="rounded bg-emerald-50 px-2 py-1 text-emerald-700">Ready: {listeningAudioStats.ready}</span>
-              <span className="rounded bg-amber-50 px-2 py-1 text-amber-700">Stale: {listeningAudioStats.stale}</span>
-              <span className="rounded bg-slate-50 px-2 py-1 text-slate-600">Thiếu: {listeningAudioStats.missing}</span>
-            </div>
+    <div className="flex min-h-screen flex-col bg-slate-50/50">
+      {/* ── UNIFIED COMPACT HERO HEADER (Tất cả thông tin cốt lõi gói trong 1 header phẳng) ── */}
+      <header className="border-b border-slate-200/80 bg-white">
+        <div className="px-4 py-3 sm:px-6">
+          {/* 1. Breadcrumbs */}
+          <div className="flex items-center gap-1.5 text-xs text-slate-500">
+            <Link href={`/${locale}/assessment`} className="hover:text-blue-600 transition-colors">
+              {t('detailPage.breadcrumbToeic')}
+            </Link>
+            <ChevronRight className="h-3 w-3 text-slate-300" />
+            <Link href={`/${locale}/assessment`} className="hover:text-blue-600 transition-colors">
+              {t('detailPage.breadcrumbExams')}
+            </Link>
+            <ChevronRight className="h-3 w-3 text-slate-300" />
+            <span className="max-w-xs truncate font-semibold text-slate-800 sm:max-w-md">{exam.name}</span>
           </div>
-          <button
-            type="button"
-            onClick={() => void startListeningAudioJob()}
-            disabled={isStartingAudioJob || audioJob?.state === 'waiting' || audioJob?.state === 'active'}
-            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            {isStartingAudioJob || audioJob?.state === 'waiting' || audioJob?.state === 'active'
-              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              : listeningAudioStats.ready > 0 ? <RefreshCw className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
-            Generate Part 1–4
-          </button>
-        </div>
 
-        {audioJob && (
-          <div className="mt-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
-            <div className="flex items-center justify-between gap-2 text-[11px]">
-              <span className="font-semibold text-slate-700">
-                {audioJob.state === 'completed' ? 'Hoàn tất' : audioJob.state === 'failed' ? 'Thất bại' : 'Đang xử lý audio'}
-              </span>
-              <span className="text-slate-500">
-                {(audioJob.progress as any)?.processed || 0}/{(audioJob.progress as any)?.total || 0}
-              </span>
+          {/* 2. Main Exam Information & Action Buttons */}
+          <div className="mt-3">
+            <ExamBanner
+              exam={exam}
+              locale={locale}
+              examId={examId}
+              questionsCount={questionsList.length}
+              passagesCount={passagesList.length}
+              onEditClick={() => setEditOpen(true)}
+              onImportClick={() => setImportOpen(true)}
+              onViewStructureClick={() => setStructureOpen(true)}
+            />
+          </div>
+
+          {/* 3. Publication Workflow Bar - Compact Inline Strip */}
+          <div className="mt-3">
+            <PublicationBar kind="exams" id={examId} version={examResponse} compact={true} />
+          </div>
+
+          {/* 4. Audio TTS Generation Pipeline - Compact Inline Bar */}
+          <div className={cn(
+            'mt-2.5 overflow-hidden rounded-lg border bg-slate-50/60 transition-colors text-xs',
+            audioHealthy ? 'border-emerald-200/80' : audioWarning ? 'border-amber-200/80' : 'border-slate-200'
+          )}>
+            <div className="flex items-center justify-between gap-3 px-3 py-2">
+              <button
+                type="button"
+                onClick={() => setAudioExpanded(v => !v)}
+                className="flex items-center gap-2.5 min-w-0 cursor-pointer text-left hover:opacity-80 transition-opacity"
+              >
+                <div className={cn(
+                  'flex h-6 w-6 shrink-0 items-center justify-center rounded-md',
+                  audioHealthy ? 'bg-emerald-100/70 text-emerald-700' : audioWarning ? 'bg-amber-100/70 text-amber-700' : 'bg-blue-100/70 text-blue-700'
+                )}>
+                  <Volume2 className="h-3.5 w-3.5" />
+                </div>
+                <span className="font-semibold text-slate-800">TTS Audio Part 1–4</span>
+                <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
+                  <span className="bg-white px-1.5 py-0.5 rounded border border-slate-200">{listeningAudioStats.total} câu</span>
+                  <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-200">{listeningAudioStats.ready} ready</span>
+                  {listeningAudioStats.stale > 0 && (
+                    <span className="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-200">{listeningAudioStats.stale} stale</span>
+                  )}
+                  {listeningAudioStats.missing > 0 && (
+                    <span className="bg-red-50 text-red-600 px-1.5 py-0.5 rounded border border-red-200">{listeningAudioStats.missing} thiếu</span>
+                  )}
+                </div>
+                <ChevronDown className={cn('h-3.5 w-3.5 text-slate-400 transition-transform ml-1', audioExpanded && 'rotate-180')} />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void startListeningAudioJob()}
+                disabled={isStartingAudioJob || isAudioJobRunning}
+                className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors shrink-0"
+              >
+                {isStartingAudioJob || isAudioJobRunning
+                  ? <Loader2 className="h-3 w-3 animate-spin" />
+                  : listeningAudioStats.ready > 0 ? <RefreshCw className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
+                Generate Audio
+              </button>
             </div>
-            <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200">
-              <div
-                className="h-full rounded-full bg-blue-600 transition-all"
-                style={{ width: `${(audioJob.progress as any)?.total ? Math.min(100, (((audioJob.progress as any)?.processed || 0) / (audioJob.progress as any).total) * 100) : 0}%` }}
-              />
-            </div>
-            {audioJob.state === 'completed' && (
-              <div className="mt-2 flex items-center gap-1 text-[11px] font-medium text-emerald-700">
-                <CheckCircle2 className="h-3.5 w-3.5" /> Audio đã được cập nhật từ PostgreSQL/object storage.
+
+            {audioExpanded && (
+              <div className="border-t border-slate-200/60 bg-white px-3 py-2.5 space-y-2">
+                <p className="text-[11px] text-slate-500">
+                  Kokoro TTS tạo âm thanh trực tiếp vào bộ nhớ storage; BullMQ/Redis phân luồng xử lý tự động theo từng phần.
+                </p>
+                {audioJob && (
+                  <div className="rounded border border-slate-200 bg-slate-50 p-2.5">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="font-semibold text-slate-700">
+                        {audioJob.state === 'completed' ? 'Hoàn tất' : audioJob.state === 'failed' ? 'Thất bại' : 'Đang xử lý audio...'}
+                      </span>
+                      <span className="text-slate-500 tabular-nums">
+                        {(audioJob.progress as any)?.processed || 0} / {(audioJob.progress as any)?.total || 0}
+                      </span>
+                    </div>
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-200">
+                      <div
+                        className="h-full rounded-full bg-blue-600 transition-all"
+                        style={{ width: `${(audioJob.progress as any)?.total ? Math.min(100, (((audioJob.progress as any)?.processed || 0) / (audioJob.progress as any).total) * 100) : 0}%` }}
+                      />
+                    </div>
+                    {audioJob.state === 'completed' && (
+                      <div className="mt-1.5 flex items-center gap-1 text-[11px] font-medium text-emerald-700">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Audio đã được đồng bộ hoàn tất.
+                      </div>
+                    )}
+                  </div>
+                )}
+                {audioJobError && <p className="text-[11px] font-medium text-red-600">{audioJobError}</p>}
               </div>
             )}
           </div>
-        )}
-        {audioJobError && <div className="mt-2 text-[11px] font-medium text-red-600">{audioJobError}</div>}
-      </div>
+        </div>
 
-      {/* 4. Tab Navigation Header */}
-      <div className="flex items-center gap-2 border-b border-slate-200/80 pb-px text-xs font-semibold overflow-x-auto scrollbar-none">
-        <button
-          type="button"
-          onClick={() => setActiveTab('questions')}
-          className={`pb-3 px-3 transition-colors relative cursor-pointer flex items-center gap-2 ${
-            activeTab === 'questions'
-              ? 'text-blue-600 font-bold border-b-2 border-blue-600'
-              : 'text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <FileText className="h-4 w-4" />
-          <span>{t('tabs.questions')}</span>
-          <span className="px-1.5 py-0.5 rounded-full bg-slate-100 text-[10px] text-slate-600">
-            {questionsList.length}
-          </span>
-        </button>
+        {/* 5. Tab Navigation Bar (Liền khối với header, không còn card lơ lửng) */}
+        <div className="px-4 sm:px-6 pt-1">
+          <nav className="flex gap-1 overflow-x-auto scrollbar-none" aria-label="Exam tabs">
+            {([
+              { key: 'questions', icon: FileText, label: t('tabs.questions'), badge: questionsList.length },
+              { key: 'overview', icon: Info, label: t('tabs.overview'), badge: undefined },
+              { key: 'attempts', icon: Users, label: t('tabs.attempts'), badge: exam.totalAttempts ?? 0 },
+            ] as const).map(({ key, icon: Icon, label, badge }) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === key}
+                onClick={() => setActiveTab(key)}
+                className={cn(
+                  'relative flex cursor-pointer items-center gap-2 whitespace-nowrap px-3.5 py-2.5 text-xs font-semibold transition-colors',
+                  activeTab === key
+                    ? 'text-blue-600 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-blue-600'
+                    : 'text-slate-500 hover:text-slate-800'
+                )}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                <span>{label}</span>
+                {badge !== undefined && (
+                  <span className={cn(
+                    'rounded-full px-1.5 py-0.2 text-[10px] font-bold tabular-nums',
+                    activeTab === key ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
+                  )}>
+                    {badge}
+                  </span>
+                )}
+              </button>
+            ))}
+          </nav>
+        </div>
+      </header>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('overview')}
-          className={`pb-3 px-3 transition-colors relative cursor-pointer flex items-center gap-2 ${
-            activeTab === 'overview'
-              ? 'text-blue-600 font-bold border-b-2 border-blue-600'
-              : 'text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <Info className="h-4 w-4" />
-          <span>{t('tabs.overview')}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('attempts')}
-          className={`pb-3 px-3 transition-colors relative cursor-pointer flex items-center gap-2 ${
-            activeTab === 'attempts'
-              ? 'text-blue-600 font-bold border-b-2 border-blue-600'
-              : 'text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <Users className="h-4 w-4" />
-          <span>{t('tabs.attempts')}</span>
-          <span className="px-1.5 py-0.5 rounded-full bg-slate-100 text-[10px] text-slate-600">
-            {exam.totalAttempts ?? 0}
-          </span>
-        </button>
-      </div>
-
-      {/* 5. Main Content Area */}
-      <div className="w-full space-y-5">
+      {/* ── MAIN TAB CONTENT (Không gian làm việc chính tập trung, gọn gàng) ── */}
+      <main className="flex-1 px-4 py-4 sm:px-6 sm:py-5">
         {activeTab === 'questions' && (
           <ExamQuestionsTab
             questionsList={questionsList}
@@ -589,26 +570,12 @@ export default function ExamDetailPage() {
           <ExamOverviewTab exam={exam} questionsCount={questionsList.length} />
         )}
 
-        {activeTab === 'attempts' && (
-          <ExamAttemptsTab />
-        )}
-      </div>
+        {activeTab === 'attempts' && <ExamAttemptsTab />}
+      </main>
 
-      {/* Edit Exam Dialog */}
-      <EditExamDialog
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        exam={exam}
-      />
-
-      {/* Exam Structure Dialog Modal */}
-      <ExamStructureDialog
-        open={structureOpen}
-        onOpenChange={setStructureOpen}
-        exam={exam}
-      />
-
-      {/* Question / Passage Detail Dialog */}
+      {/* ── DIALOGS ── */}
+      <EditExamDialog open={editOpen} onOpenChange={setEditOpen} exam={exam} />
+      <ExamStructureDialog open={structureOpen} onOpenChange={setStructureOpen} exam={exam} />
       <QuestionDetailDialog
         open={!!selectedQuestionForDetail || !!selectedPassageGroupForDetail}
         onOpenChange={(open) => {
@@ -624,24 +591,16 @@ export default function ExamDetailPage() {
         getPartColor={getPartColor}
         getPartSubtitle={getPartSubtitle}
       />
-
-      {/* Edit Question Dialog */}
       <EditQuestionDialog
         open={!!selectedQuestionForEdit}
-        onOpenChange={(open) => {
-          if (!open) setSelectedQuestionForEdit(null);
-        }}
+        onOpenChange={(open) => { if (!open) setSelectedQuestionForEdit(null); }}
         question={selectedQuestionForEdit}
         passagesList={passagesList}
         examId={examId}
       />
-
-      {/* Delete Question Confirmation Dialog */}
       <DeleteQuestionDialog
         open={!!selectedQuestionForDelete}
-        onOpenChange={(open) => {
-          if (!open) setSelectedQuestionForDelete(null);
-        }}
+        onOpenChange={(open) => { if (!open) setSelectedQuestionForDelete(null); }}
         question={selectedQuestionForDelete}
         onConfirm={() => {
           if (selectedQuestionForDelete?._id) {
@@ -650,23 +609,15 @@ export default function ExamDetailPage() {
         }}
         isDeleting={deleteQuestionMutation.isPending}
       />
-
-      {/* Edit Passage Dialog */}
       <EditPassageDialog
         open={!!selectedPassageGroupForEdit}
-        onOpenChange={(open) => {
-          if (!open) setSelectedPassageGroupForEdit(null);
-        }}
+        onOpenChange={(open) => { if (!open) setSelectedPassageGroupForEdit(null); }}
         passageGroup={selectedPassageGroupForEdit}
         examId={examId}
       />
-
-      {/* Delete Passage Dialog */}
       <DeletePassageDialog
         open={!!selectedPassageGroupForDelete}
-        onOpenChange={(open) => {
-          if (!open) setSelectedPassageGroupForDelete(null);
-        }}
+        onOpenChange={(open) => { if (!open) setSelectedPassageGroupForDelete(null); }}
         passageGroup={selectedPassageGroupForDelete}
         onConfirm={() => {
           if (selectedPassageGroupForDelete) {
@@ -675,13 +626,7 @@ export default function ExamDetailPage() {
         }}
         isDeleting={deletePassageGroupMutation.isPending}
       />
-
-      {/* Import Questions Dialog */}
-      <ImportQuestionsDialog
-        open={importOpen}
-        onOpenChange={setImportOpen}
-        exam={exam}
-      />
+      <ImportQuestionsDialog open={importOpen} onOpenChange={setImportOpen} exam={exam} />
     </div>
   );
 }

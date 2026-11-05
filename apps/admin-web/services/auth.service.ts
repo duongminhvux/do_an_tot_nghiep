@@ -1,3 +1,4 @@
+import { verifiedAdminProfile } from '@/lib/admin-permissions';
 import apiClient from '@/lib/axios';
 import {
   ApiResponse,
@@ -33,6 +34,6 @@ export const authService = {
 
   getProfile: async () => {
     const res = await apiClient.get<ApiResponse<UserProfile>>('/admin/auth/me');
-    return res.data;
+    return { ...res.data, data: verifiedAdminProfile(res.data.data) };
   },
 };

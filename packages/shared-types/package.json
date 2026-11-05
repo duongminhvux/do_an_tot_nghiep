@@ -14,7 +14,8 @@
     "./learning-xp": "./src/learning-xp.mjs",
     "./site-settings": "./src/site-settings.mjs",
     "./landing-page": "./src/landing-page.mjs",
-    "./active-time": "./src/active-time.mjs"
+    "./active-time": "./src/active-time.mjs",
+    "./exam-timing": "./src/exam-timing.mjs"
   },
   "scripts": {
     "check-types": "tsc --noEmit"

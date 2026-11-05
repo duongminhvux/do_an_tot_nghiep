@@ -1,3 +1,4 @@
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator.js';
 import {
   Get,
   Header,
@@ -30,11 +31,13 @@ export class MediaLibraryQuery {
 @AdminController('media-library/dictation')
 export class DictationMediaController {
   constructor(private readonly media: MediaLibraryService) {}
+  @RequirePermissions('media_library.read', 'dictation.read')
   @Get('items')
   @Header('Cache-Control', 'private, no-store')
   list(@Query() query: MediaLibraryQuery) {
     return this.media.list('dictation', query);
   }
+  @RequirePermissions('media_library.read', 'dictation.read')
   @Get('items/:id')
   @Header('Cache-Control', 'private, no-store')
   detail(
@@ -47,11 +50,13 @@ export class DictationMediaController {
 @AdminController('media-library/vocab')
 export class VocabMediaController {
   constructor(private readonly media: MediaLibraryService) {}
+  @RequirePermissions('media_library.read', 'vocabulary.read')
   @Get('items')
   @Header('Cache-Control', 'private, no-store')
   list(@Query() query: MediaLibraryQuery) {
     return this.media.list('vocab', query);
   }
+  @RequirePermissions('media_library.read', 'vocabulary.read')
   @Get('items/:id')
   @Header('Cache-Control', 'private, no-store')
   detail(
@@ -64,11 +69,13 @@ export class VocabMediaController {
 @AdminController('media-library/toeic')
 export class ToeicMediaController {
   constructor(private readonly media: MediaLibraryService) {}
+  @RequirePermissions('media_library.read', 'toeic.read')
   @Get('items')
   @Header('Cache-Control', 'private, no-store')
   list(@Query() query: MediaLibraryQuery) {
     return this.media.list('toeic', query);
   }
+  @RequirePermissions('media_library.read', 'toeic.read')
   @Get('items/:id')
   @Header('Cache-Control', 'private, no-store')
   detail(
@@ -81,11 +88,13 @@ export class ToeicMediaController {
 @AdminController('media-library/games')
 export class GamesMediaController {
   constructor(private readonly media: MediaLibraryService) {}
+  @RequirePermissions('media_library.read', 'games.read')
   @Get('items')
   @Header('Cache-Control', 'private, no-store')
   list(@Query() query: MediaLibraryQuery) {
     return this.media.list('games', query);
   }
+  @RequirePermissions('media_library.read', 'games.read')
   @Get('items/:id')
   @Header('Cache-Control', 'private, no-store')
   detail(

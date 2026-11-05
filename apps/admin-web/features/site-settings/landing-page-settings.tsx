@@ -1,4 +1,6 @@
 "use client";
+import { useImageCropper } from '@/components/image-cropper/image-cropper-provider';
+import { cropPresetForLanding } from '@/components/image-cropper/image-crop-presets';
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -79,6 +81,7 @@ export function LandingPageSettingsPage() {
 }
 
 function LandingForm({ initial }: { initial: LandingPageSettings }) {
+  const cropImage = useImageCropper();
   const { t } = useTranslation("siteSettings");
   const client = useQueryClient();
   const [saved, setSaved] = useState(initial);
@@ -122,8 +125,10 @@ function LandingForm({ initial }: { initial: LandingPageSettings }) {
     setUploading(key);
     setError("");
     try {
-      const result = await uploadService.uploadFile(file);
-      change(key, result.url);
+      const cropped = await cropImage(file, cropPresetForLanding(key), 5 * 1024 * 1024);
+      if (!cropped) return;
+      const result = await uploadService.uploadFile(cropped);
+      if (result) change(key, result.url);
     } catch {
       setError(t("uploadError"));
     } finally {

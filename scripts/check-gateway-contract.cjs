@@ -28,6 +28,11 @@ function route(rules, url) {
   return rules.find(({re}) => re.test(p))?.role ?? null;
 }
 const fixtures = [
+  ['/api/admin/activation/status','identity'],['/api/admin/activation/activate','identity'],
+  ['/api/admin/admins/fixture/reinvite','identity'],
+  ['/api/admin/admins','identity'],['/api/admin/admins/fixture/roles','identity'],
+  ['/api/admin/roles/matrix','identity'],['/api/admin/roles/fixture/permissions','identity'],
+  ['/api/admin/permissions','identity'],['/api/admin/admins-unknown',null],
   ['/api/admin/media-library/dictation/items','content'],
   ['/api/admin/media-library/vocab/items/00000000-0000-4000-8000-000000000001','content'],
   ['/api/admin/media-library/toeic/items?page=2','assessment'],

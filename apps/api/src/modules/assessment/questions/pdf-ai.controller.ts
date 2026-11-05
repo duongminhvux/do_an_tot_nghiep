@@ -1,4 +1,5 @@
 /// <reference types="multer" />
+import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator.js';
 import {
 BadRequestException,
 Body,
@@ -32,18 +33,22 @@ class BundleOptionsDto {
 export class PdfAiBundleController {
   constructor(private readonly pdfAi: PdfAiService, private readonly learning: PdfAiLearningService) {}
 
+  @RequirePermissions('ai_import.learning.read')
   @Get('learning')
   learningOverview() { return this.learning.overview(); }
 
+  @RequirePermissions('ai_import.learning.review')
   @Post('learning/:sampleId/review')
   reviewCorrection(@Param('sampleId') sampleId: string, @Body() body: ReviewCorrectionDto) {
     if (!/^[a-f0-9]{64}$/.test(sampleId)) throw new BadRequestException('Mã mẫu không hợp lệ.');
     return this.pdfAi.learningRequest(`/samples/${sampleId}/review`, body);
   }
 
+  @RequirePermissions('ai_import.learning.retry')
   @Post('learning/retry')
   async retryLearning() { await this.learning.flush(); return this.learning.overview(); }
 
+  @RequirePermissions('ai_import.create', 'toeic.import')
   @Post('bundle-jobs')
   @UseInterceptors(
     FileFieldsInterceptor(
@@ -67,6 +72,7 @@ export class PdfAiBundleController {
     return this.pdfAi.startBundle(body.testNumber, files || {});
   }
 
+  @RequirePermissions('ai_import.read', 'toeic.read')
   @Get('bundle-jobs/:jobId')
   status(@Param('jobId') jobId: string) {
     return this.pdfAi.bundleStatus(jobId);
@@ -77,6 +83,7 @@ export class PdfAiBundleController {
 export class PdfAiController {
   constructor(private readonly pdfAi: PdfAiService) {}
 
+  @RequirePermissions('ai_import.create', 'toeic.import')
   @Post('jobs')
   @UseInterceptors(
     FileFieldsInterceptor(
@@ -96,6 +103,7 @@ export class PdfAiController {
     return this.pdfAi.start(examId, files?.file?.[0], files?.answers?.[0]);
   }
 
+  @RequirePermissions('ai_import.read', 'toeic.read')
   @Get('jobs/:jobId')
   status(@Param('examId') examId: string, @Param('jobId') jobId: string) {
     return this.pdfAi.status(examId, jobId);

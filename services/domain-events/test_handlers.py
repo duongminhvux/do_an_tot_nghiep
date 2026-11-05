@@ -60,4 +60,30 @@ class HandlerTests(unittest.TestCase):
                                 'type': 'TOEIC_ATTEMPT', 'sourceKey': 'test',
                                 'xp': 0, 'outcomes': outcomes}})
 
+class ActivationHandlerTests(unittest.TestCase):
+    def test_activation_job_contains_only_record_id_and_dedupes_logical_invitation(self):
+        token_id=str(uuid4())
+        for event_id in [str(uuid4()),str(uuid4())]:
+            cur=FakeCursor()
+            result=apply_event(cur,'notification',{'eventId':event_id,'type':'identity.admin.activation_email_requested.v1',
+                'payload':{'tokenId':token_id,'adminId':str(uuid4()),'expiresAt':'2030-01-01T00:00:00Z'}})
+            self.assertEqual(result,'admin-activation-email-job')
+            self.assertEqual(cur.statements[0][1][0],token_id)
+            self.assertEqual(json.loads(cur.statements[0][1][1]),{'tokenId':token_id})
+            self.assertIn('ON CONFLICT(id) DO NOTHING',cur.statements[0][0])
+    def test_activation_rejects_secrets_or_unknown_contract(self):
+        for kind,payload in [('identity.admin.activation_email_requested.v1',{'tokenId':str(uuid4()),'adminId':str(uuid4()),'expiresAt':'2030-01-01T00:00:00Z','rawToken':'must-never-be-stored'}),('identity.admin.activation_unknown.v9',{})]:
+            with self.assertRaises(ValueError):
+                apply_event(FakeCursor(),'notification',{'eventId':str(uuid4()),'type':kind,'payload':payload})
+
+class AdminAuditTests(unittest.TestCase):
+    def test_audit_projection_is_idempotent_and_excludes_nested_secrets(self):
+        event_id=str(uuid4());cur=FakeCursor()
+        effect=apply_event(cur,'notification',{'eventId':event_id,'type':'identity.admin.authorization_changed.v1','payload':{'actorId':str(uuid4()),'action':'ADMIN_ACTIVATED','targetId':str(uuid4()),'before':{'status':'PENDING_ACTIVATION'},'after':{'status':'ACTIVE','rawToken':'SENSITIVE','nested':{'password':'SENSITIVE'}}}})
+        self.assertEqual(effect,'admin-iam-audit');self.assertIn('ON CONFLICT(id) DO NOTHING',cur.statements[0][0]);self.assertEqual(cur.statements[0][1][0],event_id);self.assertNotIn('SENSITIVE',repr(cur.statements))
+    def test_operator_bootstrap_is_not_misidentified_as_a_learner(self):
+        cur=FakeCursor()
+        apply_event(cur,'notification',{'eventId':str(uuid4()),'type':'identity.admin.super_admin_bootstrapped.v1','payload':{'actor':{'type':'OPERATOR'},'targetAdminId':str(uuid4()),'action':'SUPER_ADMIN_BOOTSTRAPPED'}})
+        self.assertIsNone(cur.statements[0][1][1]);self.assertEqual(cur.statements[0][1][3],'OPERATOR')
+
 if __name__=='__main__':unittest.main()

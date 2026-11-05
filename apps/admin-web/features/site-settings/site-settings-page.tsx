@@ -1,4 +1,6 @@
 "use client";
+import { useImageCropper } from '@/components/image-cropper/image-cropper-provider';
+import { imageCropPresets } from '@/components/image-cropper/image-crop-presets';
 import { useRef, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -67,6 +69,7 @@ export function SiteSettingsPage() {
   );
 }
 function SettingsForm({ initial }: { initial: SiteSettings }) {
+  const cropImage = useImageCropper();
   const { t, i18n } = useTranslation("siteSettings");
   const language = (i18n.resolvedLanguage || i18n.language || 'vi').startsWith('en') ? 'en' : 'vi';
   const [timezoneSearch, setTimezoneSearch] = useState("");
@@ -239,7 +242,9 @@ function SettingsForm({ initial }: { initial: SiteSettings }) {
                   setError("");
                   setSaved(false);
                   try {
-                    const result = await uploadService.uploadFile(file);
+                    const cropped = await cropImage(file, key === 'logoUrl' ? imageCropPresets.logo : key === 'faviconUrl' ? imageCropPresets.favicon : imageCropPresets.icon, 5 * 1024 * 1024);
+                    if (!cropped) return;
+                    const result = await uploadService.uploadFile(cropped);
                     change({ [key]: result.url });
                     setPreviewErrors((curr) => {
                       const next = { ...curr };

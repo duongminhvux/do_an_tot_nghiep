@@ -1,8 +1,8 @@
 {
   "identity": {
-    "version": "0009_numeric_collation",
-    "migrationsChecksum": "0ffe5b33ab317f1464feb52bb416e369e5e651d80bc6aaaa99ce4db38c57f377",
-    "fingerprint": "1379b6ee30b9e2e9e912941ef9bc609082ec43f8d902306e6e123a42798b273c"
+    "version": "0020_admin_activation_tokens",
+    "migrationsChecksum": "734254bde0dab27487e527b62ad8b4c89e307c04df92f0298e5742c7a52c1858",
+    "fingerprint": "23658fdf825f23fb5c658b364f920f247231ea8c41d2ea7b878b4f91051932bf"
   },
   "content": {
     "version": "0018_content_relations",

@@ -1,3 +1,4 @@
+import { examTimeLimitSeconds } from '@repo/shared-types/exam-timing';
 import {
 BadRequestException,
 ConflictException,
@@ -316,14 +317,9 @@ constructor(
           .filter(Boolean)
           .join('\n') };
     });
-    const timeLimitSeconds =
-      dto.mode === ExamMode.TEST
-        ? testTimeLimitSeconds(
-            questions,
-            dto.selectedParts,
-            exam.durationMinutes,
-          )
-        : undefined;
+    const partCounts=new Map<number,number>();
+    for(const question of questions)partCounts.set(question.part,(partCounts.get(question.part)||0)+1);
+    const timeLimitSeconds=examTimeLimitSeconds(dto.mode,[...partCounts].map(([part,totalQuestions])=>({part,totalQuestions})),dto.selectedParts,exam);
     const startedAt = new Date();
     let attempt;
     try { attempt = await this.attempts.insert({

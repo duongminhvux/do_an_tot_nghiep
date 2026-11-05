@@ -1,3 +1,4 @@
+import { PermissionExemption } from './decorators/require-permissions.decorator.js';
 import {
 Body,
 Controller,
@@ -41,6 +42,7 @@ export class AdminAuthController {
     clearRefreshCookie(res, this.configService, 'admin');
   }
 
+  @PermissionExemption('E1')
   @Public()
   @Post('login')
   async login(
@@ -64,7 +66,9 @@ export class AdminAuthController {
       username: admin.username,
       email: admin.email,
       avatarUrl: admin.avatarUrl,
-      role: 'ADMIN' };
+      role: 'ADMIN', auth_version: admin.authVersion };
+
+    await this.adminsService.authenticateToken(payload);
 
     const { accessToken, refreshToken } =
       await this.authService.generateTokens(payload);
@@ -83,6 +87,7 @@ export class AdminAuthController {
         role: 'ADMIN' } };
   }
 
+  @PermissionExemption('E2')
   @Public()
   @Post('refresh-token')
   async refreshToken(
@@ -111,22 +116,14 @@ export class AdminAuthController {
         );
       }
 
-      const admin = payload._id
-        ? await this.adminsService.findById(payload._id)
-        : await this.adminsService.findByEmail(payload.email);
-
-      if (!admin || admin.isDeleted) {
-        throw new UnauthorizedException(
-          await this.i18n.t('auth.INVALID_REFRESH_TOKEN'),
-        );
-      }
+      const admin = await this.adminsService.authenticateToken(payload);
 
       const newPayload = {
         _id: String(admin._id),
         username: admin.username,
         email: admin.email,
         avatarUrl: admin.avatarUrl,
-        role: 'ADMIN' };
+        role: 'ADMIN', auth_version: admin.authVersion };
 
       const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
         await this.authService.generateTokens(newPayload);
@@ -144,14 +141,24 @@ export class AdminAuthController {
     }
   }
 
+  @PermissionExemption('E3')
   @Public()
   @Post('logout')
-  async logout(@Res({ passthrough: true }) res: express.Response) {
+  async logout(@Req() req: any, @Res({ passthrough: true }) res: express.Response) {
     this.clearCookie(res);
+    const bearer=String(req.headers?.authorization||'').replace(/^Bearer\s+/i,'');
+    const refresh=req.body?.refreshToken || readRefreshCookie(req,'admin') || req.headers?.['x-refresh-token'];
+    for (const [token,secret] of [[bearer,'JWT_ACCESS_SECRET'],[refresh,'JWT_REFRESH_SECRET']]) {
+      if (typeof token!=='string' || !token) continue;
+      let payload: any;
+      try {payload=await this.jwtService.verifyAsync(token,{secret:this.configService.get<string>(secret)});} catch {continue;}
+      if (await this.adminsService.revokeToken(payload)) break;
+    }
     return {
       message: await this.i18n.t('auth.LOGOUT_SUCCESSFULLY') };
   }
 
+  @PermissionExemption('E4')
   @UseGuards(RolesGuard)
   @Roles('ADMIN')
   @Get('me')

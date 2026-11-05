@@ -1,4 +1,5 @@
-﻿"use client";
+"use client";
+import { canVisit } from "@/lib/admin-permissions";
 import { SiteLogo } from "@/components/site-logo";
 import { useSiteSettings } from "@/providers/site-settings-provider";
 
@@ -8,6 +9,9 @@ import { usePathname, useRouter, useParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import {
   Shield,
+  ShieldCheck,
+  UserCog,
+  KeyRound,
   Swords,
   Gamepad2,
   LayoutDashboard,
@@ -75,7 +79,9 @@ export function AppSidebar() {
   const router = useRouter();
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
-  React.useEffect(() => { setOpenMobile(false); }, [pathname, setOpenMobile]);
+  React.useEffect(() => {
+    setOpenMobile(false);
+  }, [pathname, setOpenMobile]);
   const params = useParams();
   const locale = (params?.locale as string) || "vi";
   const dispatch = useAppDispatch();
@@ -222,29 +228,39 @@ export function AppSidebar() {
       ),
     },
     {
-      label: t('recommendations.learningManagement'),
+      label: t("recommendations.learningManagement"),
       icon: BookOpen,
       active: active(`/${locale}/learning`),
-      children: [{
-        label: t('mistakes.adminTitle'),
-        href: `/${locale}/learning/mistakes`,
-        icon: ClipboardCheck,
-        active: active(`/${locale}/learning/mistakes`),
-      }, {
-        label: t('recommendations.title'),
-        href: `/${locale}/learning/recommendations`,
-        icon: Settings,
-        active: active(`/${locale}/learning/recommendations`),
-      }],
+      children: [
+        {
+          label: t("mistakes.adminTitle"),
+          href: `/${locale}/learning/mistakes`,
+          icon: ClipboardCheck,
+          active: active(`/${locale}/learning/mistakes`),
+        },
+        {
+          label: t("recommendations.title"),
+          href: `/${locale}/learning/recommendations`,
+          icon: Settings,
+          active: active(`/${locale}/learning/recommendations`),
+        },
+      ],
     },
     {
-      label: t('contentQuality.content'),
+      label: t("contentQuality.content"),
       icon: ClipboardCheck,
       active: active(`/${locale}/content`),
-      children: [{ label: t('contentQuality.title'), href: `/${locale}/content/quality`, icon: ClipboardCheck, active: active(`/${locale}/content/quality`) }],
+      children: [
+        {
+          label: t("contentQuality.title"),
+          href: `/${locale}/content/quality`,
+          icon: ClipboardCheck,
+          active: active(`/${locale}/content/quality`),
+        },
+      ],
     },
     {
-      label: locale === 'en' ? 'Media library' : 'Quản lý media',
+      label: locale === "en" ? "Media library" : "Quản lý media",
       href: `/${locale}/media`,
       icon: Images,
       active: active(`/${locale}/media`),
@@ -276,6 +292,42 @@ export function AppSidebar() {
     },
   ];
 
+  items.push({
+    label: t("iam:group"),
+    icon: ShieldCheck,
+    active: active(`/${locale}/iam`),
+    children: [
+      {
+        label: t("iam:admins"),
+        href: `/${locale}/iam/admins`,
+        icon: UserCog,
+        active: active(`/${locale}/iam/admins`),
+      },
+      {
+        label: t("iam:roles"),
+        href: `/${locale}/iam/roles`,
+        icon: KeyRound,
+        active: active(`/${locale}/iam/roles`),
+      },
+    ],
+  });
+  const visibleItems = items
+    .map((item) =>
+      item.children
+        ? {
+            ...item,
+            children: item.children.filter((child) =>
+              canVisit(user, child.href.replace(`/${locale}`, "") || "/"),
+            ),
+          }
+        : item,
+    )
+    .filter((item) =>
+      item.children
+        ? item.children.length > 0
+        : !!item.href &&
+          canVisit(user, item.href.replace(`/${locale}`, "") || "/"),
+    );
   return (
     <Sidebar collapsible="icon" className="border-r border-slate-200 bg-white">
       {/* Brand: the uploaded wordmark already contains the icon, so it is shown
@@ -332,7 +384,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="gap-1">
-              {items.map((item) =>
+              {visibleItems.map((item) =>
                 item.children ? (
                   <Collapsible
                     key={item.label}

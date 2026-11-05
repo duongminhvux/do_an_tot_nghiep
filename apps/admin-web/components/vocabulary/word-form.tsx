@@ -1,4 +1,6 @@
 'use client';
+import { useImageCropper } from '@/components/image-cropper/image-cropper-provider';
+import { imageCropPresets } from '@/components/image-cropper/image-crop-presets';
 
 /**
  * Shared fields for the create / edit word dialogs: one state object, one layout,
@@ -151,6 +153,7 @@ export function WordImageField({
   onUploadingChange?: (uploading: boolean) => void;
 }) {
   const fileInput = useRef<HTMLInputElement>(null);
+  const cropImage = useImageCropper();
   const [uploading, setUploading] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState('');
@@ -168,8 +171,10 @@ export function WordImageField({
     setUploading(true);
     onUploadingChange?.(true);
     try {
-      const result = await uploadService.uploadFile(file);
-      onChange(result.url);
+      const cropped = await cropImage(file, imageCropPresets.word, 5 * 1024 * 1024);
+      if (!cropped) return;
+      const result = await uploadService.uploadFile(cropped);
+      if (result) onChange(result.url);
     } catch {
       setError('Tải ảnh thất bại. Vui lòng thử lại.');
     } finally {

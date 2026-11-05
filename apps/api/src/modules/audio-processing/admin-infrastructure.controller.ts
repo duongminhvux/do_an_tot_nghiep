@@ -1,3 +1,4 @@
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator.js';
 import { Get } from '@nestjs/common';
 import { AdminController } from '../auth/decorators/admin-controller.decorator.js';
 
@@ -17,6 +18,7 @@ const SERVICES = [
 
 @AdminController('infrastructure')
 export class AdminInfrastructureController {
+  @RequirePermissions('infrastructure.read')
   @Get('services')
   async health() {
     return {

@@ -4,6 +4,11 @@ export interface UserProfile {
   email: string;
   avatarUrl?: string;
   role?: string;
+  permissions?: string[];
+  roleCodes?: string[];
+  isSuperAdmin?: boolean;
+  status?: "PENDING_ACTIVATION" | "ACTIVE" | "SUSPENDED" | "DISABLED";
+  authVersion?: number;
 }
 
 export interface LoginDto {

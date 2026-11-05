@@ -1,4 +1,5 @@
 'use client';
+import { firstAllowedPath } from '@/lib/admin-permissions';
 import { SiteLogo } from "@/components/site-logo";
 import { useSiteSettings } from "@/providers/site-settings-provider";
 
@@ -9,7 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { Shield, Lock, User, Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react';
 import { authService } from '@/services';
 import { useAppDispatch } from '@/redux/hooks';
-import { setCredentials } from '@/redux/features/auth/authSlice';
+import { setCredentials, setUser } from '@/redux/features/auth/authSlice';
 import { LoginDto } from '@/types';
 
 function AdminLoginForm() {
@@ -58,7 +59,10 @@ function AdminLoginForm() {
       }
 
       dispatch(setCredentials({ user: profile, accessToken, refreshToken }));
-      router.push(`/${locale}`);
+      const current=await authService.getProfile();
+      dispatch(setUser(current.data));
+      const home=firstAllowedPath(current.data)||'/';
+      router.push(`/${locale}${home==='/'?'':home}`);
     } catch (err: any) {
       if (err?.response?.status === 404) {
         setErrorMessage(

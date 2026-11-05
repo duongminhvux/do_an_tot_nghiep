@@ -35,10 +35,7 @@ export class IdentityIntrospectionController {
       throw new UnauthorizedException('Invalid token payload');
     }
     if (payload.role === 'ADMIN') {
-      const admin = await this.admins.findById(payload._id);
-      if (!admin || admin.isDeleted) throw new UnauthorizedException('Admin inactive');
-      return { _id: String(admin._id), email: admin.email,
-        username: admin.username, avatarUrl: admin.avatarUrl, role: 'ADMIN' };
+      return this.admins.authenticateToken(payload);
     }
     if (payload.role === 'USER') {
       const user = await this.users.findById(payload._id);
