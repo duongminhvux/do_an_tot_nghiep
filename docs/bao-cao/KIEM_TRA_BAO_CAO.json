@@ -1,0 +1,38 @@
+{
+  "compiledOn": "2026-11-07",
+  "source": "BAO_CAO_TOT_NGHIEP_VOCALEARN.md",
+  "output": "BAO_CAO_TOT_NGHIEP_VOCALEARN.docx",
+  "sourceSha256": "66ab907c629f2c856e8cc06a4a32cb2abaf46e226fe30e64a5597e9dda438cc4",
+  "docxSha256": "b01034f162a1d30a546f433836c8c381d6b41d48f9c7c3d3ebdfaad5b8eaa166",
+  "sourceWhitespaceTokensVietnamese": 23102,
+  "sourceCharacters": 116973,
+  "diagramNotes": 23,
+  "screenshotNotes": 9,
+  "namedTableCaptions": 22,
+  "wordTablesIncludingLists": 25,
+  "codeBlocks": 4,
+  "checks": {
+    "docx_zip_valid": true,
+    "docx_reopens": true,
+    "all_diagram_notes_preserved": true,
+    "all_photo_notes_preserved": true,
+    "unique_figure_note_ids": true,
+    "figure_list_matches_notes": true,
+    "table_list_matches_captions": true,
+    "markdown_tables_preserved": true,
+    "toc_field_present": true,
+    "front_and_main_sections": true,
+    "page_number_formats": true,
+    "single_page_number_type_per_section": true,
+    "unicode_preserved": true,
+    "three_chapters": true,
+    "cover_blank": true,
+    "bibliography_entries": true
+  },
+  "allChecksPassed": true,
+  "limitations": [
+    "DOCX structural validation; no Word/LibreOffice layout rendering performed.",
+    "TOC fields and final pagination need updating in Word after adding figures.",
+    "Application tests quoted from repository evidence were not rerun for report writing."
+  ]
+}
