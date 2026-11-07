@@ -9,7 +9,7 @@ import { userService } from '@/services/user.service';
 import { UpdateUserPayload, UserItem } from '@/types/user';
 import { ChevronLeft, Loader2, UserX, Pencil, Ban, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { UserDetailPanel } from '@/components/users/user-detail-panel';
+import { UserDetailPanel,type DetailTab } from '@/components/users/user-detail-panel';
 import { EditUserDialog } from '@/components/users/edit-user-dialog';
 import { ConfirmBanDialog } from '@/components/users/confirm-ban-dialog';
 import { ConfirmDeleteDialog } from '@/components/users/confirm-delete-dialog';
@@ -23,7 +23,8 @@ export default function UserDetailPage() {
 
   const userId = params?.id as string;
   const locale = (params?.locale as string) || 'vi';
-  const initialTab = searchParams.get('tab') as any;
+  const requestedTab=searchParams.get('tab');
+  const initialTab = requestedTab&&['overview','activity','learning','history','other'].includes(requestedTab)?requestedTab as DetailTab:undefined;
 
   // Dialog states
   const [editingUser, setEditingUser] = useState<UserItem | null>(null);

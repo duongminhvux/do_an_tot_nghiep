@@ -1,5 +1,36 @@
 import { checkExam } from "./exam-checks.mjs";
 export const PUBLICATION_STATES = ["DRAFT", "IN_REVIEW", "PUBLISHED"];
+/** Admin-facing states derived from the stored publication model (no schema change). */
+export const VISIBILITY_STATES = ["VISIBLE", "HIDDEN", "INCOMPLETE"];
+const hasError = (issues) =>
+  Array.isArray(issues) && issues.some((issue) => issue?.severity === "error");
+/**
+ * VISIBLE    learners can open it (PUBLISHED and, for exams, not switched off).
+ * HIDDEN     not visible, and the latest saved content passes validation.
+ * INCOMPLETE not visible, and validation reports at least one error (or the
+ *            saved content has not been validated since it changed).
+ * `issues` is a live validation of the saved content; when omitted the stored
+ * validation is used only if it belongs to the current revision.
+ */
+export function publicationVisibility(item, issues) {
+  if (
+    item?.publicationStatus === "PUBLISHED" &&
+    item.isActive !== false &&
+    item.is_active !== false
+  )
+    return "VISIBLE";
+  if (Array.isArray(issues)) return hasError(issues) ? "INCOMPLETE" : "HIDDEN";
+  const stored = item?.publicationValidation;
+  if (
+    stored &&
+    Array.isArray(stored.issues) &&
+    stored.revision === item.publicationRevision
+  )
+    return hasError(stored.issues) ? "INCOMPLETE" : "HIDDEN";
+  // A published-but-switched-off exam was valid when it was published.
+  if (item?.publicationStatus === "PUBLISHED") return "HIDDEN";
+  return item?.publicationStatus === "IN_REVIEW" ? "HIDDEN" : "INCOMPLETE";
+}
 const text = (value) => typeof value === "string" && value.trim().length > 0;
 const url = (value) =>
   typeof value === "string" &&
@@ -93,6 +124,21 @@ export function validatePublication(kind, data, language = "vi") {
         `${hidden.length}/${data.words.length} words in the lesson are hidden, deleted or unpublished.`,
       );
   } else if (kind === "dictation") {
+    // Required lesson fields (moved here from the quality scan so that showing a
+    // lesson and scanning it apply the same rule).
+    const missing = [
+      !text(data.title) && ["tiêu đề", "title"],
+      !text(data.slug) && ["slug", "slug"],
+      !data.topicId && ["chủ đề", "topic"],
+      (data.level == null || data.level === "") && ["trình độ", "level"],
+    ].filter(Boolean);
+    if (missing.length)
+      add(
+        "DICTATION_FIELDS",
+        "lesson",
+        `Thiếu trường bắt buộc: ${missing.map((m) => m[0]).join(", ")}.`,
+        `Missing required fields: ${missing.map((m) => m[1]).join(", ")}.`,
+      );
     if (!["READY", "PUBLISHED"].includes(data.status))
       add(
         "AUDIO_NOT_READY",

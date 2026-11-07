@@ -1,6 +1,8 @@
 'use client';
 import { Pagination } from '@/components/ui/pagination';
 import {PublicationBadge,PublicationFilter} from '@/components/publication/publication-controls';
+import { publicationService } from '@/services/publication.service';
+import { publicationVisibility } from '@repo/shared-types/publication';
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import Link from 'next/link';
@@ -9,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { examService, examGroupService } from '@/services/assessment.service';
-import { ExamGroupItem, ExamItem, ExamStatus } from '@/types';
+import { ExamGroupItem, ExamItem } from '@/types';
 import { CreateExamChoiceDialog } from '@/components/assessment/create-exam-choice-dialog';
 import { EditExamDialog } from '@/components/assessment/edit-exam-dialog';
 import { DeleteExamDialog } from '@/components/assessment/delete-exam-dialog';
@@ -37,6 +39,7 @@ import {
   MoreHorizontal,
   Trash2,
   CheckCircle2,
+  EyeOff,
   XCircle,
   RotateCcw,
   FileText,
@@ -55,6 +58,7 @@ export default function AssessmentPage() {
   const searchParams = useSearchParams();
   const locale = (params?.locale as string) || 'vi';
   const { t } = useTranslation('assessment');
+  const { t: tc } = useTranslation('common');
   const queryClient = useQueryClient();
 
   const initialQ = searchParams?.get('q') || searchParams?.get('search') || '';
@@ -64,7 +68,6 @@ export default function AssessmentPage() {
   // Filter states
   const [publicationFilter,setPublicationFilter]=useState('');
   const [searchTerm, setSearchTerm] = useState(initialQ);
-  const [statusFilter, setStatusFilter] = useState<'ALL' | ExamStatus>('ALL');
   const [groupFilter, setGroupFilter] = useState<string>('ALL');
 
   // Pagination states
@@ -136,13 +139,12 @@ export default function AssessmentPage() {
 
   // Fetch paginated exams with debounced q param
   const { data: response, isLoading, isFetching } = useQuery({
-    queryKey: ['admin-exams', publicationFilter, debouncedQ, statusFilter, groupFilter, currentPage, pageSize, sortBy, sortOrder],
+    queryKey: ['admin-exams', publicationFilter, debouncedQ, groupFilter, currentPage, pageSize, sortBy, sortOrder],
     queryFn: async () => {
       const res = await examService.getAll({
-        publicationStatus: (publicationFilter||undefined) as 'DRAFT'|'IN_REVIEW'|'PUBLISHED'|undefined,
+        publicationStatus: (publicationFilter||undefined) as 'PUBLISHED'|'NOT_PUBLISHED'|undefined,
         q: debouncedQ.trim() || undefined,
         search: debouncedQ.trim() || undefined,
-        isActive: statusFilter === 'ALL' ? undefined : statusFilter === 'ACTIVE',
         groupId: groupFilter === 'ALL' ? undefined : groupFilter,
         page: currentPage,
         limit: pageSize,
@@ -186,11 +188,19 @@ export default function AssessmentPage() {
 
 
   // Mutations
-  const toggleActiveMutation = useMutation({
-    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
-      examService.toggleActive(id, isActive),
-    onSuccess: () => {
+  // Show/Hide uses the validated publication API (one step, audited).
+  const [visibilityError, setVisibilityError] = useState<{ id: string; name: string; count: number } | null>(null);
+  const visibilityMutation = useMutation({
+    mutationFn: ({ exam, visible }: { exam: ExamItem; visible: boolean }) =>
+      publicationService.action('exams', exam._id, visible ? 'publish' : 'unpublish', locale),
+    onMutate: () => setVisibilityError(null),
+    onError: (error: any, { exam }) => {
+      const issues = error?.response?.data?.issues ?? [];
+      setVisibilityError({ id: exam._id, name: exam.name, count: issues.filter((i: any) => i.severity === 'error').length });
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-exams'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-exams-summary-stats'] });
     },
   });
 
@@ -217,7 +227,7 @@ export default function AssessmentPage() {
   const stats = useMemo(() => {
     const list: ExamItem[] = Array.isArray(summaryResponse?.data) ? summaryResponse.data : [];
     const total = summaryResponse?.total ?? list.length;
-    const active = list.filter((e) => e.isActive).length;
+    const active = list.filter((e) => (e.visibility ?? publicationVisibility(e)) === 'VISIBLE').length;
     const inactive = total - active;
     const groupsCount = groups.length;
 
@@ -231,7 +241,7 @@ export default function AssessmentPage() {
 
   const handleResetFilters = () => {
     setSearchTerm('');
-    setStatusFilter('ALL');
+    setPublicationFilter('');
     setGroupFilter('ALL');
     setCurrentPage(1);
   };
@@ -296,10 +306,10 @@ export default function AssessmentPage() {
             <CheckCircle2 className="h-5 w-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs text-slate-500 font-medium">{t('status.active')}</p>
+            <p className="text-xs text-slate-500 font-medium">{tc('publication.filterVisible')}</p>
             <p className="text-2xl font-bold text-slate-900 mt-0.5">{stats.active}</p>
             <p className="text-[11px] text-emerald-600 font-medium mt-0.5">
-              {t('stats.subTotal', { active: stats.active })}
+              {tc('publication.hint.VISIBLE')}
             </p>
           </div>
         </div>
@@ -310,10 +320,10 @@ export default function AssessmentPage() {
             <XCircle className="h-5 w-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs text-slate-500 font-medium">{t('status.inactive')}</p>
+            <p className="text-xs text-slate-500 font-medium">{tc('publication.filterNotVisible')}</p>
             <p className="text-2xl font-bold text-slate-900 mt-0.5">{stats.inactive}</p>
             <p className="text-[11px] text-slate-400 font-medium mt-0.5">
-              Bản nháp / Chưa kích hoạt
+              {tc('publication.visibility.HIDDEN')} / {tc('publication.visibility.INCOMPLETE')}
             </p>
           </div>
         </div>
@@ -333,7 +343,6 @@ export default function AssessmentPage() {
         </div>
       </div>
 
-      <PublicationFilter value={publicationFilter} onChange={value=>{setPublicationFilter(value);setCurrentPage(1);}} />
       {/* Filter Toolbar Row */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         {/* Search input */}
@@ -380,26 +389,12 @@ export default function AssessmentPage() {
             </Select>
           </div>
 
-          {/* Trạng thái (Status) */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-slate-500 font-medium hidden sm:inline">{t('table.status')}</span>
-            <Select
-              value={statusFilter}
-              onValueChange={(val) => {
-                setStatusFilter(val as 'ALL' | ExamStatus);
-                setCurrentPage(1);
-              }}
-            >
-              <SelectTrigger className="h-9 w-32 text-xs rounded border border-slate-200 bg-white">
-                <SelectValue placeholder={t('filters.allStatuses')} />
-              </SelectTrigger>
-              <SelectContent className="text-xs rounded border border-slate-200 bg-white">
-                <SelectItem value="ALL">{t('filters.allStatuses')}</SelectItem>
-                <SelectItem value="ACTIVE">{t('filters.active')}</SelectItem>
-                <SelectItem value="INACTIVE">{t('filters.inactive')}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Trạng thái hiển thị */}
+          <PublicationFilter
+            value={publicationFilter}
+            onChange={(value) => { setPublicationFilter(value); setCurrentPage(1); }}
+            className="h-9 w-40 rounded border-slate-200 text-xs"
+          />
 
           {/* Xóa bộ lọc */}
           <button
@@ -413,6 +408,19 @@ export default function AssessmentPage() {
         </div>
       </div>
 
+      {visibilityError && (
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-900">
+          <span>
+            <strong>{visibilityError.name}</strong>: {visibilityError.count
+              ? tc('publication.showRefusedShort', { count: visibilityError.count })
+              : tc('publication.actionError')}
+          </span>
+          <Link href={`/${locale}/assessment/${visibilityError.id}`} className="font-semibold underline-offset-2 hover:underline">
+            {t('actions.view')}
+          </Link>
+        </div>
+      )}
+
       {/* Main Table Card */}
       <div className="bg-white border border-slate-200/90 rounded overflow-hidden shadow-xs">
         {isLoading ? (
@@ -420,7 +428,7 @@ export default function AssessmentPage() {
             <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
             <span>{t('examGroups.loading')}</span>
           </div>
-        ) : stats.total === 0 && !debouncedQ && statusFilter === 'ALL' && groupFilter === 'ALL' ? (
+        ) : stats.total === 0 && !debouncedQ && !publicationFilter && groupFilter === 'ALL' ? (
           /* Empty DB state */
           <div className="py-16 px-4 text-center">
             <div className="w-12 h-12 rounded bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-3">
@@ -483,7 +491,7 @@ export default function AssessmentPage() {
                   <th className="py-3 px-3.5 text-center w-20" aria-sort={ariaSort('order')}>
                     {sortHeading('order', t('table.order'))}
                   </th>
-                  <th className="py-3 px-3.5 text-center w-36" aria-sort={ariaSort('isActive')}>
+                  <th className="w-44 min-w-44 whitespace-nowrap py-3 px-3.5 text-center" aria-sort={ariaSort('isActive')}>
                     {sortHeading('isActive', t('table.status'))}
                   </th>
                   <th className="py-3 px-3.5 text-center w-20">
@@ -494,7 +502,7 @@ export default function AssessmentPage() {
               <tbody className="divide-y divide-slate-100 text-xs">
                 {exams.map((exam, idx) => {
                   const globalIdx = (currentPage - 1) * pageSize + idx + 1;
-                  const examStatus = exam.isActive ? 'ACTIVE' : 'INACTIVE';
+                  const examVisibility = exam.visibility ?? publicationVisibility(exam);
 
                   return (
                     <tr
@@ -518,7 +526,7 @@ export default function AssessmentPage() {
                               className="font-bold text-slate-900 text-xs sm:text-sm hover:text-blue-600 transition-colors truncate block"
                             >
                               {exam.name}
-                            </Link><PublicationBadge item={exam} />
+                            </Link>
                             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                               {(exam.group?.name || (exam as any).groupId?.name) && (
                                 <Link
@@ -559,19 +567,8 @@ export default function AssessmentPage() {
                       </td>
 
                       {/* Trạng thái */}
-                      <td className="py-3 px-3.5 text-center">
-                        {examStatus === 'ACTIVE' && (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                            <span>{t('status.active')}</span>
-                          </span>
-                        )}
-                        {examStatus === 'INACTIVE' && (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
-                            <span className="h-1.5 w-1.5 rounded-full bg-slate-400"></span>
-                            <span>{t('status.inactive')}</span>
-                          </span>
-                        )}
+                      <td className="min-w-44 whitespace-nowrap py-3 px-3.5 text-center">
+                        <PublicationBadge item={exam} />
                       </td>
 
                       {/* Thao tác (ALL ACTIONS IN DROPDOWN) */}
@@ -619,25 +616,21 @@ export default function AssessmentPage() {
 
                             <DropdownMenuSeparator />
 
-                            {/* Đổi trạng thái */}
+                            {/* Ẩn / Hiện (validated by the server) */}
                             <DropdownMenuItem
-                              onClick={() =>
-                                toggleActiveMutation.mutate({
-                                  id: exam._id,
-                                  isActive: !exam.isActive,
-                                })
-                              }
+                              onClick={() => visibilityMutation.mutate({ exam, visible: examVisibility !== 'VISIBLE' })}
+                              disabled={visibilityMutation.isPending}
                               className="cursor-pointer text-xs flex items-center gap-2 py-2"
                             >
-                              {exam.isActive ? (
+                              {examVisibility === 'VISIBLE' ? (
                                 <>
-                                  <XCircle className="h-3.5 w-3.5 text-amber-500" />
-                                  <span>{t('actions.deactivate')}</span>
+                                  <EyeOff className="h-3.5 w-3.5 text-amber-500" />
+                                  <span>{tc('publication.hide')}</span>
                                 </>
                               ) : (
                                 <>
-                                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                                  <span>{t('actions.activate')}</span>
+                                  <Eye className="h-3.5 w-3.5 text-emerald-600" />
+                                  <span>{tc('publication.show')}</span>
                                 </>
                               )}
                             </DropdownMenuItem>

@@ -27,6 +27,10 @@ interface ExamBannerProps {
   onImportClick: () => void;
   onAddPassageClick?: () => void;
   onViewStructureClick?: () => void;
+  /** Visibility pill shown next to the title (replaces the old active/inactive pill). */
+  status?: React.ReactNode;
+  /** Visibility actions (preview, show/hide, history). */
+  visibilityActions?: React.ReactNode;
 }
 
 export function ExamBanner({
@@ -37,6 +41,8 @@ export function ExamBanner({
   passagesCount,
   onEditClick,
   onViewStructureClick,
+  status,
+  visibilityActions,
 }: ExamBannerProps) {
   const { t } = useTranslation('assessment');
 
@@ -67,21 +73,8 @@ export function ExamBanner({
               Full Test
             </span>
 
-            <span
-              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium border ${
-                exam.isActive
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  : 'bg-slate-100 text-slate-600 border-slate-200'
-              }`}
-            >
-              <span
-                className={`h-1.5 w-1.5 rounded-full ${
-                  exam.isActive ? 'bg-emerald-500' : 'bg-slate-400'
-                }`}
-              />
-              <span>{exam.isActive ? t('status.active') : t('status.inactive')}</span>
-            </span>
           </div>
+          {status && <div className="pt-0.5">{status}</div>}
 
           {/* Description & Subline */}
           {exam.description && (
@@ -128,6 +121,8 @@ export function ExamBanner({
       </div>
 
       {/* Right: Actions */}
+      <div className="flex shrink-0 flex-col items-stretch gap-2 sm:items-end">
+      {visibilityActions}
       <div className="flex items-center gap-2 shrink-0 flex-wrap">
         {onViewStructureClick && (
           <Button
@@ -168,6 +163,7 @@ export function ExamBanner({
           <Plus className="h-3.5 w-3.5" />
           <span>{t('detailPage.addQuestion', 'Thêm câu hỏi')}</span>
         </Link>
+      </div>
       </div>
     </div>
   );

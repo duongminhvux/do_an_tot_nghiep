@@ -1,5 +1,6 @@
 'use client';
 import { UserLearningProgress } from './user-learning-progress';
+import {UserExerciseHistory} from './user-exercise-history';
 
 import { useListPagination } from '@/hooks/use-list-pagination';
 import { ListPagination } from '@/components/ui/list-pagination';
@@ -43,7 +44,7 @@ interface UserDetailPanelProps {
   onSaveNotes?: (notes: string) => Promise<void>;
 }
 
-type DetailTab = 'overview' | 'activity' | 'learning' | 'other';
+export type DetailTab = 'overview' | 'activity' | 'learning' | 'history' | 'other';
 
 export function UserDetailPanel({
   user,
@@ -53,7 +54,7 @@ export function UserDetailPanel({
   onDelete,
   onSaveNotes,
 }: UserDetailPanelProps) {
-  const { t } = useTranslation('users');
+  const { t,i18n } = useTranslation('users');
   const [activeTab, setActiveTab] = useState<DetailTab>(initialTab || 'overview');
   const [copied, setCopied] = useState(false);
   const [note, setNote] = useState(user.notes || '');
@@ -284,6 +285,10 @@ export function UserDetailPanel({
           }`}
         >
           {t('detail.tabs.learning_progress', 'Tiến độ học tập')}
+        </button>
+
+        <button type="button" onClick={()=>setActiveTab('history')} aria-pressed={activeTab==='history'} className={`min-h-11 pb-3 text-sm font-semibold cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${activeTab==='history'?'text-blue-600 border-b-2 border-blue-600':'text-slate-500 hover:text-slate-800'}`}>
+          {i18n.language.startsWith('en')?'Exercise history':'Lịch sử làm bài'}
         </button>
 
         <button
@@ -600,6 +605,7 @@ export function UserDetailPanel({
 
       {/* 6. Tab 3: LEARNING PROGRESS (Tiến độ học tập chi tiết) */}
       {activeTab === 'learning' && <UserLearningProgress user={user} />}
+      {activeTab === 'history' && <UserExerciseHistory userId={user._id||user.id}/>}
 
       {/* 7. Tab 4: OTHER INFO & SETTINGS (Thông tin khác & Quản trị) */}
       {activeTab === 'other' && (

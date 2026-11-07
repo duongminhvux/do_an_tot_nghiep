@@ -8,7 +8,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Clock, Loader2, Save } from "lucide-react";
 import { examService } from "@/services/assessment.service";
 import type { ExamItem } from "@/types";
-import { PublicationBar } from "@/components/publication/publication-controls";
+import { VisibilityBar } from "@/components/publication/publication-controls";
 
 function TimingForm({ exam }: { exam: ExamItem }) {
   const { t } = useTranslation("assessment");
@@ -184,7 +184,7 @@ export default function ExamSettingsPage() {
           {exam?.name || t("timing.subtitle")}
         </p>
       </div>
-      {exam && <PublicationBar kind="exams" id={id} version={query.data} />}
+      {exam && <VisibilityBar kind="exams" id={id} version={query.data} />}
       {query.isPending ? (
         <p
           role="status"

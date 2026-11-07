@@ -23,6 +23,11 @@ export enum ExamSection {
   FULL_TEST = 'FULL_TEST' }
 
 export class CreateExamDto {
+  /** Show to learners right after saving, if the saved content is complete. */
+  @IsOptional()
+  @IsBoolean()
+  publish?: boolean;
+
   @IsNotEmpty({ message: i18nValidationMessage('exam.EXAM_NAME_REQUIRED') })
   @IsString({ message: i18nValidationMessage('exam.EXAM_NAME_MUST_BE_STRING') })
   name!: string;

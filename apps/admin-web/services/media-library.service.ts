@@ -1,5 +1,6 @@
 import apiClient from "@/lib/axios";
 import type {
+  MediaCategory,
   MediaItemKind,
   MediaLibraryDetail,
   MediaLibraryList,
@@ -7,7 +8,7 @@ import type {
 
 export const mediaLibraryService = {
   async list(
-    category: "dictation" | "vocab" | "toeic" | "games",
+    category: MediaCategory,
     params: {
       kind?: MediaItemKind;
       search?: string;
@@ -23,7 +24,7 @@ export const mediaLibraryService = {
     ).data.data;
   },
   async detail(
-    category: "dictation" | "vocab" | "toeic" | "games",
+    category: MediaCategory,
     id: string,
     kind?: MediaItemKind,
   ) {

@@ -3,6 +3,7 @@ import {
 Body,
 Delete,
 Get,
+Header,
 Param,
 Patch,
 Post,
@@ -27,6 +28,8 @@ import { PreviewSplitDto } from './dto/preview-split.dto.js';
 import { QueryDictationDto } from './dto/query-dictation.dto.js';
 import { UpdateDictationSegmentsDto } from './dto/update-dictation-segments.dto.js';
 import { UpdateDictationDto } from './dto/update-dictation.dto.js';
+import { DictationHistoryService } from './dictation-history.service.js';
+import { DictationHistoryQueryDto } from './dto/dictation-history.dto.js';
 
 @AdminController('dictation')
 export class AdminDictationController {
@@ -34,6 +37,7 @@ export class AdminDictationController {
     private readonly dictationService: DictationService,
     private readonly ttsService: TtsService,
     private readonly asrService: AsrService,
+    private readonly history:DictationHistoryService,
   ) {}
 
   @RequirePermissions('audio.read')
@@ -104,8 +108,8 @@ export class AdminDictationController {
 
   @RequirePermissions('dictation.create')
   @Post()
-  create(@Body() dto: CreateDictationDto) {
-    return this.dictationService.create(dto);
+  create(@Body() dto: CreateDictationDto, @Req() req: { user: { _id: string } }) {
+    return this.dictationService.createWithVisibility(dto, String(req.user._id));
   }
 
   @RequirePermissions('dictation.read')
@@ -113,6 +117,21 @@ export class AdminDictationController {
   list(@Query() query: QueryDictationDto) {
     return this.dictationService.listAdmin(query);
   }
+
+  @RequirePermissions('dictation.read')
+  @Get(':id/learners')
+  @Header('Cache-Control','private, no-store')
+  learners(@Param('id') id:string,@Query() query:DictationHistoryQueryDto){return this.history.learners(id,query);}
+
+  @RequirePermissions('dictation.read')
+  @Get(':id/sessions')
+  @Header('Cache-Control','private, no-store')
+  sessions(@Param('id') id:string,@Query() query:DictationHistoryQueryDto){return this.history.sessions(id,query);}
+
+  @RequirePermissions('dictation.read')
+  @Get(':id/sessions/:sessionId/events')
+  @Header('Cache-Control','private, no-store')
+  events(@Param('id') id:string,@Param('sessionId') sessionId:string,@Query() query:DictationHistoryQueryDto){return this.history.events(id,sessionId,query);}
 
   @RequirePermissions('dictation.read')
   @Get(':id')

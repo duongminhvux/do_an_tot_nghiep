@@ -277,9 +277,16 @@ constructor(
       return { updatedCount: 0 };
     }
 
-    const uuids = examIds
-      .filter((id) => isUuid(id))
-      .map((id) => String(id));
+    if (!Array.isArray(examIds) || examIds.some(id => typeof id !== 'string' || !isUuid(id))) {
+      throw new BadRequestException('examIds must contain valid exam IDs');
+    }
+    const uuids = [...new Set(examIds)];
+    // Lock before checking publication so a concurrent unpublish cannot slip through.
+    const requested = await rows(this.nativeDb, sql`SELECT id,publication_status FROM exams WHERE id=ANY(${uuids}::uuid[]) AND is_deleted IS NOT TRUE ORDER BY id FOR UPDATE`);
+    if (requested.length !== uuids.length) throw new NotFoundException('Exam not found');
+    if (requested.some(exam => exam.publication_status !== 'PUBLISHED')) {
+      throw new BadRequestException('Chỉ có thể thêm đề đã xuất bản vào nhóm. Vui lòng xuất bản đề nháp trước.');
+    }
 
     const group = String(groupId);
     // Newly added exams go to the end of the group, in the order given.

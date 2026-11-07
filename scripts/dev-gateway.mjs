@@ -4,7 +4,7 @@ import {connect as connectTcp} from 'node:net';
 const routes=[
 [/^\/api\/(?:admin\/exams\/[^/]+\/pdf-ai)(?:\/|$)/,'ai-import'],
 [/^\/api\/(?:admin\/pdf-ai|pdf-ai)(?:\/|$)/,'ai-import'],
-[/^\/api\/(?:auth|admin\/auth|admin\/activation|users|admin\/users|admin\/admins|admin\/roles|admin\/permissions)(?:\/|$)/,'identity'],
+[/^\/api\/(?:auth|admin\/auth|admin\/activation|users|admin\/users|admin\/admins|admin\/roles|admin\/permissions|admin\/media-library\/users)(?:\/|$)/,'identity'],
 [/^\/api\/(?:admin\/media-library\/(?:dictation|vocab)|admin\/content-quality|words|admin\/words|collections|admin\/collections|lessons|admin\/lessons|vocabulary-groups|admin\/vocabulary-groups|dictation|admin\/dictation|upload)(?:\/|$)/,'content'],
 [/^\/api\/(?:admin\/media-library\/toeic|exams|admin\/exams|exam-groups|admin\/exam-groups|admin\/questions|attempts|admin\/attempts)(?:\/|$)/,'assessment'],
 [/^\/api\/(?:arena|admin\/arena)(?:\/|$)/,'arena'],

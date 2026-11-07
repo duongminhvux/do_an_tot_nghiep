@@ -22,7 +22,7 @@ import { MediaLibraryService } from './media-library.service.js';
 
 export class MediaLibraryQuery {
   @IsOptional()
-  @IsIn(['lesson', 'collection', 'word', 'exam', 'game'])
+  @IsIn(['lesson', 'collection', 'word', 'exam', 'game', 'user'])
   kind?: string;
   @IsOptional() @IsString() @MaxLength(150) search?: string;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100000) page = 1;
@@ -104,6 +104,30 @@ export class GamesMediaController {
     return this.media.detail('games', id, query.kind);
   }
 }
+@AdminController('media-library/users')
+export class UserMediaController {
+  constructor(private readonly media: MediaLibraryService) {}
+  @RequirePermissions('media_library.read', 'users.read')
+  @Get('items')
+  @Header('Cache-Control', 'private, no-store')
+  list(@Query() query: MediaLibraryQuery) {
+    return this.media.list('users', query);
+  }
+  @RequirePermissions('media_library.read', 'users.read')
+  @Get('items/:id')
+  @Header('Cache-Control', 'private, no-store')
+  detail(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Query() query: MediaLibraryQuery,
+  ) {
+    return this.media.detail('users', id, query.kind);
+  }
+}
+@Module({
+  controllers: [UserMediaController],
+  providers: [MediaLibraryService],
+})
+export class IdentityMediaLibraryModule {}
 @Module({
   controllers: [DictationMediaController, VocabMediaController],
   providers: [MediaLibraryService],

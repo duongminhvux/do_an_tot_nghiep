@@ -54,6 +54,40 @@ export const qualityCategory = (code: string): QualityCategory =>
       ? 'MEDIA'
       : 'DATA';
 
+/**
+ * Finer grouping for the admin report (derived from the code, no schema change).
+ * REQUIRED         data that must exist before content can be shown
+ * MEDIA_BROKEN     media confirmed missing (404/410) or required media absent
+ * MEDIA_UNVERIFIED our own media that could not be verified this time
+ * DUPLICATE        unusual duplicates
+ * RELATION         content linked to hidden/removed/empty parents or children
+ * OPTIONAL         recommended, never blocking
+ */
+export type QualityGroup =
+  | 'REQUIRED'
+  | 'MEDIA_BROKEN'
+  | 'MEDIA_UNVERIFIED'
+  | 'DUPLICATE'
+  | 'RELATION'
+  | 'OPTIONAL';
+export const QUALITY_GROUP_CODES: Record<QualityGroup, string[]> = {
+  MEDIA_BROKEN: ['MEDIA_MISSING', 'IMAGE_REQUIRED', 'AUDIO_REQUIRED', 'AUDIO_STALE', 'AUDIO_NOT_READY'],
+  MEDIA_UNVERIFIED: ['MEDIA_UNVERIFIED'],
+  DUPLICATE: ['DUPLICATE', 'EXACT_WORD'],
+  RELATION: ['WORD_UNPUBLISHED', 'PROGRAM_EMPTY', 'PROGRAM_UNPUBLISHED', 'LESSON_FIELDS'],
+  OPTIONAL: ['WORD_RECOMMENDED', 'EXAM_OVERFLOW'],
+  REQUIRED: [],
+};
+export const QUALITY_GROUPS = Object.keys(QUALITY_GROUP_CODES) as QualityGroup[];
+const GROUP_BY_CODE = new Map(
+  Object.entries(QUALITY_GROUP_CODES).flatMap(([group, codes]) =>
+    codes.map((code) => [code, group as QualityGroup]),
+  ),
+);
+/** Everything not listed elsewhere is a required-data rule. */
+export const qualityGroup = (code: string): QualityGroup =>
+  GROUP_BY_CODE.get(code) ?? 'REQUIRED';
+
 const text = (value: unknown) =>
   typeof value === 'string' && value.trim().length > 0;
 const list = (value: unknown): any[] => (Array.isArray(value) ? value : []);
@@ -120,22 +154,6 @@ export function qualityItem(
           severity: 'warning',
           messageVi: `Nên bổ sung: ${missing.map((m) => m[0]).join(', ')}.`,
           messageEn: `Recommended: add ${missing.map((m) => m[1]).join(', ')}.`,
-        });
-    } else if (kind === 'dictation') {
-      const missing: [string, string][] = [];
-      if (!text(doc.title)) missing.push(['tiêu đề', 'title']);
-      if (!text(doc.slug)) missing.push(['slug', 'slug']);
-      if (!doc.topicId) missing.push(['chủ đề', 'topic']);
-      if (doc.level == null || doc.level === '')
-        missing.push(['trình độ', 'level']);
-      if (missing.length)
-        issues.push({
-          category: 'DATA',
-          code: 'DICTATION_FIELDS',
-          path: 'lesson',
-          severity: 'error',
-          messageVi: `Thiếu trường bắt buộc: ${missing.map((m) => m[0]).join(', ')}.`,
-          messageEn: `Missing required fields: ${missing.map((m) => m[1]).join(', ')}.`,
         });
     } else if (kind === 'exams') {
       const vi = examCompleteness(doc, 'vi');

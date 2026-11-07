@@ -3,10 +3,12 @@ import { DictationService } from './dictation.service.js';
 import { DictationAttemptDto } from './dto/dictation-attempt.dto.js';
 import { DictationSegmentActionDto } from './dto/dictation-progress-action.dto.js';
 import { QueryDictationDto } from './dto/query-dictation.dto.js';
+import { DictationHistoryService } from './dictation-history.service.js';
+import { DictationEventDto } from './dto/dictation-history.dto.js';
 
 @Controller('dictation')
 export class DictationController {
-  constructor(private readonly dictationService: DictationService) {}
+  constructor(private readonly dictationService: DictationService,private readonly history:DictationHistoryService) {}
 
   @Get('topics')
   topics(@Req() req: any) {
@@ -44,12 +46,12 @@ export class DictationController {
     @Param('id') id: string,
     @Body() dto: DictationAttemptDto,
   ) {
-    return this.dictationService.recordAttempt(
+    return this.history.track(req.user._id,id,{type:'ATTEMPT',...dto},()=>this.dictationService.recordAttempt(
       req.user._id,
       id,
       dto.segmentIndex,
       dto.isCorrect,
-    );
+    ));
   }
 
   @Post(':id/progress/reveal-segment')
@@ -58,12 +60,12 @@ export class DictationController {
     @Param('id') id: string,
     @Body() dto: DictationSegmentActionDto,
   ) {
-    return this.dictationService.revealSegment(req.user._id, id, dto.segmentIndex);
+    return this.history.track(req.user._id,id,{type:'REVEAL_SEGMENT',...dto},()=>this.dictationService.revealSegment(req.user._id, id, dto.segmentIndex));
   }
 
   @Post(':id/progress/reveal-transcript')
-  revealTranscript(@Req() req: any, @Param('id') id: string) {
-    return this.dictationService.revealTranscript(req.user._id, id);
+  revealTranscript(@Req() req: any, @Param('id') id: string,@Body() dto:DictationEventDto) {
+    return this.history.track(req.user._id,id,{type:'REVEAL_TRANSCRIPT',...dto},()=>this.dictationService.revealTranscript(req.user._id, id));
   }
 
   @Post(':id/progress/replay')
@@ -72,11 +74,11 @@ export class DictationController {
     @Param('id') id: string,
     @Body() dto: DictationSegmentActionDto,
   ) {
-    return this.dictationService.recordReplay(req.user._id, id, dto.segmentIndex);
+    return this.history.track(req.user._id,id,{type:'REPLAY',...dto},()=>this.dictationService.recordReplay(req.user._id, id, dto.segmentIndex));
   }
 
   @Post(':id/progress/reset')
-  resetProgress(@Req() req: any, @Param('id') id: string) {
-    return this.dictationService.resetProgress(req.user._id, id);
+  resetProgress(@Req() req: any, @Param('id') id: string,@Body() dto:DictationEventDto) {
+    return this.history.track(req.user._id,id,{type:'RESET',...dto},()=>this.dictationService.resetProgress(req.user._id, id));
   }
 }

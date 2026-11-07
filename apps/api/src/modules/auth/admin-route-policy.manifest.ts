@@ -91,6 +91,7 @@ export const ADMIN_ROUTE_POLICIES = [
   {"method":"POST","path":"/api/auth/change-password","policy":"EXEMPT:E5 [C5]","file":"apps/api/src/modules/auth/auth.controller.ts","controller":"AuthController","handler":"changePassword","sse":false},
   {"method":"GET","path":"/api/admin/content-quality","policy":"content_quality.read","file":"apps/api/src/modules/content-quality/content-quality.module.ts","controller":"ContentQualityController","handler":"list","sse":false},
   {"method":"POST","path":"/api/admin/content-quality/scans","policy":"content_quality.scan","file":"apps/api/src/modules/content-quality/content-quality.module.ts","controller":"ContentQualityController","handler":"scan","sse":false},
+  {"method":"POST","path":"/api/admin/content-quality/items/:kind/:id/recheck","policy":"content_quality.scan","file":"apps/api/src/modules/content-quality/content-quality.module.ts","controller":"ContentQualityController","handler":"recheck","sse":false},
   {"method":"GET","path":"/api/admin/dashboard/overview","policy":"dashboard.read","file":"apps/api/src/modules/dashboard/dashboard.controller.ts","controller":"DashboardController","handler":"getOverview","sse":false},
   {"method":"GET","path":"/api/admin/dictation/voices","policy":"audio.read","file":"apps/api/src/modules/dictation/admin-dictation.controller.ts","controller":"AdminDictationController","handler":"voices","sse":false},
   {"method":"GET","path":"/api/admin/dictation/processors/health","policy":"audio.read & asr.read","file":"apps/api/src/modules/dictation/admin-dictation.controller.ts","controller":"AdminDictationController","handler":"processorHealth","sse":false},
@@ -383,6 +384,21 @@ export const ACTIVATION_ROUTE_POLICIES = [
 
 /** Additional reviewed community management and administrator self-service routes. */
 export const EXTENDED_ROUTE_POLICIES = [
+  {"method":"GET","path":"/api/admin/media-library/users/items","policy":"media_library.read & users.read","file":"apps/api/src/modules/media-library/media-library.module.ts","controller":"UserMediaController","handler":"list","sse":false},
+  {"method":"GET","path":"/api/admin/media-library/users/items/:id","policy":"media_library.read & users.read","file":"apps/api/src/modules/media-library/media-library.module.ts","controller":"UserMediaController","handler":"detail","sse":false},
+  {"method": "GET", "path": "/api/admin/users/:id/exercises/toeic", "policy": "users.read & toeic.attempts.read", "file": "apps/api/src/modules/users/admin-user-exercises.controller.ts", "controller": "AdminUserExercisesController", "handler": "toeic", "sse": false},
+  {"method": "GET", "path": "/api/admin/users/:id/exercises/toeic/:recordId", "policy": "users.read & toeic.attempts.read", "file": "apps/api/src/modules/users/admin-user-exercises.controller.ts", "controller": "AdminUserExercisesController", "handler": "toeicDetail", "sse": false},
+  {"method": "GET", "path": "/api/admin/users/:id/exercises/vocabulary", "policy": "users.read & vocabulary.read", "file": "apps/api/src/modules/users/admin-user-exercises.controller.ts", "controller": "AdminUserExercisesController", "handler": "vocabulary", "sse": false},
+  {"method": "GET", "path": "/api/admin/users/:id/exercises/vocabulary/:recordId", "policy": "users.read & vocabulary.read", "file": "apps/api/src/modules/users/admin-user-exercises.controller.ts", "controller": "AdminUserExercisesController", "handler": "vocabularyDetail", "sse": false},
+  {"method": "GET", "path": "/api/admin/users/:id/exercises/dictation", "policy": "users.read & dictation.read", "file": "apps/api/src/modules/users/admin-user-exercises.controller.ts", "controller": "AdminUserExercisesController", "handler": "dictation", "sse": false},
+  {"method": "GET", "path": "/api/admin/users/:id/exercises/dictation/:recordId", "policy": "users.read & dictation.read", "file": "apps/api/src/modules/users/admin-user-exercises.controller.ts", "controller": "AdminUserExercisesController", "handler": "dictationDetail", "sse": false},
+  {"method": "GET", "path": "/api/admin/users/:id/exercises/arena", "policy": "users.read & arena.read", "file": "apps/api/src/modules/users/admin-user-exercises.controller.ts", "controller": "AdminUserExercisesController", "handler": "arena", "sse": false},
+  {"method": "GET", "path": "/api/admin/users/:id/exercises/arena/:recordId", "policy": "users.read & arena.read", "file": "apps/api/src/modules/users/admin-user-exercises.controller.ts", "controller": "AdminUserExercisesController", "handler": "arenaDetail", "sse": false},
+  {"method": "GET", "path": "/api/admin/users/:id/exercises/minigame", "policy": "users.read & games.results.read", "file": "apps/api/src/modules/users/admin-user-exercises.controller.ts", "controller": "AdminUserExercisesController", "handler": "minigame", "sse": false},
+  {"method": "GET", "path": "/api/admin/users/:id/exercises/minigame/:recordId", "policy": "users.read & games.results.read", "file": "apps/api/src/modules/users/admin-user-exercises.controller.ts", "controller": "AdminUserExercisesController", "handler": "minigameDetail", "sse": false},
+  {method:'GET',path:'/api/admin/dictation/:id/learners',policy:'dictation.read',file:'apps/api/src/modules/dictation/admin-dictation.controller.ts',controller:'AdminDictationController',handler:'learners',sse:false},
+  {method:'GET',path:'/api/admin/dictation/:id/sessions',policy:'dictation.read',file:'apps/api/src/modules/dictation/admin-dictation.controller.ts',controller:'AdminDictationController',handler:'sessions',sse:false},
+  {method:'GET',path:'/api/admin/dictation/:id/sessions/:sessionId/events',policy:'dictation.read',file:'apps/api/src/modules/dictation/admin-dictation.controller.ts',controller:'AdminDictationController',handler:'events',sse:false},
   {
     "method": "POST",
     "path": "/api/admin/auth/change-password",

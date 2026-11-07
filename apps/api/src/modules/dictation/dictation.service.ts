@@ -443,7 +443,19 @@ private readonly configService: ConfigService,
     return normalized.length ? normalized : ['af_heart'];
   }
 
-  async create(dto: CreateDictationDto) {
+  /** Create, then show to learners in the same request when asked and complete. */
+  async createWithVisibility(input: CreateDictationDto, actorId: string) {
+    const { publish, ...dto } = input;
+    const lesson = await this.create(dto as CreateDictationDto);
+    if (!this.publication || publish === undefined) return lesson;
+    const publication = await this.publication.applyRequestedVisibility(
+      'dictation', String(lesson._id), actorId, publish,
+    );
+    return { ...(await this.getAdmin(String(lesson._id))), publication };
+  }
+
+  async create(input: CreateDictationDto) {
+    const { publish: _publish, ...dto } = input;
     const audioSource = dto.audioSource ?? DictationAudioSource.TTS;
     const sourceText = (dto.sourceText || '').trim();
     const sentences = this.splitIntoSentences(sourceText);
@@ -479,11 +491,15 @@ private readonly configService: ConfigService,
       AND (${query.level ?? null}::text IS NULL OR level=to_jsonb(${query.level ?? null}::text))
       AND (${query.topic ?? null}::text IS NULL OR topic=${query.topic ?? null})
       AND (${query.status ?? null}::text IS NULL OR status=${query.status ?? null})
-      AND (${query.publicationStatus ?? null}::text IS NULL OR publication_status=${query.publicationStatus ?? null})`;
+      AND (${query.publicationStatus ?? null}::text IS NULL OR publication_status=${query.publicationStatus ?? null}
+        OR (${query.publicationStatus ?? null}='NOT_PUBLISHED' AND publication_status<>'PUBLISHED'))`;
   }
   async listAdmin(query: QueryDictationDto) {
     await this.ensureLegacyHierarchy();
-    return this.lessonModel.select(this.lessonFilter(query),sql`ORDER BY created_at DESC`);
+    const lessons = await this.lessonModel.select(this.lessonFilter(query),sql`ORDER BY created_at DESC`);
+    if (!this.publication) return lessons;
+    const states = await this.publication.visibilityOf('dictation', lessons);
+    return lessons.map((lesson) => ({ ...lesson, visibility: states.get(String(lesson._id)) }));
   }
 
   async getAdmin(id: string) {
@@ -492,14 +508,18 @@ private readonly configService: ConfigService,
     const lesson = await this.lessonModel.one(sql`("id" = ${id}) AND ("is_deleted" IS DISTINCT FROM ${true})`);
     if (!lesson) throw new NotFoundException('Dictation lesson not found.');
     const segments = await this.segmentModel.select(sql`("lesson_id" = ${lesson._id})`, sql`ORDER BY "order" ASC NULLS FIRST`);
-    return { ...lesson, segments };
+    const visibility = this.publication
+      ? (await this.publication.visibilityOf('dictation', [lesson])).get(String(lesson._id))
+      : undefined;
+    return { ...lesson, segments, visibility };
   }
 
   async update(id: string, dto: UpdateDictationDto) {
     const current = await this.lessonModel.one(sql`("id" = ${id}) AND ("is_deleted" IS DISTINCT FROM ${true})`);
     if (!current) throw new NotFoundException('Dictation lesson not found.');
 
-    const update: Record<string, unknown> = { ...dto };
+    const { publish: _publish, ...fields } = dto;
+    const update: Record<string, unknown> = { ...fields };
     if (dto.title) update.title = dto.title.trim();
     if (dto.description !== undefined) update.description = dto.description.trim();
     if (dto.sourceText !== undefined) update.sourceText = dto.sourceText.trim();

@@ -1,3 +1,4 @@
+import { advanceReview } from './review-schedule.js';
 import type { ReviewLibraryDto, PracticeWordsDto } from './dto/review-library.dto.js';
 import { BadRequestException,Inject,Injectable,NotFoundException } from '@nestjs/common';
 import { DomainOutboxService } from '../../../common/events/domain-outbox.service.js';
@@ -68,50 +69,8 @@ export class ReviewsService {
         VALUES(${userId}::uuid,${wordId}::uuid,'LEARNING',0,0,0,0) ON CONFLICT(user_id,word_id) DO NOTHING`);
       const raw=await first(db,sql`SELECT * FROM public.userwordreviews WHERE user_id=${userId}::uuid AND word_id=${wordId}::uuid FOR UPDATE`);
       const review=rowData<any>(raw!);
-    review.reviewCount += 1;
-    review.lastReviewedAt = now;
-
     const isAgain = rating === 'AGAIN';
-    const isHard = rating === 'HARD';
-    const isEasy = rating === 'EASY';
-
-    if (isAgain) {
-      review.incorrectCount += 1;
-      review.intervalDays = 0;
-      review.status = 'LEARNING';
-      // Ôn lại sau 10 phút
-      review.nextReviewAt = new Date(now.getTime() + 10 * 60 * 1000);
-    } else if (isHard) {
-      review.intervalDays = Math.max(1, Math.round((review.intervalDays || 1) * 1.2));
-      review.nextReviewAt = new Date(
-        now.getTime() + review.intervalDays * 24 * 60 * 60 * 1000,
-      );
-    } else if (isEasy) {
-      review.correctCount += 1;
-      review.intervalDays =
-        review.intervalDays === 0 ? 3 : Math.round(review.intervalDays * 3.5);
-      if (review.reviewCount >= 2) {
-        review.status = 'MASTERED';
-      }
-      review.nextReviewAt = new Date(
-        now.getTime() + review.intervalDays * 24 * 60 * 60 * 1000,
-      );
-    } else {
-      // 'GOOD'
-      review.correctCount += 1;
-      review.intervalDays =
-        review.intervalDays === 0
-          ? 1
-          : review.intervalDays === 1
-            ? 3
-            : Math.round(review.intervalDays * 2.5);
-      if (review.reviewCount >= 4 && review.correctCount >= 3) {
-        review.status = 'MASTERED';
-      }
-      review.nextReviewAt = new Date(
-        now.getTime() + review.intervalDays * 24 * 60 * 60 * 1000,
-      );
-    }
+    advanceReview(review,rating,now);
 
 
       const saved=await new SqlRecords(db,'userwordreviews').patch(sql`id=${review._id}::uuid`,{

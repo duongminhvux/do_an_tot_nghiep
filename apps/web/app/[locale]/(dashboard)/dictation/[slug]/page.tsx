@@ -111,8 +111,8 @@ export default function DictationPracticePage() {
   };
 
   const attemptMutation = useMutation({
-    mutationFn: ({ index, correct }: { index: number; correct: boolean }) =>
-      dictationService.recordAttempt(lesson._id, index, correct),
+    mutationFn: ({ index, correct,submittedText }: { index: number; correct: boolean;submittedText:string }) =>
+      dictationService.recordAttempt(lesson._id, index, correct,submittedText),
   });
   const revealMutation = useMutation({
     mutationFn: (index: number) => dictationService.revealSegment(lesson._id, index),
@@ -226,7 +226,7 @@ export default function DictationPracticePage() {
     const correct = normalizeAnswer(answer) === normalizeAnswer(current.text);
     setResult(correct ? 'correct' : 'incorrect');
     try {
-      const response = await attemptMutation.mutateAsync({ index: currentIndex, correct });
+      const response = await attemptMutation.mutateAsync({ index: currentIndex, correct,submittedText:answer });
       const next = unwrap<DictationProgress>(response);
       updateProgressCaches(next);
       const state = next.segmentProgress?.find((item) => item.segmentIndex === currentIndex);

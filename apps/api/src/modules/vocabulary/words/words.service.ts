@@ -138,7 +138,11 @@ export class WordsService {
     if (typeof query.isActive === 'boolean')
       conditions.push(sql`is_active = ${query.isActive}`);
     if (query.publicationStatus)
-      conditions.push(sql`publication_status = ${query.publicationStatus}`);
+      conditions.push(
+        query.publicationStatus === 'NOT_PUBLISHED'
+          ? sql`publication_status <> 'PUBLISHED'`
+          : sql`publication_status = ${query.publicationStatus}`,
+      );
     if (query.search)
       conditions.push(sql`word ILIKE '%' || ${query.search.trim()} || '%'`);
     if (query.level) conditions.push(sql`level = ${query.level}`);

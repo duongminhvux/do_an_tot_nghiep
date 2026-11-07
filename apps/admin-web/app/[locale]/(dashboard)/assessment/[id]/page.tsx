@@ -1,5 +1,6 @@
 'use client';
-import { PublicationBar } from '@/components/publication/publication-controls';
+import { VisibilityActions, VisibilityIssues, VisibilityStatus } from '@/components/publication/publication-controls';
+import type { PublicationIssue } from '@repo/shared-types/publication';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
@@ -56,7 +57,9 @@ export default function ExamDetailPage() {
   const { t } = useTranslation('assessment');
   const queryClient = useQueryClient();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'questions' | 'checks' | 'attempts' | 'leaderboard' | 'comments'>('questions');
+  const [activeTab, setActiveTab] = useState<'overview' | 'questions' | 'checks' | 'attempts' | 'leaderboard' | 'comments'>(
+    () => (searchParams?.get('tab') === 'checks' ? 'checks' : 'questions'),
+  );
   const [editOpen, setEditOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [structureOpen, setStructureOpen] = useState(false);
@@ -132,6 +135,18 @@ export default function ExamDetailPage() {
     if (Array.isArray(raw?.items)) return raw.items;
     return [];
   }, [questionsResponse]);
+
+  // Deep link from Content quality: ?tab=checks&focus=questions.<id>[.audioUrl]
+  const focusPath = searchParams?.get('focus') ?? '';
+  const focusedLink = useRef('');
+  useEffect(() => {
+    const [scope, ref] = focusPath.split('.');
+    if (scope !== 'questions' || !ref || focusedLink.current === focusPath) return;
+    const target = questionsList.find((q) => String(q._id) === ref);
+    if (!target) return;
+    focusedLink.current = focusPath;
+    setSelectedQuestionForEdit(target);
+  }, [focusPath, questionsList]);
 
   useEffect(() => {
     const key = `${examId}:${editQuestionOrder}`;
@@ -405,6 +420,14 @@ export default function ExamDetailPage() {
 
   const isAudioJobRunning = audioJob?.state === 'waiting' || audioJob?.state === 'active';
 
+  /** Jump from a "cannot show" issue to where it is fixed. */
+  const openIssue = (issue: PublicationIssue) => {
+    const [scope, ref] = issue.path.split('.');
+    const question = scope === 'questions' ? questionsList.find((q) => String(q._id) === ref) : undefined;
+    if (question) setSelectedQuestionForEdit(question);
+    else setActiveTab('checks');
+  };
+
   return (
     <div className="flex min-h-screen flex-col bg-slate-50/50">
       {/* ── UNIFIED COMPACT HERO HEADER (Tất cả thông tin cốt lõi gói trong 1 header phẳng) ── */}
@@ -434,12 +457,20 @@ export default function ExamDetailPage() {
               onEditClick={() => setEditOpen(true)}
               onImportClick={() => setImportOpen(true)}
               onViewStructureClick={() => setStructureOpen(true)}
+              status={<VisibilityStatus kind="exams" id={examId} version={examResponse} />}
+              visibilityActions={<VisibilityActions kind="exams" id={examId} version={examResponse} />}
             />
           </div>
 
-          {/* 3. Publication Workflow Bar - Compact Inline Strip */}
-          <div className="mt-3">
-            <PublicationBar kind="exams" id={examId} version={examResponse} compact={true} onShowIssues={() => setActiveTab('checks')} />
+          {/* 3. What blocks "Show": each line opens the exact question (or the checks tab). */}
+          <div className="mt-3 empty:hidden">
+            <VisibilityIssues
+              kind="exams"
+              id={examId}
+              version={examResponse}
+              onSelect={openIssue}
+              onShowAll={() => setActiveTab('checks')}
+            />
           </div>
 
         </div>

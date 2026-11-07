@@ -160,6 +160,55 @@ services:
         condition: service_healthy
     networks:
     - toeic-network
+  demo-seed:
+    image: vocalearn-clean-api:local
+    pull_policy: never
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      provenance: false
+      sbom: false
+    profiles: [demo]
+    restart: 'no'
+    command: [node, scripts/demo-seed/run.ts, seed]
+    environment:
+      NODE_ENV: production
+      PGHOST: postgres
+      PGPORT: '5432'
+      PG_IDENTITY_PASSWORD: ${PG_IDENTITY_PASSWORD:?Set service PG password}
+      PG_CONTENT_PASSWORD: ${PG_CONTENT_PASSWORD:?Set service PG password}
+      PG_ASSESSMENT_PASSWORD: ${PG_ASSESSMENT_PASSWORD:?Set service PG password}
+      PG_ARENA_PASSWORD: ${PG_ARENA_PASSWORD:?Set service PG password}
+      PG_LEARNING_PASSWORD: ${PG_LEARNING_PASSWORD:?Set service PG password}
+      PG_NOTIFICATION_PASSWORD: ${PG_NOTIFICATION_PASSWORD:?Set service PG password}
+      DEMO_SEED_ENABLED: ${DEMO_SEED_ENABLED:-false}
+      DEMO_ENVIRONMENT: ${DEMO_ENVIRONMENT:-local}
+      DEMO_SEED_RANDOM: ${DEMO_SEED_RANDOM:-2026}
+      DEMO_PROFILE: ${DEMO_PROFILE:-standard}
+      DEMO_USER_COUNT: ${DEMO_USER_COUNT:-}
+      DEMO_ARENA_MATCH_COUNT: ${DEMO_ARENA_MATCH_COUNT:-}
+      DEMO_HISTORY_DAYS: ${DEMO_HISTORY_DAYS:-90}
+      DEMO_LOGIN_COUNT: ${DEMO_LOGIN_COUNT:-0}
+      DEMO_LOGIN_PASSWORD: ${DEMO_LOGIN_PASSWORD:-}
+      DEMO_MAX_RECORDS: ${DEMO_MAX_RECORDS:-1000000}
+      DEMO_SIMULATOR_ENABLED: 'false'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      schema-migrate:
+        condition: service_completed_successfully
+      outbox-identity:
+        condition: service_started
+      domain-consumer-arena:
+        condition: service_started
+      domain-consumer-learning:
+        condition: service_started
+      domain-consumer-notification:
+        condition: service_started
+    volumes:
+    - ./scripts/demo-seed/reports:/app/scripts/demo-seed/reports
+    networks:
+    - toeic-network
   identity-service:
     image: vocalearn-clean-api:local
     pull_policy: never

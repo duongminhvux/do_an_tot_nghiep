@@ -52,11 +52,12 @@ export const examService = {
       )
     ).data;
   },
-  getAll: async (params?: QueryExamDto) => {
+  getAll: async (params?: QueryExamDto, signal?: AbortSignal) => {
     const res = await apiClient.get<ApiResponse<ExamListResponse>>(
       "/admin/exams",
       {
         params,
+        signal,
       },
     );
     return res.data;

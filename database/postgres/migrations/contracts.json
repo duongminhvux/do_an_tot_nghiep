@@ -5,13 +5,13 @@
     "fingerprint": "23658fdf825f23fb5c658b364f920f247231ea8c41d2ea7b878b4f91051932bf"
   },
   "content": {
-    "version": "0018_content_relations",
-    "migrationsChecksum": "0b3e3cbee4bbc3c84fb80f600c996f78ab41119f1a19a9fcefa46772c6e8e197",
-    "fingerprint": "0965a0f8008301591d75716e2a10ca0f669103263badb614abcf8e76ea74aa85"
+    "version": "0022_content_quality_recheck",
+    "migrationsChecksum": "d93c35b05c99a7c989fc4dce57cd286aa9cb8b3d264256e199c5700c9385057b",
+    "fingerprint": "14b002ded1d956b2b3405752b2fa837a9831ab20defda232f4aec068de44f5db"
   },
   "assessment": {
-    "version": "0019_exam_comment_pins",
-    "migrationsChecksum": "dea35286cfff4cdfe5d86a81d603b63279fe6da463588f97f8e2873866f1e9cc",
+    "version": "0020_exam_group_publication",
+    "migrationsChecksum": "20bdc0a51505cec1fa7537ade25824e19f8d32abf5c65d54c4f83b70b95c829d",
     "fingerprint": "e38faa0b8c4eeaf50ba5b49ebaedaeff30ff03699f3201ab6298819d57d567c1"
   },
   "arena": {

@@ -24,6 +24,7 @@ import {
   Music,
   RefreshCw,
   Search,
+  UserRound,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -39,13 +40,14 @@ import { cn } from "@/lib/utils";
 type AssetType = "all" | "image" | "audio";
 type View = "grid" | "list";
 
-const groups: { id: MediaCategory; name: string; vi: string; en: string; icon: LucideIcon; tone: string }[] = [
+const mediaGroups: { id: MediaCategory; name: string; nameEn?: string; vi: string; en: string; icon: LucideIcon; tone: string }[] = [
   { id: "vocab", name: "Vocab", vi: "Bộ sưu tập, bài học, ảnh và phát âm từ vựng", en: "Collections, lessons, word images and pronunciation", icon: BookOpen, tone: "text-emerald-500" },
   { id: "toeic", name: "TOEIC", vi: "Ảnh và audio của đề thi, câu hỏi, đoạn văn", en: "Exam, question and passage images and audio", icon: FileAudio, tone: "text-amber-500" },
   { id: "dictation", name: "Dictation", vi: "Ảnh và audio của bài luyện nghe", en: "Lesson images and dictation recordings", icon: Headphones, tone: "text-blue-500" },
   { id: "games", name: "Games", vi: "Ảnh, nhạc nền và âm thanh minigame", en: "Minigame images, music and sound effects", icon: Gamepad2, tone: "text-violet-500" },
+  { id: "users", name: "Avatar người dùng", nameEn: "User avatars", vi: "Ảnh đại diện đang dùng và hồ sơ chủ ảnh", en: "Current profile pictures and their owners", icon: UserRound, tone: "text-rose-500" },
 ];
-const defaults: Record<MediaCategory, MediaItemKind> = { dictation: "lesson", vocab: "lesson", toeic: "exam", games: "game" };
+const defaults: Record<MediaCategory, MediaItemKind> = { dictation: "lesson", vocab: "lesson", toeic: "exam", games: "game", users: "user" };
 const vocabKinds = [
   { kind: "lesson" as const, vi: "Bài học", en: "Lessons" },
   { kind: "collection" as const, vi: "Bộ sưu tập", en: "Collections" },
@@ -97,6 +99,7 @@ function useCopy() {
 
 function Thumb({ asset, className, iconSize = "size-8" }: { asset: MediaReference; className?: string; iconSize?: string }) {
   const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [asset.url]);
   if (asset.type === "audio")
     return (
       <div className={cn("flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 text-blue-500", className)}>
@@ -259,6 +262,7 @@ function DetailsPanel({ asset, en, onClose }: { asset: MediaReference; en: boole
 export default function MediaLibraryPage() {
   const { locale } = useParams();
   const en = locale === "en";
+  const groups = mediaGroups.map((item) => ({ ...item, name: en ? (item.nameEn ?? item.name) : item.name }));
   const router = useRouter();
   const params = useSearchParams();
   const group = groups.find((item) => item.id === params.get("category"));
@@ -382,8 +386,8 @@ export default function MediaLibraryPage() {
                   value={search}
                   maxLength={150}
                   onChange={(e) => setSearch(e.target.value)}
-                  aria-label={en ? "Search folders" : "Tìm thư mục"}
-                  placeholder={en ? "Search folders, press Enter" : "Tìm thư mục, nhấn Enter"}
+                  aria-label={category === "users" ? (en ? "Search users by name or email" : "Tìm người dùng theo tên hoặc email") : en ? "Search folders" : "Tìm thư mục"}
+                  placeholder={category === "users" ? (en ? "Name or email, press Enter" : "Tên hoặc email, nhấn Enter") : en ? "Search folders, press Enter" : "Tìm thư mục, nhấn Enter"}
                   className="h-8 w-full rounded-md border border-slate-200 bg-white pl-8 pr-2 text-sm outline-none placeholder:text-slate-400 focus-visible:border-blue-400 focus-visible:ring-2 focus-visible:ring-blue-100"
                 />
               </form>
@@ -502,7 +506,7 @@ export default function MediaLibraryPage() {
             })}
           </ul>
           <p className="mt-4 px-2 text-[11px] leading-4 text-slate-400">
-            {en ? "Read-only: files are managed from the content editors." : "Chỉ xem: file được quản lý trong trình sửa nội dung."}
+            {en ? "Browse files by content or user profile." : "Xem file theo nội dung hoặc hồ sơ người dùng."}
           </p>
         </aside>
 
@@ -516,6 +520,23 @@ export default function MediaLibraryPage() {
               </Link>
             ))}
           </div>
+
+          {category === "users" && (
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rose-100 bg-white px-4 py-3">
+              <div className="min-w-0">
+                <h1 className="text-sm font-semibold text-slate-900">{en ? "User avatars" : "Avatar người dùng"}</h1>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  {en ? "Current profile pictures, including user uploads and linked sign-in accounts." : "Ảnh đại diện đang dùng, bao gồm ảnh người dùng tải lên và ảnh từ tài khoản đăng nhập liên kết."}
+                </p>
+              </div>
+              {id && detail.data && (
+                <Link href={`/${locale}/users/${detail.data.item.id}`} className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+                  <UserRound aria-hidden="true" className="size-4" />
+                  {en ? "View user profile" : "Xem hồ sơ người dùng"}
+                </Link>
+              )}
+            </div>
+          )}
 
           {!category ? (
             <FolderGrid
@@ -557,15 +578,15 @@ export default function MediaLibraryPage() {
           ) : list.isError ? (
             <LoadError onRetry={() => void list.refetch()} />
           ) : !list.data?.items.length ? (
-            <Empty icon={Search} title={query ? (en ? `No folder matches “${query}”` : `Không có thư mục khớp “${query}”`) : en ? "No folders" : "Chưa có thư mục"} />
+            <Empty icon={category === "users" ? UserRound : Search} title={category === "users" ? (query ? (en ? `No user matches “${query}”. Try another name or email.` : `Không có người dùng khớp “${query}”. Thử tên hoặc email khác.`) : en ? "No users have a profile picture yet" : "Chưa có người dùng đặt ảnh đại diện") : query ? (en ? `No folder matches “${query}”` : `Không có thư mục khớp “${query}”`) : en ? "No folders" : "Chưa có thư mục"} />
           ) : (
             <div className="space-y-3">
               <p className="text-xs text-slate-500">
-                {list.data.total} {en ? "folders" : "thư mục"}
+                {list.data.total} {category === "users" ? (en ? "users with avatars" : "người dùng có avatar") : en ? "folders" : "thư mục"}
               </p>
               <FolderGrid
                 view={view}
-                folders={list.data.items.map((item) => ({ key: item.id, title: item.title, subtitle: item.subtitle, status: item.status, to: href({ id: item.id }) }))}
+                folders={list.data.items.map((item) => ({ key: item.id, title: item.title, subtitle: item.subtitle, status: item.status, previewUrl: item.previewUrl, statusLabel: category === "users" ? (item.status === "BANNED" ? (en ? "Banned" : "Đã khóa") : en ? "Active" : "Hoạt động") : undefined, to: href({ id: item.id }) }))}
               />
               <div className="rounded-lg border border-slate-200 bg-white">
                 <ListPagination
@@ -623,7 +644,7 @@ function FolderGrid({
   folders,
   view,
 }: {
-  folders: { key: string; title: string; subtitle?: string; status?: string; to: string; tone?: string }[];
+  folders: { key: string; title: string; subtitle?: string; status?: string; statusLabel?: string; previewUrl?: string; to: string; tone?: string }[];
   view: View;
 }) {
   if (view === "list")
@@ -633,12 +654,12 @@ function FolderGrid({
           {folders.map((folder) => (
             <li key={folder.key}>
               <Link href={folder.to} scroll={false} className="flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50">
-                <Folder aria-hidden="true" className={cn("size-5 shrink-0 fill-current", folder.tone ?? "text-amber-400")} />
+                {folder.previewUrl ? <Thumb asset={{ url: folder.previewUrl, type: "image", usages: [] }} className="size-10 shrink-0 rounded-full border border-slate-200" /> : <Folder aria-hidden="true" className={cn("size-5 shrink-0 fill-current", folder.tone ?? "text-amber-400")} />}
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium text-slate-900">{folder.title}</span>
                   {folder.subtitle && <span className="block truncate text-xs text-slate-500">{folder.subtitle}</span>}
                 </span>
-                {folder.status && <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-semibold", statusTone(folder.status))}>{folder.status}</span>}
+                {folder.status && <span className={cn("shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-semibold", statusTone(folder.status))}>{folder.statusLabel ?? folder.status}</span>}
                 <ChevronRight aria-hidden="true" className="size-4 text-slate-300" />
               </Link>
             </li>
@@ -656,10 +677,10 @@ function FolderGrid({
           title={folder.title}
           className="group flex flex-col items-center rounded-lg border border-transparent px-2 py-3 text-center outline-none transition-colors hover:border-slate-200 hover:bg-white focus-visible:border-blue-400 focus-visible:bg-white"
         >
-          <Folder aria-hidden="true" strokeWidth={1.25} className={cn("size-16 fill-current opacity-90 transition-transform group-hover:scale-105 motion-reduce:transition-none", folder.tone ?? "text-amber-400")} />
+          {folder.previewUrl ? <Thumb asset={{ url: folder.previewUrl, type: "image", usages: [] }} className="size-16 rounded-full border border-slate-200" /> : <Folder aria-hidden="true" strokeWidth={1.25} className={cn("size-16 fill-current opacity-90 transition-transform group-hover:scale-105 motion-reduce:transition-none", folder.tone ?? "text-amber-400")} />}
           <span className="mt-1 line-clamp-2 w-full text-sm font-medium leading-tight text-slate-900">{folder.title}</span>
           {folder.subtitle && <span className="mt-0.5 line-clamp-1 w-full text-[11px] text-slate-500">{folder.subtitle}</span>}
-          {folder.status && <span className={cn("mt-1 rounded px-1.5 py-0.5 text-[10px] font-semibold", statusTone(folder.status))}>{folder.status}</span>}
+          {folder.status && <span className={cn("mt-1 whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-semibold", statusTone(folder.status))}>{folder.statusLabel ?? folder.status}</span>}
         </Link>
       ))}
     </div>

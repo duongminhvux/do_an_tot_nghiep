@@ -1,4 +1,5 @@
 import apiClient from '@/lib/axios';
+import type {DictationLearnersPage,DictationPracticeSession,DictationHistoryPage,DictationHistoryEvent} from '@/types/dictation-history';
 import {
   ApiResponse,
   CreateDictationPayload,
@@ -12,6 +13,9 @@ import {
 } from '@/types';
 
 export const dictationService = {
+  getLearners:async(id:string,params:Record<string,string|number|undefined>)=>(await apiClient.get<ApiResponse<DictationLearnersPage>>(`/admin/dictation/${id}/learners`,{params})).data,
+  getSessions:async(id:string,params:Record<string,string|number|undefined>)=>(await apiClient.get<ApiResponse<DictationHistoryPage<DictationPracticeSession>>>(`/admin/dictation/${id}/sessions`,{params})).data,
+  getSessionEvents:async(id:string,sessionId:string,page:number)=>(await apiClient.get<ApiResponse<DictationHistoryPage<DictationHistoryEvent>>>(`/admin/dictation/${id}/sessions/${sessionId}/events`,{params:{page,limit:20}})).data,
 
   getHierarchy: async () => {
     const res = await apiClient.get<ApiResponse<DictationTopic[]>>('/admin/dictation/hierarchy');

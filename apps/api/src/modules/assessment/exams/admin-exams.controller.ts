@@ -1,5 +1,5 @@
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator.js';
-import { Body,Delete,Get,Param,Patch,Post,Query } from '@nestjs/common';
+import { Body,Delete,Get,Param,Patch,Post,Query,Req } from '@nestjs/common';
 import { AdminController } from '../../auth/decorators/admin-controller.decorator.js';
 import { CreateExamDto } from './dto/create-exam.dto.js';
 import { QueryExamDto } from './dto/query-exam.dto.js';
@@ -12,8 +12,8 @@ export class AdminExamsController {
 
   @RequirePermissions('toeic.create')
   @Post()
-  create(@Body() createExamDto: CreateExamDto) {
-    return this.examsService.create(createExamDto);
+  create(@Body() createExamDto: CreateExamDto, @Req() request: { user: { _id: string } }) {
+    return this.examsService.createWithVisibility(createExamDto, String(request.user._id));
   }
 
   @RequirePermissions('toeic.read')

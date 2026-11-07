@@ -40,7 +40,8 @@ describe.runIf(
     lesson = randomUUID(),
     word = randomUUID(),
     dictation = randomUUID(),
-    segment = randomUUID();
+    segment = randomUUID(),
+    topic = randomUUID();
   let attempts: AttemptsService, attemptId: string;
   beforeAll(async () => {
     await assessment.query(
@@ -64,8 +65,12 @@ describe.runIf(
       [lesson, word],
     );
     await content.query(
-      `INSERT INTO public.dictationlessons(id,title,slug,status,sentence_count,full_audio_url,total_duration_ms) VALUES($1,'F10 Dictation',$2,'READY',1,'/media/full.wav',1000)`,
-      [dictation, `f10-${dictation}`],
+      `INSERT INTO public.dictationtopics(id,title,slug) VALUES($1,'F10 Topic',$2)`,
+      [topic, `f10-topic-${topic}`],
+    );
+    await content.query(
+      `INSERT INTO public.dictationlessons(id,title,slug,status,sentence_count,full_audio_url,total_duration_ms,topic_id,level) VALUES($1,'F10 Dictation',$2,'READY',1,'/media/full.wav',1000,$3,'"B1"')`,
+      [dictation, `f10-${dictation}`, topic],
     );
     await content.query(
       `INSERT INTO public.dictationsegments(id,lesson_id,"order",text,source,language,start_ms,end_ms,duration_ms) VALUES($1,$2,0,'A sentence.','TTS','en-US',0,2000,2000)`,
@@ -132,10 +137,10 @@ describe.runIf(
       'UPDATE public.questions SET content=$2 WHERE id=$1',
       [question, 'Edited draft question'],
     );
-    expect((await exams.info('exams', exam)).publicationStatus).toBe('DRAFT');
-    await expect(exams.publish('exams', exam, actor)).rejects.toMatchObject({
-      status: 409,
-    });
+    // Editing visible content hides it at once (no half-edited content is public)…
+    const edited = await exams.info('exams', exam);
+    expect(edited.publicationStatus).toBe('DRAFT');
+    expect(edited.visibility).toBe('HIDDEN');
     await expect(
       attempts.create(user, {
         examId: exam,
@@ -147,6 +152,12 @@ describe.runIf(
       attempts.findOne(user, attemptId),
     );
     expect(existing.questions[0].content).toBe('Original question');
+    // …and one "Show" (validated in the same transaction) makes it public again.
+    const reshown = await exams.publish('exams', exam, actor, 'en');
+    expect(reshown).toMatchObject({ publicationStatus: 'PUBLISHED', visibility: 'VISIBLE' });
+    const reread = await publicationScope.run(true, () => attempts.findOne(user, attemptId));
+    expect(reread.questions[0].content).toBe('Original question');
+    await assessment.query('UPDATE public.questions SET content=$2 WHERE id=$1', [question, 'Edited again']);
   });
   it('does not let isActive or a stale JSON payload bypass publication', async () => {
     vi.stubEnv('SERVICE_ROLE', 'assessment');
@@ -247,7 +258,9 @@ describe.runIf(
       actor,
       'en',
     );
-    expect(invalid.publicationStatus).toBe('IN_REVIEW');
+    // An invalid check never parks content in IN_REVIEW (IN_REVIEW = valid but hidden).
+    expect(invalid.publicationStatus).toBe('DRAFT');
+    expect(invalid.visibility).toBe('INCOMPLETE');
     expect(
       invalid.publicationValidation.issues.some(
         (i: any) => i.code === 'SEGMENT_TIMING',
@@ -288,7 +301,8 @@ describe.runIf(
           [dictation],
         )
       ).rows[0],
-    ).toEqual({ status: 'READY', publication_status: 'DRAFT' });
+    ).toEqual({ status: 'READY', publication_status: 'IN_REVIEW' });
+    expect((await contents.info('dictation', dictation)).visibility).toBe('HIDDEN');
   });
   it('rejects a new TOEIC snapshot if content changes between its read and insertion',async()=>{
     vi.stubEnv('SERVICE_ROLE','assessment');

@@ -23,6 +23,8 @@ describe('F11 Admin HTTP and private source boundary', () => {
     actor = '10000000-0000-4000-8000-000000000001';
   const list = vi.fn(async () => ({ items: [] })),
     enqueue = vi.fn(async () => ({ id: actor })),
+    recheck = vi.fn(async () => ({ resolved: 0, errors: 0, warnings: 0 })),
+    one = vi.fn(async () => null),
     batch = vi.fn(async () => ({ items: [], done: true }));
   const auth = async (role: string) =>
     `Bearer ${await jwt.signAsync({ _id: actor, role }, { secret, expiresIn: '5m' })}`;
@@ -42,8 +44,8 @@ describe('F11 Admin HTTP and private source boundary', () => {
           ),
         },
         { provide: RolesGuard, useValue: new RolesGuard(reflector) },
-        { provide: ContentQualityService, useValue: { list, enqueue } },
-        { provide: QualitySourceService, useValue: { batch } },
+        { provide: ContentQualityService, useValue: { list, enqueue, recheck } },
+        { provide: QualitySourceService, useValue: { batch, one } },
       ],
     }).compile();
     app = module.createNestApplication();
@@ -83,8 +85,22 @@ describe('F11 Admin HTTP and private source boundary', () => {
       .set('Authorization', token)
       .expect(200)
       .expect('Cache-Control', 'private, no-store');
-    expect(list).toHaveBeenLastCalledWith('MEDIA', 2, 'en');
+    expect(list).toHaveBeenLastCalledWith(
+      expect.objectContaining({ category: 'MEDIA', page: 2, lang: 'en' }),
+    );
+    await request(app.getHttpServer())
+      .get('/api/admin/content-quality?area=toeic&severity=error&group=MEDIA_BROKEN&sort=recent&q=ETS')
+      .set('Authorization', token)
+      .expect(200);
+    expect(list).toHaveBeenLastCalledWith(
+      expect.objectContaining({ area: 'toeic', severity: 'error', group: 'MEDIA_BROKEN', sort: 'recent', q: 'ETS' }),
+    );
     for (const query of [
+      'area=books',
+      'severity=info',
+      'group=OTHER',
+      'sort=random',
+      `q=${'x'.repeat(121)}`,
       'category=other',
       'page=0',
       'page=1.5',
@@ -126,5 +142,36 @@ describe('F11 Admin HTTP and private source boundary', () => {
       .get(path)
       .set('x-internal-token', process.env.INTERNAL_SERVICE_TOKEN!)
       .expect(403);
+  });
+  it('rechecks one item with the JWT actor and validates its type and id', async () => {
+    const token = await auth('ADMIN');
+    const id = '20000000-0000-4000-8000-000000000002';
+    await request(app.getHttpServer())
+      .post(`/api/admin/content-quality/items/exams/${id}/recheck?lang=en`)
+      .send({ actorId: 'forged' })
+      .set('Authorization', token)
+      .expect(201);
+    expect(recheck).toHaveBeenLastCalledWith('exams', id, actor, 'en');
+    await request(app.getHttpServer())
+      .post(`/api/admin/content-quality/items/books/${id}/recheck`)
+      .set('Authorization', token)
+      .expect(400);
+    await request(app.getHttpServer())
+      .post('/api/admin/content-quality/items/exams/not-a-uuid/recheck')
+      .set('Authorization', token)
+      .expect(400);
+    await request(app.getHttpServer())
+      .post(`/api/admin/content-quality/items/exams/${id}/recheck`)
+      .set('Authorization', await auth('USER'))
+      .expect(403);
+    expect(recheck).toHaveBeenCalledTimes(1);
+  });
+  it('protects the single-exam owner endpoint with the internal token', async () => {
+    const id = '30000000-0000-4000-8000-000000000003';
+    vi.stubEnv('INTERNAL_SERVICE_TOKEN', 'f11-internal-token-'.repeat(2));
+    await request(app.getHttpServer())
+      .get(`/api/_internal/content-quality/exams/${id}`)
+      .expect((response) => expect([401, 403]).toContain(response.status));
+    expect(one).not.toHaveBeenCalled();
   });
 });

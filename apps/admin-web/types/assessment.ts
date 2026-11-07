@@ -135,7 +135,7 @@ export interface CreateExamDto {
 export interface UpdateExamDto extends Partial<CreateExamDto> {}
 
 export interface QueryExamDto {
-  publicationStatus?:PublicationStatus;
+  publicationStatus?:PublicationStatus|'NOT_PUBLISHED';
   sortBy?: "name" | "totalQuestions" | "durationMinutes" | "order" | "isActive";
   sortOrder?: "asc" | "desc";
   search?: string;

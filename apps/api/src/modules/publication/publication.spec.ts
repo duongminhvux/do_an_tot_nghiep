@@ -125,6 +125,10 @@ describe('F10 publication validation', () => {
   });
   it('requires ready audio and consistent Dictation timing/count metadata', () => {
     const lesson = {
+      title: 'Lesson',
+      slug: 'lesson',
+      topicId: 'topic',
+      level: 'B1',
       status: 'READY',
       fullAudioUrl: '/media/full.wav',
       totalDurationMs: 1000,
@@ -141,6 +145,11 @@ describe('F10 publication validation', () => {
       ],
     };
     expect(validatePublication('dictation', lesson)).toEqual([]);
+    // Required lesson fields are part of the "show" rule, not only the quality scan.
+    expect(
+      validatePublication('dictation', { ...lesson, title: ' ', topicId: null })
+        .map((issue) => issue.code),
+    ).toEqual(['DICTATION_FIELDS']);
     for (const patch of [
       { status: 'DRAFT' },
       { sentenceCount: 2 },
@@ -185,7 +194,8 @@ describe('F10 publication validation', () => {
           'utf8',
         ),
       ).publication;
-    expect(read('vi').title).toBe('Kiểm duyệt nội dung');
+    expect(read('vi').title).toBe('Trạng thái hiển thị');
+    expect(read('vi').visibility).toEqual({ VISIBLE: 'Hiển thị', HIDDEN: 'Đã ẩn', INCOMPLETE: 'Chưa hoàn thiện' });
     expect(Object.keys(read('vi')).sort()).toEqual(
       Object.keys(read('en')).sort(),
     );

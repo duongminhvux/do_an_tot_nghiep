@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useRemotePagination } from '@/hooks/use-remote-pagination';
-import { ListPagination } from '@/components/ui/list-pagination';
+import type { ExamItem } from '@/types';
 import { CreateExamChoiceDialog } from './create-exam-choice-dialog';
 import { useParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
@@ -46,28 +45,32 @@ export function AddExamToGroupDialog({
   const [selectedExamIds, setSelectedExamIds] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const pagination = useRemotePagination(`${groupId}:${searchTerm}:${open}`);
-  // Query unassigned exams (exams without a group, or matching search)
-  const { data: examsResponse, isLoading } = useQuery({
-    queryKey: ['admin-exams-unassigned', searchTerm, pagination.page, pagination.pageSize],
-    queryFn: async () => {
-      const res = await examService.getAll({
-        search: searchTerm.trim() || undefined,
-        groupId: 'none',
-        limit: pagination.pageSize,
-        page: pagination.page,
-      });
-      return res?.data;
+  // Keep transport batches internal: the picker presents one searchable, scrolling list.
+  const { data: exams = [], isLoading, isError, refetch } = useQuery({
+    queryKey: ['admin-exams-unassigned', 'published', groupId, searchTerm.trim()],
+    queryFn: async ({ signal }) => {
+      const all: ExamItem[] = [];
+      for (let page = 1; ; page++) {
+        const res = await examService.getAll({
+          search: searchTerm.trim() || undefined,
+          groupId: 'none',
+          publicationStatus: 'PUBLISHED',
+          limit: 100,
+          page,
+        }, signal);
+        const batch = res.data;
+        all.push(...batch.data);
+        if (!batch.data.length || page * batch.limit >= batch.total) break;
+      }
+      return [...new Map(all.map(exam => [exam._id, exam])).values()];
     },
     enabled: open && !!groupId,
   });
 
-  const exams = examsResponse?.data || [];
-  const total = examsResponse?.total ?? 0;
-  const totalPages = Math.max(1, Math.ceil(total / pagination.pageSize));
   useEffect(() => {
-    if (examsResponse && pagination.page > totalPages) pagination.setPage(totalPages);
-  }, [examsResponse, pagination.page, totalPages]);
+    setSelectedExamIds([]);
+    setErrorMessage(null);
+  }, [groupId, open]);
 
   const addMutation = useMutation({
     mutationFn: async () => {
@@ -133,7 +136,7 @@ export function AddExamToGroupDialog({
         </DialogHeader>
 
         {errorMessage && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded flex items-center gap-2 text-xs text-red-600 my-2 shrink-0">
+          <div role="alert" className="p-3 bg-red-50 border border-red-200 rounded flex items-center gap-2 text-xs text-red-600 my-2 shrink-0">
             <AlertTriangle className="h-4 w-4 shrink-0" />
             <span>{errorMessage}</span>
           </div>
@@ -141,10 +144,14 @@ export function AddExamToGroupDialog({
 
         {/* Search bar */}
         <div className="pt-3 pb-2 shrink-0">
+          <p className="mb-2 text-xs text-slate-500">
+            {locale === 'en' ? 'Only published exams can be added. Publish draft exams first.' : 'Chỉ thêm được đề đã xuất bản. Hãy xuất bản đề nháp trước khi thêm vào nhóm.'}
+          </p>
           <div className="relative">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
             <input
               type="text"
+              aria-label={t('examGroups.addExamDialog.searchPlaceholder')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder={t('examGroups.addExamDialog.searchPlaceholder')}
@@ -158,6 +165,7 @@ export function AddExamToGroupDialog({
           <button
             type="button"
             onClick={handleSelectAll}
+            disabled={isLoading || isError || !exams.length || addMutation.isPending}
             className="text-xs text-blue-600 hover:underline font-medium cursor-pointer"
           >
             {exams.length > 0 && exams.every(exam => selectedExamIds.includes(exam._id))
@@ -174,6 +182,13 @@ export function AddExamToGroupDialog({
               <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
               <span className="text-xs">{t('examGroups.addExamDialog.loading')}</span>
             </div>
+          ) : isError ? (
+            <div role="alert" className="py-8 text-center text-xs text-red-600">
+              <p>{locale === 'en' ? 'Unable to load exams.' : 'Không tải được danh sách đề.'}</p>
+              <button type="button" onClick={() => void refetch()} className="mt-2 rounded px-3 py-2 font-semibold text-blue-600 focus-visible:outline-2 focus-visible:outline-blue-600">
+                {locale === 'en' ? 'Try again' : 'Thử lại'}
+              </button>
+            </div>
           ) : exams.length === 0 ? (
             <div className="text-center py-10 text-slate-400 text-xs">
               {searchTerm ? t('examGroups.addExamDialog.noMatch') : t('examGroups.addExamDialog.empty')}
@@ -182,9 +197,8 @@ export function AddExamToGroupDialog({
             exams.map((exam) => {
               const isSelected = selectedExamIds.includes(exam._id);
               return (
-                <div
+                <label
                   key={exam._id}
-                  onClick={() => toggleSelectExam(exam._id)}
                   className={`flex items-center justify-between p-3 rounded border transition-all cursor-pointer ${
                     isSelected
                       ? 'border-blue-500 bg-blue-50/30'
@@ -195,8 +209,9 @@ export function AddExamToGroupDialog({
                     <input
                       type="checkbox"
                       checked={isSelected}
-                      onChange={() => {}}
-                      className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 pointer-events-none cursor-pointer"
+                      onChange={() => toggleSelectExam(exam._id)}
+                      disabled={addMutation.isPending}
+                      className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
                     />
                     <div className="min-w-0">
                       <p className="text-xs font-semibold text-slate-900 truncate">
@@ -214,11 +229,10 @@ export function AddExamToGroupDialog({
                   {isSelected && (
                     <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />
                   )}
-                </div>
+                </label>
               );
             })
           )}
-          <ListPagination pagination={{ ...pagination, totalPages, totalItems: total }} disabled={isLoading || addMutation.isPending} />
         </div>
 
         {/* Footer */}

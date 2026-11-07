@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { qualityItem, TOEIC_PART_COUNTS } from './quality-rules.js';
+import { qualityGroup, qualityItem, TOEIC_PART_COUNTS } from './quality-rules.js';
 import {
   qualityMediaTarget,
   QualityMediaService,
@@ -152,7 +152,7 @@ describe('F11 quality rules and safe media probing', () => {
           : [`${prefix}${key}`],
       );
     expect(keys(viText)).toEqual(keys(enText));
-    expect(viText.title).toBe('Chất lượng dữ liệu');
+    expect(viText.title).toBe('Chất lượng nội dung');
   });
   it('checks exam completeness against the declared total and the TOEIC part layout', () => {
     const base = { id: 'q', content: 'Q', options: ['A', 'B', 'C', 'D'].map((key) => ({ key, text: key })), correctAnswer: 'A' };
@@ -179,5 +179,15 @@ describe('F11 quality rules and safe media probing', () => {
     expect(recommended?.messageVi).toContain('câu ví dụ');
     const dictation = qualityItem('dictation', { id: 'd', title: '', slug: 's', segments: [] });
     expect(dictation.issues.find((i) => i.code === 'DICTATION_FIELDS')?.messageVi).toContain('tiêu đề');
+  });
+  it('groups findings: optional suggestions never count as required data or broken media', () => {
+    expect(qualityGroup('WORD_RECOMMENDED')).toBe('OPTIONAL');
+    expect(qualityGroup('MEDIA_UNVERIFIED')).toBe('MEDIA_UNVERIFIED');
+    expect(qualityGroup('MEDIA_MISSING')).toBe('MEDIA_BROKEN');
+    expect(qualityGroup('AUDIO_REQUIRED')).toBe('MEDIA_BROKEN');
+    expect(qualityGroup('EXACT_WORD')).toBe('DUPLICATE');
+    expect(qualityGroup('WORD_UNPUBLISHED')).toBe('RELATION');
+    expect(qualityGroup('DICTATION_FIELDS')).toBe('REQUIRED');
+    expect(qualityGroup('TOEIC_STRUCTURE')).toBe('REQUIRED');
   });
 });

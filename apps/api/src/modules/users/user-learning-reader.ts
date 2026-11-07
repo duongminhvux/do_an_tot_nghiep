@@ -53,7 +53,7 @@ export async function readUserLearning(db: PgConnection, owner: string, userId: 
     (SELECT MAX(created_at) FROM arenaratinghistories WHERE user_id=${userId}::uuid) last FROM arenaprofiles WHERE user_id=${userId}::uuid`);
   return { modules: [moduleResult('ARENA', data?.last, [metric('rankedMatches',data?.matches ?? 0), metric('wins',data?.wins ?? 0), metric('losses',data?.losses ?? 0), metric('draws',data?.draws ?? 0), metric('rating',data?.rating), metric('winRate',rate(data?.wins,data?.matches),true)])] };
 }
-export async function userLearningProgress(db: PgConnection, userId: string) {
+export async function userLearningProgress(db: PgConnection, userId: string): Promise<{summary:OwnerProgress['summary']|null;modules:ModuleProgress[]}> {
   const owners = Object.keys(ownerModules) as (keyof typeof ownerModules)[];
   const results = await Promise.allSettled(owners.map(owner => serviceRole() === owner ? readUserLearning(db,owner,userId) : ownerRequest<OwnerProgress>(owner, `user-learning/${owner}`, { userId })));
   const modules: ModuleProgress[] = []; let summary: OwnerProgress['summary'] | null = null;

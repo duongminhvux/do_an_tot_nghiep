@@ -28,8 +28,11 @@ function resourceController(kind: PublicationKind) {
     @RequirePermissions(publicationPermission(kind, 'read'), 'publication.read')
     @Get(':id/publication')
     @Header('Cache-Control', 'private, no-store')
-    info(@Param('id', new ParseUUIDPipe()) id: string) {
-      return this.publication.info(kind, id);
+    info(
+      @Param('id', new ParseUUIDPipe()) id: string,
+      @Query() query: PublicationLanguageDto,
+    ) {
+      return this.publication.info(kind, id, query.lang);
     }
     @RequirePermissions(publicationPermission(kind, 'update'), 'publication.validate')
     @Post(':id/validate')
@@ -68,8 +71,14 @@ function resourceController(kind: PublicationKind) {
     unpublish(
       @Param('id', new ParseUUIDPipe()) id: string,
       @Req() request: { user: { _id: string } },
+      @Query() query: PublicationLanguageDto,
     ) {
-      return this.publication.unpublish(kind, id, String(request.user._id));
+      return this.publication.unpublish(
+        kind,
+        id,
+        String(request.user._id),
+        query.lang,
+      );
     }
   }
   if (kind !== 'dictation') {
