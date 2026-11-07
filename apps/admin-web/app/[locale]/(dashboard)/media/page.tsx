@@ -335,7 +335,7 @@ export default function MediaLibraryPage() {
   if (id) crumbs.push({ label: detail.data?.item.title ?? "…" });
 
   return (
-    <main className="flex h-[calc(100dvh-4rem)] min-h-[32rem] w-full min-w-0 flex-col bg-white">
+    <main className="relative flex h-[calc(100dvh-4rem)] min-h-[28rem] w-full min-w-0 flex-col overflow-hidden bg-white">
       {/* Toolbar */}
       <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-slate-200 px-4 py-2.5">
         <nav aria-label={en ? "Folder path" : "Đường dẫn thư mục"} className="flex min-w-0 flex-1 items-center gap-1 text-sm">
@@ -438,9 +438,9 @@ export default function MediaLibraryPage() {
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1">
+      <div className="relative flex min-h-0 flex-1 overflow-hidden">
         {/* Folder tree */}
-        <aside aria-label={en ? "Folders" : "Thư mục"} className="hidden w-60 shrink-0 overflow-y-auto border-r border-slate-200 bg-slate-50/60 p-2 md:block">
+        <aside aria-label={en ? "Folders" : "Thư mục"} className="relative hidden w-60 shrink-0 overflow-y-auto overscroll-contain border-r border-slate-200 bg-slate-50/60 p-2 md:block">
           <Link
             href={`/${locale}/media`}
             className={cn("flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-semibold", !category ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-100")}
@@ -507,7 +507,7 @@ export default function MediaLibraryPage() {
         </aside>
 
         {/* Content */}
-        <section aria-label={en ? "Folder contents" : "Nội dung thư mục"} className="min-w-0 flex-1 overflow-y-auto bg-slate-50/40 p-4">
+        <section aria-label={en ? "Folder contents" : "Nội dung thư mục"} className="relative min-w-0 flex-1 overflow-y-auto overscroll-contain bg-slate-50/40 p-4">
           {/* Mobile folder switcher */}
           <div className="mb-3 flex gap-1.5 overflow-x-auto md:hidden">
             {groups.map(({ id: key, name }) => (
@@ -586,7 +586,7 @@ export default function MediaLibraryPage() {
 
         {/* Details panel: docked on wide screens, sheet below xl */}
         {selected && (
-          <aside aria-label={en ? "Asset details" : "Chi tiết file"} className="hidden w-80 shrink-0 border-l border-slate-200 bg-white xl:block">
+          <aside aria-label={en ? "Asset details" : "Chi tiết file"} className="relative hidden w-80 shrink-0 overflow-hidden border-l border-slate-200 bg-white xl:block">
             <DetailsPanel asset={selected} en={en} onClose={() => setSelectedUrl(null)} />
           </aside>
         )}
