@@ -1,5 +1,6 @@
 import { Transform, Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsIn,
   IsInt,
   IsOptional,
@@ -24,4 +25,8 @@ export class CreateExamCommentDto {
 }
 export class CommentReactionDto {
   @IsIn(COMMENT_EMOJIS) emoji!: string;
+}
+
+export class PinExamCommentDto {
+  @IsBoolean() pinned!: boolean;
 }

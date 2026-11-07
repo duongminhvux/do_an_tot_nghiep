@@ -1,3 +1,4 @@
+import { ReviewLibraryDto, PracticeWordsDto, RecordWordReviewDto } from './dto/review-library.dto.js';
 import {
 Body,
 Controller,
@@ -23,7 +24,7 @@ export class ReviewsController {
   @Post('record')
   recordReview(
     @Req() req: any,
-    @Body() body: { wordId: string; rating: 'AGAIN' | 'HARD' | 'GOOD' | 'EASY' },
+    @Body() body: RecordWordReviewDto,
   ) {
     return this.reviewsService.recordReview(
       req.user._id,
@@ -32,6 +33,14 @@ export class ReviewsController {
     );
   }
 
+  @Get('library')
+  library(@Req() req: any, @Query() query: ReviewLibraryDto) {
+    return this.reviewsService.library(req.user._id, query);
+  }
+  @Get('practice')
+  practice(@Req() req: any, @Query() query: PracticeWordsDto) {
+    return this.reviewsService.practice(req.user._id, query);
+  }
   @Get('due')
   getDueReviews(
     @Req() req: any,

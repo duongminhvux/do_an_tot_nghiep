@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { qualityItem } from './quality-rules.js';
+import { qualityItem, TOEIC_PART_COUNTS } from './quality-rules.js';
 import {
   qualityMediaTarget,
   QualityMediaService,
@@ -153,5 +153,31 @@ describe('F11 quality rules and safe media probing', () => {
       );
     expect(keys(viText)).toEqual(keys(enText));
     expect(viText.title).toBe('Chất lượng dữ liệu');
+  });
+  it('checks exam completeness against the declared total and the TOEIC part layout', () => {
+    const base = { id: 'q', content: 'Q', options: ['A', 'B', 'C', 'D'].map((key) => ({ key, text: key })), correctAnswer: 'A' };
+    const question = (part: number, n: number) => ({ ...base, id: `p${part}-${n}`, part, content: `Part ${part} #${n}` });
+    const short = qualityItem('exams', { id: 'e', type: 'TOEIC', totalQuestions: 10, questions: [question(5, 1), question(5, 2)], groups: [] });
+    const incomplete = short.issues.find((i) => i.code === 'EXAM_INCOMPLETE');
+    expect(incomplete?.severity).toBe('error');
+    expect(incomplete?.messageVi).toContain('2/10');
+    expect(short.issues.some((i) => i.code === 'TOEIC_PART_COUNT')).toBe(false);
+    const full = qualityItem('exams', { id: 'e', type: 'TOEIC', totalQuestions: 200, questions: [question(5, 1)], groups: [] });
+    const parts = full.issues.find((i) => i.code === 'TOEIC_PART_COUNT' && i.path === 'part.5');
+    expect(parts?.messageVi).toContain('Part 5 có 1/30 câu');
+    expect(Object.values(TOEIC_PART_COUNTS).reduce((a, b) => a + b, 0)).toBe(200);
+    expect(qualityItem('exams', { id: 'e', questions: [question(5, 1)], groups: [] }).issues.some((i) => /EXAM_|TOEIC_PART/.test(i.code))).toBe(false);
+  });
+  it('lists missing required and recommended fields without requiring a lesson link', () => {
+    const word = { id: 'w', word: 'test', slug: 'test', level: 'B1', linkedLessons: 0, audio: { us: '/media/a.mp3' },
+      parts: [{ partOfSpeech: 'noun', meanings: [{ translation: ['thử'] }] }] };
+    const item = qualityItem('words', word);
+    expect(item.issues.some((i) => i.code === 'LESSON_REQUIRED')).toBe(false);
+    const recommended = item.issues.find((i) => i.code === 'WORD_RECOMMENDED');
+    expect(recommended?.severity).toBe('warning');
+    expect(recommended?.messageVi).toContain('phiên âm IPA');
+    expect(recommended?.messageVi).toContain('câu ví dụ');
+    const dictation = qualityItem('dictation', { id: 'd', title: '', slug: 's', segments: [] });
+    expect(dictation.issues.find((i) => i.code === 'DICTATION_FIELDS')?.messageVi).toContain('tiêu đề');
   });
 });

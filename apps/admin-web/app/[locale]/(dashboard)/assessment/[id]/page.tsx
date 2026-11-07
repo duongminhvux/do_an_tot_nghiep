@@ -22,11 +22,17 @@ import { ImportQuestionsDialog } from '@/components/assessment/import-questions-
 import { ExamBanner } from '@/components/assessment/exam-banner';
 import { ExamQuestionsTab } from '@/components/assessment/exam-questions-tab';
 import { ExamOverviewTab } from '@/components/assessment/exam-overview-tab';
+import { ExamLeaderboardTab, ExamCommentsTab } from '@/components/assessment/exam-community-tabs';
 import { ExamAttemptsTab } from '@/components/assessment/exam-attempts-tab';
+import { ExamChecksTab } from '@/components/assessment/exam-checks-tab';
+import { checkExam } from '@repo/shared-types/exam-checks';
 import { ExamStructureDialog } from '@/components/assessment/exam-structure-dialog';
 import {
   FileText,
+  ListChecks,
   Users,
+  Trophy,
+  MessageSquare,
   Loader2,
   AlertTriangle,
   ArrowLeft,
@@ -50,7 +56,7 @@ export default function ExamDetailPage() {
   const { t } = useTranslation('assessment');
   const queryClient = useQueryClient();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'questions' | 'attempts'>('questions');
+  const [activeTab, setActiveTab] = useState<'overview' | 'questions' | 'checks' | 'attempts' | 'leaderboard' | 'comments'>('questions');
   const [editOpen, setEditOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [structureOpen, setStructureOpen] = useState(false);
@@ -153,6 +159,33 @@ export default function ExamDetailPage() {
     if (Array.isArray(raw)) return raw;
     return [];
   }, [passagesResponse]);
+
+  // Live exam checks: same rules as publishing and the quality scan.
+  const examIssues = useMemo(
+    () =>
+      checkExam(
+        {
+          exam: { type: exam.type, totalQuestions: exam.totalQuestions },
+          // The admin API populates passageGroupId with the group object.
+          questions: questionsList.map((q) => {
+            const group = q.passageGroupId as unknown as string | { _id?: string; id?: string } | undefined;
+            return {
+              ...q,
+              id: q._id,
+              passageGroupId: typeof group === 'object' && group ? (group._id ?? group.id) : group,
+            };
+          }),
+          groups: passagesList.map((g) => ({
+            ...g,
+            id: g._id,
+            passages: (g.passages ?? []).map((p) => ({ ...p, id: p._id })),
+          })),
+        },
+        locale === 'en' ? 'en' : 'vi',
+      ),
+    [exam.type, exam.totalQuestions, questionsList, passagesList, locale],
+  );
+  const examErrorCount = examIssues.filter((issue) => issue.severity === 'error').length;
 
   // 4. Mutation to delete a question
   const deleteQuestionMutation = useMutation({
@@ -375,7 +408,7 @@ export default function ExamDetailPage() {
   return (
     <div className="flex min-h-screen flex-col bg-slate-50/50">
       {/* ── UNIFIED COMPACT HERO HEADER (Tất cả thông tin cốt lõi gói trong 1 header phẳng) ── */}
-      <header className="border-b border-slate-200/80 bg-white">
+      <header className="bg-white">
         <div className="px-4 py-3 sm:px-6">
           {/* 1. Breadcrumbs */}
           <div className="flex items-center gap-1.5 text-xs text-slate-500">
@@ -406,124 +439,55 @@ export default function ExamDetailPage() {
 
           {/* 3. Publication Workflow Bar - Compact Inline Strip */}
           <div className="mt-3">
-            <PublicationBar kind="exams" id={examId} version={examResponse} compact={true} />
+            <PublicationBar kind="exams" id={examId} version={examResponse} compact={true} onShowIssues={() => setActiveTab('checks')} />
           </div>
 
-          {/* 4. Audio TTS Generation Pipeline - Compact Inline Bar */}
-          <div className={cn(
-            'mt-2.5 overflow-hidden rounded-lg border bg-slate-50/60 transition-colors text-xs',
-            audioHealthy ? 'border-emerald-200/80' : audioWarning ? 'border-amber-200/80' : 'border-slate-200'
-          )}>
-            <div className="flex items-center justify-between gap-3 px-3 py-2">
-              <button
-                type="button"
-                onClick={() => setAudioExpanded(v => !v)}
-                className="flex items-center gap-2.5 min-w-0 cursor-pointer text-left hover:opacity-80 transition-opacity"
-              >
-                <div className={cn(
-                  'flex h-6 w-6 shrink-0 items-center justify-center rounded-md',
-                  audioHealthy ? 'bg-emerald-100/70 text-emerald-700' : audioWarning ? 'bg-amber-100/70 text-amber-700' : 'bg-blue-100/70 text-blue-700'
-                )}>
-                  <Volume2 className="h-3.5 w-3.5" />
-                </div>
-                <span className="font-semibold text-slate-800">TTS Audio Part 1–4</span>
-                <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
-                  <span className="bg-white px-1.5 py-0.5 rounded border border-slate-200">{listeningAudioStats.total} câu</span>
-                  <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-200">{listeningAudioStats.ready} ready</span>
-                  {listeningAudioStats.stale > 0 && (
-                    <span className="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-200">{listeningAudioStats.stale} stale</span>
-                  )}
-                  {listeningAudioStats.missing > 0 && (
-                    <span className="bg-red-50 text-red-600 px-1.5 py-0.5 rounded border border-red-200">{listeningAudioStats.missing} thiếu</span>
-                  )}
-                </div>
-                <ChevronDown className={cn('h-3.5 w-3.5 text-slate-400 transition-transform ml-1', audioExpanded && 'rotate-180')} />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => void startListeningAudioJob()}
-                disabled={isStartingAudioJob || isAudioJobRunning}
-                className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors shrink-0"
-              >
-                {isStartingAudioJob || isAudioJobRunning
-                  ? <Loader2 className="h-3 w-3 animate-spin" />
-                  : listeningAudioStats.ready > 0 ? <RefreshCw className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
-                Generate Audio
-              </button>
-            </div>
-
-            {audioExpanded && (
-              <div className="border-t border-slate-200/60 bg-white px-3 py-2.5 space-y-2">
-                <p className="text-[11px] text-slate-500">
-                  Kokoro TTS tạo âm thanh trực tiếp vào bộ nhớ storage; BullMQ/Redis phân luồng xử lý tự động theo từng phần.
-                </p>
-                {audioJob && (
-                  <div className="rounded border border-slate-200 bg-slate-50 p-2.5">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="font-semibold text-slate-700">
-                        {audioJob.state === 'completed' ? 'Hoàn tất' : audioJob.state === 'failed' ? 'Thất bại' : 'Đang xử lý audio...'}
-                      </span>
-                      <span className="text-slate-500 tabular-nums">
-                        {(audioJob.progress as any)?.processed || 0} / {(audioJob.progress as any)?.total || 0}
-                      </span>
-                    </div>
-                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-200">
-                      <div
-                        className="h-full rounded-full bg-blue-600 transition-all"
-                        style={{ width: `${(audioJob.progress as any)?.total ? Math.min(100, (((audioJob.progress as any)?.processed || 0) / (audioJob.progress as any).total) * 100) : 0}%` }}
-                      />
-                    </div>
-                    {audioJob.state === 'completed' && (
-                      <div className="mt-1.5 flex items-center gap-1 text-[11px] font-medium text-emerald-700">
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                        Audio đã được đồng bộ hoàn tất.
-                      </div>
-                    )}
-                  </div>
-                )}
-                {audioJobError && <p className="text-[11px] font-medium text-red-600">{audioJobError}</p>}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* 5. Tab Navigation Bar (Liền khối với header, không còn card lơ lửng) */}
-        <div className="px-4 sm:px-6 pt-1">
-          <nav className="flex gap-1 overflow-x-auto scrollbar-none" aria-label="Exam tabs">
-            {([
-              { key: 'questions', icon: FileText, label: t('tabs.questions'), badge: questionsList.length },
-              { key: 'overview', icon: Info, label: t('tabs.overview'), badge: undefined },
-              { key: 'attempts', icon: Users, label: t('tabs.attempts'), badge: exam.totalAttempts ?? 0 },
-            ] as const).map(({ key, icon: Icon, label, badge }) => (
-              <button
-                key={key}
-                type="button"
-                role="tab"
-                aria-selected={activeTab === key}
-                onClick={() => setActiveTab(key)}
-                className={cn(
-                  'relative flex cursor-pointer items-center gap-2 whitespace-nowrap px-3.5 py-2.5 text-xs font-semibold transition-colors',
-                  activeTab === key
-                    ? 'text-blue-600 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-blue-600'
-                    : 'text-slate-500 hover:text-slate-800'
-                )}
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                <span>{label}</span>
-                {badge !== undefined && (
-                  <span className={cn(
-                    'rounded-full px-1.5 py-0.2 text-[10px] font-bold tabular-nums',
-                    activeTab === key ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
-                  )}>
-                    {badge}
-                  </span>
-                )}
-              </button>
-            ))}
-          </nav>
         </div>
       </header>
+
+      {/* Tabs: sticky under the app header. Group 1 = authoring, group 2 = learners. */}
+      <div className="sticky top-16 z-20 border-b border-slate-200 bg-white/95 px-4 backdrop-blur-md sm:px-6">
+        <nav className="-mb-px flex gap-1 overflow-x-auto" aria-label="Exam tabs">
+          {([
+            [
+              { key: 'questions', icon: FileText, label: t('tabs.questions'), badge: questionsList.length, alert: false },
+              { key: 'checks', icon: ListChecks, label: locale === 'en' ? 'Checks' : 'Kiểm tra lỗi', badge: examErrorCount || undefined, alert: examErrorCount > 0 },
+              { key: 'overview', icon: Info, label: locale === 'en' ? 'Exam info' : 'Thông tin đề', badge: undefined, alert: false },
+            ],
+            [
+              { key: 'attempts', icon: Users, label: locale === 'en' ? 'Attempts' : 'Lượt thi', badge: exam.totalAttempts ?? 0, alert: false },
+              { key: 'leaderboard', icon: Trophy, label: locale === 'en' ? 'Ranking' : 'Xếp hạng', badge: undefined, alert: false },
+              { key: 'comments', icon: MessageSquare, label: locale === 'en' ? 'Comments' : 'Bình luận', badge: undefined, alert: false },
+            ],
+          ] as const).map((group, index) => (
+            <div key={index} className={cn('flex shrink-0 gap-1', index > 0 && 'ml-2 border-l border-slate-200 pl-3')}>
+              {group.map(({ key, icon: Icon, label, badge, alert }) => (
+                <button
+                  key={key}
+                  type="button"
+                  aria-pressed={activeTab === key}
+                  onClick={() => setActiveTab(key)}
+                  className={cn(
+                    'relative flex cursor-pointer items-center gap-2 whitespace-nowrap border-b-2 px-3 py-3 text-[13px] font-semibold outline-none transition-colors focus-visible:bg-slate-50',
+                    activeTab === key ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-800',
+                  )}
+                >
+                  <Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
+                  <span>{label}</span>
+                  {badge !== undefined && (
+                    <span className={cn(
+                      'rounded-full px-1.5 text-[11px] font-bold tabular-nums',
+                      alert ? 'bg-red-100 text-red-700' : activeTab === key ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600',
+                    )}>
+                      {badge}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          ))}
+        </nav>
+      </div>
 
       {/* ── MAIN TAB CONTENT (Không gian làm việc chính tập trung, gọn gàng) ── */}
       <main className="flex-1 px-4 py-4 sm:px-6 sm:py-5">
@@ -566,11 +530,106 @@ export default function ExamDetailPage() {
           />
         )}
 
+        {activeTab === 'checks' && (
+          <ExamChecksTab
+            issues={examIssues}
+            questionsList={questionsList}
+            totalQuestions={exam.totalQuestions}
+            isFullToeic={(exam.type ?? 'TOEIC') === 'TOEIC' && exam.totalQuestions === 200}
+            locale={locale}
+            onEditQuestion={(q) => setSelectedQuestionForEdit(q)}
+            toolbar={
+          <div className={cn(
+            'overflow-hidden rounded-xl border bg-white transition-colors text-xs',
+            audioHealthy ? 'border-emerald-200/80' : audioWarning ? 'border-amber-200/80' : 'border-slate-200'
+          )}>
+            <div className="flex items-center justify-between gap-3 px-3 py-2">
+              <button
+                type="button"
+                onClick={() => setAudioExpanded(v => !v)}
+                className="flex items-center gap-2.5 min-w-0 cursor-pointer text-left hover:opacity-80 transition-opacity"
+              >
+                <div className={cn(
+                  'flex h-6 w-6 shrink-0 items-center justify-center rounded-md',
+                  audioHealthy ? 'bg-emerald-100/70 text-emerald-700' : audioWarning ? 'bg-amber-100/70 text-amber-700' : 'bg-blue-100/70 text-blue-700'
+                )}>
+                  <Volume2 className="h-3.5 w-3.5" />
+                </div>
+                <span className="font-semibold text-slate-800">{locale === 'en' ? 'Listening audio (Part 1–4)' : 'Audio phần Nghe (Part 1–4)'}</span>
+                <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
+                  <span className="bg-white px-1.5 py-0.5 rounded border border-slate-200">{listeningAudioStats.total} câu</span>
+                  <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-200">{listeningAudioStats.ready} ready</span>
+                  {listeningAudioStats.stale > 0 && (
+                    <span className="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-200">{listeningAudioStats.stale} stale</span>
+                  )}
+                  {listeningAudioStats.missing > 0 && (
+                    <span className="bg-red-50 text-red-600 px-1.5 py-0.5 rounded border border-red-200">{listeningAudioStats.missing} thiếu</span>
+                  )}
+                </div>
+                <ChevronDown className={cn('h-3.5 w-3.5 text-slate-400 transition-transform ml-1', audioExpanded && 'rotate-180')} />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void startListeningAudioJob()}
+                disabled={isStartingAudioJob || isAudioJobRunning}
+                className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors shrink-0"
+              >
+                {isStartingAudioJob || isAudioJobRunning
+                  ? <Loader2 className="h-3 w-3 animate-spin" />
+                  : listeningAudioStats.ready > 0 ? <RefreshCw className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
+                {locale === 'en' ? 'Generate audio' : 'Tạo audio'}
+              </button>
+            </div>
+
+            {audioExpanded && (
+              <div className="border-t border-slate-200/60 bg-white px-3 py-2.5 space-y-2">
+                <p className="text-[11px] text-slate-500">
+                  Kokoro TTS tạo âm thanh trực tiếp vào bộ nhớ storage; BullMQ/Redis phân luồng xử lý tự động theo từng phần.
+                </p>
+                {audioJob && (
+                  <div className="rounded border border-slate-200 bg-slate-50 p-2.5">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="font-semibold text-slate-700">
+                        {audioJob.state === 'completed' ? 'Hoàn tất' : audioJob.state === 'failed' ? 'Thất bại' : 'Đang xử lý audio...'}
+                      </span>
+                      <span className="text-slate-500 tabular-nums">
+                        {(audioJob.progress as any)?.processed || 0} / {(audioJob.progress as any)?.total || 0}
+                      </span>
+                    </div>
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-200">
+                      <div
+                        className="h-full rounded-full bg-blue-600 transition-all"
+                        style={{ width: `${(audioJob.progress as any)?.total ? Math.min(100, (((audioJob.progress as any)?.processed || 0) / (audioJob.progress as any).total) * 100) : 0}%` }}
+                      />
+                    </div>
+                    {audioJob.state === 'completed' && (
+                      <div className="mt-1.5 flex items-center gap-1 text-[11px] font-medium text-emerald-700">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Audio đã được đồng bộ hoàn tất.
+                      </div>
+                    )}
+                  </div>
+                )}
+                {audioJobError && <p className="text-[11px] font-medium text-red-600">{audioJobError}</p>}
+              </div>
+            )}
+          </div>
+            }
+            onOpenPart={(part) => {
+              setActiveTab('questions');
+              setSelectedPartPill(part);
+            }}
+          />
+        )}
+
         {activeTab === 'overview' && (
           <ExamOverviewTab exam={exam} questionsCount={questionsList.length} />
         )}
 
         {activeTab === 'attempts' && <ExamAttemptsTab />}
+        {activeTab === 'leaderboard' && <ExamLeaderboardTab key={examId} />}
+        {activeTab === 'comments' && <ExamCommentsTab key={examId} />}
       </main>
 
       {/* ── DIALOGS ── */}

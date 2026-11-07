@@ -12,7 +12,7 @@ import {
   type PgConnection,
 } from '../../../../postgres/connection.js';
 import { isUuid } from '../../../../postgres/ids.js';
-import { serviceUrl } from '../../../../postgres/ownership.js';
+import { resolveExamNames } from './exam-profile-names.js';
 import {
   COMMENT_EMOJIS,
   type CreateExamCommentDto,
@@ -21,44 +21,18 @@ import {
 @Injectable()
 export class ExamCommunityService {
   constructor(@InjectPgConnection() private readonly db: PgConnection) {}
-  private async names(
-    ids: (string | null)[],
-  ): Promise<Record<string, string | null>> {
-    const unique = [...new Set(ids.filter((id): id is string => !!id))];
-    const token = process.env.INTERNAL_SERVICE_TOKEN;
-    if (!unique.length || !token || token.length < 24) return {};
-    try {
-      const response = await fetch(
-        `${serviceUrl('identity')}/api/_internal/exam-community/profiles`,
-        {
-          method: 'POST',
-          headers: {
-            'content-type': 'application/json',
-            'x-internal-token': token,
-          },
-          body: JSON.stringify({ ids: unique }),
-          signal: AbortSignal.timeout(3000),
-        },
-      );
-      if (!response.ok) return {};
-      const body = await response.json();
-      return body.data ?? body;
-    } catch {
-      return {};
-    }
-  }
-  private async exam(idOrSlug: string, db = this.db, lock = false) {
+  private async exam(idOrSlug: string, db = this.db, lock = false, admin = false) {
     const { rows } = await db.query(
       `SELECT id,publication_revision FROM public.exams
-      WHERE ${isUuid(idOrSlug) ? 'id=$1::uuid' : 'slug=$1'} AND type='TOEIC' AND publication_status='PUBLISHED'
-        AND is_active IS NOT FALSE AND is_deleted IS NOT TRUE ${lock ? 'FOR SHARE' : ''}`,
+      WHERE ${isUuid(idOrSlug) ? 'id=$1::uuid' : 'slug=$1'} AND type='TOEIC' AND is_deleted IS NOT TRUE
+        ${admin ? '' : "AND publication_status='PUBLISHED' AND is_active IS NOT FALSE"} ${lock ? 'FOR SHARE' : ''}`,
       [idOrSlug],
     );
     if (!rows[0]) throw new NotFoundException('Exam not found');
     return rows[0];
   }
-  async leaderboard(examId: string, viewer: string, page = 1) {
-    const exam = await this.exam(examId);
+  async leaderboard(examId: string, viewer: string, page = 1, admin = false) {
+    const exam = await this.exam(examId, this.db, false, admin);
     // Never trust a client score or rank partial/practice/legacy ungraded data.
     // Compare all current question IDs with the immutable, server-created snapshot.
     const { rows } = await this.db.query(
@@ -89,7 +63,7 @@ export class ExamCommunityService {
       (SELECT to_jsonb(r) FROM ranked r WHERE "userId"=$4::uuid) AS mine`,
       [exam.id, String(exam.publication_revision), (page - 1) * 20, viewer],
     );
-    const names = await this.names([
+    const names = await resolveExamNames([
       ...rows[0].items.map((row: any) => row.userId),
       rows[0].mine?.userId,
     ]);
@@ -114,8 +88,8 @@ export class ExamCommunityService {
       pageSize: 20,
     };
   }
-  async comments(examId: string, viewer: string, page = 1, rootId?: string) {
-    const exam = await this.exam(examId);
+  async comments(examId: string, viewer: string, page = 1, rootId?: string, admin = false) {
+    const exam = await this.exam(examId, this.db, false, admin);
     if (rootId) {
       const root = await this.db.query(
         `SELECT 1 FROM public.exam_comments WHERE id=$1 AND exam_id=$2 AND root_id IS NULL`,
@@ -125,7 +99,7 @@ export class ExamCommunityService {
     }
     const where = `(($2::uuid IS NOT NULL AND c.root_id=$2::uuid) OR ($2::uuid IS NULL AND c.root_id IS NULL AND (c.deleted_at IS NULL OR EXISTS(SELECT 1 FROM public.exam_comments child WHERE child.root_id=c.id))))`;
     const result = await this.db.query(
-      `SELECT c.id,c.root_id AS "rootId",c.reply_to_id AS "replyToId",
+      `SELECT c.id,c.is_pinned AS "isPinned",c.root_id AS "rootId",c.reply_to_id AS "replyToId",
       CASE WHEN c.deleted_at IS NULL THEN c.body ELSE NULL END AS body,c.deleted_at IS NOT NULL AS deleted,c.created_at AS "createdAt",
       CASE WHEN c.deleted_at IS NULL THEN c.author_id ELSE NULL END AS "authorId",
       CASE WHEN c.deleted_at IS NULL AND p.is_deleted IS NOT TRUE THEN p.username ELSE NULL END AS username,
@@ -137,14 +111,14 @@ export class ExamCommunityService {
       FROM public.exam_comments c LEFT JOIN public.identity_profiles p ON p.id=c.author_id
       LEFT JOIN public.exam_comments parent ON parent.id=c.reply_to_id
       LEFT JOIN public.identity_profiles target ON target.id=parent.author_id AND target.is_deleted IS NOT TRUE
-      WHERE c.exam_id=$1 AND ${where} ORDER BY c.created_at DESC,c.id DESC LIMIT 20 OFFSET $4`,
+      WHERE c.exam_id=$1 AND ${where} ORDER BY c.is_pinned DESC,c.created_at DESC,c.id DESC LIMIT 20 OFFSET $4`,
       [exam.id, rootId ?? null, viewer, (page - 1) * 20],
     );
     const count = await this.db.query(
       `SELECT count(*)::int AS total FROM public.exam_comments c WHERE c.exam_id=$1 AND ${where}`,
       [exam.id, rootId ?? null],
     );
-    const names = await this.names(
+    const names = await resolveExamNames(
       result.rows.flatMap((row) => [row.authorId, row.replyToAuthorId]),
     );
     return {
@@ -214,7 +188,7 @@ export class ExamCommunityService {
     admin = false,
   ) {
     return withPgTransaction(this.db, async (db) => {
-      const exam = await this.exam(examId, db, true);
+      const exam = await this.exam(examId, db, true, admin);
       const comment = (
         await db.query(
           `SELECT author_id FROM public.exam_comments WHERE id=$1 AND exam_id=$2 FOR UPDATE`,
@@ -224,7 +198,7 @@ export class ExamCommunityService {
       if (!comment) throw new NotFoundException('Comment not found');
       if (comment.author_id !== actor && !admin) throw new ForbiddenException();
       await db.query(
-        `UPDATE public.exam_comments SET deleted_at=COALESCE(deleted_at,now()),body='[deleted]' WHERE id=$1`,
+        `UPDATE public.exam_comments SET deleted_at=COALESCE(deleted_at,now()),is_pinned=false,body='[deleted]' WHERE id=$1`,
         [commentId],
       );
       await db.query(
@@ -232,6 +206,17 @@ export class ExamCommunityService {
         [commentId],
       );
       return { deleted: true };
+    });
+  }
+  async pin(examId: string, commentId: string, pinned: boolean) {
+    return withPgTransaction(this.db, async (db) => {
+      const exam = await this.exam(examId, db, true, true);
+      const result = await db.query(
+        `UPDATE public.exam_comments SET is_pinned=$3 WHERE id=$1 AND exam_id=$2 AND root_id IS NULL AND deleted_at IS NULL RETURNING id,is_pinned AS "isPinned"`,
+        [commentId, exam.id, pinned],
+      );
+      if (!result.rows.length) throw new NotFoundException('Active root comment not found');
+      return result.rows[0];
     });
   }
   async react(

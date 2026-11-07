@@ -179,6 +179,7 @@ export const ADMIN_ROUTE_POLICIES = [
   {"method":"DELETE","path":"/api/admin/users/:id","policy":"users.delete","file":"apps/api/src/modules/users/admin-users.controller.ts","controller":"AdminUsersController","handler":"remove","sse":false},
   {"method":"POST","path":"/api/users","policy":"users.create [C2]","file":"apps/api/src/modules/users/users.controller.ts","controller":"UsersController","handler":"create","sse":false},
   {"method":"PATCH","path":"/api/users/profile","policy":"EXEMPT:E5 [C5]","file":"apps/api/src/modules/users/users.controller.ts","controller":"UsersController","handler":"updateProfile","sse":false},
+  {"method":"POST","path":"/api/users/profile/avatar","policy":"EXEMPT:E5 [C5]","file":"apps/api/src/modules/users/users.controller.ts","controller":"UsersController","handler":"uploadAvatar","sse":false},
   {"method":"POST","path":"/api/admin/collections","policy":"vocabulary.create","file":"apps/api/src/modules/vocabulary/collections/admin-collections.controller.ts","controller":"AdminCollectionsController","handler":"create","sse":false},
   {"method":"GET","path":"/api/admin/collections","policy":"vocabulary.read","file":"apps/api/src/modules/vocabulary/collections/admin-collections.controller.ts","controller":"AdminCollectionsController","handler":"findAll","sse":false},
   {"method":"GET","path":"/api/admin/collections/:id","policy":"vocabulary.read","file":"apps/api/src/modules/vocabulary/collections/admin-collections.controller.ts","controller":"AdminCollectionsController","handler":"findOne","sse":false},
@@ -376,6 +377,64 @@ export const ACTIVATION_ROUTE_POLICIES = [
     "file": "apps/api/src/modules/admins/admin-activation.controller.ts",
     "controller": "AdminReinviteController",
     "handler": "reinvite",
+    "sse": false
+  }
+] as const;
+
+/** Additional reviewed community management and administrator self-service routes. */
+export const EXTENDED_ROUTE_POLICIES = [
+  {
+    "method": "POST",
+    "path": "/api/admin/auth/change-password",
+    "policy": "EXEMPT:E4",
+    "file": "apps/api/src/modules/auth/admin-auth.controller.ts",
+    "controller": "AdminAuthController",
+    "handler": "changePassword",
+    "sse": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/admin/exams/:examId/leaderboard",
+    "policy": "toeic.read",
+    "file": "apps/api/src/modules/assessment/exams/community/admin-exam-community.controller.ts",
+    "controller": "AdminExamCommunityController",
+    "handler": "leaderboard",
+    "sse": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/admin/exams/:examId/comments",
+    "policy": "toeic.read",
+    "file": "apps/api/src/modules/assessment/exams/community/admin-exam-community.controller.ts",
+    "controller": "AdminExamCommunityController",
+    "handler": "comments",
+    "sse": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/admin/exams/:examId/comments/:id/replies",
+    "policy": "toeic.read",
+    "file": "apps/api/src/modules/assessment/exams/community/admin-exam-community.controller.ts",
+    "controller": "AdminExamCommunityController",
+    "handler": "replies",
+    "sse": false
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/admin/exams/:examId/comments/:id",
+    "policy": "toeic.comments.moderate",
+    "file": "apps/api/src/modules/assessment/exams/community/admin-exam-community.controller.ts",
+    "controller": "AdminExamCommunityController",
+    "handler": "remove",
+    "sse": false
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/admin/exams/:examId/comments/:id/pin",
+    "policy": "toeic.comments.moderate",
+    "file": "apps/api/src/modules/assessment/exams/community/admin-exam-community.controller.ts",
+    "controller": "AdminExamCommunityController",
+    "handler": "pin",
     "sse": false
   }
 ] as const;

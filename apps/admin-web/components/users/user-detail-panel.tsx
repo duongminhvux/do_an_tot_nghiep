@@ -1,4 +1,5 @@
 'use client';
+import { UserLearningProgress } from './user-learning-progress';
 
 import { useListPagination } from '@/hooks/use-list-pagination';
 import { ListPagination } from '@/components/ui/list-pagination';
@@ -147,8 +148,6 @@ export function UserDetailPanel({
 
             <div className="flex items-center gap-2 text-xs text-slate-500">
               <span>{user.email}</span>
-              <span>•</span>
-              <span>ID: {user.id}</span>
             </div>
 
             <div>
@@ -225,12 +224,10 @@ export function UserDetailPanel({
           </div>
           <div className="min-w-0">
             <p className="text-xs font-medium text-slate-500 truncate">
-              {t('detail.learning_stats.study_time', 'Thời gian học')}
+              {t('detail.modules.activeStudyTime')}
             </p>
             <p className="text-2xl font-bold text-slate-900 tracking-tight">
-              {user.learningStats?.studyTimeMinutes
-                ? `${Math.round(user.learningStats.studyTimeMinutes / 60)} ${t('detail.learning_stats.study_time_hours', 'giờ')}`
-                : `0 ${t('detail.learning_stats.study_time_hours', 'giờ')}`}
+              {user.moduleProgress?.summary ? `${Math.round(user.moduleProgress.summary.activeSeconds / 60)} ${t('detail.modules.minutes')}` : '—'}
             </p>
           </div>
         </div>
@@ -441,7 +438,7 @@ export function UserDetailPanel({
                 <div className="flex items-center gap-2.5 text-blue-600 font-bold text-sm">
                   <Bookmark className="w-4 h-4" />
                   <span className="text-slate-900">
-                    {t('detail.tabs.learning_progress', 'Tiến độ học tập')}
+                    {t('detail.modules.vocabCourses')}
                   </span>
                 </div>
                 <button
@@ -602,109 +599,7 @@ export function UserDetailPanel({
       )}
 
       {/* 6. Tab 3: LEARNING PROGRESS (Tiến độ học tập chi tiết) */}
-      {activeTab === 'learning' && (
-        <div className="space-y-5">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="rounded border border-slate-200 bg-white p-5 shadow-xs space-y-2">
-              <span className="text-xs text-slate-500 font-medium">
-                {t('detail.learning_stats.accuracy', 'Tỷ lệ trả lời chính xác')}
-              </span>
-              <p className="text-2xl font-bold text-emerald-600">
-                {user.learningStats?.accuracyRate ?? 0}%
-              </p>
-              <p className="text-[11px] text-slate-400">
-                {t(
-                  'detail.learning_stats.accuracy_sub',
-                  'Tính trên các bài ôn tập flashcard'
-                )}
-              </p>
-            </div>
-
-            <div className="rounded border border-slate-200 bg-white p-5 shadow-xs space-y-2">
-              <span className="text-xs text-slate-500 font-medium">
-                {t('detail.learning_stats.avg_score', 'Điểm số trung bình')}
-              </span>
-              <p className="text-2xl font-bold text-blue-600">
-                {user.learningStats?.testScoresAvg ?? 0} / 10
-              </p>
-              <p className="text-[11px] text-slate-400">
-                {user.learningStats?.testScoresAvg && user.learningStats.testScoresAvg >= 8
-                  ? t('detail.learning_stats.grade_excellent', 'Xếp loại: Xuất sắc')
-                  : user.learningStats?.testScoresAvg && user.learningStats.testScoresAvg >= 5
-                  ? t('detail.learning_stats.grade_passed', 'Xếp loại: Đạt')
-                  : t('detail.learning_stats.no_grade', 'Chưa có xếp loại')}
-              </p>
-            </div>
-
-            <div className="rounded border border-slate-200 bg-white p-5 shadow-xs space-y-2">
-              <span className="text-xs text-slate-500 font-medium">
-                {t('detail.learning_stats.study_time', 'Tổng thời gian học')}
-              </span>
-              <p className="text-2xl font-bold text-purple-600">
-                {Math.round((user.learningStats?.studyTimeMinutes ?? 0) / 60)}{' '}
-                {t('detail.learning_stats.study_time_hours', 'giờ')}
-              </p>
-              <p className="text-[11px] text-slate-400">
-                {t('detail.learning_stats.study_time_sub', {
-                  minutes: user.learningStats?.studyTimeMinutes ?? 0,
-                  defaultValue: `Tương đương ~${user.learningStats?.studyTimeMinutes ?? 0} phút`,
-                })}
-              </p>
-            </div>
-          </div>
-
-          <div className="rounded border border-slate-200 bg-white p-6 shadow-xs space-y-4">
-            <h4 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3">
-              {t('detail.enrolled_courses_title', 'Danh sách khóa học đã ghi danh')}
-            </h4>
-            {coursesList.length === 0 ? (
-              <div className="py-8 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded">
-                {t('detail.no_enrolled_courses', 'Chưa tham gia khóa học hoặc bài học nào.')}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {coursePage.items.map((course: any) => (
-                  <div
-                    key={course.id}
-                    className="rounded border border-slate-200 p-4 space-y-3 bg-slate-50/40 hover:bg-white hover:border-blue-200 transition-all"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`w-9 h-9 rounded ${
-                          course.color || 'bg-blue-600'
-                        } text-white font-bold text-sm flex items-center justify-center shadow-xs`}
-                      >
-                        {course.letter || course.title.charAt(0)}
-                      </div>
-                      <div>
-                        <h5 className="font-bold text-xs text-slate-900">
-                          {course.title}
-                        </h5>
-                        <span className="text-[11px] text-slate-400">
-                          {course.progressText}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600">
-                        <span>{t('detail.progress_label', 'Tiến độ')}</span>
-                        <span>{course.percentage}%</span>
-                      </div>
-                      <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-blue-600 rounded-full"
-                          style={{ width: `${course.percentage}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                <ListPagination pagination={coursePage} />
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {activeTab === 'learning' && <UserLearningProgress user={user} />}
 
       {/* 7. Tab 4: OTHER INFO & SETTINGS (Thông tin khác & Quản trị) */}
       {activeTab === 'other' && (

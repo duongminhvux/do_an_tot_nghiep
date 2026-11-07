@@ -76,6 +76,7 @@ export function PublicationBar({
   version,
   dirty = false,
   compact = false,
+  onShowIssues,
 }: {
   kind: PublicationKind;
   id: string;
@@ -83,6 +84,8 @@ export function PublicationBar({
   dirty?: boolean;
   /** Single-row layout for use inside dialogs. */
   compact?: boolean;
+  /** When set, issues are not listed here; a button opens the page's own issue view. */
+  onShowIssues?: () => void;
 }) {
   const { t } = useTranslation("common");
   const { locale = "vi" } = useParams<{ locale: string }>();
@@ -238,7 +241,16 @@ export function PublicationBar({
           {t("publication.actionError")}
         </p>
       )}
-      {!!issues.length && (
+      {!!issues.length && onShowIssues && (
+        <button
+          type="button"
+          onClick={onShowIssues}
+          className="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800 ring-1 ring-inset ring-amber-200 hover:bg-amber-100"
+        >
+          {t("publication.errors", { count: issues.length })} · {t("publication.showIssues")}
+        </button>
+      )}
+      {!!issues.length && !onShowIssues && (
         <ul className="max-h-48 space-y-2 overflow-y-auto rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
           {issues.map((issue, index) => (
             <li key={index}>

@@ -1,21 +1,28 @@
-'use client';
+"use client";
+import { useAppSelector } from "@/redux/hooks";
 
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import Link from 'next/link';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { mistakesService } from '@/services/mistakes.service';
-import { useTranslation } from 'react-i18next';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { CheckCheck } from 'lucide-react';
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
+import Link from "next/link";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { mistakesService } from "@/services/mistakes.service";
+import { useTranslation } from "react-i18next";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { CheckCheck, RotateCcw } from "lucide-react";
 
-import { learningService } from '@/services/learning.service';
-import { savedWordsService } from '@/services/saved-words.service';
-import { SrsRatingType } from '@/types/learning';
+import { learningService } from "@/services/learning.service";
+import { savedWordsService } from "@/services/saved-words.service";
+import { SrsRatingType } from "@/types/learning";
 import {
   WordDetail,
   WordPartDetail,
   WordMeaningDetail,
-} from '@/types/vocabulary';
+} from "@/types/vocabulary";
 
 import {
   StudyMode,
@@ -26,26 +33,34 @@ import {
   playFlipSound,
   playErrorSound,
   playVictoryFanfare,
-} from '../collection/[slug]/lesson/[lessonSlug]/components/study-sound';
-import { FlashcardView } from '../collection/[slug]/lesson/[lessonSlug]/components/FlashcardView';
-import { GuessModeView } from '../collection/[slug]/lesson/[lessonSlug]/components/GuessModeView';
-import { RepeatModeView } from '../collection/[slug]/lesson/[lessonSlug]/components/RepeatModeView';
-import { LessonCompletionView } from '../collection/[slug]/lesson/[lessonSlug]/components/LessonCompletionView';
-import { StudySettingsModal } from '../collection/[slug]/lesson/[lessonSlug]/components/StudySettingsModal';
-import { StudyShortcutsModal } from '../collection/[slug]/lesson/[lessonSlug]/components/StudyShortcutsModal';
-import { SrsRatingBar, SrsLevel } from '../collection/[slug]/lesson/[lessonSlug]/components/SrsRatingBar';
-import { ReviewHeader } from './components/ReviewHeader';
-import { Button } from '@/components/ui/button';
-import { LoadingState, surface, tones } from '@/components/ui/page';
-import { cn } from '@/lib/utils';
+} from "../collection/[slug]/lesson/[lessonSlug]/components/study-sound";
+import { FlashcardView } from "../collection/[slug]/lesson/[lessonSlug]/components/FlashcardView";
+import { GuessModeView } from "../collection/[slug]/lesson/[lessonSlug]/components/GuessModeView";
+import { RepeatModeView } from "../collection/[slug]/lesson/[lessonSlug]/components/RepeatModeView";
+import { LessonCompletionView } from "../collection/[slug]/lesson/[lessonSlug]/components/LessonCompletionView";
+import { StudySettingsModal } from "../collection/[slug]/lesson/[lessonSlug]/components/StudySettingsModal";
+import { StudyShortcutsModal } from "../collection/[slug]/lesson/[lessonSlug]/components/StudyShortcutsModal";
+import {
+  SrsRatingBar,
+  SrsLevel,
+} from "../collection/[slug]/lesson/[lessonSlug]/components/SrsRatingBar";
+import { ReviewHeader } from "./components/ReviewHeader";
+import { Button } from "@/components/ui/button";
+import { LoadingState, surface, tones } from "@/components/ui/page";
+import { cn } from "@/lib/utils";
 
 export default function SrsReviewPage() {
-  const { t, i18n } = useTranslation('vocabulary');
+  const { t, i18n } = useTranslation("vocabulary");
   const params = useParams();
   const router = useRouter();
-  const mistakeId = useSearchParams().get('mistakeId');
+  const searchParams = useSearchParams();
+  const mistakeId = searchParams.get("mistakeId");
+  const practiceWord = searchParams.get("wordId");
+  const scope = searchParams.get("scope");
+  const practiceSearch = searchParams.get("search");
+  const viewerId = useAppSelector((state) => state.auth.user?._id);
   const queryClient = useQueryClient();
-  const locale = (params?.locale as string) || 'vi';
+  const locale = (params?.locale as string) || "vi";
 
   useEffect(() => {
     if (locale && i18n.language !== locale) {
@@ -54,14 +69,36 @@ export default function SrsReviewPage() {
   }, [locale, i18n]);
 
   // 1. Fetch due reviews from Backend
-  const { data: dueRes, isLoading: isDueLoading, isError: isDueError, refetch } = useQuery({
-    queryKey: ['due-reviews', mistakeId],
-    queryFn: () => mistakeId ? mistakesService.reviewWord(mistakeId) : learningService.getDueReviews(50),
+  const {
+    data: dueRes,
+    isLoading: isDueLoading,
+    isError: isDueError,
+    refetch,
+  } = useQuery({
+    queryKey: [
+      "due-reviews",
+      viewerId,
+      mistakeId,
+      practiceWord,
+      scope,
+      practiceSearch,
+    ],
+    refetchOnWindowFocus: false,
+    queryFn: () =>
+      mistakeId
+        ? mistakesService.reviewWord(mistakeId)
+        : practiceWord || scope
+          ? learningService.getPracticeWords({
+              wordId: practiceWord || undefined,
+              status: scope || "ALL",
+              search: practiceSearch || undefined,
+            })
+          : learningService.getDueReviews(50),
   });
 
   // 2. Fetch saved words IDs for bookmark status
   const { data: savedIdsRes } = useQuery({
-    queryKey: ['saved-words-ids'],
+    queryKey: ["saved-words-ids"],
     queryFn: () => savedWordsService.getSavedIds(),
   });
 
@@ -69,7 +106,9 @@ export default function SrsReviewPage() {
     const raw = (dueRes as any)?.data || dueRes || [];
     const list = Array.isArray(raw) ? raw : [];
     return list
-      .map((item: any) => (typeof item.wordId === 'object' ? item.wordId : null))
+      .map((item: any) =>
+        typeof item.wordId === "object" ? item.wordId : null,
+      )
       .filter((w): w is WordDetail => !!w && !!w._id);
   }, [dueRes]);
 
@@ -83,19 +122,23 @@ export default function SrsReviewPage() {
   }, [savedIdsRes]);
 
   // Study Mode & Cards Navigation
-  const [mode, setMode] = useState<StudyMode>('flashcard');
+  const [mode, setMode] = useState<StudyMode>("flashcard");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [completed, setCompleted] = useState(false);
+  const ratingLock = useRef(false);
+  const [ratingError, setRatingError] = useState(false);
 
   // Gamification & Progress State
   const [streak, setStreak] = useState(0);
   const [highestStreak, setHighestStreak] = useState(0);
   const [masteredWords, setMasteredWords] = useState<Set<string>>(new Set());
-  const [needReviewWords, setNeedReviewWords] = useState<Set<string>>(new Set());
+  const [needReviewWords, setNeedReviewWords] = useState<Set<string>>(
+    new Set(),
+  );
 
   // Input & Guessing State
-  const [userGuess, setUserGuess] = useState('');
+  const [userGuess, setUserGuess] = useState("");
   const [isAnswerChecked, setIsAnswerChecked] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
   const [isDontKnow, setIsDontKnow] = useState(false);
@@ -105,7 +148,9 @@ export default function SrsReviewPage() {
 
   // Audio & Modals
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-  const [playingAudioType, setPlayingAudioType] = useState<'us' | 'uk' | 'example' | null>(null);
+  const [playingAudioType, setPlayingAudioType] = useState<
+    "us" | "uk" | "example" | null
+  >(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -113,11 +158,18 @@ export default function SrsReviewPage() {
 
   // Mutation to record review rating
   const recordMutation = useMutation({
-    mutationFn: ({ wordId, rating }: { wordId: string; rating: SrsRatingType }) =>
-      learningService.recordReview(wordId, rating),
+    mutationFn: ({
+      wordId,
+      rating,
+    }: {
+      wordId: string;
+      rating: SrsRatingType;
+    }) => learningService.recordReview(wordId, rating),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['due-reviews-check'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-study-stats'] });
+      queryClient.invalidateQueries({ queryKey: ["due-reviews-check"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-study-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["word-library"] });
+      queryClient.invalidateQueries({ queryKey: ["review-stats"] });
     },
   });
 
@@ -137,28 +189,32 @@ export default function SrsReviewPage() {
               ? [m.translation]
               : [];
           return {
-            definition: m.definition || '',
+            definition: m.definition || "",
             translations,
-            synonyms: Array.isArray(m.synonyms) ? m.synonyms.filter(Boolean) : [],
-            antonyms: Array.isArray(m.antonyms) ? m.antonyms.filter(Boolean) : [],
+            synonyms: Array.isArray(m.synonyms)
+              ? m.synonyms.filter(Boolean)
+              : [],
+            antonyms: Array.isArray(m.antonyms)
+              ? m.antonyms.filter(Boolean)
+              : [],
             examples: Array.isArray(m.examples)
               ? m.examples.filter((ex) => ex && (ex.en || ex.vi))
               : [],
           };
         });
         return {
-          partOfSpeech: p.partOfSpeech || 'Word',
+          partOfSpeech: p.partOfSpeech || "Word",
           info,
           meanings,
         };
       });
     }
 
-    const legacyPOS = currentWord.partOfSpeech || 'Vocabulary';
+    const legacyPOS = currentWord.partOfSpeech || "Vocabulary";
     const info = getPartOfSpeechInfo(legacyPOS, t);
-    const legacyMeaning = currentWord.meaning || '';
+    const legacyMeaning = currentWord.meaning || "";
     const legacyEx = currentWord.example
-      ? [{ en: currentWord.example, vi: '' }]
+      ? [{ en: currentWord.example, vi: "" }]
       : [];
 
     return [
@@ -167,7 +223,7 @@ export default function SrsReviewPage() {
         info,
         meanings: [
           {
-            definition: '',
+            definition: "",
             translations: legacyMeaning ? [legacyMeaning] : [],
             synonyms: [],
             antonyms: [],
@@ -178,8 +234,8 @@ export default function SrsReviewPage() {
     ];
   }, [currentWord, t]);
 
-  const wordText = currentWord?.word || '';
-  const wordLevel = currentWord?.level || '';
+  const wordText = currentWord?.word || "";
+  const wordLevel = currentWord?.level || "";
 
   // Flattened translations
   const allTranslationsList = useMemo(() => {
@@ -198,24 +254,27 @@ export default function SrsReviewPage() {
     return parsedParts.reduce((acc, p) => acc + (p.meanings?.length || 0), 0);
   }, [parsedParts]);
 
-  const primaryVietnameseWord = allTranslationsList[0] || currentWord?.meaning || wordText;
-  const primaryEnDefinition = parsedParts[0]?.meanings[0]?.definition || '';
-  const primaryExampleEn = parsedParts[0]?.meanings[0]?.examples[0]?.en || currentWord?.example || '';
-  const primaryExampleVi = parsedParts[0]?.meanings[0]?.examples[0]?.vi || '';
+  const primaryVietnameseWord =
+    allTranslationsList[0] || currentWord?.meaning || wordText;
+  const primaryEnDefinition = parsedParts[0]?.meanings[0]?.definition || "";
+  const primaryExampleEn =
+    parsedParts[0]?.meanings[0]?.examples[0]?.en || currentWord?.example || "";
+  const primaryExampleVi = parsedParts[0]?.meanings[0]?.examples[0]?.vi || "";
 
-  const illustration = currentWord?.image || currentWord?.imageUrl || '';
-  const audioUs = currentWord?.audio?.us || '';
-  const audioUk = currentWord?.audio?.uk || '';
-  const defaultAudioUrl = audioUs || audioUk || currentWord?.audioUrl || '';
-  const ipaUs = currentWord?.ipa?.us || (currentWord?.phonetic ? currentWord.phonetic : '');
-  const ipaUk = currentWord?.ipa?.uk || '';
+  const illustration = currentWord?.image || currentWord?.imageUrl || "";
+  const audioUs = currentWord?.audio?.us || "";
+  const audioUk = currentWord?.audio?.uk || "";
+  const defaultAudioUrl = audioUs || audioUk || currentWord?.audioUrl || "";
+  const ipaUs =
+    currentWord?.ipa?.us || (currentWord?.phonetic ? currentWord.phonetic : "");
+  const ipaUk = currentWord?.ipa?.uk || "";
 
   // Mask English word in example for Guess mode
   const maskedExampleEn = useMemo(() => {
     if (!primaryExampleEn || !wordText) return primaryExampleEn;
-    const escaped = wordText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`\\b${escaped}\\b`, 'gi');
-    return primaryExampleEn.replace(regex, '______');
+    const escaped = wordText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(`\\b${escaped}\\b`, "gi");
+    return primaryExampleEn.replace(regex, "______");
   }, [primaryExampleEn, wordText]);
 
   // Hints sequence
@@ -230,7 +289,7 @@ export default function SrsReviewPage() {
     const pushIfValid = (idx: number) => {
       if (idx >= 0 && idx < len && !order.includes(idx)) {
         const char = wordText[idx];
-        if (char !== ' ' && char !== '-') {
+        if (char !== " " && char !== "-") {
           order.push(idx);
         }
       }
@@ -253,25 +312,34 @@ export default function SrsReviewPage() {
   const maxHints = hintIndicesSequence.length;
 
   const maskedHint = useMemo(() => {
-    if (!wordText) return '';
-    const revealedIndices = new Set(hintIndicesSequence.slice(0, hintsRevealed));
+    if (!wordText) return "";
+    const revealedIndices = new Set(
+      hintIndicesSequence.slice(0, hintsRevealed),
+    );
     return wordText
-      .split('')
+      .split("")
       .map((char, index) => {
-        if (char === ' ' || char === '-') return char;
+        if (char === " " || char === "-") return char;
         if (revealedIndices.has(index)) return char;
-        return '•';
+        return "•";
       })
-      .join(' ');
+      .join(" ");
   }, [wordText, hintIndicesSequence, hintsRevealed]);
 
   // Audio Playback
   const playAudio = useCallback(
-    (customUrl?: string, langCode: string = 'en-US', textToSpeak?: string, playbackRate: number = 1, audioType?: 'us' | 'uk') => {
+    (
+      customUrl?: string,
+      langCode: string = "en-US",
+      textToSpeak?: string,
+      playbackRate: number = 1,
+      audioType?: "us" | "uk",
+    ) => {
       const targetText = textToSpeak || wordText;
       const targetUrl = customUrl || defaultAudioUrl;
-      const resolvedType: 'us' | 'uk' | 'example' =
-        audioType || (textToSpeak ? 'example' : langCode === 'en-GB' ? 'uk' : 'us');
+      const resolvedType: "us" | "uk" | "example" =
+        audioType ||
+        (textToSpeak ? "example" : langCode === "en-GB" ? "uk" : "us");
 
       setIsPlayingAudio(true);
       setPlayingAudioType(resolvedType);
@@ -287,7 +355,7 @@ export default function SrsReviewPage() {
           audio.playbackRate = playbackRate;
           audio.onended = () => resetPlaying();
           audio.onerror = () => {
-            if ('speechSynthesis' in window && targetText) {
+            if ("speechSynthesis" in window && targetText) {
               window.speechSynthesis.cancel();
               const utterance = new SpeechSynthesisUtterance(targetText);
               utterance.lang = langCode;
@@ -306,7 +374,7 @@ export default function SrsReviewPage() {
         }
       }
 
-      if ('speechSynthesis' in window && targetText) {
+      if ("speechSynthesis" in window && targetText) {
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(targetText);
         utterance.lang = langCode;
@@ -318,7 +386,7 @@ export default function SrsReviewPage() {
         resetPlaying();
       }
     },
-    [defaultAudioUrl, wordText]
+    [defaultAudioUrl, wordText],
   );
 
   // Flip Flashcard action
@@ -331,22 +399,22 @@ export default function SrsReviewPage() {
   };
 
   // Reset per word change
-  useEffect(() => {
-    setUserGuess('');
+  React.useLayoutEffect(() => {
+    setUserGuess("");
     setIsAnswerChecked(false);
     setIsCorrect(false);
     setIsDontKnow(false);
     setHintsRevealed(0);
     setIsFlipped(false);
 
-    if (inputRef.current && (mode === 'guess' || mode === 'repeat')) {
+    if (inputRef.current && (mode === "guess" || mode === "repeat")) {
       inputRef.current.focus({ preventScroll: true });
     }
-  }, [currentIndex, mode]);
+  }, [currentWord?._id, mode]);
 
   // Auto-play audio
   useEffect(() => {
-    if (autoPlayAudio && currentWord && mode !== 'guess') {
+    if (autoPlayAudio && currentWord && mode !== "guess") {
       const timer = setTimeout(() => {
         playAudio();
       }, 250);
@@ -412,11 +480,12 @@ export default function SrsReviewPage() {
 
   // Next Word
   const handleNextWord = () => {
+    if (ratingLock.current) return;
     if (currentIndex < wordsList.length - 1) {
       setCurrentIndex((prev) => prev + 1);
     } else {
       setCompleted(true);
-      queryClient.invalidateQueries({ queryKey: ['due-reviews'] });
+      queryClient.invalidateQueries({ queryKey: ["word-library"] });
       if (soundEnabled) playVictoryFanfare();
       triggerConfetti(0.5, 0.3);
       setTimeout(() => triggerConfetti(0.3, 0.5), 300);
@@ -426,70 +495,82 @@ export default function SrsReviewPage() {
 
   // Previous Word
   const handlePrevWord = () => {
+    if (ratingLock.current) return;
     if (currentIndex > 0) {
       setCurrentIndex((prev) => prev - 1);
     }
   };
 
   // SRS Rating actions (Học lại, Khó, Tốt, Dễ)
-  const handleSrsRating = (level: SrsLevel) => {
-    if (!currentWord) return;
+  const handleSrsRating = async (level: SrsLevel) => {
+    if (!currentWord || ratingLock.current) return;
+    ratingLock.current = true;
+    setRatingError(false);
+    try {
+      const ratingEnum = level.toUpperCase() as SrsRatingType;
+      await recordMutation.mutateAsync({
+        wordId: currentWord._id,
+        rating: ratingEnum,
+      });
 
-    const ratingEnum = level.toUpperCase() as SrsRatingType;
-    recordMutation.mutate({ wordId: currentWord._id, rating: ratingEnum });
+      switch (level) {
+        case "again":
+          setNeedReviewWords((prev) => new Set(prev).add(currentWord._id));
+          setMasteredWords((prev) => {
+            const next = new Set(prev);
+            next.delete(currentWord._id);
+            return next;
+          });
+          setStreak(0);
+          if (soundEnabled) playErrorSound();
+          break;
 
-    switch (level) {
-      case 'again':
-        setNeedReviewWords((prev) => new Set(prev).add(currentWord._id));
-        setMasteredWords((prev) => {
-          const next = new Set(prev);
-          next.delete(currentWord._id);
-          return next;
-        });
-        setStreak(0);
-        if (soundEnabled) playErrorSound();
-        break;
+        case "hard":
+          setNeedReviewWords((prev) => new Set(prev).add(currentWord._id));
+          if (soundEnabled) playFlipSound();
+          break;
 
-      case 'hard':
-        setNeedReviewWords((prev) => new Set(prev).add(currentWord._id));
-        if (soundEnabled) playFlipSound();
-        break;
+        case "good":
+          setMasteredWords((prev) => new Set(prev).add(currentWord._id));
+          setNeedReviewWords((prev) => {
+            const next = new Set(prev);
+            next.delete(currentWord._id);
+            return next;
+          });
+          setStreak((prev) => {
+            const next = prev + 1;
+            if (next > highestStreak) setHighestStreak(next);
+            return next;
+          });
+          if (soundEnabled) playSuccessSound();
+          break;
 
-      case 'good':
-        setMasteredWords((prev) => new Set(prev).add(currentWord._id));
-        setNeedReviewWords((prev) => {
-          const next = new Set(prev);
-          next.delete(currentWord._id);
-          return next;
-        });
-        setStreak((prev) => {
-          const next = prev + 1;
-          if (next > highestStreak) setHighestStreak(next);
-          return next;
-        });
-        if (soundEnabled) playSuccessSound();
-        break;
+        case "easy":
+          setMasteredWords((prev) => new Set(prev).add(currentWord._id));
+          setNeedReviewWords((prev) => {
+            const next = new Set(prev);
+            next.delete(currentWord._id);
+            return next;
+          });
+          setStreak((prev) => {
+            const next = prev + 1;
+            if (next > highestStreak) setHighestStreak(next);
+            return next;
+          });
+          if (soundEnabled) {
+            playComboSound();
+            triggerConfetti(0.5, 0.4);
+          }
+          break;
+      }
 
-      case 'easy':
-        setMasteredWords((prev) => new Set(prev).add(currentWord._id));
-        setNeedReviewWords((prev) => {
-          const next = new Set(prev);
-          next.delete(currentWord._id);
-          return next;
-        });
-        setStreak((prev) => {
-          const next = prev + 1;
-          if (next > highestStreak) setHighestStreak(next);
-          return next;
-        });
-        if (soundEnabled) {
-          playComboSound();
-          triggerConfetti(0.5, 0.4);
-        }
-        break;
+      ratingLock.current = false;
+      handleNextWord();
+    } catch {
+      setRatingError(true);
+    } finally {
+      ratingLock.current = false;
     }
-
-    handleNextWord();
   };
 
   // Toggle Save / Bookmark
@@ -508,7 +589,7 @@ export default function SrsReviewPage() {
         }
         return next;
       });
-      queryClient.invalidateQueries({ queryKey: ['saved-words-ids'] });
+      queryClient.invalidateQueries({ queryKey: ["saved-words-ids"] });
       if (soundEnabled) playFlipSound();
     } catch {
       // optimistic toggle fallback
@@ -544,16 +625,17 @@ export default function SrsReviewPage() {
 
   // Condition to display SRS Rating Bar
   const showSrsBar =
-    (mode === 'flashcard' && isFlipped) ||
-    ((mode === 'guess' || mode === 'repeat') && (isCorrect || isDontKnow));
+    (mode === "flashcard" && isFlipped) ||
+    ((mode === "guess" || mode === "repeat") && (isCorrect || isDontKnow));
 
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (ratingLock.current) return;
       if (e.target instanceof HTMLInputElement) {
-        if (e.key === 'Enter') {
+        if (e.key === "Enter") {
           if (isCorrect || isDontKnow) {
-            handleSrsRating(isCorrect ? 'good' : 'again');
+            handleSrsRating(isCorrect ? "good" : "again");
           } else {
             handleCheckGuess();
           }
@@ -563,43 +645,48 @@ export default function SrsReviewPage() {
 
       // If SRS Rating Bar is currently visible, allow 1, 2, 3, 4, M, S keys
       if (showSrsBar) {
-        if (e.key === '1') {
-          handleSrsRating('again');
+        if (e.key === "1") {
+          handleSrsRating("again");
           return;
-        } else if (e.key === '2') {
-          handleSrsRating('hard');
+        } else if (e.key === "2") {
+          handleSrsRating("hard");
           return;
-        } else if (e.key === '3') {
-          handleSrsRating('good');
+        } else if (e.key === "3") {
+          handleSrsRating("good");
           return;
-        } else if (e.key === '4') {
-          handleSrsRating('easy');
+        } else if (e.key === "4") {
+          handleSrsRating("easy");
           return;
-        } else if (e.key === 'm' || e.key === 'M') {
+        } else if (e.key === "m" || e.key === "M") {
           handleToggleMastered();
           return;
-        } else if (e.key === 's' || e.key === 'S' || e.key === 'b' || e.key === 'B') {
+        } else if (
+          e.key === "s" ||
+          e.key === "S" ||
+          e.key === "b" ||
+          e.key === "B"
+        ) {
           handleToggleSave();
           return;
         }
       }
 
-      if (e.key === 'ArrowRight') {
+      if (e.key === "ArrowRight") {
         handleNextWord();
-      } else if (e.key === 'ArrowLeft') {
+      } else if (e.key === "ArrowLeft") {
         handlePrevWord();
-      } else if (e.key === ' ' || e.code === 'Space') {
+      } else if (e.key === " " || e.code === "Space") {
         e.preventDefault();
-        if (mode === 'flashcard') {
+        if (mode === "flashcard") {
           toggleFlipCard();
-        } else if (mode === 'repeat') {
+        } else if (mode === "repeat") {
           playAudio();
         }
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [
     showSrsBar,
     isCorrect,
@@ -612,51 +699,13 @@ export default function SrsReviewPage() {
   ]);
 
   const totalWords = wordsList.length;
-  const progressPercent = totalWords > 0 ? Math.round(((currentIndex) / totalWords) * 100) : 0;
+  const progressPercent =
+    totalWords > 0 ? Math.round((currentIndex / totalWords) * 100) : 0;
 
   return (
-    <div className={`min-h-full bg-background text-slate-900 transition-all ${showSrsBar ? 'pb-24 sm:pb-28' : 'pb-8'}`}>
-      {/* 3D Flip Styles */}
-      <style jsx global>{`
-        .flashcard-3d-wrapper {
-          perspective: 1400px;
-          width: 100%;
-          height: auto;
-          min-height: 440px;
-        }
-        @media (min-width: 640px) {
-          .flashcard-3d-wrapper {
-            min-height: 470px;
-          }
-        }
-        .flashcard-3d-inner {
-          position: relative;
-          width: 100%;
-          min-height: 440px;
-          transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-          transform-style: preserve-3d;
-        }
-        @media (min-width: 640px) {
-          .flashcard-3d-inner {
-            min-height: 470px;
-          }
-        }
-        .flashcard-3d-inner.is-flipped {
-          transform: rotateY(180deg);
-        }
-        .flashcard-face {
-          width: 100%;
-          backface-visibility: hidden;
-          -webkit-backface-visibility: hidden;
-        }
-        .flashcard-front {
-          transform: rotateY(0deg);
-        }
-        .flashcard-back {
-          transform: rotateY(180deg);
-        }
-      `}</style>
-
+    <div
+      className="min-h-full bg-background text-slate-900"
+    >
       {/* 1. Header with Mode switchers & controls */}
       <ReviewHeader
         locale={locale}
@@ -672,15 +721,23 @@ export default function SrsReviewPage() {
       {/* 2. Main Content Area (Focused centered workspace without topic sidebar) */}
       <div className="w-full space-y-4 px-4 py-6 sm:px-6 lg:px-8">
         {/* Top Progress Bar & HUD */}
-        <div className={cn(surface, 'flex items-center justify-between gap-4 px-4 py-3')}>
+        <div
+          className={cn(
+            surface,
+            "flex items-center justify-between gap-4 px-4 py-3",
+          )}
+        >
           <div className="flex-1 space-y-1">
             <div className="flex items-center justify-between text-xs font-semibold">
               <span className="font-semibold text-slate-700">
-                {t('lesson_progress', { percent: Math.round(progressPercent) })}
+                {t("lesson_progress", { percent: Math.round(progressPercent) })}
               </span>
               <span className="font-semibold text-blue-600">
-                {t('cards_counter', {
-                  current: Math.min(currentIndex + (completed ? 1 : 0), totalWords),
+                {t("cards_counter", {
+                  current: Math.min(
+                    currentIndex + (completed ? 1 : 0),
+                    totalWords,
+                  ),
                   total: totalWords,
                 })}
               </span>
@@ -696,43 +753,74 @@ export default function SrsReviewPage() {
           {/* Shortcut Prompt */}
           <div className="hidden items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-medium text-slate-500 sm:flex">
             <kbd className="rounded-md border border-slate-300 bg-white px-1.5 py-0.5 font-mono text-[11px] font-bold text-slate-700">
-              {mode === 'guess' ? 'Enter' : 'Space'}
+              {mode === "guess" ? "Enter" : "Space"}
             </kbd>
             <span>
-              {mode === 'flashcard'
-                ? t('space_prompt_flip')
-                : mode === 'repeat'
-                ? t('space_prompt_audio')
-                : t('shortcut_check')}
+              {mode === "flashcard"
+                ? t("space_prompt_flip")
+                : mode === "repeat"
+                  ? t("space_prompt_audio")
+                  : t("shortcut_check")}
             </span>
           </div>
         </div>
 
+        {ratingError && (
+          <p
+            role="alert"
+            className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+          >
+            {t("library.saveError")}
+          </p>
+        )}
+        {recordMutation.isPending && (
+          <p role="status" className="sr-only">
+            {t("library.saving")}
+          </p>
+        )}
         {/* Study Card Area */}
         {isDueLoading ? (
-          <div className={cn(surface, 'h-[440px] w-full sm:h-[470px]')}>
-            <LoadingState label={t('loading_cards')} className="h-full" />
+          <div className={cn(surface, "h-[440px] w-full sm:h-[470px]")}>
+            <LoadingState label={t("loading_cards")} className="h-full" />
           </div>
         ) : isDueError ? (
-          <div role="alert" className={cn(surface,'space-y-4 p-8 text-center')}><p>{t('common:mistakes.error')}</p><Button onClick={() => void refetch()}>{t('common:mistakes.retry')}</Button></div>
+          <div
+            role="alert"
+            className={cn(surface, "space-y-4 p-8 text-center")}
+          >
+            <p>{t("common:mistakes.error")}</p>
+            <Button onClick={() => void refetch()}>
+              {t("common:mistakes.retry")}
+            </Button>
+          </div>
         ) : wordsList.length === 0 ? (
           /* Empty Due Reviews State */
-          <div className={cn(surface, 'flex h-[440px] w-full flex-col items-center justify-center space-y-4 p-6 text-center sm:h-[470px] sm:p-8')}>
-            <div className={cn('flex h-14 w-14 items-center justify-center rounded-xl', tones.emerald)}>
+          <div
+            className={cn(
+              surface,
+              "flex h-[440px] w-full flex-col items-center justify-center space-y-4 p-6 text-center sm:h-[470px] sm:p-8",
+            )}
+          >
+            <div
+              className={cn(
+                "flex h-14 w-14 items-center justify-center rounded-xl",
+                tones.emerald,
+              )}
+            >
               <CheckCheck className="h-7 w-7" />
             </div>
             <div className="space-y-1.5 max-w-md">
               <h3 className="text-lg font-semibold text-slate-900">
-                {t('review.no_due_title')}
+                {t("review.no_due_title")}
               </h3>
               <p className="text-sm text-slate-500">
-                {t('review.no_due_desc')}
+                {t("review.no_due_desc")}
               </p>
             </div>
             <div className="pt-2">
               <Button asChild>
                 <Link href={`/${locale}/vocabulary`}>
-                  {t('review.back_to_catalog')}
+                  {t("review.back_to_catalog")}
                 </Link>
               </Button>
             </div>
@@ -745,7 +833,7 @@ export default function SrsReviewPage() {
             masteredWordsCount={masteredWords.size}
             unmasteredWordsCount={needReviewWords.size}
             wordsList={wordsList}
-            lessonTitle={t('review.page_title')}
+            lessonTitle={t("review.page_title")}
             sectionName={null}
             slug=""
             locale={locale}
@@ -759,10 +847,11 @@ export default function SrsReviewPage() {
             t={t}
           />
         ) : (
-          <div className="w-full space-y-4">
+          <div className="w-full space-y-3">
             {/* MODE 1: FLASHCARD 3D */}
-            {mode === 'flashcard' && (
+            {mode === "flashcard" && (
               <FlashcardView
+                    wordId={currentWord?._id}
                 isFlipped={isFlipped}
                 toggleFlipCard={toggleFlipCard}
                 currentIndex={currentIndex}
@@ -785,9 +874,14 @@ export default function SrsReviewPage() {
             )}
 
             {/* MODES 2 & 3: GUESS / REPEAT */}
-            {mode !== 'flashcard' && (
-              <div className={cn(surface, 'flex min-h-[440px] w-full flex-col items-center justify-center p-5 sm:min-h-[470px] sm:p-6')}>
-                {mode === 'guess' && (
+            {mode !== "flashcard" && (
+              <div
+                className={cn(
+                  surface,
+                  "flex min-h-[440px] w-full flex-col items-center justify-center p-5 sm:min-h-[470px] sm:p-6",
+                )}
+              >
+                {mode === "guess" && (
                   <GuessModeView
                     illustration={illustration}
                     primaryVietnameseWord={primaryVietnameseWord}
@@ -818,7 +912,7 @@ export default function SrsReviewPage() {
                   />
                 )}
 
-                {mode === 'repeat' && (
+                {mode === "repeat" && (
                   <RepeatModeView
                     posInfo={parsedParts[0]?.info}
                     playAudio={playAudio}
@@ -851,12 +945,22 @@ export default function SrsReviewPage() {
             )}
 
             {/* SRS Rating Toolbar - shown when card is flipped (flashcard) or answered (guess/repeat) */}
+            {mode === "flashcard" && !isFlipped && (
+              <div className="flex min-h-[6.25rem] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white/60 p-3">
+                <Button type="button" size="lg" onClick={toggleFlipCard} className="min-w-48 gap-2">
+                  <RotateCcw aria-hidden="true" className="size-4" />
+                  {t("flip_view_back")}
+                </Button>
+              </div>
+            )}
             {showSrsBar && (
               <SrsRatingBar
+                disabled={recordMutation.isPending}
+                wordId={currentWord?._id}
                 onRating={handleSrsRating}
-                isMastered={masteredWords.has(currentWord?._id || '')}
+                isMastered={masteredWords.has(currentWord?._id || "")}
                 onToggleMastered={handleToggleMastered}
-                isSaved={savedWords.has(currentWord?._id || '')}
+                isSaved={savedWords.has(currentWord?._id || "")}
                 onToggleSave={handleToggleSave}
                 t={t}
               />

@@ -4,13 +4,13 @@ import { useSiteSettings } from "@/providers/site-settings-provider";
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter, useParams } from 'next/navigation';
+import { usePathname, useParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import {
   BookOpen,
+  CheckCircle2,
   LayoutDashboard,
   Headphones,
-  LogOut,
   Search,
   Bookmark,
   ChevronDown,
@@ -28,7 +28,6 @@ import {
   Sidebar,
   useSidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -41,10 +40,6 @@ import {
   SidebarMenuSubItem,
   SidebarRail,
 } from '@/components/ui/sidebar';
-import LanguageSwitcher from '@/components/language-switcher';
-import { useAppDispatch, useAppSelector } from '@/redux/hooks';
-import { logout } from '@/redux/features/auth/authSlice';
-import { authService } from '@/services';
 import { cn } from '@/lib/utils';
 
 /** A leaf link; `active` is computed from the pathname by the caller. */
@@ -165,27 +160,12 @@ function NavSectionRow({
 
 export function AppSidebar() {
   const siteSettings = useSiteSettings();
-  const router = useRouter();
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
   React.useEffect(() => { setOpenMobile(false); }, [pathname, setOpenMobile]);
   const params = useParams();
   const locale = (params?.locale as string) || 'vi';
-  const dispatch = useAppDispatch();
-  const { user } = useAppSelector((state) => state.auth);
   const { t } = useTranslation('common');
-
-  const handleLogout = async () => {
-    try {
-      await authService.logout();
-    } catch {
-      // Ignore errors on logout
-    } finally {
-      dispatch(logout());
-      // Same destination as AuthGuard, which also reacts to the logged-out state.
-      router.replace(`/${locale}/welcome`);
-    }
-  };
 
   const isHomeActive = pathname === `/${locale}`;
   const isVocabExploreActive =
@@ -234,7 +214,8 @@ export function AppSidebar() {
       icon: BookOpen,
       items: [
         // The section stays highlighted on deeper vocabulary pages via the explore link.
-        { label: t('nav.explore', 'Khám phá'), href: `/${locale}/vocabulary`, icon: Search, active: !!isVocabExploreActive || (!!pathname?.startsWith(`/${locale}/vocabulary/`) && !isVocabMyWordsActive) },
+        { label: t('nav.explore', 'Khám phá'), href: `/${locale}/vocabulary`, icon: Search, active: !!isVocabExploreActive || (!!pathname?.startsWith(`/${locale}/vocabulary/`) && !isVocabMyWordsActive && pathname !== `/${locale}/vocabulary/learned` && pathname !== `/${locale}/vocabulary/review`) },
+        { label: t('vocabulary:library.learned'), href: `/${locale}/vocabulary/learned`, icon: CheckCircle2, active: pathname === `/${locale}/vocabulary/learned` || pathname === `/${locale}/vocabulary/review` },
         { label: t('nav.my_words', 'Từ vựng của tôi'), href: `/${locale}/vocabulary/my-words`, icon: Bookmark, active: isVocabMyWordsActive },
       ],
     },
@@ -289,8 +270,6 @@ export function AppSidebar() {
     />
   );
 
-  const displayName = (user as any)?.fullName || user?.username || user?.email?.split('@')[0] || t('student', 'Học viên');
-  const secondaryLine = user?.email || t('student', 'Học viên');
   const groupLabelClass = 'h-7 px-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400';
 
   return (
@@ -298,7 +277,7 @@ export function AppSidebar() {
       {/* Brand — same height as the page top bar so the two lines align. The
           uploaded wordmark already contains the icon, so it is shown alone when
           expanded and the square icon alone when collapsed. */}
-      <SidebarHeader className="h-14 shrink-0 justify-center border-b border-slate-200/80 px-3 group-data-[collapsible=icon]:px-2.5">
+      <SidebarHeader className="h-16 shrink-0 justify-center border-b border-slate-200/80 px-3 group-data-[collapsible=icon]:px-2.5">
         <Link
           href={`/${locale}`}
           aria-label={siteSettings.siteName}
@@ -370,38 +349,6 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-
-      <SidebarFooter className="gap-2 border-t border-slate-200/80 p-3 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-2.5">
-        <div className="flex items-center justify-between gap-2 pl-1 group-data-[collapsible=icon]:hidden">
-          <span className="text-xs font-medium text-slate-500">{t('language', 'Ngôn ngữ')}</span>
-          <LanguageSwitcher />
-        </div>
-
-        <div
-          aria-label={t('nav_groups.account')}
-          className="flex items-center gap-2.5 rounded-lg p-1.5 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:p-0"
-        >
-          <span
-            aria-hidden
-            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-900 text-[13px] font-semibold text-white"
-          >
-            {(displayName[0] || 'U').toUpperCase()}
-          </span>
-          <div className="min-w-0 flex-1 leading-tight group-data-[collapsible=icon]:hidden">
-            <p className="truncate text-sm font-semibold text-slate-900">{displayName}</p>
-            <p className="truncate text-xs text-slate-500">{secondaryLine}</p>
-          </div>
-          <button
-            type="button"
-            onClick={handleLogout}
-            aria-label={t('logout', 'Đăng xuất')}
-            title={t('logout', 'Đăng xuất')}
-            className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-slate-400 outline-none transition-colors duration-150 hover:bg-red-50 hover:text-red-600 focus-visible:ring-2 focus-visible:ring-red-500/50"
-          >
-            <LogOut className="size-4" aria-hidden />
-          </button>
-        </div>
-      </SidebarFooter>
 
       <SidebarRail />
     </Sidebar>

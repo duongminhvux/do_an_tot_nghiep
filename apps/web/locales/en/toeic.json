@@ -544,6 +544,7 @@
     "score_band_low": "Below average (< 450)"
   },
   "community": {
+    "pinned": "Pinned",
     "rankingTitle": "Test leaderboard",
     "rankingRule": "Each learner's best submitted TEST covering all questions in the current exam version. Ranked by correct answers, then time spent. Practice and partial tests are excluded. TOEIC scores shown are estimates.",
     "participants": "{{count}} ranked learners",

@@ -20,7 +20,7 @@ import {
   WordPartDetail,
   WordMeaningDetail,
 } from '@/types/vocabulary';
-import { BookOpen, CheckCheck } from 'lucide-react';
+import { BookOpen, CheckCheck, RotateCcw } from 'lucide-react';
 
 import {
   StudyMode,
@@ -33,7 +33,7 @@ import {
   playVictoryFanfare,
 } from './components/study-sound';
 import { Button } from '@/components/ui/button';
-import { EmptyState, LoadingState, surface, tones } from '@/components/ui/page';
+import { EmptyState, LoadingState, PageShell, surface, tones } from '@/components/ui/page';
 import { cn } from '@/lib/utils';
 import { StudyHeader } from './components/StudyHeader';
 import { TopicSidebar } from './components/TopicSidebar';
@@ -60,18 +60,18 @@ export default function LessonStudyPage() {
   }, [locale, i18n]);
 
   // 1. Fetch Collection Detail
-  const { data: colRes } = useQuery({
+  const { data: colRes, isLoading: isCollectionLoading } = useQuery({
     queryKey: ['collection-detail', slug],
     queryFn: () => collectionService.getBySlug(slug),
     enabled: !!slug,
   });
   const collection: CollectionItem | null = useMemo(() => {
-    return (colRes as any)?.data || colRes || null;
+      return (colRes as any)?.data || colRes || null;
   }, [colRes]);
 
   // 2. Fetch all lessons in this collection
   const collectionId = collection?._id;
-  const { data: lessonsRes } = useQuery({
+  const { data: lessonsRes, isLoading: isLessonsLoading } = useQuery({
     queryKey: ['lessons', collectionId],
     queryFn: () => lessonService.getAll(collectionId),
     enabled: !!collectionId,
@@ -87,7 +87,6 @@ export default function LessonStudyPage() {
     if (!lessons.length) return null;
     return (
       lessons.find((l) => l.slug === lessonSlug || l._id === lessonSlug) ||
-      lessons[0] ||
       null
     );
   }, [lessons, lessonSlug]);
@@ -119,7 +118,7 @@ export default function LessonStudyPage() {
   }, [wordsRes]);
 
   // 6. Fetch Lesson Progress
-  const { data: progressRes, refetch: refetchProgress } = useQuery({
+  const { data: progressRes, refetch: refetchProgress, isLoading: isProgressLoading } = useQuery({
     queryKey: ['lesson-progress', currentLessonId],
     queryFn: () => learningService.getLessonProgress(currentLessonId!),
     enabled: !!currentLessonId,
@@ -137,6 +136,9 @@ export default function LessonStudyPage() {
   // Session & Tracking Refs (Lazy Initialization)
   const sessionStartedAtRef = useRef<Date | null>(null);
   const sessionIdRef = useRef<string | null>(null);
+  const ratingLock = useRef(false);
+  const [ratingSaving, setRatingSaving] = useState(false);
+  const [ratingError, setRatingError] = useState(false);
 
   const markInteraction = useCallback(() => {
     if (!sessionStartedAtRef.current) {
@@ -542,8 +544,8 @@ export default function LessonStudyPage() {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, [currentLessonId]);
 
-  // Reset per word change
-  useEffect(() => {
+  // Reset even when learning removes a word at the same list index.
+  React.useLayoutEffect(() => {
     setUserGuess('');
     setIsAnswerChecked(false);
     setIsCorrect(false);
@@ -559,7 +561,7 @@ export default function LessonStudyPage() {
     if (inputRef.current && (mode === 'guess' || mode === 'repeat')) {
       inputRef.current.focus({ preventScroll: true });
     }
-  }, [currentIndex, mode, selectedSectionId, currentLessonId]);
+  }, [currentWord?._id, mode, selectedSectionId, currentLessonId]);
 
   // Auto-play audio when word changes or flashcard appears (never in guess mode)
   useEffect(() => {
@@ -655,6 +657,7 @@ export default function LessonStudyPage() {
 
   // Next Word
   const handleNextWord = () => {
+    if (ratingLock.current) return;
     if (currentIndex < wordsList.length - 1) {
       setCurrentIndex((prev) => prev + 1);
     } else {
@@ -672,46 +675,33 @@ export default function LessonStudyPage() {
 
   // Previous Word
   const handlePrevWord = () => {
+    if (ratingLock.current) return;
     if (currentIndex > 0) {
       setCurrentIndex((prev) => prev - 1);
     }
   };
 
   // SRS Rating actions (Học lại, Khó, Tốt, Dễ)
-  const handleSrsRating = (level: SrsLevel) => {
-    if (!currentWord || !currentLessonId) return;
+  const handleSrsRating = async (level: SrsLevel) => {
+    if (!currentWord || !currentLessonId || ratingLock.current) return;
+    ratingLock.current = true; setRatingSaving(true); setRatingError(false);
+    try {
 
     markInteraction();
 
     // Đánh dấu từ đã học qua (đã có UserLessonWord, sẽ không xuất hiện lại trong lesson nữa)
-    setLearnedWords((prev) => new Set(prev).add(currentWord._id));
-
     const ratingEnum = level.toUpperCase() as SrsRatingType;
     const modeEnum: StudyModeType =
       mode === 'guess' ? 'TYPING' : 'FLASHCARD';
     const isCorrectRate = level === 'good' || level === 'easy';
 
-    // Atomic sync to Backend (Lazy session creation on first rating)
-    learningService
-      .recordAction({
-        sessionId: sessionIdRef.current || undefined,
-        lessonId: currentLessonId,
-        wordId: currentWord._id,
-        lessonWordId: currentRawLessonWord?._id,
-        sessionStartedAt: sessionStartedAtRef.current?.toISOString(),
-        mode: modeEnum,
-        rating: ratingEnum,
-        isCorrect: isCorrectRate,
-      })
-      .then((res: any) => {
-        const data = res?.data || res;
-        if (data?.sessionId) {
-          sessionIdRef.current = data.sessionId;
-        }
-      })
-      .catch((err) => {
-        console.error('Error recording learning action:', err);
-      });
+    const response = await learningService.recordAction({
+      sessionId: sessionIdRef.current || undefined,
+      lessonId: currentLessonId, wordId: currentWord._id, lessonWordId: currentRawLessonWord?._id,
+      sessionStartedAt: sessionStartedAtRef.current?.toISOString(), mode: modeEnum, rating: ratingEnum, isCorrect: isCorrectRate,
+    });
+    if (response.data?.sessionId) sessionIdRef.current = response.data.sessionId;
+    setLearnedWords(previous => new Set(previous).add(currentWord._id));
 
     switch (level) {
       case 'again':
@@ -764,7 +754,11 @@ export default function LessonStudyPage() {
         break;
     }
 
-    handleNextWord();
+    ratingLock.current = false;
+    // In new-word mode the rated word is removed from wordsList. Keep the same
+    // index to reveal its successor instead of skipping the following card.
+    if (reviewAll || currentIndex >= wordsList.length - 1) handleNextWord();
+    } catch { setRatingError(true); } finally { ratingLock.current = false; setRatingSaving(false); }
   };
 
   // Toggle Save / Bookmark
@@ -811,6 +805,7 @@ export default function LessonStudyPage() {
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (ratingLock.current) return;
       if (e.target instanceof HTMLInputElement) {
         if (e.key === 'Enter') {
           if (isCorrect || isDontKnow) {
@@ -885,49 +880,11 @@ export default function LessonStudyPage() {
       ? Math.min(100, Math.round((learnedCountInSec / allSectionWords.length) * 100))
       : 0;
 
-  return (
-    <div className={`min-h-full bg-background text-slate-900 transition-all ${showSrsBar ? 'pb-24 sm:pb-28' : 'pb-8'}`}>
-      {/* 3D Flip Styles */}
-      <style jsx global>{`
-        .flashcard-3d-wrapper {
-          perspective: 1400px;
-          width: 100%;
-          height: auto;
-          min-height: 440px;
-        }
-        @media (min-width: 640px) {
-          .flashcard-3d-wrapper {
-            min-height: 470px;
-          }
-        }
-        .flashcard-3d-inner {
-          position: relative;
-          width: 100%;
-          min-height: 440px;
-          transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-          transform-style: preserve-3d;
-        }
-        @media (min-width: 640px) {
-          .flashcard-3d-inner {
-            min-height: 470px;
-          }
-        }
-        .flashcard-3d-inner.is-flipped {
-          transform: rotateY(180deg);
-        }
-        .flashcard-face {
-          width: 100%;
-          backface-visibility: hidden;
-          -webkit-backface-visibility: hidden;
-        }
-        .flashcard-front {
-          transform: rotateY(0deg);
-        }
-        .flashcard-back {
-          transform: rotateY(180deg);
-        }
-      `}</style>
+  if (isCollectionLoading || isLessonsLoading) return <PageShell><LoadingState label={t('loading_cards')} /></PageShell>;
+  if (!collection?._id || !currentLesson) return <PageShell><EmptyState icon={BookOpen} title={t('library.lessonUnavailable')} description={t('library.lessonUnavailableHelp')} action={<Button onClick={() => router.push(`/${locale}/vocabulary`)}>{t('library.explore')}</Button>} /></PageShell>;
 
+  return (
+    <div className="min-h-full bg-background text-slate-900">
       {/* 1. Header with Mode switchers & controls */}
       <StudyHeader
         locale={locale}
@@ -944,7 +901,7 @@ export default function LessonStudyPage() {
       />
 
       {/* 2. Main Content: Sidebar + Study Card */}
-      <div className="w-full px-4 py-6 sm:px-6 lg:px-8">
+      <div className="w-full px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
         <div className="flex flex-col items-start gap-6 lg:flex-row">
           {/* Left Sidebar: Topics */}
           <TopicSidebar
@@ -1001,8 +958,10 @@ export default function LessonStudyPage() {
               </div>
             </div>
 
+            {ratingError && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{t('library.saveError')}</p>}
+            {ratingSaving && <p role="status" className="sr-only">{t('library.saving')}</p>}
             {/* Study Card Area */}
-            {isWordsLoading ? (
+            {isWordsLoading || isProgressLoading ? (
               <div className={cn(surface, 'h-[440px] w-full sm:h-[470px]')}>
                 <LoadingState label={t('loading_cards')} className="h-full" />
               </div>
@@ -1035,7 +994,7 @@ export default function LessonStudyPage() {
                       const curIdx = sections.findIndex((s) => s._id === selectedSectionId);
                       const nextSec = curIdx >= 0 && curIdx < sections.length - 1 ? sections[curIdx + 1] : null;
                       if (!nextSec) return null;
-                      return (
+                        return (
                         <Button
                           type="button"
                           variant="outline"
@@ -1085,10 +1044,11 @@ export default function LessonStudyPage() {
                 t={t}
               />
             ) : (
-              <div className="w-full space-y-4">
+              <div className="w-full space-y-3">
                 {/* MODE 1: FLASHCARD 3D */}
                 {mode === 'flashcard' && (
                   <FlashcardView
+                    wordId={currentWord?._id}
                     isFlipped={isFlipped}
                     toggleFlipCard={toggleFlipCard}
                     currentIndex={
@@ -1187,8 +1147,17 @@ export default function LessonStudyPage() {
                 )}
 
                 {/* SRS Rating Toolbar - shown when card is flipped (flashcard) or answered (guess/repeat) */}
+                {mode === 'flashcard' && !isFlipped && (
+                  <div className="flex min-h-[6.25rem] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white/60 p-3">
+                    <Button type="button" size="lg" onClick={toggleFlipCard} className="min-w-48 gap-2">
+                      <RotateCcw aria-hidden="true" className="size-4" />
+                      {t('flip_view_back')}
+                    </Button>
+                  </div>
+                )}
                 {showSrsBar && (
                   <SrsRatingBar
+                    disabled={ratingSaving}
                     onRating={handleSrsRating}
                     isMastered={masteredWords.has(currentWord?._id || '')}
                     onToggleMastered={handleToggleMastered}

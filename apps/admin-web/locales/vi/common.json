@@ -1,4 +1,29 @@
 {
+  "account": {
+    "openMenu": "Mở menu tài khoản {{name}}",
+    "profile": "Thông tin tài khoản",
+    "profileHelp": "Thông tin tài khoản quản trị đang đăng nhập.",
+    "username": "Tên đăng nhập",
+    "email": "Email",
+    "roles": "Vai trò",
+    "changePassword": "Đổi mật khẩu",
+    "passwordHelp": "Sau khi đổi mật khẩu, tất cả phiên đăng nhập sẽ kết thúc. Bạn cần đăng nhập lại bằng mật khẩu mới.",
+    "oldPassword": "Mật khẩu hiện tại",
+    "newPassword": "Mật khẩu mới",
+    "confirmPassword": "Xác nhận mật khẩu mới",
+    "passwordRules": "Từ 12 ký tự, có chữ hoa, chữ thường và số; tối đa 72 byte UTF-8, không có khoảng trắng ở đầu hoặc cuối.",
+    "required": "Vui lòng nhập trường này.",
+    "mismatch": "Mật khẩu xác nhận chưa khớp.",
+    "incorrectPassword": "Mật khẩu hiện tại không đúng.",
+    "samePassword": "Mật khẩu mới phải khác mật khẩu hiện tại.",
+    "changeError": "Chưa đổi được mật khẩu. Vui lòng thử lại.",
+    "showPassword": "Hiện mật khẩu",
+    "hidePassword": "Ẩn mật khẩu",
+    "cancel": "Huỷ",
+    "close": "Đóng",
+    "saving": "Đang lưu…",
+    "passwordChanged": "Đổi mật khẩu thành công. Vui lòng đăng nhập lại bằng mật khẩu mới."
+  },
   "brand": "English Platform",
   "admin": "Quản trị",
   "management_portal": "Hệ thống Quản trị",
@@ -163,7 +188,8 @@
     "typeAnswer": "Nhập câu trả lời để xem bố cục",
     "reveal": "Hiện / ẩn nghĩa hoặc transcript",
     "wordUnavailable": "Từ chưa khả dụng cho người học",
-    "valid": "Không phát hiện lỗi theo các quy tắc kiểm tra hiện tại."
+    "valid": "Không phát hiện lỗi theo các quy tắc kiểm tra hiện tại.",
+    "showIssues": "Xem tab Kiểm tra lỗi"
   },
   "contentQuality": {
     "items": "mục",
@@ -214,7 +240,9 @@
       "words": "Từ vựng",
       "lessons": "Bài từ vựng",
       "dictation": "Dictation",
-      "exams": "Đề TOEIC"
+      "exams": "Đề TOEIC",
+      "collections": "Chương trình học",
+      "dictationTopics": "Chủ đề Dictation"
     },
     "columns": {
       "type": "Loại nội dung",

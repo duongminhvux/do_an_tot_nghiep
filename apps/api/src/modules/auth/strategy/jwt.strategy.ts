@@ -1,3 +1,4 @@
+import { userProfile } from '../../users/user-profile.js';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
@@ -29,11 +30,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       return null;
     }
 
-    return {
-      _id: String(user._id),
-      email: user.email,
-      username: user.username,
-      avatarUrl: user.avatarUrl,
-      role: 'USER' };
+    return userProfile(user);
   }
 }

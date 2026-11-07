@@ -87,6 +87,57 @@
     "confirm_delete": "Confirm Delete"
   },
   "detail": {
+    "modules": {
+      "activeStudyTime": "Active study time",
+      "minutes": "min",
+      "title": "Progress by module",
+      "description": "Track this user’s learning and practice results across each module.",
+      "totalXp": "Total XP",
+      "activityCount": "Recorded activities",
+      "activeMinutes": "Active study time (minutes)",
+      "summaryHelp": "XP and activities come from the learning log. Active time comes from the activity tracker and is not added across modules. A dash means there is not enough data to calculate a value.",
+      "unavailable": "Module data could not be loaded. Reload this page to try again.",
+      "lastActivity": "Last activity: {{date}}",
+      "noActivity": "No activity timestamp recorded.",
+      "vocabCourses": "Vocabulary course progress",
+      "vocabCoursesHelp": "Completed lessons in each vocabulary collection this user has studied.",
+      "courseRatio": "{{completed}} / {{total}} lessons completed",
+      "descriptions": {
+        "VOCABULARY": "Learned words, mastery and SRS reviews",
+        "TOEIC": "Exam attempts and answer accuracy",
+        "DICTATION": "Listening and transcription practice",
+        "ARENA": "Ranked match results",
+        "MINIGAME": "Game rounds and types played"
+      },
+      "metrics": {
+        "wordsLearned": "Words learned",
+        "wordsMastered": "Mastered words",
+        "wordsDue": "Due for review",
+        "lessonsCompleted": "Lessons completed",
+        "accuracy": "Answer accuracy",
+        "roundsPlayed": "Rounds played",
+        "gameTypes": "Game types played",
+        "attempts": "Total attempts",
+        "attemptsCompleted": "Completed attempts",
+        "attemptsInProgress": "In progress",
+        "bestAccuracy": "Best accuracy",
+        "lessonsStarted": "Lessons practiced",
+        "segmentsCompleted": "Segments completed",
+        "rankedMatches": "Ranked matches",
+        "wins": "Wins",
+        "losses": "Losses",
+        "draws": "Draws",
+        "rating": "Rating",
+        "winRate": "Win rate"
+      },
+      "names": {
+        "VOCABULARY": "Vocabulary",
+        "TOEIC": "TOEIC",
+        "DICTATION": "Dictation",
+        "ARENA": "Arena",
+        "MINIGAME": "Games"
+      }
+    },
     "title": "User Information",
     "user_id_label": "User ID",
     "role_badge": "User",

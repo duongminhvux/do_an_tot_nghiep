@@ -1,4 +1,29 @@
 {
+  "account": {
+    "openMenu": "Open account menu for {{name}}",
+    "profile": "Account information",
+    "profileHelp": "Your signed-in administrator account.",
+    "username": "Username",
+    "email": "Email",
+    "roles": "Roles",
+    "changePassword": "Change password",
+    "passwordHelp": "Changing your password will end all sessions. Sign in again with your new password.",
+    "oldPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm new password",
+    "passwordRules": "At least 12 characters, including uppercase, lowercase and a number; at most 72 UTF-8 bytes, with no leading or trailing spaces.",
+    "required": "This field is required.",
+    "mismatch": "Passwords do not match.",
+    "incorrectPassword": "Your current password is incorrect.",
+    "samePassword": "Choose a different password from your current one.",
+    "changeError": "Could not change your password. Please retry.",
+    "showPassword": "Show passwords",
+    "hidePassword": "Hide passwords",
+    "cancel": "Cancel",
+    "close": "Close",
+    "saving": "Saving…",
+    "passwordChanged": "Password changed successfully. Please sign in with your new password."
+  },
   "brand": "English Platform",
   "admin": "Admin",
   "management_portal": "Management Portal",
@@ -163,7 +188,8 @@
     "typeAnswer": "Type an answer to inspect the layout",
     "reveal": "Show / hide meaning or transcript",
     "wordUnavailable": "Word unavailable to learners",
-    "valid": "No errors found by the current validation rules."
+    "valid": "No errors found by the current validation rules.",
+    "showIssues": "Open the Checks tab"
   },
   "contentQuality": {
     "items": "items",
@@ -214,7 +240,9 @@
       "words": "Word",
       "lessons": "Vocabulary lesson",
       "dictation": "Dictation",
-      "exams": "TOEIC exam"
+      "exams": "TOEIC exam",
+      "collections": "Learning programme",
+      "dictationTopics": "Dictation topic"
     },
     "columns": {
       "type": "Content type",

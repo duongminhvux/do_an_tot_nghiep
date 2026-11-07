@@ -16,6 +16,15 @@ ActivityLog,
 ActivityLogRow
 } from './rows/activity-log.row.js';
 
+/**
+ * Browsing telemetry that carries no learning or account meaning. It is never
+ * stored (old cached clients may still send it) and is hidden from admin views.
+ * Learning activity (vocab, dictation, TOEIC, games, arena) comes from the
+ * learning feed and from explicit server-side events instead.
+ */
+export const NOISE_ACTIONS: readonly string[] = ['PAGE_VIEW', 'SESSION_START', 'SESSION_END', 'HEARTBEAT'];
+const notNoise = sql`NOT (action = ANY(${[...NOISE_ACTIONS]}::text[]))`;
+
 @Injectable()
 export class ActivityLogsService {
   private readonly logger = new Logger(ActivityLogsService.name);
@@ -112,6 +121,7 @@ export class ActivityLogsService {
    * Will never throw an error to prevent disrupting primary business workflows.
    */
   async log(dto: CreateActivityLogDto): Promise<ActivityLogRow | null> {
+    if (NOISE_ACTIONS.includes(String(dto?.action || '').toUpperCase())) return null;
     try {
       let resolvedUserId:string|undefined;
       let userEmail = dto.userEmail;
@@ -191,7 +201,7 @@ export class ActivityLogsService {
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
     const skip = (page - 1) * limit;
 
-    const conditions:Sql[]=[literal('TRUE')];
+    const conditions:Sql[]=[notNoise];
     if(query.userId&&!isUuid(query.userId))throw new BadRequestException(await this.i18n.translate('activity-log.errors.INVALID_USER',{lang}));
     if(query.includeLearning==='true'&&!query.userId)throw new BadRequestException(await this.i18n.translate('activity-log.errors.USER_REQUIRED',{lang}));
     if(query.category&&query.category!=='ALL')conditions.push(sql`category=${JSON.stringify(query.category)}::jsonb`);
@@ -204,7 +214,7 @@ export class ActivityLogsService {
     const matchedActions: string[] = [];
     if (query.search?.trim()) {
       const term = query.search.trim().toLocaleLowerCase();
-      const actions = [...Object.values(ActivityAction), ...LEARNING_ACTIVITY_TYPES];
+      const actions = [...Object.values(ActivityAction), ...LEARNING_ACTIVITY_TYPES].filter((action) => !NOISE_ACTIONS.includes(action));
       await Promise.all(actions.map(async (action) => {
         const label = await this.translateAction(action, lang);
         const message = await this.i18n.translate(`activity-log.messages.${action}`, { lang });
@@ -295,17 +305,17 @@ export class ActivityLogsService {
     const lang = this.getLang(customLang);
 
     const [distinctCategories, distinctActions] = await Promise.all([
-      rows(this.db,sql`SELECT DISTINCT category AS value FROM public.activitylogs`).then(result=>result.map(row=>String(row.value))),
-      rows(this.db,sql`SELECT DISTINCT action AS value FROM public.activitylogs`).then(result=>result.map(row=>String(row.value))),
+      rows(this.db,sql`SELECT DISTINCT category AS value FROM public.activitylogs WHERE ${notNoise}`).then(result=>result.map(row=>String(row.value))),
+      rows(this.db,sql`SELECT DISTINCT action AS value FROM public.activitylogs WHERE ${notNoise}`).then(result=>result.map(row=>String(row.value))),
     ]);
 
     // Ensure all standard categories and actions are available
-    const standardCategories = Object.values(ActivityCategory);
+    const standardCategories = Object.values(ActivityCategory).filter((category) => category !== ActivityCategory.SESSION);
     const mergedCategories = Array.from(
       new Set([...standardCategories, ...distinctCategories]),
     );
 
-    const standardActions = [...Object.values(ActivityAction), ...LEARNING_ACTIVITY_TYPES];
+    const standardActions = [...Object.values(ActivityAction), ...LEARNING_ACTIVITY_TYPES].filter((action) => !NOISE_ACTIONS.includes(action));
     const mergedActions = Array.from(
       new Set([...standardActions, ...distinctActions]),
     ).sort();
@@ -389,10 +399,10 @@ export class ActivityLogsService {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    const range=sql`created_at>=${startDate} AND created_at<=${endDate}`;
+    const range=sql`created_at>=${startDate} AND created_at<=${endDate} AND ${notNoise}`;
     const [summary,categoryCounts,actionCounts,dailyTimeline,topUsers]=await Promise.all([
       first(this.db,sql`SELECT (SELECT COUNT(*)::integer FROM public.activitylogs WHERE ${range}) AS total,
-        (SELECT COUNT(*)::integer FROM public.activitylogs WHERE created_at>=${todayStart}) AS today,
+        (SELECT COUNT(*)::integer FROM public.activitylogs WHERE created_at>=${todayStart} AND ${notNoise}) AS today,
         (SELECT COUNT(DISTINCT user_id)::integer FROM public.activitylogs WHERE ${range}) AS users`),
       rows(this.db,sql`SELECT category AS "_id",COUNT(*)::integer AS count FROM public.activitylogs WHERE ${range} GROUP BY category ORDER BY count DESC`),
       rows(this.db,sql`SELECT action AS "_id",COUNT(*)::integer AS count FROM public.activitylogs WHERE ${range} GROUP BY action ORDER BY count DESC LIMIT 10`),

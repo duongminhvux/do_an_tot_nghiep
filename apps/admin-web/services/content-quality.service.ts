@@ -3,7 +3,13 @@ export type QualityCategory = "DATA" | "MEDIA" | "DUPLICATE" | "FEEDBACK";
 export interface QualityReport {
   items: {
     id: string;
-    kind: "exams" | "words" | "lessons" | "dictation";
+    kind:
+      | "exams"
+      | "words"
+      | "lessons"
+      | "dictation"
+      | "collections"
+      | "dictationTopics";
     resourceId: string;
     title: string;
     category: QualityCategory;

@@ -1,3 +1,13 @@
+export interface UserModuleProgress {
+  key: 'VOCABULARY' | 'TOEIC' | 'DICTATION' | 'ARENA' | 'MINIGAME';
+  state: 'ready' | 'unavailable';
+  lastActivityAt?: string | null;
+  metrics: { key: string; value: number | null; percent?: boolean }[];
+}
+export interface UserModuleSummary {
+  summary: { totalXp: number; activityCount: number; activeSeconds: number } | null;
+  modules: UserModuleProgress[];
+}
 export type UserRole = 'User' | 'Admin' | 'Moderator';
 export type UserStatus = 'active' | 'banned';
 
@@ -60,6 +70,7 @@ export interface UserItem {
   recentActivities: UserRecentActivity[];
   personalDetail?: UserPersonalDetail;
   learningStats?: UserLearningStats;
+  moduleProgress?: UserModuleSummary;
 }
 
 export interface UserStatsSummary {

@@ -156,9 +156,7 @@ export default function UserDetailPage() {
             <h2 className="text-base font-bold text-slate-900">
               {t('detail_page.not_found', 'Không tìm thấy người dùng này hoặc tài khoản đã bị xóa.')}
             </h2>
-            <p className="text-xs text-slate-500 max-w-md mx-auto">
-              ID: <span className="font-mono">{userId}</span>
-            </p>
+
           </div>
           <div>
             <Button

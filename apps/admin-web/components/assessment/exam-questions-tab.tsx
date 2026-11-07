@@ -407,14 +407,6 @@ export function ExamQuestionsTab({
               </button>
             )}
 
-            {/* Quick Add Question Button */}
-            <Link
-              href={`/${locale}/assessment/${examId}/questions/create`}
-              className="h-8 px-3 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-1.5 shadow-2xs transition-colors shrink-0"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>{t('detailPage.addQuestion')}</span>
-            </Link>
           </div>
         </div>
 

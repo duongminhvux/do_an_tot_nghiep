@@ -544,6 +544,7 @@
     "score_band_low": "Dưới trung bình (< 450)"
   },
   "community": {
+    "pinned": "Đã ghim",
     "rankingTitle": "Bảng xếp hạng thi thật",
     "rankingRule": "Mỗi người lấy lượt TEST tốt nhất đã nộp với toàn bộ câu của phiên bản đề hiện tại. Xếp theo số câu đúng, sau đó thời gian làm bài; không tính luyện tập hoặc thi từng phần. Điểm TOEIC hiển thị là ước tính.",
     "participants": "{{count}} người được xếp hạng",

@@ -1,7 +1,8 @@
 'use client';
 
-import React from 'react';
-import { Volume2 } from 'lucide-react';
+import React, { useLayoutEffect, useRef } from 'react';
+import styles from './FlashcardView.module.css';
+import { RotateCcw, Volume2 } from 'lucide-react';
 
 interface ParsedMeaning {
   definition: string;
@@ -18,6 +19,7 @@ interface ParsedPart {
 }
 
 interface FlashcardViewProps {
+  wordId?: string;
   isFlipped: boolean;
   toggleFlipCard: () => void;
   currentIndex: number;
@@ -38,7 +40,49 @@ interface FlashcardViewProps {
   t: (key: string, options?: any) => string;
 }
 
+function PronunciationButton({
+  accent,
+  ipa,
+  active,
+  title,
+  onPlay,
+  size = 'md',
+}: {
+  accent: 'US' | 'UK';
+  ipa?: string;
+  active: boolean;
+  title: string;
+  onPlay: () => void;
+  size?: 'sm' | 'md';
+}) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onPlay();
+      }}
+      title={title}
+      aria-label={`${title}${ipa ? ` ${ipa}` : ''}`}
+      className={`group inline-flex items-center gap-2 rounded-full border bg-white text-slate-700 outline-none transition-colors hover:border-blue-300 hover:bg-blue-50 focus-visible:ring-2 focus-visible:ring-blue-500 ${
+        active ? 'border-blue-300 bg-blue-50' : 'border-slate-200'
+      } ${size === 'sm' ? 'h-8 pl-2 pr-2.5 text-xs' : 'h-10 pl-2.5 pr-3.5 text-sm'}`}
+    >
+      <span
+        className={`flex items-center justify-center rounded-full bg-blue-600 text-white ${
+          size === 'sm' ? 'size-5' : 'size-6'
+        }`}
+      >
+        <Volume2 aria-hidden="true" className={`${size === 'sm' ? 'size-3' : 'size-3.5'} ${active ? 'motion-safe:animate-pulse' : ''}`} />
+      </span>
+      <span className="text-[11px] font-bold text-blue-700">{accent}</span>
+      {ipa && <span className="font-mono text-slate-600">{ipa}</span>}
+    </button>
+  );
+}
+
 export function FlashcardView({
+  wordId,
   isFlipped,
   toggleFlipCard,
   currentIndex,
@@ -51,312 +95,192 @@ export function FlashcardView({
   audioUs,
   audioUk,
   defaultAudioUrl,
-  isPlayingAudio,
   playingAudioType,
   playAudio,
   parsedParts,
   totalMeaningsCount,
   t,
 }: FlashcardViewProps) {
-  return (
-    <div className="flashcard-3d-wrapper">
-      <div
-        className={`flashcard-3d-inner cursor-pointer select-none ${
-          isFlipped ? 'is-flipped' : ''
-        }`}
-        onClick={toggleFlipCard}
-      >
-        {/* --------------------------------------------- */}
-        {/* CARD FRONT: Razor Sharp, Solid White, Full Width */}
-        {/* --------------------------------------------- */}
-        <div
-          className={`flashcard-face flashcard-front rounded-xl border border-slate-200 bg-white p-5 sm:p-7 shadow-sm transition-all flex flex-col justify-between ${
-            isFlipped ? 'absolute inset-0' : 'relative min-h-[440px] sm:min-h-[470px]'
-          }`}
-          style={{ pointerEvents: isFlipped ? 'none' : 'auto' }}
-        >
-          {/* Top Card Badge Header */}
-          <div className="flex items-center justify-between w-full shrink-0">
-            <div className="flex items-center gap-2">
-              <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">
-                {t('card_label', { current: currentIndex + 1, total: totalWords })}
-              </span>
-              {wordLevel && (
-                <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">
-                  {wordLevel}
-                </span>
-              )}
-            </div>
+  const meaningsRef = useRef<HTMLDivElement>(null);
+  const [imageFailed, setImageFailed] = React.useState(false);
+  useLayoutEffect(() => {
+    if (meaningsRef.current) meaningsRef.current.scrollTop = 0;
+    setImageFailed(false);
+  }, [wordId, wordText, currentIndex]);
 
-            <span className="text-[11px] font-semibold text-slate-500 bg-slate-50 px-3 py-1 rounded-full border border-slate-200">
-              {t('front_hint')}
+  const playUs = () => playAudio(audioUs || defaultAudioUrl, 'en-US', undefined, 1, 'us');
+  const playUk = () => playAudio(audioUk || defaultAudioUrl, 'en-GB', undefined, 1, 'uk');
+  const primary = parsedParts[0];
+  const showImage = !!illustration && !imageFailed;
+
+  return (
+    <div className={`flashcard-3d-wrapper ${styles.wrapper}`}>
+      <div
+        className={`flashcard-3d-inner ${styles.inner} ${isFlipped ? `is-flipped ${styles.flipped}` : ''}`}
+      >
+        {/* FRONT */}
+        <div
+          inert={isFlipped}
+          aria-hidden={isFlipped}
+          onClick={toggleFlipCard}
+          className={`${styles.face} ${styles.front} flex cursor-pointer select-none flex-col rounded-2xl border border-slate-200 bg-white shadow-sm`}
+        >
+          <div className="flex shrink-0 items-center justify-between gap-2 px-4 pt-4 sm:px-6 sm:pt-5">
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold tabular-nums text-slate-600">
+              {t('card_label', { current: currentIndex + 1, total: totalWords })}
             </span>
+            {wordLevel && (
+              <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700 ring-1 ring-inset ring-blue-200">
+                {wordLevel}
+              </span>
+            )}
           </div>
 
-          {/* Center Content */}
-          <div className="flex-1 flex flex-col items-center justify-center my-auto space-y-3 sm:space-y-4 text-center py-1 min-h-0">
-            {/* Illustration image if available */}
-            {illustration && (
-              <div className="relative w-36 h-36 sm:w-44 sm:h-44 rounded-lg overflow-hidden bg-slate-50 border border-slate-200 p-2 shrink-0 group shadow-sm">
+          <div
+            className={`flex min-h-0 flex-1 items-center justify-center gap-6 px-5 py-4 sm:gap-10 sm:px-10 ${
+              showImage ? 'flex-col md:flex-row' : 'flex-col'
+            }`}
+          >
+            {showImage && (
+              <div className={`${styles.illustration} shrink-0 overflow-hidden rounded-2xl border border-slate-100 bg-slate-50`}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={illustration}
-                  alt={wordText}
-                  className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
-                  onError={(e) => {
-                    (e.target as HTMLElement).parentElement?.style.setProperty('display', 'none');
-                  }}
+                  alt=""
+                  draggable={false}
+                  className="size-full object-contain p-3"
+                  onError={() => setImageFailed(true)}
                 />
               </div>
             )}
-
-            {/* Main Word */}
-            <div className="space-y-1.5">
-              <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-                {wordText}
-              </h2>
-
-              {/* US & UK Pronunciation Pills with Audio Trigger */}
-              <div className="flex flex-wrap items-center justify-center gap-2 pt-0.5">
-                {/* US Audio & IPA */}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    playAudio(audioUs || defaultAudioUrl, 'en-US', undefined, 1, 'us');
-                  }}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 text-xs text-slate-800 transition-all group cursor-pointer"
-                  title={t('listen_us')}
-                >
-                  <Volume2
-                    className={`w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform ${
-                      playingAudioType === 'us' ? 'animate-bounce' : ''
-                    }`}
-                  />
-                  {ipaUs && <span className="font-mono font-semibold">{ipaUs}</span>}
-                  <span className="text-[11px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded-md">
-                    US
-                  </span>
-                </button>
-
-                {/* UK Audio & IPA */}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    playAudio(audioUk || defaultAudioUrl, 'en-GB', undefined, 1, 'uk');
-                  }}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 text-xs text-slate-800 transition-all group cursor-pointer"
-                  title={t('listen_uk')}
-                >
-                  <Volume2
-                    className={`w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform ${
-                      playingAudioType === 'uk' ? 'animate-bounce' : ''
-                    }`}
-                  />
-                  {ipaUk && <span className="font-mono font-semibold">{ipaUk}</span>}
-                  <span className="text-[11px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded-md">
-                    UK
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            {/* Teaser of primary part of speech */}
-            <div className="flex items-center justify-center gap-2">
-              <span
-                className={`px-2.5 py-0.5 rounded-lg text-xs font-bold border ${parsedParts[0]?.info.bg} ${parsedParts[0]?.info.color} ${parsedParts[0]?.info.border}`}
-              >
-                {parsedParts[0]?.info.label || t('pos.default')}
-              </span>
-              {totalMeaningsCount > 1 && (
-                <span className="text-xs font-semibold text-slate-500">
-                  {t('meanings_count_badge', { count: totalMeaningsCount })}
+            <div className={`flex min-w-0 flex-col gap-4 ${showImage ? 'items-center text-center md:items-start md:text-left' : 'items-center text-center'}`}>
+              {primary && (
+                <span className={`w-fit rounded-md border px-2 py-0.5 text-xs font-semibold ${primary.info.bg} ${primary.info.color} ${primary.info.border}`}>
+                  {primary.info.label || t('pos.default')}
                 </span>
+              )}
+              <h2 className={`${styles.word} font-bold tracking-tight text-slate-900`}>{wordText}</h2>
+              <div className={`flex flex-wrap gap-2 ${showImage ? 'justify-center md:justify-start' : 'justify-center'}`}>
+                <PronunciationButton accent="US" ipa={ipaUs} active={playingAudioType === 'us'} title={t('listen_us')} onPlay={playUs} />
+                <PronunciationButton accent="UK" ipa={ipaUk} active={playingAudioType === 'uk'} title={t('listen_uk')} onPlay={playUk} />
+              </div>
+              {totalMeaningsCount > 1 && (
+                <p className="text-sm text-slate-500">{t('meanings_count_badge', { count: totalMeaningsCount })}</p>
               )}
             </div>
           </div>
+
+          <div className="flex shrink-0 items-center justify-center gap-2 border-t border-slate-100 px-4 py-3 text-xs font-medium text-slate-500">
+            <RotateCcw aria-hidden="true" className="size-3.5" />
+            {t('front_hint')}
+          </div>
         </div>
 
-        {/* --------------------------------------------- */}
-        {/* CARD BACK: DISPLAYING ALL MEANINGS & EXAMPLES */}
-        {/* --------------------------------------------- */}
+        {/* BACK */}
         <div
-          className={`flashcard-face flashcard-back rounded-xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm flex flex-col justify-between ${
-            isFlipped ? 'relative min-h-[440px] sm:min-h-[470px]' : 'absolute inset-0'
-          }`}
-          style={{ pointerEvents: isFlipped ? 'auto' : 'none' }}
+          inert={!isFlipped}
+          aria-hidden={!isFlipped}
+          className={`${styles.face} ${styles.back} flex flex-col rounded-2xl border border-slate-200 bg-white shadow-sm`}
         >
-          {/* Header: Word & BOTH US & UK Audios / IPAs & Summary */}
-          <div className="flex flex-wrap items-center justify-between pb-2.5 border-b border-slate-100 shrink-0 gap-2">
-            <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
-              <h3 className="text-xl sm:text-2xl font-bold text-slate-900">
-                {wordText}
-              </h3>
-
-              {/* US Button & IPA */}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  playAudio(audioUs || defaultAudioUrl, 'en-US', undefined, 1, 'us');
-                }}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 text-xs text-slate-800 transition-all group cursor-pointer"
-                title={t('listen_us')}
-              >
-                <Volume2
-                  className={`w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform ${
-                    playingAudioType === 'us' ? 'animate-bounce' : ''
-                  }`}
-                />
-                {ipaUs && <span className="font-mono font-semibold text-[11px]">{ipaUs}</span>}
-                <span className="text-[11px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded-md">
-                  US
-                </span>
-              </button>
-
-              {/* UK Button & IPA */}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  playAudio(audioUk || defaultAudioUrl, 'en-GB', undefined, 1, 'uk');
-                }}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 text-xs text-slate-800 transition-all group cursor-pointer"
-                title={t('listen_uk')}
-              >
-                <Volume2
-                  className={`w-3.5 h-3.5 text-blue-600 group-hover:scale-110 transition-transform ${
-                    playingAudioType === 'uk' ? 'animate-bounce' : ''
-                  }`}
-                />
-                {ipaUk && <span className="font-mono font-semibold text-[11px]">{ipaUk}</span>}
-                <span className="text-[11px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded-md">
-                  UK
-                </span>
-              </button>
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-slate-100 px-4 py-3 sm:px-6">
+            <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
+              <h3 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">{wordText}</h3>
+              <PronunciationButton size="sm" accent="US" ipa={ipaUs} active={playingAudioType === 'us'} title={t('listen_us')} onPlay={playUs} />
+              <PronunciationButton size="sm" accent="UK" ipa={ipaUk} active={playingAudioType === 'uk'} title={t('listen_uk')} onPlay={playUk} />
             </div>
-
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">
-                {t('all_meanings_badge', { count: totalMeaningsCount })}
-              </span>
-            </div>
+            <button
+              type="button"
+              onClick={toggleFlipCard}
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-slate-500 outline-none transition-colors hover:bg-slate-100 hover:text-slate-800 focus-visible:ring-2 focus-visible:ring-blue-500"
+            >
+              <RotateCcw aria-hidden="true" className="size-3.5" />
+              {t('flip_view_front')}
+            </button>
           </div>
 
-          {/* Content Area: All Parts of Speech and All Meanings (Full natural height, no scrollbars) */}
           <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full py-3 space-y-4 text-left my-2 divide-y divide-slate-100"
+            ref={meaningsRef}
+            role="region"
+            aria-label={t('all_meanings_badge', { count: totalMeaningsCount })}
+            tabIndex={isFlipped ? 0 : -1}
+            className={`${styles.meanings} space-y-6 px-4 py-4 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 sm:px-6`}
           >
             {parsedParts.map((partGroup, partIdx) => (
-              <div key={partIdx} className={partIdx > 0 ? 'pt-4 space-y-3' : 'space-y-3'}>
-                {/* Part of Speech Header Badge */}
+              <section key={partIdx} className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <span
-                    className={`px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider border ${partGroup.info.bg} ${partGroup.info.color} ${partGroup.info.border}`}
-                  >
-                    {partGroup.info.label} ({partGroup.partOfSpeech})
+                  <span className={`rounded-md border px-2 py-0.5 text-xs font-semibold ${partGroup.info.bg} ${partGroup.info.color} ${partGroup.info.border}`}>
+                    {partGroup.info.label}
                   </span>
-                  <span className="text-xs font-semibold text-slate-500">
-                    {t('meanings_count_sub', { count: partGroup.meanings.length })}
-                  </span>
+                  <span className="text-xs text-slate-400">{partGroup.partOfSpeech}</span>
+                  <span className="h-px flex-1 bg-slate-100" aria-hidden="true" />
+                  <span className="text-xs text-slate-500">{t('meanings_count_sub', { count: partGroup.meanings.length })}</span>
                 </div>
 
-                {/* List of meanings inside this part of speech */}
-                <div className="space-y-3 pl-1 sm:pl-2">
+                <ol className="space-y-4">
                   {partGroup.meanings.map((meaningItem, mIdx) => (
-                    <div
-                      key={mIdx}
-                      className="p-3 sm:p-3.5 rounded-lg bg-slate-50 border border-slate-200 space-y-2 hover:bg-slate-50 transition-colors"
-                    >
-                      {/* Translations (Tiếng Việt) */}
-                      <div className="flex items-start gap-2">
-                        <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
-                          {mIdx + 1}
-                        </span>
-                        <div className="flex-1">
-                          <p className="text-base sm:text-lg font-bold text-slate-900 leading-snug">
-                            {meaningItem.translations.join(', ') || t('meaning_default')}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* English Definition */}
-                      {meaningItem.definition && (
-                        <div className="pl-7 text-xs sm:text-sm text-slate-700 font-medium leading-relaxed italic">
-                          &ldquo;{meaningItem.definition}&rdquo;
-                        </div>
-                      )}
-
-                      {/* Example sentences */}
-                      {meaningItem.examples && meaningItem.examples.length > 0 && (
-                        <div className="pl-7 space-y-1.5 pt-1 border-t border-slate-200 mt-0.5">
-                          {meaningItem.examples.map((ex, exIdx) => (
-                            <div
-                              key={exIdx}
-                              className="bg-white p-2.5 rounded-lg border border-slate-200 text-xs space-y-0.5"
-                            >
-                              <div className="flex items-start justify-between gap-2">
-                                <p className="font-bold text-slate-900 leading-relaxed text-xs">
-                                  {ex.en}
-                                </p>
+                    <li key={mIdx} className="grid grid-cols-[1.5rem_minmax(0,1fr)] gap-x-3">
+                      <span className="mt-0.5 flex size-6 items-center justify-center rounded-full bg-blue-50 text-xs font-bold text-blue-700">
+                        {mIdx + 1}
+                      </span>
+                      <div className="min-w-0 space-y-2">
+                        <p className="text-base font-semibold leading-snug text-slate-900 sm:text-lg">
+                          {meaningItem.translations.join(', ') || t('meaning_default')}
+                        </p>
+                        {meaningItem.definition && (
+                          <p className="text-sm leading-relaxed text-slate-500">{meaningItem.definition}</p>
+                        )}
+                        {meaningItem.examples?.length > 0 && (
+                          <ul className="space-y-2 border-l-2 border-blue-100 pl-3">
+                            {meaningItem.examples.map((ex, exIdx) => (
+                              <li key={exIdx} className="flex items-start gap-2">
+                                <div className="min-w-0 flex-1 text-sm">
+                                  <p className="font-medium leading-relaxed text-slate-800">{ex.en}</p>
+                                  {ex.vi && <p className="leading-relaxed text-slate-500">{ex.vi}</p>}
+                                </div>
                                 {ex.en && (
                                   <button
                                     type="button"
                                     onClick={() => playAudio(undefined, 'en-US', ex.en)}
-                                    className="text-slate-400 hover:text-blue-600 shrink-0 p-0.5 cursor-pointer"
+                                    className="flex size-7 shrink-0 items-center justify-center rounded-md text-slate-400 outline-none transition-colors hover:bg-blue-50 hover:text-blue-600 focus-visible:ring-2 focus-visible:ring-blue-500"
                                     title={t('listen_example')}
+                                    aria-label={t('listen_example')}
                                   >
-                                    <Volume2 className="w-3.5 h-3.5" />
+                                    <Volume2 aria-hidden="true" className="size-3.5" />
                                   </button>
                                 )}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        {(meaningItem.synonyms.length > 0 || meaningItem.antonyms.length > 0) && (
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
+                            {meaningItem.synonyms.length > 0 && (
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <span className="font-semibold text-emerald-700">{t('synonyms')}</span>
+                                {meaningItem.synonyms.map((syn, sIdx) => (
+                                  <span key={sIdx} className="rounded-md bg-emerald-50 px-1.5 py-0.5 font-medium text-emerald-800">
+                                    {syn}
+                                  </span>
+                                ))}
                               </div>
-                              {ex.vi && (
-                                <p className="text-slate-600 font-normal">
-                                  {ex.vi}
-                                </p>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Synonyms & Antonyms */}
-                      {(meaningItem.synonyms.length > 0 || meaningItem.antonyms.length > 0) && (
-                        <div className="pl-7 flex flex-wrap items-center gap-2 pt-0.5 text-xs">
-                          {meaningItem.synonyms.length > 0 && (
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-bold text-emerald-800">{t('synonyms')}</span>
-                              {meaningItem.synonyms.map((syn, sIdx) => (
-                                <span
-                                  key={sIdx}
-                                  className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-900 border border-emerald-300 font-semibold text-[11px]"
-                                >
-                                  {syn}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-
-                          {meaningItem.antonyms.length > 0 && (
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-bold text-red-800">{t('antonyms')}</span>
-                              {meaningItem.antonyms.map((ant, aIdx) => (
-                                <span
-                                  key={aIdx}
-                                  className="px-2 py-0.5 rounded-md bg-red-50 text-red-900 border border-red-300 font-semibold text-[11px]"
-                                >
-                                  {ant}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                            )}
+                            {meaningItem.antonyms.length > 0 && (
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <span className="font-semibold text-red-700">{t('antonyms')}</span>
+                                {meaningItem.antonyms.map((ant, aIdx) => (
+                                  <span key={aIdx} className="rounded-md bg-red-50 px-1.5 py-0.5 font-medium text-red-800">
+                                    {ant}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </li>
                   ))}
-                </div>
-              </div>
+                </ol>
+              </section>
             ))}
           </div>
         </div>

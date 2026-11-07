@@ -1,3 +1,5 @@
+import { userLearningProgress } from './user-learning-reader.js';
+import { userProfile } from './user-profile.js';
 import { BadRequestException,Injectable,Logger,Optional } from '@nestjs/common';
 import { I18nService } from 'nestjs-i18n';
 import { DomainOutboxService } from '../../common/events/domain-outbox.service.js';
@@ -46,7 +48,10 @@ export class UsersService {
     });
   }
   async updateProfile(id: string, updateProfileDto: UpdateProfileDto) {
-    const updatedUser=await this.update(id,{...updateProfileDto,profileUpdatedAt:new Date()});
+    await this.requireUser(id);
+    const fields = ['username', 'fullName', 'phone', 'bio', 'avatarUrl'] as const;
+    const changes = Object.fromEntries(fields.filter(key => updateProfileDto[key] !== undefined).map(key => [key, updateProfileDto[key]]));
+    const updatedUser=await this.update(id,{...changes,profileUpdatedAt:new Date()});
 
     if (!updatedUser) {
       throw new BadRequestException(await this.i18n.t('auth.USER_NOT_FOUND'));
@@ -54,12 +59,7 @@ export class UsersService {
 
     return {
       message: await this.i18n.t('auth.PROFILE_UPDATED_SUCCESSFULLY'),
-      profile: {
-        _id: String(updatedUser._id),
-        username: updatedUser.username,
-        email: updatedUser.email,
-        avatarUrl: updatedUser.avatarUrl,
-        role: 'USER' } };
+      profile: userProfile(updatedUser) };
   }
 
   // ==========================================
@@ -161,7 +161,7 @@ export class UsersService {
     const formattedLastActive = formatVietnamLastActive(lastActiveDate, user.isBanned, this.i18n);
     const registrationAgo = formatRelativeTime(createdDate, this.i18n);
 
-    const snapshot=await learningSnapshot(this.db,String(user._id));
+    const [snapshot, moduleProgress] = await Promise.all([learningSnapshot(this.db,String(user._id)), userLearningProgress(this.db,String(user._id))]);
     const wordsLearned=Number(snapshot.summary.learned??snapshot.words.length),completedLessonsCount=snapshot.progress.filter(row=>row.status==='COMPLETED').length;
     const sessions=snapshot.sessions;
     const allLessons=await contentBatches(this.db,'lessons',{ids:[...new Set(snapshot.progress.map(row=>String(row.lessonId)))]});
@@ -374,6 +374,7 @@ export class UsersService {
       totalEnrolledCount: courses.length,
       streakDays,
       courses,
+      moduleProgress,
       recentActivities,
       personalDetail: {
         fullName: user.username || user.email.split('@')[0],

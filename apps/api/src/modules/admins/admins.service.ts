@@ -1,9 +1,11 @@
+import { AdminAuthorizationService } from './admin-authorization.service.js';
 import { AdminRbacService } from './admin-rbac.service.js';
-import { Injectable,UnauthorizedException } from '@nestjs/common';
+import { BadRequestException,Injectable,UnauthorizedException } from '@nestjs/common';
 import { I18nService } from 'nestjs-i18n';
-import { comparePassword } from '../../common/bcrypt.js';
+import { comparePassword, hashPassword } from '../../common/bcrypt.js';
 import {
 InjectPgConnection,
+withPgTransaction,
 type PgConnection,
 } from '../../postgres/connection.js';
 import { first,rowData,sql,type Sql } from '../../postgres/sql.js';
@@ -43,6 +45,28 @@ export class AdminsService {
       WHERE id=$1::uuid AND auth_version=$2 AND status='ACTIVE' AND NOT is_deleted AND auth_version<2147483647 RETURNING id`,
       [claims._id,claims.auth_version]);
     return result.rows.length===1;
+  }
+
+  async changeOwnPassword(actor: { _id: string; authVersion: number }, oldPassword: string, newPassword: string) {
+    if (typeof oldPassword !== 'string' || typeof newPassword !== 'string' || newPassword.trim() !== newPassword ||
+      newPassword.length < 12 || Buffer.byteLength(newPassword, 'utf8') > 72 ||
+      !/[a-z]/.test(newPassword) || !/[A-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+      throw new BadRequestException('ADMIN_PASSWORD_POLICY');
+    }
+    const admin = await this.findById(actor._id);
+    if (!isAdminAuthenticatable(admin) || admin.authVersion !== actor.authVersion) throw new UnauthorizedException('ADMIN_REAUTH_REQUIRED');
+    if (!await comparePassword(oldPassword, admin.password)) throw new BadRequestException('ADMIN_PASSWORD_INCORRECT');
+    if (await comparePassword(newPassword, admin.password)) throw new BadRequestException('ADMIN_PASSWORD_UNCHANGED');
+    const digest = await hashPassword(newPassword);
+    return withPgTransaction(this.connection, async db => {
+      const result = await db.query(`UPDATE public.admins SET password_hash=$3,auth_version=auth_version+1
+        WHERE id=$1::uuid AND auth_version=$2 AND password_hash=$4 AND status='ACTIVE' AND NOT is_deleted AND auth_version<2147483647 RETURNING id`,
+        [actor._id, actor.authVersion, digest, admin.password]);
+      if (!result.rows.length) throw new UnauthorizedException('ADMIN_REAUTH_REQUIRED');
+      await new AdminAuthorizationService(db).recordAudit(db, actor, 'ADMIN_PASSWORD_CHANGED', actor._id,
+        { authVersion: actor.authVersion }, { authVersion: actor.authVersion + 1 });
+      return { changed: true };
+    });
   }
 
   async getAuthVersion(id: string): Promise<number | null> {

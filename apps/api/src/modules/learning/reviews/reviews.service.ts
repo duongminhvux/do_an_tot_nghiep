@@ -1,4 +1,5 @@
-import { Inject,Injectable,NotFoundException } from '@nestjs/common';
+import type { ReviewLibraryDto, PracticeWordsDto } from './dto/review-library.dto.js';
+import { BadRequestException,Inject,Injectable,NotFoundException } from '@nestjs/common';
 import { DomainOutboxService } from '../../../common/events/domain-outbox.service.js';
 import { InjectPgConnection,createConnection,type PgConnection } from '../../../postgres/connection.js';
 import { SqlRecords } from '../../../postgres/records.js';
@@ -13,6 +14,28 @@ export class ReviewsService {
     const words:any[]=[];const ids=[...new Set(reviews.map(r=>String(r.wordId)))];
     for(let offset=0;offset<ids.length;offset+=2000)words.push(...await contentRows(this.db,'words',{ids:ids.slice(offset,offset+2000),publishedOnly:true,limit:2000}));
     const byId=new Map(words.map(word=>[word._id,word]));return reviews.map(review=>({...review,wordId:byId.get(String(review.wordId))??null}));
+  }
+  async library(userId: string, query: ReviewLibraryDto) {
+    // Scope to the learner first. Resolve current published content before counting/filtering,
+    // so removed words never create empty pages or misleading totals.
+    const owned = await this.populated(await this.reviews.select(sql`user_id=${userId}::uuid`, literal('ORDER BY last_reviewed_at DESC NULLS LAST,created_at DESC,id')));
+    const available = owned.filter(row => row.wordId);
+    const now = Date.now();
+    const due = (row: any) => !!row.nextReviewAt && new Date(row.nextReviewAt).getTime() <= now;
+    const stats = { total: available.length, due: available.filter(due).length, learning: available.filter(row=>row.status==='LEARNING').length, mastered: available.filter(row=>row.status==='MASTERED').length };
+    const search = query.search?.toLocaleLowerCase() || '';
+    const searchable = (word: any) => [word.word,word.meaning,...(word.parts ?? []).flatMap((part: any)=>part.meanings ?? []).flatMap((meaning: any)=>[meaning.definition,...(Array.isArray(meaning.translation)?meaning.translation:[meaning.translation])])].filter(value=>typeof value==='string').join(' ').toLocaleLowerCase();
+    const filtered = available.filter(row => (query.status==='ALL' || !query.status || query.status==='DUE' && due(row) || row.status===query.status) &&
+      (!search || searchable(row.wordId).includes(search)));
+    const page=query.page || 1, limit=Math.min(50,Math.max(1,query.limit || 20));
+    return { items: filtered.slice((page-1)*limit,page*limit), total: filtered.length, page, limit, totalPages: Math.max(1,Math.ceil(filtered.length/limit)), stats };
+  }
+  async practice(userId: string, query: PracticeWordsDto) {
+    if (!query.wordId) return (await this.library(userId, { page: 1, limit: 50, status: query.status, search: query.search })).items;
+    const filter=sql`user_id=${userId}::uuid AND (${query.wordId ?? null}::uuid IS NULL OR word_id=${query.wordId ?? null}::uuid)
+      AND (${query.status==='ALL' ? null : query.status ?? null}::text IS NULL OR status=${query.status})`;
+    const owned=await this.populated(await this.reviews.select(filter,literal('ORDER BY next_review_at,id LIMIT 50')));
+    return owned.filter(row=>row.wordId);
   }
   async getDueReviews(userId:string,limit=30) {
     const cap=Math.min(100,Math.max(1,Math.floor(limit)));
@@ -36,6 +59,7 @@ export class ReviewsService {
     return {hasDueWords:dueCount>0,dueCount,dueToday:Number(counts?.today??0),totalLearning:Number(counts?.learning??0),previewWords};
   }
   async recordReview(userId:string,wordId:string,rating:'AGAIN'|'HARD'|'GOOD'|'EASY') {
+    if (!['AGAIN','HARD','GOOD','EASY'].includes(rating)) throw new BadRequestException('Invalid review rating');
     const now=new Date();const titles=await mistakeSource<Record<string,string>>('content','vocabulary-titles',{wordIds:[wordId]});
     if(!titles[wordId])throw new NotFoundException('Published vocabulary word not found');
     return this.outbox.withTransaction(async session=>{

@@ -1,3 +1,4 @@
+import { AdminChangePasswordDto } from './dto/admin-change-password.dto.js';
 import { PermissionExemption } from './decorators/require-permissions.decorator.js';
 import {
 Body,
@@ -156,6 +157,16 @@ export class AdminAuthController {
     }
     return {
       message: await this.i18n.t('auth.LOGOUT_SUCCESSFULLY') };
+  }
+
+  @PermissionExemption('E4')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
+  @Post('change-password')
+  async changePassword(@Req() req: any, @Body() dto: AdminChangePasswordDto, @Res({ passthrough: true }) res: express.Response) {
+    const result = await this.adminsService.changeOwnPassword(req.user, dto.oldPassword, dto.newPassword);
+    this.clearCookie(res);
+    return result;
   }
 
   @PermissionExemption('E4')

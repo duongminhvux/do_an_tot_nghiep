@@ -5,7 +5,7 @@ import { useSiteSettings } from "@/providers/site-settings-provider";
 
 import React from "react";
 import Link from "next/link";
-import { usePathname, useRouter, useParams } from "next/navigation";
+import { usePathname, useParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import {
   Shield,
@@ -19,8 +19,6 @@ import {
   FileText,
   Layers,
   Users,
-  LogOut,
-  Globe,
   ChevronRight,
   ClipboardCheck,
   Headphones,
@@ -38,7 +36,6 @@ import {
   Sidebar,
   useSidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -50,17 +47,13 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
   SidebarRail,
-  SidebarSeparator,
 } from "@/components/ui/sidebar";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import LanguageSwitcher from "@/components/language-switcher";
-import { useAppDispatch, useAppSelector } from "@/redux/hooks";
-import { logout } from "@/redux/features/auth/authSlice";
-import { authService } from "@/services";
+import { useAppSelector } from "@/redux/hooks";
 import { cn } from "@/lib/utils";
 type NavLink = {
   label: string;
@@ -76,7 +69,6 @@ const subMenuClass =
 
 export function AppSidebar() {
   const siteSettings = useSiteSettings();
-  const router = useRouter();
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
   React.useEffect(() => {
@@ -84,20 +76,8 @@ export function AppSidebar() {
   }, [pathname, setOpenMobile]);
   const params = useParams();
   const locale = (params?.locale as string) || "vi";
-  const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
   const { t } = useTranslation("common");
-
-  const handleLogout = async () => {
-    try {
-      await authService.logout();
-    } catch {
-      // Ignore errors on logout
-    } finally {
-      dispatch(logout());
-      router.replace(`/${locale}/login`);
-    }
-  };
 
   const active = (path: string) =>
     pathname === path || pathname.startsWith(path + "/");
@@ -333,7 +313,7 @@ export function AppSidebar() {
       {/* Brand: the uploaded wordmark already contains the icon, so it is shown
           alone when expanded and the square icon alone when collapsed. The
           icon square sits on the same 8px inset as the menu buttons. */}
-      <SidebarHeader className="h-14 shrink-0 justify-center border-b border-slate-100 px-2">
+      <SidebarHeader className="h-16 shrink-0 justify-center border-b border-slate-100 px-2">
         <Link
           href={`/${locale}`}
           aria-label={siteSettings.siteName}
@@ -458,45 +438,6 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-
-      {/* Footer */}
-      <SidebarFooter className="border-t border-slate-100 p-2.5 space-y-2.5 group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:space-y-0 group-data-[collapsible=icon]:items-center">
-        {/* Language Switcher */}
-        <div className="flex items-center justify-between px-1 group-data-[collapsible=icon]:hidden">
-          <span className="text-xs text-slate-500 font-medium flex items-center gap-1.5">
-            <Globe className="h-3.5 w-3.5 text-slate-400" />
-            {t("language")}
-          </span>
-          <LanguageSwitcher />
-        </div>
-
-        <SidebarSeparator className="my-1 group-data-[collapsible=icon]:hidden" />
-
-        {/* User Card */}
-        <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200/80 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:border-0 group-data-[collapsible=icon]:justify-center">
-          <div className="flex items-center gap-2.5 min-w-0 group-data-[collapsible=icon]:gap-0">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white font-semibold text-xs shadow-sm">
-              {(user?.username?.[0] || "A").toUpperCase()}
-            </div>
-            <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
-              <p className="text-xs font-semibold text-slate-900 truncate">
-                {user?.username || "Administrator"}
-              </p>
-              <p className="text-[11px] text-slate-500 truncate">
-                {user?.email || "admin@english.com"}
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer shrink-0 group-data-[collapsible=icon]:hidden"
-            title={t("logout")}
-          >
-            <LogOut className="h-4 w-4" />
-          </button>
-        </div>
-      </SidebarFooter>
 
       <SidebarRail />
     </Sidebar>

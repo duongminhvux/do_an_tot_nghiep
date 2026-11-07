@@ -84,49 +84,6 @@ export class ActivityLogService {
     }
   }
 
-  // --- Session & Navigation Logs ---
-
-  logPageView(path: string, title?: string, metadata?: Record<string, any>) {
-    return this.log({
-      action: 'PAGE_VIEW',
-      category: 'SESSION',
-      description: `Viewed page ${title ? `"${title}"` : path}`,
-      metadata: {
-        path,
-        title: title || (typeof document !== 'undefined' ? document.title : ''),
-        ...metadata,
-      },
-    });
-  }
-
-  logSessionStart(metadata?: Record<string, any>) {
-    return this.log({
-      action: 'SESSION_START',
-      category: 'SESSION',
-      description: 'User started a new browsing session',
-      metadata,
-    });
-  }
-
-  logSessionEnd(durationMs?: number, metadata?: Record<string, any>) {
-    return this.sendBeacon({
-      action: 'SESSION_END',
-      category: 'SESSION',
-      description: 'User ended session / closed tab',
-      durationMs,
-      metadata,
-    });
-  }
-
-  logHeartbeat(metadata?: Record<string, any>) {
-    return this.log({
-      action: 'HEARTBEAT',
-      category: 'SESSION',
-      description: 'User active heartbeat ping',
-      metadata,
-    });
-  }
-
   // --- Auth Activity Logs ---
 
   logAuth(

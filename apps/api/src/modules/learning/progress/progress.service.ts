@@ -493,7 +493,7 @@ constructor(
     }
 
     // 4. Tìm bài học đang học dở hoặc gần nhất để làm CTA
-    const lastProgress = await this.hydrateContent(this.progressModel.one(sql`("user_id" = ${userObjId})`, sql`ORDER BY "last_studied_at" DESC NULLS LAST,"updated_at" DESC NULLS LAST`));
+    const lastProgress = await this.hydrateContent(this.progressModel.one(sql`user_id=${userObjId}::uuid AND status IS DISTINCT FROM 'COMPLETED' AND COALESCE(progress,0)<100`, sql`ORDER BY "last_studied_at" DESC NULLS LAST,"updated_at" DESC NULLS LAST`));
 
     let continueLesson: {
       lessonId: string;
@@ -509,7 +509,7 @@ constructor(
         let colSlug = '';
         if (lessonObj.collectionId) {
           const col = await (contentRows(this.nativeDb,'collections',{ids:[String(lessonObj.collectionId._id ?? lessonObj.collectionId)],publishedOnly:true,limit:1})).then(items=>items[0]??null);
-          colSlug = col?.slug || String(lessonObj.collectionId._id ?? lessonObj.collectionId);
+          colSlug = col?.slug || '';
         }
         continueLesson = {
           lessonId: String(lessonObj._id),
@@ -907,7 +907,7 @@ constructor(
     const wordsToReview = await this.reviewModel.count(sql`("user_id" = ${userObjId}) AND ("next_review_at" <= ${now})`);
 
     // 2. Bài học đang học dở hoặc gần nhất
-    const lastProgress = await this.hydrateContent(this.progressModel.one(sql`("user_id" = ${userObjId})`, sql`ORDER BY "last_studied_at" DESC NULLS LAST,"updated_at" DESC NULLS LAST`));
+    const lastProgress = await this.hydrateContent(this.progressModel.one(sql`user_id=${userObjId}::uuid AND status IS DISTINCT FROM 'COMPLETED' AND COALESCE(progress,0)<100`, sql`ORDER BY "last_studied_at" DESC NULLS LAST,"updated_at" DESC NULLS LAST`));
 
     let currentLesson: {
       lessonId: string;
@@ -926,7 +926,7 @@ constructor(
         if (lessonObj.collectionId) {
           const col = await (contentRows(this.nativeDb,'collections',{ids:[String(lessonObj.collectionId._id ?? lessonObj.collectionId)],publishedOnly:true,limit:1})).then(items=>items[0]??null);
           colName = col?.name || '';
-          colSlug = col?.slug || String(lessonObj.collectionId._id ?? lessonObj.collectionId);
+          colSlug = col?.slug || '';
         }
         currentLesson = {
           lessonId: String(lessonObj._id),
@@ -938,19 +938,16 @@ constructor(
       }
     }
 
+    if (currentLesson && !currentLesson.collectionSlug) currentLesson = null;
     if (!currentLesson) {
-      const firstLesson = await this.hydrateContent((contentRows(this.nativeDb,'lessons',{activeOnly:true,publishedOnly:true,orderBy:"order",descending:false,limit:1})).then(items=>items[0]??null),"lessons");
-
-      if (firstLesson) {
-        const colObj = firstLesson.collectionId as any;
-        currentLesson = {
-          lessonId: String(firstLesson._id),
-          title: firstLesson.title,
-          slug: firstLesson.slug,
-          collectionName: colObj?.name || '',
-          collectionSlug: colObj?.slug || '',
-          progress: 0 };
-      }
+      const completed = await this.progressModel.select(sql`user_id=${userObjId}::uuid AND (status='COMPLETED' OR progress>=100)`);
+      const completedIds = new Set(completed.map(row=>String(row.lessonId)));
+      const lessons = await this.hydrateContent(allContentRows(this.nativeDb,'lessons',{activeOnly:true,publishedOnly:true,orderBy:'order',descending:false}), 'lessons');
+      const firstLesson = lessons.find((lesson: any)=>lesson.slug && lesson.collectionId?.slug && !completedIds.has(String(lesson._id)));
+      if (firstLesson) currentLesson = {
+        lessonId: String(firstLesson._id), title: firstLesson.title, slug: firstLesson.slug,
+        collectionName: firstLesson.collectionId.name || '', collectionSlug: firstLesson.collectionId.slug, progress: 0,
+      };
     }
 
     const dailyGoal = 20;

@@ -7,6 +7,8 @@ export enum AuthProvider {
 export interface User {
     email: string;
     username?: string;
+    fullName?: string;
+    bio?: string;
     password?: string;
     avatarUrl?: string;
     authProvider: AuthProvider;

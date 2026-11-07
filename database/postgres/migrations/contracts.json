@@ -10,9 +10,9 @@
     "fingerprint": "0965a0f8008301591d75716e2a10ca0f669103263badb614abcf8e76ea74aa85"
   },
   "assessment": {
-    "version": "0018_attempt_exam_snapshot",
-    "migrationsChecksum": "bd74ac39d4334a7e7093a6c5f3094fe16b122e6d06cd7ccba6903b98ba4cb2de",
-    "fingerprint": "1b54b68dd887ecf526729ff930d4135dbd23d76cdcc08d7437ade667b75db91b"
+    "version": "0019_exam_comment_pins",
+    "migrationsChecksum": "dea35286cfff4cdfe5d86a81d603b63279fe6da463588f97f8e2873866f1e9cc",
+    "fingerprint": "e38faa0b8c4eeaf50ba5b49ebaedaeff30ff03699f3201ab6298819d57d567c1"
   },
   "arena": {
     "version": "0018_match_state_columns",

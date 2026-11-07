@@ -19,6 +19,38 @@ import {
   type QualityItem,
 } from './quality-rules.js';
 
+/**
+ * Learning programmes (vocabulary collections, Dictation topics) that are
+ * switched on but have no lessons, or no published lesson yet.
+ */
+const PROGRAM_CHECKS = `
+  SELECT 'collections' AS kind,c.id,c.name AS title,c.updated_at,
+    '/vocabulary/collections?collectionId='||c.id AS edit_path,
+    CASE WHEN COUNT(l.id)=0 THEN 'PROGRAM_EMPTY' ELSE 'PROGRAM_UNPUBLISHED' END AS code,
+    CASE WHEN COUNT(l.id)=0 THEN 'error' ELSE 'warning' END AS severity,
+    CASE WHEN COUNT(l.id)=0 THEN 'Chương trình học chưa có bài học nào.'
+      ELSE 'Chương trình học có '||COUNT(l.id)||' bài nhưng chưa bài nào được xuất bản.' END AS message_vi,
+    CASE WHEN COUNT(l.id)=0 THEN 'The programme has no lessons.'
+      ELSE 'The programme has '||COUNT(l.id)||' lessons but none is published.' END AS message_en
+  FROM public.collections c
+  LEFT JOIN public.lessons l ON l.collection_id=c.id AND l.is_active IS NOT FALSE AND l.is_deleted IS NOT TRUE
+  WHERE c.is_active IS NOT FALSE AND c.is_deleted IS NOT TRUE
+  GROUP BY c.id
+  HAVING COUNT(l.id) FILTER(WHERE l.publication_status='PUBLISHED')=0
+  UNION ALL
+  SELECT 'dictationTopics',t.id,t.title,t.updated_at,'/dictation/structure',
+    CASE WHEN COUNT(d.id)=0 THEN 'PROGRAM_EMPTY' ELSE 'PROGRAM_UNPUBLISHED' END,
+    CASE WHEN COUNT(d.id)=0 THEN 'error' ELSE 'warning' END,
+    CASE WHEN COUNT(d.id)=0 THEN 'Chủ đề Dictation chưa có bài nào.'
+      ELSE 'Chủ đề Dictation có '||COUNT(d.id)||' bài nhưng chưa bài nào được xuất bản.' END,
+    CASE WHEN COUNT(d.id)=0 THEN 'The Dictation topic has no lessons.'
+      ELSE 'The Dictation topic has '||COUNT(d.id)||' lessons but none is published.' END
+  FROM public.dictationtopics t
+  LEFT JOIN public.dictationlessons d ON d.topic_id=t.id AND d.is_deleted IS NOT TRUE
+  WHERE t.is_active IS NOT FALSE AND t.is_deleted IS NOT TRUE
+  GROUP BY t.id
+  HAVING COUNT(d.id) FILTER(WHERE d.publication_status='PUBLISHED')=0`;
+
 @Injectable()
 export class ContentQualityService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(ContentQualityService.name);
@@ -90,28 +122,36 @@ export class ContentQualityService implements OnModuleInit, OnModuleDestroy {
           `SELECT id,finished_at FROM public.content_quality_jobs WHERE state='COMPLETED' ORDER BY finished_at DESC,id DESC LIMIT 1`,
         )
       ).rows[0] ?? null;
-    const stats = snapshot
-      ? (
-          await this.db.query(
-            `SELECT
-      COUNT(DISTINCT (kind,resource_id))::int AS "needsReview",
-      COUNT(DISTINCT (kind,resource_id)) FILTER(WHERE category='MEDIA' AND code='AUDIO_REQUIRED')::int AS "missingAudio",
-      COUNT(DISTINCT (kind,resource_id)) FILTER(WHERE category='DUPLICATE')::int AS duplicates,
-      COUNT(DISTINCT (kind,resource_id)) FILTER(WHERE category='FEEDBACK')::int AS feedback
-      FROM public.content_quality_findings WHERE job_id=$1`,
-            [snapshot.id],
-          )
-        ).rows[0]
-      : { needsReview: 0, missingAudio: 0, duplicates: 0, feedback: 0 };
+    const en = language === 'en';
+    // Snapshot findings + live programme checks (few rows, always current).
+    const combined = `WITH findings AS (
+        SELECT 1 AS bucket,id AS seq,id::text,kind,resource_id AS "resourceId",title,category,code,path,severity,
+          ${en ? 'message_en' : 'message_vi'} AS message,edit_path AS "editPath",content_updated_at AS "updatedAt",checked_at AS "checkedAt"
+        FROM public.content_quality_findings WHERE job_id=$1
+        UNION ALL
+        SELECT 0,0,'program:'||id::text,kind,id,title,'DATA',code,'lessons',severity,
+          ${en ? 'message_en' : 'message_vi'},edit_path,updated_at,now() FROM (${PROGRAM_CHECKS}) programs
+      ) SELECT * FROM findings WHERE ($2::text IS NULL OR category=$2)`;
     const params = [snapshot?.id ?? null, category ?? null];
+    const stats = (
+      await this.db.query(
+        `SELECT
+        COUNT(DISTINCT (kind,"resourceId"))::int AS "needsReview",
+        COUNT(DISTINCT (kind,"resourceId")) FILTER(WHERE category='MEDIA' AND code='AUDIO_REQUIRED')::int AS "missingAudio",
+        COUNT(DISTINCT (kind,"resourceId")) FILTER(WHERE category='DUPLICATE')::int AS duplicates,
+        COUNT(DISTINCT (kind,"resourceId")) FILTER(WHERE category='FEEDBACK')::int AS feedback
+        FROM (${combined}) all_findings`,
+        [snapshot?.id ?? null, null],
+      )
+    ).rows[0];
     const count = await this.db.query(
-      `SELECT COUNT(*)::int AS total FROM public.content_quality_findings WHERE job_id=$1 AND ($2::text IS NULL OR category=$2)`,
+      `SELECT COUNT(*)::int AS total FROM (${combined}) rows`,
       params,
     );
     const result = await this.db.query(
-      `SELECT id::text,kind,resource_id AS "resourceId",title,category,code,path,severity,
-      ${language === 'en' ? 'message_en' : 'message_vi'} AS message,edit_path AS "editPath",content_updated_at AS "updatedAt",checked_at AS "checkedAt"
-      FROM public.content_quality_findings WHERE job_id=$1 AND ($2::text IS NULL OR category=$2) ORDER BY id LIMIT 20 OFFSET $3`,
+      `SELECT id,kind,"resourceId",title,category,code,path,severity,message,"editPath","updatedAt","checkedAt"
+      FROM (${combined}) rows
+      ORDER BY bucket,CASE WHEN severity='error' THEN 0 ELSE 1 END,seq LIMIT 20 OFFSET $3`,
       [...params, (page - 1) * 20],
     );
     return {

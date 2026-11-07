@@ -76,7 +76,7 @@ describe('F10 publication validation', () => {
       }).some((issue) => issue.code === 'AUDIO_STALE'),
     ).toBe(true);
   });
-  it('checks word meanings and lesson links without requiring the lesson to be published first', () => {
+  it('checks required word fields; a word does not need a lesson link', () => {
     const word = {
       word: 'test',
       slug: 'test',
@@ -87,9 +87,17 @@ describe('F10 publication validation', () => {
       linkedLessons: 1,
     };
     expect(validatePublication('words', word)).toEqual([]);
-    expect(
-      validatePublication('words', { ...word, linkedLessons: 0 })[0].code,
-    ).toBe('LESSON_REQUIRED');
+    expect(validatePublication('words', { ...word, linkedLessons: 0 })).toEqual(
+      [],
+    );
+    const missing = validatePublication('words', {
+      ...word,
+      slug: '',
+      level: 'X',
+    });
+    expect(missing[0].code).toBe('WORD_FIELDS');
+    expect(missing[0].message).toContain('slug');
+    expect(missing[0].message).toContain('trình độ');
     expect(validatePublication('words', { ...word, parts: {} })[0].code).toBe(
       'MEANING_REQUIRED',
     );
@@ -101,6 +109,19 @@ describe('F10 publication validation', () => {
         words: [{ id: 'w', available: true, publicationStatus: 'DRAFT' }],
       })[0].code,
     ).toBe('WORD_UNPUBLISHED');
+    // Many hidden words are reported once, with a count.
+    const many = validatePublication('lessons', {
+      title: 'Lesson',
+      slug: 'lesson',
+      collectionAvailable: true,
+      words: ['a', 'b', 'c'].map((id) => ({
+        id,
+        available: true,
+        publicationStatus: 'DRAFT',
+      })),
+    });
+    expect(many).toHaveLength(1);
+    expect(many[0].message).toContain('3/3');
   });
   it('requires ready audio and consistent Dictation timing/count metadata', () => {
     const lesson = {

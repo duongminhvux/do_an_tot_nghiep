@@ -3,6 +3,7 @@
 import React from 'react';
 import { usePathname, useParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
+import { UserHeaderActions } from '@/components/user-header-actions';
 import AuthGuard from '@/components/auth-guard';
 import { RoomClosedNotice } from '@/components/room-closed-notice';
 import { AppSidebar } from '@/components/app-sidebar';
@@ -25,6 +26,7 @@ export default function DashboardLayout({
 
   const getPageTitle = () => {
     const isEn = locale === 'en';
+    if (pathname === `/${locale}/account`) return t('account.profile');
 
     if (pathname === `/${locale}/games/typing-rush`) return t('minigames:title');
 
@@ -48,6 +50,7 @@ export default function DashboardLayout({
     if (pathname?.includes('/toeic')) {
       return t('nav.toeic_exams', isEn ? 'Exams & Practice' : 'Đề thi');
     }
+    if (pathname?.endsWith('/vocabulary/learned')) return t('vocabulary:library.title');
     if (pathname?.includes('/vocabulary')) {
       return t('nav.vocabulary', isEn ? 'Vocabulary' : 'Từ vựng');
     }
@@ -86,12 +89,13 @@ export default function DashboardLayout({
           <AppSidebar />
           <SidebarInset className="bg-background min-h-dvh flex flex-col">
             {/* Top Bar with Sidebar Trigger - Sticky Fixed to top */}
-            <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-slate-200/80 bg-white/90 px-4 backdrop-blur-md sm:px-6">
+            <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-slate-200/80 bg-white/95 px-3 backdrop-blur-md sm:px-6">
               <SidebarTrigger className="-ml-1 text-slate-600 hover:text-slate-900 cursor-pointer" />
-              <Separator orientation="vertical" className="mr-2 h-4" />
-              <span className="min-w-0 truncate text-sm font-semibold text-slate-900">
+              <Separator orientation="vertical" className="hidden h-5 sm:block" />
+              <span className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-900">
                 {getPageTitle()}
               </span>
+              <UserHeaderActions />
             </header>
 
             {/* Page Content */}

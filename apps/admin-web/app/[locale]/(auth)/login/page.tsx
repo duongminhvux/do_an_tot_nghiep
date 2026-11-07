@@ -22,6 +22,13 @@ function AdminLoginForm() {
   const { t } = useTranslation('auth');
   const siteSettings = useSiteSettings();
   const [showPassword, setShowPassword] = useState(false);
+  const [passwordChanged, setPasswordChanged] = useState(false);
+  useEffect(() => {
+    if (sessionStorage.getItem("adminPasswordChanged") === "1") {
+      setPasswordChanged(true);
+      sessionStorage.removeItem("adminPasswordChanged");
+    }
+  }, []);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -101,6 +108,7 @@ function AdminLoginForm() {
       </div>
 
       {/* Error Alert */}
+      {passwordChanged && <p role="status" className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{t('common:account.passwordChanged')}</p>}
       {errorMessage && (
         <div className="flex items-start gap-2.5 p-3.5 rounded-xl text-sm leading-snug bg-red-50 text-red-700 border border-red-200">
           <AlertCircle className="w-5 h-5 shrink-0 text-red-500 mt-0.5" />

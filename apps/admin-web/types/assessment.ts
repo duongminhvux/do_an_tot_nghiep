@@ -93,6 +93,25 @@ export interface ExamAttemptItem {
   listeningResult?: RawAttemptResult;
   readingResult?: RawAttemptResult;
 }
+export interface ExamAttemptQuestion {
+  _id: string;
+  part: number;
+  content: string;
+  options: { key: string; text: string }[];
+  correctAnswer?: string;
+  explanation?: string;
+  transcript?: string;
+  imageUrl?: string;
+  audioUrl?: string;
+  passages?: { _id?: string; content?: string; imageUrl?: string; audioUrl?: string }[];
+}
+export interface ExamAttemptDetail extends ExamAttemptItem {
+  hasSnapshot: boolean;
+  questions: ExamAttemptQuestion[];
+  answers: Record<string, string>;
+  completedAt?: string;
+  score?: number;
+}
 export interface ExamAttemptList {
   data: ExamAttemptItem[];
   total: number;

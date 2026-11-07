@@ -214,6 +214,7 @@ function CommentCard({
         <span className="text-sm font-semibold text-slate-800">
           {item.deleted ? t("community.deleted") : name}
         </span>
+        {item.isPinned && !item.deleted && <span className="rounded bg-blue-50 px-1.5 py-0.5 font-medium text-blue-700">{t('community.pinned')}</span>}
         {item.isMine && (
           <span className="rounded bg-blue-50 px-1.5 py-0.5 font-medium text-blue-700">
             {t("community.you")}
@@ -272,7 +273,8 @@ function CommentCard({
             >
               {t("exam_detail.reply_action")}
             </Button>
-            {item.isMine && (
+            {item.isPinned && !item.deleted && <span className="rounded bg-blue-50 px-1.5 py-0.5 font-medium text-blue-700">{t('community.pinned')}</span>}
+        {item.isMine && (
               <Button
                 type="button"
                 size="sm"

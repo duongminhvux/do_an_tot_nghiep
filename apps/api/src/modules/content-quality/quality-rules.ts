@@ -2,6 +2,9 @@ import {
   validatePublication,
   type PublicationKind,
 } from '@repo/shared-types/publication';
+import { checkExam, TOEIC_PART_COUNTS } from '@repo/shared-types/exam-checks';
+
+export { TOEIC_PART_COUNTS };
 
 export type QualityCategory = 'DATA' | 'MEDIA' | 'DUPLICATE' | 'FEEDBACK';
 export type QualityIssue = {
@@ -34,6 +37,54 @@ export const QUALITY_TABLES = {
   exams: 'exams',
 };
 
+/** Category by code (not by message wording), so translations never move an issue. */
+const MEDIA_CODES = new Set([
+  'IMAGE_REQUIRED',
+  'AUDIO_REQUIRED',
+  'AUDIO_STALE',
+  'AUDIO_NOT_READY',
+  'MEDIA_MISSING',
+  'MEDIA_UNVERIFIED',
+]);
+const DUPLICATE_CODES = new Set(['DUPLICATE', 'EXACT_WORD']);
+export const qualityCategory = (code: string): QualityCategory =>
+  DUPLICATE_CODES.has(code)
+    ? 'DUPLICATE'
+    : MEDIA_CODES.has(code)
+      ? 'MEDIA'
+      : 'DATA';
+
+const text = (value: unknown) =>
+  typeof value === 'string' && value.trim().length > 0;
+const list = (value: unknown): any[] => (Array.isArray(value) ? value : []);
+
+function wordRecommendations(doc: Record<string, any>) {
+  const missing: [string, string][] = [];
+  if (!text(doc.ipa?.us) && !text(doc.ipa?.uk))
+    missing.push(['phiên âm IPA', 'IPA']);
+  const meanings = list(doc.parts).flatMap((part) => list(part?.meanings));
+  if (
+    meanings.length &&
+    !meanings.some((m) => list(m?.examples).some((e) => text(e?.en)))
+  )
+    missing.push(['câu ví dụ', 'example sentence']);
+  if (
+    meanings.length &&
+    !meanings.some((m) => list(m?.translation).some(text) || text(m?.translation))
+  )
+    missing.push(['nghĩa tiếng Việt', 'Vietnamese meaning']);
+  return missing;
+}
+
+/** Exam-size findings (question-level rules already come from validatePublication). */
+function examCompleteness(doc: Record<string, any>, language: 'vi' | 'en') {
+  return checkExam(
+    { exam: { type: doc.type, totalQuestions: doc.totalQuestions }, questions: doc.questions ?? [], groups: doc.groups ?? [] },
+    language,
+  ).filter((issue) => issue.scope === 'exam' || issue.code === 'TOEIC_PART_COUNT')
+    .filter((issue) => issue.code !== 'EMPTY');
+}
+
 export function qualityItem(
   kind: PublicationKind,
   doc: Record<string, any>,
@@ -54,16 +105,52 @@ export function qualityItem(
     en.forEach((issue, index) =>
       issues.push({
         ...issue,
-        category: /DUPLICATE/.test(issue.code)
-          ? 'DUPLICATE'
-          : /AUDIO|MEDIA|IMAGE|URL/.test(issue.code) ||
-              /audio|image|media|URL/i.test(issue.message)
-            ? 'MEDIA'
-            : 'DATA',
+        category: qualityCategory(issue.code),
         messageVi: vi[index]?.message ?? issue.message,
         messageEn: issue.message,
       }),
     );
+    if (kind === 'words') {
+      const missing = wordRecommendations(doc);
+      if (missing.length)
+        issues.push({
+          category: 'DATA',
+          code: 'WORD_RECOMMENDED',
+          path: 'word',
+          severity: 'warning',
+          messageVi: `Nên bổ sung: ${missing.map((m) => m[0]).join(', ')}.`,
+          messageEn: `Recommended: add ${missing.map((m) => m[1]).join(', ')}.`,
+        });
+    } else if (kind === 'dictation') {
+      const missing: [string, string][] = [];
+      if (!text(doc.title)) missing.push(['tiêu đề', 'title']);
+      if (!text(doc.slug)) missing.push(['slug', 'slug']);
+      if (!doc.topicId) missing.push(['chủ đề', 'topic']);
+      if (doc.level == null || doc.level === '')
+        missing.push(['trình độ', 'level']);
+      if (missing.length)
+        issues.push({
+          category: 'DATA',
+          code: 'DICTATION_FIELDS',
+          path: 'lesson',
+          severity: 'error',
+          messageVi: `Thiếu trường bắt buộc: ${missing.map((m) => m[0]).join(', ')}.`,
+          messageEn: `Missing required fields: ${missing.map((m) => m[1]).join(', ')}.`,
+        });
+    } else if (kind === 'exams') {
+      const vi = examCompleteness(doc, 'vi');
+      const en = examCompleteness(doc, 'en');
+      vi.forEach((issue, index) =>
+        issues.push({
+          category: 'DATA',
+          code: issue.code,
+          path: issue.part ? `part.${issue.part}` : 'questions',
+          severity: issue.severity,
+          messageVi: issue.message,
+          messageEn: en[index]?.message ?? issue.message,
+        }),
+      );
+    }
   } catch {
     issues.push({
       category: 'DATA',
