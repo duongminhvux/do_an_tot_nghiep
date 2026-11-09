@@ -6,6 +6,7 @@ import type {
 export interface PublicationPreview {
   kind: PublicationKind;
   title: string;
+  level?:string;
   questions?: {
     _id: string;
     part: number;
@@ -16,6 +17,7 @@ export interface PublicationPreview {
     passages: { content?: string; imageUrl?: string; audioUrl?: string }[];
   }[];
   fullAudioUrl?: string;
+  youtubeVideoId?: string;
   segments?: { id: string; text: string; startMs: number; endMs: number }[];
   parts?: {
     partOfSpeech: string;

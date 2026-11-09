@@ -6,6 +6,7 @@
   "types": "./src/index.ts",
   "exports": {
     "./publication": "./src/publication.mjs",
+    "./dictation-score": "./src/dictation-score.mjs",
     "./mistakes": "./src/mistakes.mjs",
     "./recommendations": "./src/recommendations.mjs",
     ".": "./src/index.ts",

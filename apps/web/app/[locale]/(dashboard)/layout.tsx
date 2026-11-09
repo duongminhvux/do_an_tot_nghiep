@@ -69,10 +69,11 @@ export default function DashboardLayout({
     return t('nav.home', isEn ? 'Home' : 'Trang chủ');
   };
 
-  // Taking a test is full-screen; its result page keeps the app shell.
+  const listeningStudio = new RegExp(`^/${locale}/dictation/[^/]+$`).test(pathname) && !pathname.endsWith('/progress');
+  // Focused learning sessions provide their own navigation.
   if (
-    pathname?.startsWith(`/${locale}/toeic/attempts/`) &&
-    !pathname.endsWith('/result')
+    listeningStudio || (pathname?.startsWith(`/${locale}/toeic/attempts/`) &&
+    !pathname.endsWith('/result'))
   ) {
     return (
       <AuthGuard>

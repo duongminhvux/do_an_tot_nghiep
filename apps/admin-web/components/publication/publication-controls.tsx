@@ -1,5 +1,7 @@
 "use client";
 import { useState } from "react";
+import {YoutubePlayer} from '@repo/ui/youtube-player';
+import {DictationStudioPreview} from '@/components/dictation/dictation-studio-preview';
 import Image from "next/image";
 import { useParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
@@ -425,14 +427,14 @@ function PublicationPreviewDialog({
         if (!open) onClose();
       }}
     >
-      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-6xl flex-col gap-0 overflow-hidden p-0">
-        <header className="shrink-0 space-y-2 border-b border-slate-200 px-4 py-5 pr-12 sm:px-6 sm:pr-14">
+      <DialogContent className={`flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] flex-col gap-0 overflow-hidden p-0 ${kind==='dictation'?'max-w-[1660px] border-border bg-background text-foreground [&>button]:!bg-muted [&>button]:!text-muted-foreground':'max-w-6xl'}`}>
+        <header className="shrink-0 space-y-2 border-b border-border px-4 py-5 pr-12 sm:px-6 sm:pr-14">
           <DialogTitle>{t("publication.preview")}</DialogTitle>
-          <DialogDescription className="text-sm text-slate-500">
+          <DialogDescription className="text-sm text-muted-foreground">
             {t("publication.previewHint")}
           </DialogDescription>
         </header>
-        <div className="min-h-0 min-w-0 overflow-y-auto overscroll-contain p-4 [overflow-wrap:anywhere] sm:p-6">
+        <div className={`min-h-0 min-w-0 overflow-y-auto overscroll-contain [overflow-wrap:anywhere] ${kind==='dictation'?'p-0':'p-4 sm:p-6'}`}>
           {query.isPending ? (
             <p role="status" className="flex items-center gap-2 text-sm text-slate-500">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -456,8 +458,12 @@ function PublicationPreviewDialog({
 function PreviewContent({ data }: { data: PublicationPreview }) {
   const { t } = useTranslation("common");
   const [revealed, setRevealed] = useState(false);
+<<<<<<< HEAD
   const empty =
     !data.questions?.length && !data.segments?.length && !data.parts?.length && !data.words?.length && !data.fullAudioUrl;
+=======
+  if(data.kind==='dictation')return <DictationStudioPreview data={data}/>;
+>>>>>>> 5f669d0 (update Dictation)
   return (
     <div className="min-w-0 space-y-4 [overflow-wrap:anywhere]">
       <h3 className="text-xl font-bold">{data.title}</h3>
@@ -505,6 +511,7 @@ function PreviewContent({ data }: { data: PublicationPreview }) {
           ))}
         </article>
       ))}
+      {data.youtubeVideoId&&<YoutubePlayer videoId={data.youtubeVideoId}/>}
       {data.fullAudioUrl && (
         <audio controls src={data.fullAudioUrl} className="block w-full min-w-0 max-w-full" />
       )}

@@ -147,7 +147,7 @@ export function validatePublication(kind, data, language = "vi") {
         "Process audio for the latest content before publishing.",
       );
     if (
-      !url(data.fullAudioUrl) ||
+      !(data.audioSource === "YOUTUBE" ? /^[\w-]{11}$/.test(data.youtubeVideoId ?? "") : url(data.fullAudioUrl)) ||
       !Number.isFinite(data.totalDurationMs) ||
       data.totalDurationMs <= 0
     )

@@ -10,6 +10,8 @@ import { ConfigService } from '@nestjs/config';
 import { dictationLessonXp } from '@repo/shared-types/learning-xp';
 import { dictationOutcomes } from '@repo/shared-types/mistakes';
 import { randomUUID } from 'node:crypto';
+import {youtubeVideoId,gradeDictation} from './youtube.js';
+import type {YoutubePreviewDto,CreateYoutubeDictationDto} from './dto/youtube-dictation.dto.js';
 import { LearningActivityClient } from '../../common/clients/learning-activity-client.js';
 import { DomainOutboxService } from '../../common/events/domain-outbox.service.js';
 import { InjectPgConnection,createConnection,withPgTransaction,type PgConnection } from '../../postgres/connection.js';
@@ -443,6 +445,7 @@ private readonly configService: ConfigService,
     return normalized.length ? normalized : ['af_heart'];
   }
 
+<<<<<<< HEAD
   /** Create, then show to learners in the same request when asked and complete. */
   async createWithVisibility(input: CreateDictationDto, actorId: string) {
     const { publish, ...dto } = input;
@@ -456,6 +459,10 @@ private readonly configService: ConfigService,
 
   async create(input: CreateDictationDto) {
     const { publish: _publish, ...dto } = input;
+=======
+  async create(dto: CreateDictationDto) {
+    if(dto.audioSource===DictationAudioSource.YOUTUBE)throw new BadRequestException('Dùng luồng YouTube và duyệt phụ đề trước khi tạo bài.');
+>>>>>>> 5f669d0 (update Dictation)
     const audioSource = dto.audioSource ?? DictationAudioSource.TTS;
     const sourceText = (dto.sourceText || '').trim();
     const sentences = this.splitIntoSentences(sourceText);
@@ -483,6 +490,35 @@ private readonly configService: ConfigService,
       order: dto.order ?? 0 });
 
     return this.lessonModel.upsert(lesson);
+  }
+
+  async previewYoutube(dto:YoutubePreviewDto){
+    const videoId=youtubeVideoId(dto.url);
+    const base=this.configService.get<string>('YOUTUBE_CAPTIONS_URL')||'http://youtube-captions:8004';
+    let response:Response;
+    try{response=await fetch(base+'/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...dto,videoId}),signal:AbortSignal.timeout(150000)});}
+    catch{throw new BadRequestException('Chưa kết nối được dịch vụ lấy phụ đề YouTube.');}
+    const result=await response.json();
+    if(!response.ok)throw new BadRequestException(typeof result.detail==='string'?result.detail:result.detail?.message||'Không lấy được phụ đề YouTube.');
+    return {...result,youtubeUrl:`https://www.youtube.com/watch?v=${videoId}`};
+  }
+
+  async createYoutube(dto:CreateYoutubeDictationDto){
+    const videoId=youtubeVideoId(dto.youtubeUrl),segments=[...dto.segments].sort((a,b)=>a.startMs-b.startMs);
+    let previousEnd=0;
+    for(const segment of segments){
+      if(!segment.text.trim()||!Number.isFinite(segment.startMs)||!Number.isFinite(segment.endMs)||segment.startMs<previousEnd||segment.endMs<=segment.startMs||segment.endMs>7200000||segment.text.length>3000)throw new BadRequestException('Phụ đề phải có nội dung và mốc thời gian tăng dần, không chồng lấn, tối đa 2 giờ.');
+      previousEnd=segment.endMs;
+    }
+    if(!segments.length||segments.length>200)throw new BadRequestException('Chọn từ 1 đến 200 đoạn phụ đề.');
+    const {youtubeUrl:_url,segments:_segments,...metadata}=dto;
+    return withPgTransaction(this.nativeDb,async()=>{
+      const lesson=await this.create({...metadata,audioSource:DictationAudioSource.UPLOAD,sourceText:''});
+      await this.lessonModel.patch(sql`id=${lesson._id}::uuid`,{audioSource:DictationAudioSource.YOUTUBE,youtubeVideoId:videoId,youtubeUrl:`https://www.youtube.com/watch?v=${videoId}`,status:DictationStatus.READY,
+        sourceText:segments.map(s=>s.text.trim()).join('\n'),sentenceCount:segments.length,totalDurationMs:Math.round(previousEnd),audioProcessor:'youtube-captions',fullAudioUrl:'',captionReviewedAt:new Date().toISOString()});
+      for(const [order,s] of segments.entries())await this.segmentModel.insert({lessonId:lesson._id,order,text:s.text.trim(),normalizedText:this.normalizeText(s.text),source:'CAPTIONS',language:dto.language||'en-US',speed:1,startMs:Math.round(s.startMs),endMs:Math.round(s.endMs),durationMs:Math.round(s.endMs-s.startMs),words:[]});
+      return this.getAdmin(String(lesson._id));
+    });
   }
 
   private lessonFilter(query:QueryDictationDto){
@@ -538,6 +574,7 @@ private readonly configService: ConfigService,
     }
 
     const nextAudioSource = dto.audioSource ?? current.audioSource ?? DictationAudioSource.TTS;
+    if(nextAudioSource!==current.audioSource&&(nextAudioSource===DictationAudioSource.YOUTUBE||current.audioSource===DictationAudioSource.YOUTUBE))throw new BadRequestException('Tạo bài mới để thay nguồn YouTube.');
     const nextVoiceIds = dto.voiceIds !== undefined ? this.ensureVoiceIds(dto.voiceIds) : current.voiceIds;
     const ttsInputsChanged =
       nextAudioSource === DictationAudioSource.TTS &&
@@ -749,7 +786,7 @@ private readonly configService: ConfigService,
   async updateSegments(id: string, inputs: EditableSegmentInput[]) {
     const lesson = await this.lessonModel.one(sql`("id" = ${id}) AND ("is_deleted" IS DISTINCT FROM ${true})`);
     if (!lesson) throw new NotFoundException('Dictation lesson not found.');
-    if (!lesson.fullAudioUrl) throw new ConflictException('Process lesson audio before editing segment metadata.');
+    if (!lesson.fullAudioUrl && !lesson.youtubeVideoId) throw new ConflictException('Process lesson audio before editing segment metadata.');
     if (!Array.isArray(inputs) || !inputs.length || inputs.length > 200) {
       throw new BadRequestException('Provide between 1 and 200 segments.');
     }
@@ -939,10 +976,22 @@ private readonly configService: ConfigService,
     return progress.segmentProgress[progress.segmentProgress.length - 1];
   }
 
-  async recordAttempt(userId: string, lessonId: string, segmentIndex: number, isCorrect: boolean) {
+  async recordAnswer(userId:string,lessonId:string,segmentIndex:number,answer:string){
+    if(!isUuid(lessonId))throw new NotFoundException('Dictation lesson not found.');
+    const lesson=await this.lessonModel.one(sql`id=${lessonId}::uuid AND status='PUBLISHED' AND publication_status='PUBLISHED' AND is_deleted IS NOT TRUE`);
+    if(!lesson)throw new NotFoundException('Dictation lesson not found.');
+    const segment=await this.segmentModel.one(sql`lesson_id=${lessonId}::uuid AND "order"=${segmentIndex}`);
+    if(!segment)throw new BadRequestException('Invalid sentence index.');
+    const grading=gradeDictation(segment.text,answer);
+    const progress=await this.recordAttempt(userId,lessonId,segmentIndex,grading.isCorrect,grading);
+    return {...progress,grading};
+  }
+
+  async recordAttempt(userId: string, lessonId: string, segmentIndex: number, isCorrect: boolean,grading?:ReturnType<typeof gradeDictation>) {
     if (!isUuid(lessonId)) throw new NotFoundException('Dictation lesson not found.');
     const lesson = await this.lessonModel.one(sql`("id" = ${lessonId}) AND ("status" = ${DictationStatus.PUBLISHED}) AND publication_status='PUBLISHED' AND ("is_deleted" IS DISTINCT FROM ${true})`);
     if (!lesson) throw new NotFoundException('Dictation lesson not found.');
+    if(lesson.audioSource===DictationAudioSource.YOUTUBE&&!grading)throw new BadRequestException('Gửi nội dung câu trả lời để server chấm điểm.');
     if (segmentIndex < 0 || segmentIndex >= lesson.sentenceCount) {
       throw new BadRequestException('Invalid dictation sentence index.');
     }
@@ -958,6 +1007,7 @@ private readonly configService: ConfigService,
     progress.revealedSegments ||= [];
     progress.segmentProgress ||= [];
     const segmentProgress = this.ensureProgressSegment(progress, segmentIndex);
+    if(grading){(segmentProgress as any).lastScore=grading.score;(segmentProgress as any).bestScore=Math.max((segmentProgress as any).bestScore||0,grading.score);}
     segmentProgress.attempts += 1;
     progress.attempts += 1;
 
@@ -967,7 +1017,7 @@ private readonly configService: ConfigService,
         segmentProgress.firstTryCorrect =
           segmentProgress.attempts === 1 &&
           segmentProgress.wrongAttempts === 0 &&
-          !segmentProgress.revealed;
+          !segmentProgress.revealed && !(segmentProgress as any).hinted;
         segmentProgress.completedAt = new Date();
         progress.correctCount += 1;
         if (!progress.completedSegments.includes(segmentIndex)) {
@@ -1093,6 +1143,19 @@ private readonly configService: ConfigService,
   async resetProgress(userId: string, lessonId: string) {
     await this.progressModel.remove(sql`user_id=${userId}::uuid AND lesson_id=${lessonId}::uuid`);
     return { success: true };
+  }
+
+  async recordHint(userId:string,lessonId:string,segmentIndex:number){
+    if(!isUuid(lessonId))throw new NotFoundException('Dictation lesson not found.');
+    const lesson=await this.lessonModel.one(sql`id=${lessonId}::uuid AND status='PUBLISHED' AND publication_status='PUBLISHED' AND is_deleted IS NOT TRUE`);
+    if(!lesson)throw new NotFoundException('Dictation lesson not found.');
+    if(segmentIndex<0||segmentIndex>=lesson.sentenceCount)throw new BadRequestException('Invalid dictation sentence index.');
+    let progress=await this.progressModel.one(sql`user_id=${userId}::uuid AND lesson_id=${lessonId}::uuid`);
+    if(!progress)progress=newSqlRow('dictationprogresses',{userId:String(userId),lessonId});
+    progress.segmentProgress||=[];
+    (this.ensureProgressSegment(progress,segmentIndex) as any).hinted=true;
+    progress.lastPracticedAt=new Date();
+    return this.progressModel.upsert(progress,['user_id','lesson_id']);
   }
 
   async progressOverview(userId: string) {

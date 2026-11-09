@@ -354,6 +354,7 @@ services:
       CONTENT_INTERNAL_URL: http://content-service:5000
       ASSESSMENT_INTERNAL_URL: http://assessment-service:5000
       SERVICE_ROLE: content
+      YOUTUBE_CAPTIONS_URL: ${YOUTUBE_CAPTIONS_URL:-http://youtube-captions:8004}
       NOTIFICATION_INTERNAL_URL: http://notification-service:5000
       LEARNING_INTERNAL_URL: http://learning-service:5000
       PGHOST: postgres
@@ -1452,6 +1453,17 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+    networks:
+    - toeic-network
+  youtube-captions:
+    image: vocalearn-youtube-captions:local
+    build:
+      context: .
+      dockerfile: services/youtube-captions/Dockerfile
+    restart: unless-stopped
+    environment:
+      CAPTION_OLLAMA_URL: ${CAPTION_OLLAMA_URL:-http://ollama:11434}
+      CAPTION_SENTENCE_MODEL: ${CAPTION_SENTENCE_MODEL:-qwen2.5:7b}
     networks:
     - toeic-network
 volumes:

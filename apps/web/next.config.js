@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Avoid exhausting build workers when Docker exposes every host CPU.
+  experimental: { cpus: 2 },
   async redirects() {
     return [
       { source: '/:locale(vi|en)/vocabulary/:collectionSlug/lessons/:lessonSlug', destination: '/:locale/vocabulary/collection/:collectionSlug/lesson/:lessonSlug', permanent: false },

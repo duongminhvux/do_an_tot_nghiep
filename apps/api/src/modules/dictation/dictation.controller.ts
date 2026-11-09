@@ -1,6 +1,6 @@
 import { Body,Controller,Get,Param,Post,Query,Req } from '@nestjs/common';
 import { DictationService } from './dictation.service.js';
-import { DictationAttemptDto } from './dto/dictation-attempt.dto.js';
+import { DictationAttemptDto,DictationAnswerDto } from './dto/dictation-attempt.dto.js';
 import { DictationSegmentActionDto } from './dto/dictation-progress-action.dto.js';
 import { QueryDictationDto } from './dto/query-dictation.dto.js';
 import { DictationHistoryService } from './dictation-history.service.js';
@@ -54,6 +54,10 @@ export class DictationController {
     ));
   }
 
+  @Post(':id/progress/check') checkAnswer(@Req() req:any,@Param('id') id:string,@Body() dto:DictationAnswerDto){
+    return this.dictationService.recordAnswer(req.user._id,id,dto.segmentIndex,dto.answer);
+  }
+
   @Post(':id/progress/reveal-segment')
   revealSegment(
     @Req() req: any,
@@ -61,6 +65,11 @@ export class DictationController {
     @Body() dto: DictationSegmentActionDto,
   ) {
     return this.history.track(req.user._id,id,{type:'REVEAL_SEGMENT',...dto},()=>this.dictationService.revealSegment(req.user._id, id, dto.segmentIndex));
+  }
+
+  @Post(':id/progress/hint')
+  hint(@Req() req:any,@Param('id') id:string,@Body() dto:DictationSegmentActionDto){
+    return this.dictationService.recordHint(req.user._id,id,dto.segmentIndex);
   }
 
   @Post(':id/progress/reveal-transcript')

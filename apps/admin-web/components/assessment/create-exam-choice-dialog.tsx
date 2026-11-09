@@ -69,7 +69,7 @@ export function CreateExamChoiceDialog({
           >
             <ScanText className="mb-5 size-10 rounded-lg bg-blue-600 p-2 text-white" />
             <h3 className="font-semibold text-slate-900">
-              {en ? "Import with local AI" : "Tạo bằng AI local"}
+              {en ? "Import TOEIC PDFs" : "Nhập đề từ PDF"}
             </h3>
             <p className="mt-2 min-h-16 text-sm leading-6 text-slate-500">
               {en

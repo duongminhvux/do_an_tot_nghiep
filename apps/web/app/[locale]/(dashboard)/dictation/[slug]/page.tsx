@@ -1,7 +1,8 @@
-'use client';
+"use client";
 
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from "react-i18next";
 
+<<<<<<< HEAD
 import Link from 'next/link';
 import { KeyboardEvent, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
@@ -31,6 +32,30 @@ import type { DictationLessonDetail, DictationProgress, DictationSegment } from 
 import { Badge, ErrorState, LoadingState, PageHeader, PageShell, Tabs, surface, tones, type Crumb } from '@/components/ui/page';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+=======
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useParams, useSearchParams } from "next/navigation";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { dictationService } from "@/services/dictation.service";
+import { savedWordsService } from "@/services/saved-words.service";
+import {
+  YoutubePlayer,
+  type YoutubePlayerHandle,
+} from "@repo/ui/youtube-player";
+import { DictationStudio } from "@repo/ui/dictation-studio";
+import { sentenceAtTime } from "@repo/ui/dictation-timeline";
+import { dictationDictionaryEntry } from "@repo/ui/dictation-dictionary";
+import type {
+  DictationLessonDetail,
+  DictationProgress,
+} from "@/types/dictation";
+import {
+  ErrorState,
+  LoadingState,
+  PageHeader,
+  PageShell,
+} from "@/components/ui/page";
+>>>>>>> 5f669d0 (update Dictation)
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5];
 const SEEK_STEP = 5;
@@ -39,6 +64,7 @@ function unwrap<T>(value: any): T {
   return (value?.data ?? value) as T;
 }
 
+<<<<<<< HEAD
 function normalizeAnswer(value: string) {
   return value
     .toLowerCase()
@@ -84,95 +110,158 @@ function Kbd({ children, className }: { children: ReactNode; className?: string 
   );
 }
 
+=======
+>>>>>>> 5f669d0 (update Dictation)
 export default function DictationPracticePage() {
-  const { t } = useTranslation('dictation');
+  const { t } = useTranslation("dictation");
   const params = useParams();
-  const requestedSegmentRaw = useSearchParams().get('segment');
-  const requestedSegment = requestedSegmentRaw === null ? -1 : Number(requestedSegmentRaw);
-  const locale = (params?.locale as string) || 'vi';
-  const slug = String(params?.slug || '');
+  const requestedSegmentRaw = useSearchParams().get("segment");
+  const requestedSegment =
+    requestedSegmentRaw === null ? -1 : Number(requestedSegmentRaw);
+  const locale = (params?.locale as string) || "vi";
+  const slug = String(params?.slug || "");
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['dictation-detail', slug],
+    queryKey: ["dictation-detail", slug],
     queryFn: () => dictationService.getBySlug(slug),
     enabled: Boolean(slug),
   });
   const lesson = unwrap<DictationLessonDetail>(data);
 
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [answer, setAnswer] = useState('');
-  const [result, setResult] = useState<'correct' | 'incorrect' | null>(null);
+  const [answer, setAnswer] = useState("");
+  const [result, setResult] = useState<"correct" | "incorrect" | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
-  const [tab, setTab] = useState<'dictation' | 'transcript'>('dictation');
+  const [tab, setTab] = useState<"dictation" | "transcript">("dictation");
   const [showTranscriptPrompt, setShowTranscriptPrompt] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   /** A single sentence is playing (dictation mode). */
   const [isPlaying, setIsPlaying] = useState(false);
+<<<<<<< HEAD
   /** The lesson audio element is playing at all (transcript mode uses this). */
   const [audioPlaying, setAudioPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [autoScroll, setAutoScroll] = useState(true);
+=======
+>>>>>>> 5f669d0 (update Dictation)
   const [autoPlayNext, setAutoPlayNext] = useState(true);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [progress, setProgress] = useState<DictationProgress | null>(null);
 
   const lessonAudioRef = useRef<HTMLAudioElement | null>(null);
+  const youtubeRef = useRef<YoutubePlayerHandle>(null);
+  const [grading, setGrading] = useState<{
+    score: number;
+    isCorrect: boolean;
+    errors: number;
+    totalWords: number;
+  } | null>(null);
+  const [checkError, setCheckError] = useState("");
   const legacyAudioRef = useRef<HTMLAudioElement | null>(null);
   const segmentEndMsRef = useRef<number | null>(null);
+<<<<<<< HEAD
   const rowRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const sentenceRefs = useRef<Array<HTMLSpanElement | null>>([]);
   const inputRef = useRef<HTMLInputElement | null>(null);
+=======
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
+>>>>>>> 5f669d0 (update Dictation)
   const autoNextTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const segments = useMemo(() => lesson?.segments || [], [lesson?.segments]);
   const current = segments[currentIndex];
+  const live = useRef({ index: currentIndex, answer, grading, showAnswer });
+  live.current = { index: currentIndex, answer, grading, showAnswer };
+  const drafts = useRef(
+    new Map<
+      number,
+      { answer: string; grading: typeof grading; showAnswer: boolean }
+    >(),
+  );
   const completed = progress?.completedSegments || [];
   const revealed = progress?.revealedSegments || [];
-  const currentSegmentProgress = progress?.segmentProgress?.find((item) => item.segmentIndex === currentIndex);
+  const currentSegmentProgress = progress?.segmentProgress?.find(
+    (item) => item.segmentIndex === currentIndex,
+  );
   const maxAttempts = lesson?.practiceSettings?.maxAttemptsBeforeReveal || 3;
   const autoNextDelay = lesson?.practiceSettings?.autoNextDelayMs ?? 700;
   const wrongAttempts = currentSegmentProgress?.wrongAttempts || 0;
   const currentIsCompleted = completed.includes(currentIndex);
+<<<<<<< HEAD
   const handledCount = new Set([...(completed || []), ...(revealed || [])]).size;
   const percent = segments.length ? Math.round((handledCount / segments.length) * 100) : 0;
   const timed = !!lesson?.fullAudioUrl && segments.length > 0 && segments.every(hasTiming);
   const transcriptIndex = timed ? segmentAt(segments, currentTime * 1000) : -1;
   const activeIndex = tab === 'transcript' ? transcriptIndex : currentIndex;
+=======
+  const handledCount = new Set([...(completed || []), ...(revealed || [])])
+    .size;
+  const percent = segments.length
+    ? Math.round((handledCount / segments.length) * 100)
+    : 0;
+>>>>>>> 5f669d0 (update Dictation)
 
   useEffect(() => {
     if (!lesson) return;
     setProgress(lesson.progress || null);
     const nextIndex = lesson.progress?.completed
       ? 0
-      : Math.min(lesson.progress?.currentSegment || 0, Math.max((lesson.segments?.length || 1) - 1, 0));
-    setCurrentIndex(Number.isInteger(requestedSegment) && requestedSegment >= 0 && requestedSegment < lesson.segments.length ? requestedSegment : nextIndex);
+      : Math.min(
+          lesson.progress?.currentSegment || 0,
+          Math.max((lesson.segments?.length || 1) - 1, 0),
+        );
+    setCurrentIndex(
+      Number.isInteger(requestedSegment) &&
+        requestedSegment >= 0 &&
+        requestedSegment < lesson.segments.length
+        ? requestedSegment
+        : nextIndex,
+    );
   }, [lesson?._id, requestedSegment]);
 
+<<<<<<< HEAD
   useEffect(() => () => {
     if (autoNextTimerRef.current) clearTimeout(autoNextTimerRef.current);
     legacyAudioRef.current?.pause();
   }, []);
+=======
+  useEffect(
+    () => () => {
+      if (autoNextTimerRef.current) clearTimeout(autoNextTimerRef.current);
+    },
+    [],
+  );
+>>>>>>> 5f669d0 (update Dictation)
 
   const updateProgressCaches = (next: DictationProgress) => {
     setProgress(next);
-    queryClient.invalidateQueries({ queryKey: ['dictation-topics'] });
-    queryClient.invalidateQueries({ queryKey: ['dictation-topic'] });
-    queryClient.invalidateQueries({ queryKey: ['dictation-progress-overview'] });
+    queryClient.invalidateQueries({ queryKey: ["dictation-topics"] });
+    queryClient.invalidateQueries({ queryKey: ["dictation-topic"] });
+    queryClient.invalidateQueries({
+      queryKey: ["dictation-progress-overview"],
+    });
   };
 
   const attemptMutation = useMutation({
+<<<<<<< HEAD
     mutationFn: ({ index, correct, submittedText }: { index: number; correct: boolean; submittedText: string }) =>
       dictationService.recordAttempt(lesson._id, index, correct, submittedText),
+=======
+    mutationFn: ({ index, answer }: { index: number; answer: string }) =>
+      dictationService.checkAnswer(lesson._id, index, answer),
+>>>>>>> 5f669d0 (update Dictation)
   });
   const revealMutation = useMutation({
-    mutationFn: (index: number) => dictationService.revealSegment(lesson._id, index),
+    mutationFn: (index: number) =>
+      dictationService.revealSegment(lesson._id, index),
   });
   const transcriptMutation = useMutation({
     mutationFn: () => dictationService.revealTranscript(lesson._id),
   });
 
+<<<<<<< HEAD
   const stopAll = useCallback(() => {
     lessonAudioRef.current?.pause();
     legacyAudioRef.current?.pause();
@@ -192,6 +281,72 @@ export default function DictationPracticePage() {
     setShowAnswer(isRevealed);
     requestAnimationFrame(() => inputRef.current?.focus());
   }, [segments.length, progress, stopAll]);
+=======
+  const goTo = useCallback(
+    (index: number) => {
+      if (!segments.length) return;
+      if (autoNextTimerRef.current) clearTimeout(autoNextTimerRef.current);
+      const safe = Math.max(0, Math.min(index, segments.length - 1));
+      const previous = live.current;
+      drafts.current.set(previous.index, {
+        answer: previous.answer,
+        grading: previous.grading,
+        showAnswer: previous.showAnswer,
+      });
+      const saved = drafts.current.get(safe);
+      lessonAudioRef.current?.pause();
+      youtubeRef.current?.pause();
+      legacyAudioRef.current?.pause();
+      segmentEndMsRef.current = null;
+      setIsPlaying(false);
+      setCurrentIndex(safe);
+      setAnswer(saved?.answer || "");
+      setGrading(saved?.grading || null);
+      setCheckError("");
+      setResult(null);
+      const isRevealed = Boolean(
+        progress?.revealedSegments?.includes(safe) ||
+        progress?.segmentProgress?.find((item) => item.segmentIndex === safe)
+          ?.revealed,
+      );
+      setShowAnswer(saved?.showAnswer || isRevealed);
+      live.current = {
+        index: safe,
+        answer: saved?.answer || "",
+        grading: saved?.grading || null,
+        showAnswer: saved?.showAnswer || isRevealed,
+      };
+      requestAnimationFrame(() => inputRef.current?.focus());
+    },
+    [segments.length, progress],
+  );
+
+  const followVideo = (timeMs: number) => {
+    const next = sentenceAtTime(segments, timeMs),
+      previous = live.current;
+    if (next < 0 || next === previous.index) return;
+    drafts.current.set(previous.index, {
+      answer: previous.answer,
+      grading: previous.grading,
+      showAnswer: previous.showAnswer,
+    });
+    if (autoNextTimerRef.current) clearTimeout(autoNextTimerRef.current);
+    const saved = drafts.current.get(next),
+      revealed = Boolean(progress?.revealedSegments?.includes(next));
+    live.current = {
+      index: next,
+      answer: saved?.answer || "",
+      grading: saved?.grading || null,
+      showAnswer: saved?.showAnswer || revealed,
+    };
+    setCurrentIndex(next);
+    setAnswer(saved?.answer || "");
+    setGrading(saved?.grading || null);
+    setShowAnswer(saved?.showAnswer || revealed);
+    setCheckError("");
+    setResult(null);
+  };
+>>>>>>> 5f669d0 (update Dictation)
 
   // Audio element wiring: stop at the end of a sentence in dictation mode, track time for the player.
   useEffect(() => {
@@ -206,6 +361,7 @@ export default function DictationPracticePage() {
         segmentEndMsRef.current = null;
       }
     };
+<<<<<<< HEAD
     // rAF while playing keeps the sentence highlight in step with the voice (timeupdate is ~4Hz).
     const loop = () => {
       sync();
@@ -241,6 +397,17 @@ export default function DictationPracticePage() {
       audio.removeEventListener('ended', handlePause);
       audio.removeEventListener('loadedmetadata', handleDuration);
       audio.removeEventListener('durationchange', handleDuration);
+=======
+    const handlePlay = () => setIsPlaying(segmentEndMsRef.current !== null);
+    const handlePause = () => setIsPlaying(false);
+    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("play", handlePlay);
+    audio.addEventListener("pause", handlePause);
+    return () => {
+      audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("play", handlePlay);
+      audio.removeEventListener("pause", handlePause);
+>>>>>>> 5f669d0 (update Dictation)
     };
   }, [lesson?.fullAudioUrl]);
 
@@ -249,6 +416,7 @@ export default function DictationPracticePage() {
     if (legacyAudioRef.current) legacyAudioRef.current.playbackRate = playbackRate;
   }, [playbackRate, lesson?.fullAudioUrl]);
 
+<<<<<<< HEAD
   const playCurrent = useCallback((track = true) => {
     if (!hasTiming(current) && current?.audioUrl) {
       lessonAudioRef.current?.pause();
@@ -339,29 +507,184 @@ export default function DictationPracticePage() {
       if (autoPlayNext) setTimeout(() => playSegmentAtIndex(fromIndex + 1), 160);
     }, autoNextDelay);
   }, [segments.length, autoNextDelay, autoPlayNext, goTo, playSegmentAtIndex]);
+=======
+  const playCurrent = useCallback(
+    (track = true) => {
+      if (lesson?.youtubeVideoId && current) {
+        youtubeRef.current?.play(current.startMs, current.endMs);
+        if (track) void dictationService.recordReplay(lesson._id, currentIndex);
+        return;
+      }
+      const hasUnifiedTiming =
+        current?.startMs !== undefined &&
+        current?.endMs !== undefined &&
+        current.endMs > current.startMs;
+      if (!hasUnifiedTiming && current?.audioUrl) {
+        lessonAudioRef.current?.pause();
+        youtubeRef.current?.pause();
+        if (
+          !legacyAudioRef.current ||
+          legacyAudioRef.current.src !== current.audioUrl
+        ) {
+          legacyAudioRef.current?.pause();
+          const legacy = new Audio(current.audioUrl);
+          legacy.playbackRate = playbackRate;
+          legacy.addEventListener("play", () => setIsPlaying(true));
+          legacy.addEventListener("pause", () => setIsPlaying(false));
+          legacy.addEventListener("ended", () => setIsPlaying(false));
+          legacyAudioRef.current = legacy;
+        }
+        const legacy = legacyAudioRef.current;
+        if (legacy.paused) {
+          legacy.currentTime = 0;
+          legacy.play().catch(() => setIsPlaying(false));
+        } else legacy.pause();
+        if (track && lesson?._id)
+          dictationService
+            .recordReplay(lesson._id, currentIndex)
+            .catch(() => undefined);
+        return;
+      }
+
+      const audio = lessonAudioRef.current;
+      if (!audio || !lesson?.fullAudioUrl || !hasUnifiedTiming) return;
+      legacyAudioRef.current?.pause();
+      const sameSegmentPlaying =
+        !audio.paused && segmentEndMsRef.current === current.endMs;
+      if (sameSegmentPlaying) {
+        audio.pause();
+        return;
+      }
+      segmentEndMsRef.current = current.endMs;
+      audio.currentTime = Math.max(0, current.startMs) / 1000;
+      audio.playbackRate = playbackRate;
+      audio.play().catch(() => {
+        segmentEndMsRef.current = null;
+        setIsPlaying(false);
+      });
+      if (track)
+        dictationService
+          .recordReplay(lesson._id, currentIndex)
+          .catch(() => undefined);
+    },
+    [
+      current,
+      currentIndex,
+      lesson?._id,
+      lesson?.fullAudioUrl,
+      lesson?.youtubeVideoId,
+      playbackRate,
+    ],
+  );
+
+  const playSegmentAtIndex = useCallback(
+    (index: number) => {
+      const segment = segments[index];
+      if (lesson?.youtubeVideoId && segment) {
+        youtubeRef.current?.play(segment.startMs, segment.endMs);
+        void dictationService.recordReplay(lesson._id, index);
+        return;
+      }
+      const audio = lessonAudioRef.current;
+      if (
+        !segment ||
+        !audio ||
+        !lesson?.fullAudioUrl ||
+        segment.endMs <= segment.startMs
+      )
+        return;
+      segmentEndMsRef.current = segment.endMs;
+      audio.currentTime = segment.startMs / 1000;
+      audio.playbackRate = playbackRate;
+      audio.play().catch(() => undefined);
+      dictationService.recordReplay(lesson._id, index).catch(() => undefined);
+    },
+    [
+      segments,
+      lesson?._id,
+      lesson?.fullAudioUrl,
+      lesson?.youtubeVideoId,
+      playbackRate,
+    ],
+  );
+
+  const scheduleNext = useCallback(
+    (fromIndex: number) => {
+      if (!autoPlayNext || fromIndex >= segments.length - 1) return;
+      if (autoNextTimerRef.current) clearTimeout(autoNextTimerRef.current);
+      autoNextTimerRef.current = setTimeout(() => {
+        goTo(fromIndex + 1);
+        if (autoPlayNext)
+          setTimeout(() => playSegmentAtIndex(fromIndex + 1), 160);
+      }, autoNextDelay);
+    },
+    [segments.length, autoNextDelay, autoPlayNext, goTo, playSegmentAtIndex],
+  );
+>>>>>>> 5f669d0 (update Dictation)
 
   const checkAnswer = useCallback(async () => {
-    if (!current || !answer.trim() || attemptMutation.isPending || showAnswer) return;
-    const correct = normalizeAnswer(answer) === normalizeAnswer(current.text);
-    setResult(correct ? 'correct' : 'incorrect');
+    if (!current || !answer.trim() || attemptMutation.isPending || showAnswer)
+      return;
+    setCheckError("");
     try {
+<<<<<<< HEAD
       const response = await attemptMutation.mutateAsync({ index: currentIndex, correct, submittedText: answer });
+=======
+      const response = await attemptMutation.mutateAsync({
+        index: currentIndex,
+        answer,
+      });
+>>>>>>> 5f669d0 (update Dictation)
       const next = unwrap<DictationProgress>(response);
+      const grade = unwrap<{
+        grading: {
+          score: number;
+          isCorrect: boolean;
+          errors: number;
+          totalWords: number;
+        };
+      }>(response).grading;
+      const correct = grade.isCorrect;
+      if (live.current.index !== currentIndex) {
+        drafts.current.set(currentIndex, {
+          answer,
+          grading: grade,
+          showAnswer:
+            correct || Boolean(next.revealedSegments?.includes(currentIndex)),
+        });
+        updateProgressCaches(next);
+        return;
+      }
+      setGrading(grade);
+      setResult(correct ? "correct" : "incorrect");
       updateProgressCaches(next);
-      const state = next.segmentProgress?.find((item) => item.segmentIndex === currentIndex);
+      const state = next.segmentProgress?.find(
+        (item) => item.segmentIndex === currentIndex,
+      );
       if (correct) {
         setShowAnswer(true);
         scheduleNext(currentIndex);
-      } else if (state?.revealed || next.revealedSegments?.includes(currentIndex)) {
+      } else if (
+        state?.revealed ||
+        next.revealedSegments?.includes(currentIndex)
+      ) {
         setShowAnswer(true);
         setTimeout(() => playCurrent(false), 180);
       } else {
         setTimeout(() => playCurrent(false), 180);
       }
     } catch {
-      // keep local result; API error state is intentionally non-blocking for playback
+      setCheckError("Chưa chấm được câu trả lời. Hãy thử lại.");
     }
-  }, [answer, attemptMutation, current, currentIndex, playCurrent, scheduleNext, showAnswer]);
+  }, [
+    answer,
+    attemptMutation,
+    current,
+    currentIndex,
+    playCurrent,
+    scheduleNext,
+    showAnswer,
+  ]);
 
   const revealCurrent = useCallback(async () => {
     if (!current || revealMutation.isPending || showAnswer) return;
@@ -370,7 +693,7 @@ export default function DictationPracticePage() {
       const next = unwrap<DictationProgress>(response);
       updateProgressCaches(next);
       setShowAnswer(true);
-      setResult('incorrect');
+      setResult("incorrect");
       setTimeout(() => playCurrent(false), 180);
     } catch {
       // no-op
@@ -396,7 +719,14 @@ export default function DictationPracticePage() {
 
   const requestTranscript = useCallback(() => {
     if (progress?.transcriptRevealed || progress?.completed) {
+<<<<<<< HEAD
       openTranscript();
+=======
+      lessonAudioRef.current?.pause();
+      youtubeRef.current?.pause();
+      legacyAudioRef.current?.pause();
+      setTab("transcript");
+>>>>>>> 5f669d0 (update Dictation)
       return;
     }
     setShowTranscriptPrompt(true);
@@ -408,6 +738,7 @@ export default function DictationPracticePage() {
       const next = unwrap<DictationProgress>(response);
       updateProgressCaches(next);
     } finally {
+<<<<<<< HEAD
       setShowTranscriptPrompt(false);
       openTranscript();
     }
@@ -517,25 +848,36 @@ export default function DictationPracticePage() {
       event.preventDefault();
       if (result === 'correct' && currentIndex < segments.length - 1) goTo(currentIndex + 1);
       else void checkAnswer();
+=======
+      lessonAudioRef.current?.pause();
+      youtubeRef.current?.pause();
+      legacyAudioRef.current?.pause();
+      setShowTranscriptPrompt(false);
+      setTab("transcript");
+>>>>>>> 5f669d0 (update Dictation)
     }
   };
 
   if (isLoading) {
     return (
       <PageShell>
-        <LoadingState label={t('loading_lesson')} className="min-h-[60vh]" />
+        <LoadingState label={t("loading_lesson")} className="min-h-[60vh]" />
       </PageShell>
     );
   }
   if (isError || !lesson || !current) {
     return (
       <PageShell>
-        <PageHeader back={{ href: `/${locale}/dictation`, label: t('all_topics') }} title="Dictation" />
-        <ErrorState message={t('lesson_not_found')} />
+        <PageHeader
+          back={{ href: `/${locale}/dictation`, label: t("all_topics") }}
+          title="Dictation"
+        />
+        <ErrorState message={t("lesson_not_found")} />
       </PageShell>
     );
   }
 
+<<<<<<< HEAD
   const breadcrumbs: Crumb[] = [{ label: t('all_topics'), href: `/${locale}/dictation` }];
   if (lesson.topicInfo) breadcrumbs.push({ label: lesson.topicInfo.title, href: `/${locale}/dictation/topic/${lesson.topicInfo.slug}` });
   if (lesson.sectionInfo) breadcrumbs.push({ label: lesson.sectionInfo.title });
@@ -1006,10 +1348,140 @@ export default function DictationPracticePage() {
               <Button onClick={confirmTranscript} disabled={transcriptMutation.isPending} autoFocus>
                 {transcriptMutation.isPending ? <Loader2 className="animate-spin" /> : <Eye />} {t('view_transcript')}
               </Button>
+=======
+  return (
+    <>
+      <audio
+        ref={lessonAudioRef}
+        src={lesson.fullAudioUrl || undefined}
+        className="hidden"
+      />
+      <DictationStudio
+        title={lesson.title}
+        level={lesson.level}
+        locale={locale}
+        backHref={
+          lesson.topicInfo
+            ? `/${locale}/dictation/topic/${lesson.topicInfo.slug}`
+            : `/${locale}/dictation`
+        }
+        segments={segments.map((segment) => ({
+          id: segment._id,
+          text: segment.text,
+          startMs: segment.startMs,
+          endMs: segment.endMs,
+        }))}
+        currentIndex={currentIndex}
+        completed={completed}
+        revealed={revealed}
+        answer={answer}
+        onAnswer={(value) => {
+          setAnswer(value);
+          if (result === "incorrect" && !showAnswer) setResult(null);
+        }}
+        answerRef={inputRef}
+        onSelect={(index) => {
+          goTo(index);
+          playSegmentAtIndex(index);
+        }}
+        onPlay={() => playCurrent()}
+        onPause={() => {
+          lessonAudioRef.current?.pause();
+          youtubeRef.current?.pause();
+          legacyAudioRef.current?.pause();
+          setIsPlaying(false);
+        }}
+        onCheck={() => void checkAnswer()}
+        onReveal={() => void revealCurrent()}
+        onHint={async () => {
+          await dictationService.recordHint(lesson._id, currentIndex);
+        }}
+        onPronounce={(entry, accent) =>
+          savedWordsService.pronunciation(entry.word, accent)
+        }
+        onLookup={async (value) => {
+          const word = value.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
+          const found = (await savedWordsService.lookup(word)).data;
+          return dictationDictionaryEntry(found, word);
+        }}
+        onSaveWord={async (entry) => {
+          const note =
+            `Dictation: ${lesson.title}\n${current?.text || ""}`.slice(0, 2000);
+          await savedWordsService.savePersonal(
+            entry.word.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ""),
+            [note, entry.note].filter(Boolean).join("\n").slice(0, 2000),
+            { ipa: entry.ipa, translation: entry.meanings.join("\n") },
+          );
+          void queryClient.invalidateQueries({ queryKey: ["saved-words"] });
+        }}
+        onTranscript={() => {
+          if (tab === "transcript") setTab("dictation");
+          else requestTranscript();
+        }}
+        transcriptVisible={tab === "transcript"}
+        media={
+          lesson.youtubeVideoId ? (
+            <YoutubePlayer
+              aspectRatio
+              ref={youtubeRef}
+              onTimeChange={followVideo}
+              segments={segments}
+              videoId={lesson.youtubeVideoId}
+              playbackRate={playbackRate}
+              onPlayingChange={setIsPlaying}
+            />
+          ) : undefined
+        }
+        isPlaying={isPlaying}
+        playbackRate={playbackRate}
+        onPlaybackRate={setPlaybackRate}
+        autoPlayNext={autoPlayNext}
+        onAutoPlayNext={setAutoPlayNext}
+        showAnswer={showAnswer}
+        pending={attemptMutation.isPending || revealMutation.isPending}
+        grading={grading}
+        error={checkError}
+        wrongAttempts={wrongAttempts}
+        maxAttempts={maxAttempts}
+        played={Boolean(
+          progress?.segmentProgress?.some((s) => s.replayCount > 0),
+        )}
+      />
+      {showTranscriptPrompt && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="transcript-confirm-title"
+          className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-5"
+        >
+          <div className="max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-6 text-slate-100 shadow-2xl">
+            <h2 id="transcript-confirm-title" className="text-lg font-semibold">
+              {t("view_transcript_title")}
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-slate-400">
+              {t("transcript_help")}
+            </p>
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
+              <button
+                type="button"
+                className="rounded-lg border border-slate-600 px-4 py-2 text-sm"
+                onClick={() => setShowTranscriptPrompt(false)}
+              >
+                {t("continue_practice")}
+              </button>
+              <button
+                type="button"
+                className="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50"
+                disabled={transcriptMutation.isPending}
+                onClick={() => void confirmTranscript()}
+              >
+                {t("view_transcript")}
+              </button>
+>>>>>>> 5f669d0 (update Dictation)
             </div>
           </div>
         </div>
       )}
-    </PageShell>
+    </>
   );
 }

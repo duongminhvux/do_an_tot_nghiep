@@ -333,6 +333,9 @@ export class PublicationService {
         kind,
         title: doc.title,
         fullAudioUrl: doc.fullAudioUrl,
+        level: doc.level,
+        youtubeVideoId: doc.youtubeVideoId,
+        audioSource: doc.audioSource,
         segments: doc.segments.map((s: any) => ({
           id: s.id,
           text: s.text,

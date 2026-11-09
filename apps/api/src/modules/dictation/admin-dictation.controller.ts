@@ -17,6 +17,7 @@ import { AsrService } from '../asr/asr.service.js';
 import { AdminController } from '../auth/decorators/admin-controller.decorator.js';
 import { TtsService } from '../tts/tts.service.js';
 import { DictationService } from './dictation.service.js';
+import {YoutubePreviewDto,CreateYoutubeDictationDto} from './dto/youtube-dictation.dto.js';
 import { CreateDictationDto } from './dto/create-dictation.dto.js';
 import {
 CreateDictationSectionDto,
@@ -106,7 +107,13 @@ export class AdminDictationController {
     return this.dictationService.previewSplit(dto.sourceText);
   }
 
+<<<<<<< HEAD
   @RequirePermissions('dictation.create')
+=======
+  @Post('youtube/preview') youtubePreview(@Body() dto:YoutubePreviewDto){return this.dictationService.previewYoutube(dto);}
+  @Post('youtube') createYoutube(@Body() dto:CreateYoutubeDictationDto){return this.dictationService.createYoutube(dto);}
+
+>>>>>>> 5f669d0 (update Dictation)
   @Post()
   create(@Body() dto: CreateDictationDto, @Req() req: { user: { _id: string } }) {
     return this.dictationService.createWithVisibility(dto, String(req.user._id));

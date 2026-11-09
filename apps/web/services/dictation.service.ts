@@ -10,6 +10,10 @@ import {
 import { ApiResponse } from '@/services/types';
 
 export const dictationService = {
+  recordHint: async (lessonId:string,segmentIndex:number) =>
+    (await apiClient.post(`/dictation/${lessonId}/progress/hint`,{segmentIndex})).data,
+  checkAnswer:async(lessonId:string,segmentIndex:number,answer:string)=>
+    (await apiClient.post<ApiResponse<DictationProgress & {grading:{score:number;isCorrect:boolean;errors:number;totalWords:number}}>>(`/dictation/${lessonId}/progress/check`,{segmentIndex,answer})).data,
 
   getTopics: async () => {
     const res = await apiClient.get<ApiResponse<DictationTopicSummary[]>>('/dictation/topics');

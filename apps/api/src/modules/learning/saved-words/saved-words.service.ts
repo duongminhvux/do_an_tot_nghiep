@@ -1,6 +1,8 @@
 ﻿import { BadRequestException,Injectable,NotFoundException } from '@nestjs/common';
 import { InjectPgConnection,withPgTransaction,type PgConnection } from '../../../postgres/connection.js';
 import { isUuid } from '../../../postgres/ids.js';
+import { randomUUID } from 'node:crypto';
+import {lookupDictionary,normalizeDictionaryTerm} from './dictionary.js';
 import { SqlRecords } from '../../../postgres/records.js';
 import { first,literal,rowData,rows,sql,type Sql } from '../../../postgres/sql.js';
 import { allContentRows,contentRows } from '../../vocabulary/content-reader.js';
@@ -28,6 +30,27 @@ export class SavedWordsService {
   private wordShape(word:any,search=false){
     const data:any={_id:String(word._id),word:word.word,slug:word.slug,level:word.level,ipa:word.ipa,parts:word.parts};
     if(!search)Object.assign(data,{phonetic:word.phonetic,audio:word.audio,image:word.image,isActive:word.isActive});return data;
+  }
+  async lookupWord(userId:string,search?:string){
+    const term=search?.trim().toLowerCase().slice(0,100);
+    if(!term)return null;
+    const personal=await this.saved.one(sql`user_id=${userId}::uuid AND LOWER(payload->'personalWord'->>'word')=${term}`);
+    if(personal)return {...(personal as any).personalWord,saved:true};
+    const matches=await contentRows(this.db,'words',{word:term,publishedOnly:true,activeOnly:true,limit:1});
+    const word=matches.find(item=>item.word.toLowerCase()===term);
+    if(!word)return null;
+    const saved=await this.saved.one(sql`user_id=${userId}::uuid AND word_id=${word._id}::uuid`);
+    return {...this.wordShape(word),...(saved as any)?.personalWord,saved:Boolean(saved)};
+  }
+  async lookupWithDictionary(userId:string,input?:string){
+    const term=normalizeDictionaryTerm(input);if(!term)return null;
+    const local=await this.lookupWord(userId,term);
+    const hasMeaning=local?.parts?.some((part:any)=>part.meanings?.some((meaning:any)=>meaning.translation?.length||meaning.definition));
+    if(local&&hasMeaning&&local.ipa?.us&&local.ipa?.uk)return local;
+    const remote=await lookupDictionary(term).catch(error=>{if(local&&hasMeaning)return null;throw error;});
+    if(!local)return remote;
+    if(!remote)return local;
+    return {...remote,...local,ipa:{us:local.ipa?.us||remote.ipa.us,uk:local.ipa?.uk||remote.ipa.uk},audio:{us:local.audio?.us||remote.audio.us,uk:local.audio?.uk||remote.audio.uk},parts:hasMeaning?local.parts:remote.parts,sourceName:remote.sourceName,sourceUrl:remote.sourceUrl,licenseUrl:remote.licenseUrl,translationSource:hasMeaning?undefined:remote.translationSource,ipaDerivedFrom:remote.ipaDerivedFrom};
   }
   async searchWords(userId:string,folderId:string,search?:string){
     await this.validateFolder(userId,folderId);const term=search?.trim().slice(0,100);if(!term)return [];
@@ -87,6 +110,24 @@ export class SavedWordsService {
       const data=await new SqlRecords(db,'usersavedwords').insert({userId,wordId,savedAt:new Date(),note:'',folderId:folderId||null});return {saved:true,wordId,data};
     });
   }
+  async savePersonalWord(userId:string,input:string,note?:string,details?:{ipa?:string;translation?:string}){
+    const word=input.normalize('NFKC').trim().toLowerCase().replace(/\s+/g,' ');
+    if(!word||word.length>100||!/^\p{L}[\p{L}\p{N}'’ -]*$/u.test(word))throw new BadRequestException('Invalid word.');
+    const known=await this.lookupWord(userId,word);
+    return withPgTransaction(this.db,async db=>{
+      await rows(db,sql`SELECT pg_advisory_xact_lock(hashtextextended(${`personal-word:${userId}:${word}`},0))`);
+      const records=new SqlRecords(db,'usersavedwords');
+      const existing=await records.one(sql`user_id=${userId}::uuid AND LOWER(payload->'personalWord'->>'word')=${word}`);
+      const id=known?._id||(existing as any)?.wordId||randomUUID();
+      const personalWord={...(known||{}),...((existing as any)?.personalWord||{}),_id:id,word,slug:known?.slug||word,level:known?.level||'',
+        ipa:details?.ipa!==undefined?{us:details.ipa}:known?.ipa||{},
+        parts:details?.translation!==undefined?(details.translation.trim()?[{partOfSpeech:'',meanings:[{translation:[details.translation.trim()]}]}]:[]):known?.parts||[],isActive:true,personal:true};
+      const saved=existing||await records.one(sql`user_id=${userId}::uuid AND word_id=${id}::uuid`);
+      if(saved)await records.patch(sql`id=${saved._id}::uuid`,{personalWord,...(note!==undefined?{note}:{})});
+      else await records.insert({userId,wordId:id,savedAt:new Date(),note:note||'',personalWord});
+      return {...personalWord,saved:true};
+    });
+  }
   async unsaveWord(userId:string,wordId:string){this.wordId(wordId);const result=await this.saved.remove(sql`user_id=${userId}::uuid AND word_id=${wordId}::uuid`);return {success:result.length>0,wordId};}
   async updateNote(userId:string,wordId:string,dto:UpdateSavedWordNoteDto){this.wordId(wordId);
     const saved=await this.saved.patch(sql`user_id=${userId}::uuid AND word_id=${wordId}::uuid`,{note:dto.note??''});if(!saved)throw new NotFoundException(msg.notSaved);return saved;}
@@ -101,7 +142,13 @@ export class SavedWordsService {
     const words:any[]=[];
     for(let offset=0;offset<ids.length;offset+=2000)words.push(...await allContentRows(this.db,'words',{ids:ids.slice(offset,offset+2000),publishedOnly:true,
       ...(query.search?.trim()?{search:query.search.trim().slice(0,100)}:{}),...(query.level&&query.level!=='all'?{level:query.level.toUpperCase()}:{})}));
+    const personal=await rows(this.db,sql`SELECT s.payload->'personalWord' AS word FROM public.usersavedwords s WHERE ${where} AND s.payload ? 'personalWord'`);
+    for(const item of personal){
+      const word=item.word as any;
+      if(word&&(!query.search||word.word.toLowerCase().includes(query.search.trim().toLowerCase()))&&(!query.level||query.level==='all'||word.level===query.level.toUpperCase()))words.push(word);
+    }
     const wordMap=new Map(words.map(word=>[word._id,word]));
+    words.splice(0,words.length,...wordMap.values());
     where=sql`${where} AND s.word_id=ANY(${words.map(word=>word._id)}::uuid[])`;
     const descending=query.order==='desc';let order:Sql;
     if(query.sortBy==='alpha'){

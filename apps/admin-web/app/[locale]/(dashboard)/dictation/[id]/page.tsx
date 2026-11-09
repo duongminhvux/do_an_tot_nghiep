@@ -23,6 +23,7 @@ import {
   Users,
 } from 'lucide-react';
 import { dictationService } from '@/services/dictation.service';
+import {YoutubePlayer,type YoutubePlayerHandle} from '@repo/ui/youtube-player';
 import {
   DictationLesson,
   DictationLevel,
@@ -55,6 +56,7 @@ export default function DictationDetailPage() {
     enabled: Boolean(id),
   });
   const lesson = unwrap<DictationLesson>(data);
+  const youtubeRef=useRef<YoutubePlayerHandle>(null);
   const effectiveAudioSource = lesson?.audioSource || 'TTS';
 
   const { data: hierarchyData } = useQuery({
@@ -139,6 +141,7 @@ export default function DictationDetailPage() {
 
   const saveMutation = useMutation({
     mutationFn: () => dictationService.update(id, {
+      audioSource:effectiveAudioSource,
       title,
       description,
       topic: selectedTopic?.title || lesson.topic || 'General',
@@ -199,11 +202,20 @@ export default function DictationDetailPage() {
     onError: (error: any) => setMessage(error?.response?.data?.message || error?.message || 'Không thể lưu segment.'),
   });
 
+  const splitSentencesMutation=useMutation({
+    mutationFn:()=>dictationService.previewYoutube({url:lesson.youtubeUrl||`https://www.youtube.com/watch?v=${lesson.youtubeVideoId}`,
+      startSeconds:(lesson.segments?.[0]?.startMs||0)/1000,
+      ...(lesson.segments?.length?{endSeconds:Math.ceil((lesson.segments[lesson.segments.length-1]?.endMs||lesson.totalDurationMs)/1000)}:{})}),
+    onSuccess:(result)=>{setSegmentDrafts(result.data.segments);setMessage(`Đã chia lại thành ${result.data.segments.length} câu. Nghe kiểm tra rồi bấm “Lưu segment” để áp dụng.`);},
+    onError:(error:any)=>setMessage(error?.response?.data?.message||error?.message||'Chưa chia lại được phụ đề.'),
+  });
+
   const updateDraft = (index: number, patch: Partial<DictationSegmentEditPayload>) => {
     setSegmentDrafts((current) => current.map((item, i) => i === index ? { ...item, ...patch } : item));
   };
 
   const playSegment = (startMs: number, endMs: number) => {
+    if(lesson.youtubeVideoId){youtubeRef.current?.play(startMs,endMs);return;}
     const audio = audioRef.current;
     if (!audio || !lesson.fullAudioUrl) return;
     if (stopHandlerRef.current) audio.removeEventListener('timeupdate', stopHandlerRef.current);
@@ -228,6 +240,7 @@ export default function DictationDetailPage() {
     return <div className="flex min-h-[60vh] items-center justify-center text-slate-500"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Đang tải bài Dictation...</div>;
   }
 
+<<<<<<< HEAD
   const busy = saveMutation.isPending || processMutation.isPending || saveSegmentsMutation.isPending;
   // Unsaved edits in this form (never sent to learners until saved and shown).
   const dirty = title!==lesson.title || description!==(lesson.description||'') || sourceText!==(lesson.sourceText||'') || level!==lesson.level || language!==(lesson.language||'en-US') || speed!==(lesson.speed??1) || pauseAfterMs!==(lesson.pauseAfterMs??300) || voice1!==(lesson.voiceIds?.[0]||'af_heart') || voice2!==(lesson.voiceIds?.[1]||'') || topicId!==(lesson.topicId||'') || sectionId!==(lesson.sectionId||'') || Boolean(replacementFile) || JSON.stringify(segmentDrafts)!==JSON.stringify((lesson.segments||[]).map(segment=>({order:segment.order,text:segment.text,startMs:segment.startMs??0,endMs:segment.endMs??Math.max(segment.durationMs||0,1),speaker:segment.speaker||''})));
@@ -264,6 +277,9 @@ export default function DictationDetailPage() {
     const target = scope === 'lesson' ? 'dictation-info' : 'dictation-audio';
     document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
+=======
+  const busy = saveMutation.isPending || processMutation.isPending || saveSegmentsMutation.isPending || splitSentencesMutation.isPending;
+>>>>>>> 5f669d0 (update Dictation)
 
   return (
     <div className="min-h-screen bg-slate-50/50 p-4 sm:p-6 md:p-8">
@@ -329,26 +345,35 @@ export default function DictationDetailPage() {
                   <label className="text-xs font-semibold text-slate-600">Pause ms<input type="number" min="0" max="10000" step="50" value={pauseAfterMs} onChange={(e) => setPauseAfterMs(Number(e.target.value))} className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm" /></label>
                 </div>
               </section>
-            ) : (
+            ) : effectiveAudioSource === 'UPLOAD' ? (
               <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
                 <div className="flex items-center gap-2"><FileAudio className="h-4 w-4 text-blue-600" /><h2 className="text-sm font-bold text-slate-900">Faster Whisper</h2></div>
                 <p className="mt-2 text-xs leading-5 text-slate-500">Upload file mới nếu muốn chạy lại ASR. File hiện tại không bị cắt thành sentence audio.</p>
                 <label className="mt-4 flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-600 hover:border-blue-400"><Upload className="h-4 w-4" /><span className="min-w-0 flex-1 truncate">{replacementFile?.name || 'Chọn audio mới'}</span><input type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.webm" className="hidden" onChange={(e) => setReplacementFile(e.target.files?.[0] || null)} /></label>
                 <button onClick={() => processMutation.mutate()} disabled={busy || !replacementFile} className="mt-3 inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg border border-blue-200 text-xs font-bold text-blue-700 hover:bg-blue-50 disabled:opacity-50">{processMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />} Phân tích lại audio</button>
               </section>
-            )}
+            ) : null}
           </div>
 
           <div className="space-y-5">
+<<<<<<< HEAD
             <section id="dictation-audio" className="scroll-mt-24 rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
               <div className="flex items-center justify-between gap-3"><div><h2 className="text-sm font-bold text-slate-900">Full audio duy nhất</h2><p className="mt-1 text-xs text-slate-400">{lesson.audioProcessor || '—'} · {lesson.audioProcessorDevice || '—'} · {lesson.totalDurationMs ? formatMs(lesson.totalDurationMs) : '—'}</p></div></div>
               {lesson.fullAudioUrl ? <audio ref={audioRef} className="mt-4 w-full" controls src={lesson.fullAudioUrl} /> : <p className="mt-4 text-xs text-slate-400">Chưa có audio.</p>}
+=======
+            <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+              <div className="flex items-center justify-between gap-3"><div><h2 className="text-sm font-bold text-slate-900">{lesson.youtubeVideoId?'Video YouTube':'Bài nghe'}</h2><p className="mt-1 text-xs text-slate-400">{lesson.totalDurationMs ? formatMs(lesson.totalDurationMs) : '—'}</p></div></div>
+              {lesson.youtubeVideoId?<YoutubePlayer ref={youtubeRef} videoId={lesson.youtubeVideoId}/>:lesson.fullAudioUrl ? <audio ref={audioRef} className="mt-4 w-full" controls src={lesson.fullAudioUrl} /> : <p className="mt-4 text-xs text-slate-400">Chưa có audio.</p>}
+>>>>>>> 5f669d0 (update Dictation)
             </section>
 
             <section id="dictation-segments" className="scroll-mt-24 rounded-xl border border-slate-200 bg-white shadow-xs">
               <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div><h2 className="text-sm font-bold text-slate-900">Transcript & metadata</h2><p className="mt-1 text-xs text-slate-400">Cả Kokoro và Faster Whisper đều dùng chung text + startMs + endMs trên full audio.</p></div>
-                <button onClick={() => saveSegmentsMutation.mutate()} disabled={busy || !segmentDrafts.length} className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-blue-200 px-3 text-xs font-bold text-blue-700 hover:bg-blue-50 disabled:opacity-50">{saveSegmentsMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Lưu segment</button>
+                <div className="flex flex-wrap gap-2">
+                  {lesson.youtubeVideoId&&<button type="button" onClick={()=>splitSentencesMutation.mutate()} disabled={busy} className="rounded-lg border border-blue-200 px-3 py-2 text-xs font-bold text-blue-700 disabled:opacity-50">{splitSentencesMutation.isPending?'Đang chia câu…':'Chia lại theo câu'}</button>}
+                  <button onClick={() => saveSegmentsMutation.mutate()} disabled={busy || !segmentDrafts.length} className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-blue-200 px-3 text-xs font-bold text-blue-700 hover:bg-blue-50 disabled:opacity-50">{saveSegmentsMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Lưu segment</button>
+                </div>
               </div>
               <div className="max-h-[850px] divide-y divide-slate-100 overflow-y-auto">
                 {segmentDrafts.length === 0 ? <div className="p-12 text-center text-sm text-slate-400">Chưa có metadata. Hãy generate hoặc phân tích audio.</div> : segmentPage.items.map((segment, index) => {

@@ -14,6 +14,7 @@ import {
   CirclePlay,
 } from 'lucide-react';
 import { dictationService } from '@/services/dictation.service';
+import {YoutubeLessonCreate} from '@/components/dictation/youtube-lesson-create';
 import {
   DictationAudioSource,
   DictationLevel,
@@ -135,6 +136,7 @@ export default function CreateDictationPage() {
       (audioSource === 'TTS' ? sourceText.trim() : audioFile),
   );
 
+  if(audioSource==='YOUTUBE')return <YoutubeLessonCreate onBack={()=>setAudioSource('TTS')}/>;
   return (
     <div className="min-h-screen bg-slate-50/50 p-4 sm:p-6 md:p-8">
       <div className="w-full space-y-6">
@@ -144,7 +146,7 @@ export default function CreateDictationPage() {
           </Link>
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Tạo bài Dictation</h1>
-            <p className="mt-1 text-sm text-slate-500">Tạo audio bằng Kokoro hoặc upload audio để Faster Whisper tự transcript + tạo timestamp từng câu.</p>
+            <p className="mt-1 text-sm text-slate-500">Chọn nguồn bài nghe: YouTube, file audio có sẵn hoặc giọng đọc tổng hợp.</p>
           </div>
         </div>
 
@@ -192,6 +194,7 @@ export default function CreateDictationPage() {
             <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
               <h2 className="text-sm font-bold text-slate-900">Nguồn audio</h2>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <button type="button" onClick={()=>setAudioSource('YOUTUBE')} className="rounded-xl border border-red-200 bg-red-50 p-4 text-left sm:col-span-2"><div className="text-sm font-bold">YouTube + phụ đề</div><p className="mt-2 text-xs text-slate-600">Dán link video, lấy phụ đề và tạo bài nghe chép chính tả theo từng đoạn.</p></button>
                 <button type="button" onClick={() => { setAudioSource('TTS'); setPublishAfter(true); }} className={`rounded-xl border p-4 text-left transition ${audioSource === 'TTS' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'}`}>
                   <div className="flex items-center gap-2 text-sm font-bold text-slate-800"><AudioLines className="h-4 w-4 text-blue-600" /> Kokoro TTS</div>
                   <p className="mt-2 text-xs leading-5 text-slate-500">Admin nhập transcript, backend generate từng segment trong memory rồi ghép thành một WAV duy nhất.</p>

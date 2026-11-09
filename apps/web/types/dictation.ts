@@ -1,5 +1,5 @@
 export type DictationLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
-export type DictationAudioSource = 'TTS' | 'UPLOAD';
+export type DictationAudioSource = 'TTS' | 'UPLOAD' | 'YOUTUBE';
 
 export interface DictationSegmentProgress {
   segmentIndex: number;
@@ -75,6 +75,8 @@ export interface DictationLessonSummary {
   sentenceCount: number;
   totalDurationMs: number;
   fullAudioUrl?: string;
+  youtubeVideoId?: string;
+  youtubeUrl?: string;
   publishedAt?: string;
   progress?: DictationProgress | null;
 }
@@ -91,7 +93,7 @@ export interface DictationSegment {
   order: number;
   text: string;
   normalizedText?: string;
-  source: 'TTS' | 'ASR';
+  source: 'TTS' | 'ASR' | 'CAPTIONS';
   speaker?: string;
   voiceId?: string;
   language: 'en-US' | 'en-GB';

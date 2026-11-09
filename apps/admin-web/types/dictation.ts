@@ -7,7 +7,7 @@ export type DictationStatus =
   | 'PUBLISHED'
   | 'AUDIO_FAILED'
   | 'ARCHIVED';
-export type DictationAudioSource = 'TTS' | 'UPLOAD';
+export type DictationAudioSource = 'TTS' | 'UPLOAD' | 'YOUTUBE';
 
 export interface DictationVoice {
   id: string;
@@ -52,7 +52,7 @@ export interface DictationSegment {
   order: number;
   text: string;
   normalizedText?: string;
-  source: 'TTS' | 'ASR';
+  source: 'TTS' | 'ASR' | 'CAPTIONS';
   speaker?: string;
   voiceId?: string;
   language: 'en-US' | 'en-GB';
@@ -85,6 +85,8 @@ export interface DictationLesson extends Partial<PublicationInfo> {
   sentenceCount: number;
   totalDurationMs: number;
   fullAudioUrl?: string;
+  youtubeVideoId?: string;
+  youtubeUrl?: string;
   processingError?: string;
   audioProcessor?: string;
   audioProcessorDevice?: string;

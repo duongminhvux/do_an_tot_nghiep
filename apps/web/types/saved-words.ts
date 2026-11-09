@@ -4,6 +4,11 @@ export interface SavedWordWordDetail {
   slug: string;
   level: string;
   phonetic?: string;
+  sourceUrl?: string;
+  ipaDerivedFrom?: string;
+  sourceName?: string;
+  licenseUrl?: string;
+  translationSource?: string;
   ipa?: {
     us?: string;
     uk?: string;

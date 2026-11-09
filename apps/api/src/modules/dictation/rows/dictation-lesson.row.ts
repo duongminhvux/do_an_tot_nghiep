@@ -18,7 +18,8 @@ export enum DictationStatus {
 }
 export enum DictationAudioSource {
     TTS = 'TTS',
-    UPLOAD = 'UPLOAD'
+    UPLOAD = 'UPLOAD',
+    YOUTUBE = 'YOUTUBE'
 }
 export interface DictationLesson {
     publicationStatus: string;
@@ -34,6 +35,8 @@ export interface DictationLesson {
     order: number;
     thumbnailUrl: string;
     audioSource: DictationAudioSource;
+    youtubeVideoId?: string;
+    youtubeUrl?: string;
     sourceText: string;
     language: 'en-US' | 'en-GB';
     voiceIds: string[];
