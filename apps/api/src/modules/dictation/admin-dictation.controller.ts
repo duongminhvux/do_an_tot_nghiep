@@ -7,6 +7,7 @@ Header,
 Param,
 Patch,
 Post,
+Put,
 Query,
 Req,
 UploadedFile,
@@ -31,6 +32,8 @@ import { UpdateDictationSegmentsDto } from './dto/update-dictation-segments.dto.
 import { UpdateDictationDto } from './dto/update-dictation.dto.js';
 import { DictationHistoryService } from './dictation-history.service.js';
 import { DictationHistoryQueryDto } from './dto/dictation-history.dto.js';
+import { DictationSettingsService } from './dictation-settings.service.js';
+import { UpdateDictationSettingsDto } from './dto/dictation-settings.dto.js';
 
 @AdminController('dictation')
 export class AdminDictationController {
@@ -39,7 +42,22 @@ export class AdminDictationController {
     private readonly ttsService: TtsService,
     private readonly asrService: AsrService,
     private readonly history:DictationHistoryService,
+    private readonly settings: DictationSettingsService,
   ) {}
+
+  // Declared before ':id' routes so "settings" is never read as a lesson id.
+  @RequirePermissions('dictation.read')
+  @Get('settings')
+  readSettings() {
+    return this.settings.read();
+  }
+
+  @RequirePermissions('dictation.update')
+  @Put('settings')
+  updateSettings(@Body() dto: UpdateDictationSettingsDto, @Req() req: { user?: { _id?: string } }) {
+    const actor = req.user?._id;
+    return this.settings.update(dto.revision, dto.config, actor && /^[0-9a-f-]{36}$/i.test(actor) ? actor : undefined);
+  }
 
   @RequirePermissions('audio.read')
   @Get('voices')
@@ -107,13 +125,12 @@ export class AdminDictationController {
     return this.dictationService.previewSplit(dto.sourceText);
   }
 
-<<<<<<< HEAD
   @RequirePermissions('dictation.create')
-=======
   @Post('youtube/preview') youtubePreview(@Body() dto:YoutubePreviewDto){return this.dictationService.previewYoutube(dto);}
+  @RequirePermissions('dictation.create')
   @Post('youtube') createYoutube(@Body() dto:CreateYoutubeDictationDto){return this.dictationService.createYoutube(dto);}
 
->>>>>>> 5f669d0 (update Dictation)
+  @RequirePermissions('dictation.create')
   @Post()
   create(@Body() dto: CreateDictationDto, @Req() req: { user: { _id: string } }) {
     return this.dictationService.createWithVisibility(dto, String(req.user._id));

@@ -102,6 +102,19 @@ export interface StudioGrade {
   errors: number;
   totalWords: number;
 }
+export type StudioShortcutAction =
+  | "replay"
+  | "prevSentence"
+  | "nextSentence"
+  | "reveal"
+  | "slower"
+  | "faster";
+export interface StudioShortcut {
+  action: StudioShortcutAction;
+  /** Display text, e.g. "Alt + ←". */
+  label: string;
+}
+const DEFAULT_SPEEDS = [0.5, 0.75, 1, 1.25, 1.5];
 export interface DictationStudioProps {
   title: string;
   level?: string;
@@ -142,6 +155,16 @@ export interface DictationStudioProps {
   wrongAttempts?: number;
   maxAttempts?: number;
   played?: boolean;
+  /**
+   * Admin-configured shortcuts. When `resolveShortcut` is given it replaces the
+   * built-in Alt+R / Alt+←→ keys; `shortcuts` is what the shortcut card lists.
+   */
+  shortcuts?: StudioShortcut[];
+  resolveShortcut?: (event: KeyboardEvent) => StudioShortcutAction | null;
+  speeds?: number[];
+  showShortcutCard?: boolean;
+  allowHint?: boolean;
+  transcriptEnabled?: boolean;
 }
 export function DictationStudio(props: DictationStudioProps) {
   const {
@@ -171,6 +194,8 @@ export function DictationStudio(props: DictationStudioProps) {
     grading,
     error,
     transcriptVisible,
+    speeds = DEFAULT_SPEEDS,
+    transcriptEnabled = true,
   } = props;
   const en = locale === "en",
     say = (vi: string, english: string) => (en ? english : vi);
@@ -225,6 +250,34 @@ export function DictationStudio(props: DictationStudioProps) {
       className={`${styles.studio} ${preview ? styles.preview : ""} ${lookupEntry ? styles.lookupOpen : ""}`}
       data-testid="dictation-studio"
       onKeyDown={(event) => {
+        if (props.resolveShortcut) {
+          if (event.nativeEvent.isComposing) return;
+          const action = props.resolveShortcut(event.nativeEvent);
+          if (!action) return;
+          event.preventDefault();
+          event.stopPropagation();
+          if (action === "replay") play();
+          else if (action === "prevSentence") select(currentIndex - 1);
+          else if (action === "nextSentence") select(currentIndex + 1);
+          else if (action === "reveal") {
+            if (!pending && !showAnswer) onReveal();
+          } else {
+            const index = speeds.indexOf(playbackRate);
+            const next =
+              speeds[
+                Math.max(
+                  0,
+                  Math.min(
+                    speeds.length - 1,
+                    (index === -1 ? speeds.indexOf(1) : index) +
+                      (action === "faster" ? 1 : -1),
+                  ),
+                )
+              ];
+            if (next !== undefined) onPlaybackRate(next);
+          }
+          return;
+        }
         if (event.altKey && event.key.toLowerCase() === "r") {
           event.preventDefault();
           event.stopPropagation();
@@ -411,7 +464,7 @@ export function DictationStudio(props: DictationStudioProps) {
                 onChange={(e) => onPlaybackRate(Number(e.target.value))}
                 aria-label={say("Tốc độ phát", "Playback speed")}
               >
-                {[0.5, 0.75, 1, 1.25, 1.5].map((rate) => (
+                {speeds.map((rate) => (
                   <option key={rate} value={rate}>
                     {rate}×
                   </option>
@@ -480,6 +533,7 @@ export function DictationStudio(props: DictationStudioProps) {
                   else if (isPlaying) onPlay();
                 }}
                 onHint={props.onHint}
+                allowHint={props.allowHint ?? true}
                 onLookup={props.onLookup}
                 onLookupResult={setLookupEntry}
                 onSave={props.onSaveWord}
@@ -533,12 +587,14 @@ export function DictationStudio(props: DictationStudioProps) {
             </div>
           )}
           <div className={styles.bottomBar}>
-            <button type="button" onClick={onTranscript}>
-              <Icon name="list" size={15} />
-              {transcriptVisible
-                ? say("Về bài luyện", "Back to practice")
-                : say("Xem transcript", "View transcript")}
-            </button>
+            {(transcriptEnabled || transcriptVisible) && (
+              <button type="button" onClick={onTranscript}>
+                <Icon name="list" size={15} />
+                {transcriptVisible
+                  ? say("Về bài luyện", "Back to practice")
+                  : say("Xem transcript", "View transcript")}
+              </button>
+            )}
             <label>
               <input
                 type="checkbox"
@@ -601,24 +657,40 @@ export function DictationStudio(props: DictationStudioProps) {
               en={en}
             />
           )}
-          <section className={styles.shortcutCard}>
-            <h2>
-              <Icon name="keyboard" size={17} />
-              {say("PHÍM TẮT", "KEYBOARD SHORTCUTS")}
-            </h2>
-            {[
-              [say("Kiểm tra", "Check"), "Enter"],
-              [say("Nghe lại", "Replay"), "Alt + R"],
-              [say("Câu trước", "Previous"), "Alt + ←"],
-              [say("Câu tiếp", "Next"), "Alt + →"],
-              [say("Chuyển câu tiếp", "Move on"), "Shift + Enter"],
-            ].map(([label, key]) => (
-              <div key={key}>
-                <span>{label}</span>
-                <kbd>{key}</kbd>
-              </div>
-            ))}
-          </section>
+          {props.showShortcutCard !== false && (
+            <section className={styles.shortcutCard}>
+              <h2>
+                <Icon name="keyboard" size={17} />
+                {say("PHÍM TẮT", "KEYBOARD SHORTCUTS")}
+              </h2>
+              {[
+                [say("Kiểm tra", "Check"), "Enter"],
+                ...(props.shortcuts
+                  ? props.shortcuts.map(({ action, label }) => [
+                      {
+                        replay: say("Nghe lại", "Replay"),
+                        prevSentence: say("Câu trước", "Previous"),
+                        nextSentence: say("Câu tiếp", "Next"),
+                        reveal: say("Hiện đáp án", "Show answer"),
+                        slower: say("Giảm tốc độ", "Slower"),
+                        faster: say("Tăng tốc độ", "Faster"),
+                      }[action],
+                      label,
+                    ])
+                  : [
+                      [say("Nghe lại", "Replay"), "Alt + R"],
+                      [say("Câu trước", "Previous"), "Alt + ←"],
+                      [say("Câu tiếp", "Next"), "Alt + →"],
+                    ]),
+                [say("Chuyển câu tiếp", "Move on"), "Shift + Enter"],
+              ].map(([label, key]) => (
+                <div key={key}>
+                  <span>{label}</span>
+                  <kbd>{key}</kbd>
+                </div>
+              ))}
+            </section>
+          )}
           <section className={styles.noteCard}>
             <span>01 — LISTEN. WRITE. REPEAT.</span>
             <p>

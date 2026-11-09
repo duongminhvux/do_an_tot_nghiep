@@ -1,7 +1,7 @@
 /** Read contracts between services. Credentials always stay with the database owner. */
 export const OWNED_TABLES: Record<string, readonly string[]> = {
   identity: ['users', 'admins', 'roles', 'permissions', 'admin_roles', 'role_permissions', 'admin_activation_tokens'],
-  content: ['dictation_learning_sessions','dictation_learning_events','collections', 'dictationlessons', 'dictationprogresses', 'dictationsections', 'dictationsegments', 'dictationtopics', 'lessons', 'lessonwords', 'sections', 'vocabularygroups', 'words', 'youtubelessons'],
+  content: ['dictation_settings','dictation_learning_sessions','dictation_learning_events','collections', 'dictationlessons', 'dictationprogresses', 'dictationsections', 'dictationsegments', 'dictationtopics', 'lessons', 'lessonwords', 'sections', 'vocabularygroups', 'words', 'youtubelessons'],
   assessment: ['attemptanswers', 'attempts', 'examgroups', 'exams', 'passagegroups', 'passages', 'questions', 'pdf_ai_correction_events'],
   arena: ['arenainvitations', 'arenamatches', 'arenamatchplayers', 'arenamatchquestions', 'arenaplayeranswers', 'arenaprofiles', 'arenaratinghistories', 'arenarooms', 'arenasettings', 'friendrooms'],
   learning: ['learning_mistakes', 'learning_item_outcomes', 'user_active_time_state', 'user_active_time_slices', 'gamedefinitions', 'learning_activities', 'learningsessions', 'learningsessionwords', 'minigameresults', 'userdailyactivities', 'userlessonprogresses', 'userlessonwords', 'usersavedwords', 'userwordreviews', 'vocabularyfolders'],

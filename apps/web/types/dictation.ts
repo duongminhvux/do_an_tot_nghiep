@@ -113,9 +113,10 @@ export interface DictationLessonDetail extends DictationLessonSummary {
   segments: DictationSegment[];
   topicInfo?: { _id: string; title: string; slug: string } | null;
   sectionInfo?: { _id: string; title: string; slug: string } | null;
-  practiceSettings?: {
-    maxAttemptsBeforeReveal: number;
-    autoNextDelayMs: number;
+  /** Admin Dictation settings (see @repo/shared-types/dictation-settings) plus legacy flat fields. */
+  practiceSettings?: Partial<import('@repo/shared-types/dictation-settings').DictationSettings> & {
+    maxAttemptsBeforeReveal?: number;
+    autoNextDelayMs?: number;
   };
 }
 

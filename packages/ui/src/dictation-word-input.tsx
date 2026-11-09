@@ -51,6 +51,7 @@ export function DictationWordInput({
   onCheck,
   onNext,
   onHint,
+  allowHint = true,
   onLookup,
   onLookupResult,
   onSave,
@@ -69,6 +70,8 @@ export function DictationWordInput({
   onCheck: () => void;
   onNext: () => void;
   onHint?: () => Promise<void>;
+  /** Show the per-word "Reveal" hint button (admin setting). */
+  allowHint?: boolean;
   onStartVoice?: () => void;
   onReplay: () => void;
   isPlaying?: boolean;
@@ -419,7 +422,7 @@ export function DictationWordInput({
                   aria-label={say("Công cụ từ", "Word tools")}
                 >
                   <div className={styles.menu}>
-                    {!typed[i] && (
+                    {!typed[i] && allowHint && (
                       <button
                         type="button"
                         disabled={disabled || busy}

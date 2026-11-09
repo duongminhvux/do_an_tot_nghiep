@@ -17,7 +17,8 @@
     "./landing-page": "./src/landing-page.mjs",
     "./active-time": "./src/active-time.mjs",
     "./exam-timing": "./src/exam-timing.mjs",
-    "./exam-checks": "./src/exam-checks.mjs"
+    "./exam-checks": "./src/exam-checks.mjs",
+    "./dictation-settings": "./src/dictation-settings.mjs"
   },
   "scripts": {
     "check-types": "tsc --noEmit"

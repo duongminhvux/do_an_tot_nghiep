@@ -4,6 +4,7 @@ import { AdminDictationController } from './admin-dictation.controller.js';
 import { DictationController } from './dictation.controller.js';
 import { DictationService } from './dictation.service.js';
 import { DictationHistoryService } from './dictation-history.service.js';
+import { DictationSettingsService } from './dictation-settings.service.js';
 
 
 
@@ -18,6 +19,6 @@ import { UploadModule } from '../upload/upload.module.js';
 UploadModule,
 AsrModule],
   controllers: [DictationController, AdminDictationController],
-  providers: [DictationService,DictationHistoryService],
+  providers: [DictationService,DictationHistoryService,DictationSettingsService],
   exports: [DictationService] })
 export class DictationModule {}

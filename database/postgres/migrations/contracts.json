@@ -5,9 +5,9 @@
     "fingerprint": "23658fdf825f23fb5c658b364f920f247231ea8c41d2ea7b878b4f91051932bf"
   },
   "content": {
-    "version": "0022_content_quality_recheck",
-    "migrationsChecksum": "d93c35b05c99a7c989fc4dce57cd286aa9cb8b3d264256e199c5700c9385057b",
-    "fingerprint": "14b002ded1d956b2b3405752b2fa837a9831ab20defda232f4aec068de44f5db"
+    "version": "0023_dictation_settings",
+    "migrationsChecksum": "34a7ccd966443a4d5a8d81adbbe69b7c07591a1268bd3e08ba059da6182313f6",
+    "fingerprint": "d36f501e5b5b67f93f69856d4d81847acbfa9c504a1dc2ca5a24d50595fb7c6e"
   },
   "assessment": {
     "version": "0020_exam_group_publication",

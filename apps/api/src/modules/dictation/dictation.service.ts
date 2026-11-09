@@ -1,6 +1,7 @@
 import {
 BadRequestException,
 ConflictException,
+ForbiddenException,
 Inject,
 Injectable,
 NotFoundException,
@@ -9,6 +10,7 @@ Optional
 import { ConfigService } from '@nestjs/config';
 import { dictationLessonXp } from '@repo/shared-types/learning-xp';
 import { dictationOutcomes } from '@repo/shared-types/mistakes';
+import { normalizeDictationSettings, type DictationSettings } from '@repo/shared-types/dictation-settings';
 import { randomUUID } from 'node:crypto';
 import {youtubeVideoId,gradeDictation} from './youtube.js';
 import type {YoutubePreviewDto,CreateYoutubeDictationDto} from './dto/youtube-dictation.dto.js';
@@ -34,6 +36,7 @@ UpdateDictationSectionDto,
 UpdateDictationTopicDto
 } from './dto/dictation-hierarchy.dto.js';
 import { QueryDictationDto } from './dto/query-dictation.dto.js';
+import { DictationSettingsService } from './dictation-settings.service.js';
 import { UpdateDictationDto } from './dto/update-dictation.dto.js';
 import {
 DictationAudioSource,
@@ -56,8 +59,6 @@ interface EditableSegmentInput {
 export class DictationService {
   private readonly asrStartPaddingMs: number;
   private readonly asrEndPaddingMs: number;
-  private readonly maxAttemptsBeforeReveal: number;
-  private readonly autoNextDelayMs: number;
 
   private get lessonModel(){return new SqlRecords(this.nativeDb,'dictationlessons');}
 private get segmentModel(){return new SqlRecords(this.nativeDb,'dictationsegments');}
@@ -72,12 +73,19 @@ private readonly mediaStorage: MediaStorageService,
 private readonly configService: ConfigService,
 @Optional() @Inject(LearningActivityClient) private readonly learningActivity?: LearningActivityWriter,
 @Optional() @Inject(DomainOutboxService) private readonly domainOutbox?: DomainOutboxService,
-@Optional() @Inject(PublicationService) private readonly publication?: PublicationService
+@Optional() @Inject(PublicationService) private readonly publication?: PublicationService,
+@Optional() @Inject(DictationSettingsService) private readonly settings?: DictationSettingsService
   ) {
     this.asrStartPaddingMs = this.readNonNegativeInt('DICTATION_SEGMENT_START_PADDING_MS', 100);
     this.asrEndPaddingMs = this.readNonNegativeInt('DICTATION_SEGMENT_END_PADDING_MS', 150);
-    this.maxAttemptsBeforeReveal = Math.max(1, this.readNonNegativeInt('DICTATION_MAX_ATTEMPTS_BEFORE_REVEAL', 3));
-    this.autoNextDelayMs = this.readNonNegativeInt('DICTATION_AUTO_NEXT_DELAY_MS', 700);
+  }
+
+  /** Admin-configured practice rules (falls back to defaults + legacy env knobs). */
+  private async practiceSettings(): Promise<DictationSettings> {
+    if (this.settings) return this.settings.current();
+    return normalizeDictationSettings({ practice: {
+      maxAttemptsBeforeReveal: this.readNonNegativeInt('DICTATION_MAX_ATTEMPTS_BEFORE_REVEAL', 3),
+      autoNextDelayMs: this.readNonNegativeInt('DICTATION_AUTO_NEXT_DELAY_MS', 700) } });
   }
 
   private readNonNegativeInt(key: string, fallback: number): number {
@@ -445,7 +453,6 @@ private readonly configService: ConfigService,
     return normalized.length ? normalized : ['af_heart'];
   }
 
-<<<<<<< HEAD
   /** Create, then show to learners in the same request when asked and complete. */
   async createWithVisibility(input: CreateDictationDto, actorId: string) {
     const { publish, ...dto } = input;
@@ -459,10 +466,7 @@ private readonly configService: ConfigService,
 
   async create(input: CreateDictationDto) {
     const { publish: _publish, ...dto } = input;
-=======
-  async create(dto: CreateDictationDto) {
     if(dto.audioSource===DictationAudioSource.YOUTUBE)throw new BadRequestException('Dùng luồng YouTube và duyệt phụ đề trước khi tạo bài.');
->>>>>>> 5f669d0 (update Dictation)
     const audioSource = dto.audioSource ?? DictationAudioSource.TTS;
     const sourceText = (dto.sourceText || '').trim();
     const sentences = this.splitIntoSentences(sourceText);
@@ -911,11 +915,12 @@ private readonly configService: ConfigService,
     const lesson = await this.lessonModel.one(sql`("slug" = ${slug}) AND ("status" = ${DictationStatus.PUBLISHED}) AND publication_status='PUBLISHED' AND ("is_deleted" IS DISTINCT FROM ${true})`);
     if (!lesson) throw new NotFoundException('Dictation lesson not found.');
 
-    const [segments, progress, topic, section] = await Promise.all([
+    const [segments, progress, topic, section, settings] = await Promise.all([
       this.segmentModel.select(sql`("lesson_id" = ${lesson._id})`, sql`ORDER BY "order" ASC NULLS FIRST`),
       this.progressModel.one(sql`("user_id" = ${String(userId)}) AND ("lesson_id" = ${lesson._id})`),
       lesson.topicId ? this.topicModel.one(sql`id=${lesson.topicId}::uuid`) : null,
       lesson.sectionId ? this.sectionModel.one(sql`id=${lesson.sectionId}::uuid`) : null,
+      this.practiceSettings(),
     ]);
 
     return {
@@ -925,8 +930,10 @@ private readonly configService: ConfigService,
       topicInfo: topic ? { _id: topic._id, title: topic.title, slug: topic.slug } : null,
       sectionInfo: section ? { _id: section._id, title: section.title, slug: section.slug } : null,
       practiceSettings: {
-        maxAttemptsBeforeReveal: this.maxAttemptsBeforeReveal,
-        autoNextDelayMs: this.autoNextDelayMs },
+        ...settings,
+        // Legacy flat fields kept for older clients.
+        maxAttemptsBeforeReveal: settings.practice.maxAttemptsBeforeReveal,
+        autoNextDelayMs: settings.practice.autoNextDelayMs },
       segments: segments.map(({ audioPublicId: _audioPublicId, ...segment }) => {
         const hasUnifiedTiming =
           Number.isFinite(segment.startMs) &&
@@ -982,7 +989,8 @@ private readonly configService: ConfigService,
     if(!lesson)throw new NotFoundException('Dictation lesson not found.');
     const segment=await this.segmentModel.one(sql`lesson_id=${lessonId}::uuid AND "order"=${segmentIndex}`);
     if(!segment)throw new BadRequestException('Invalid sentence index.');
-    const grading=gradeDictation(segment.text,answer);
+    const { checking } = await this.practiceSettings();
+    const grading=gradeDictation(segment.text,answer,checking);
     const progress=await this.recordAttempt(userId,lessonId,segmentIndex,grading.isCorrect,grading);
     return {...progress,grading};
   }
@@ -1034,7 +1042,8 @@ private readonly configService: ConfigService,
       segmentProgress.wrongAttempts += 1;
       progress.wrongCount += 1;
       progress.currentSegment = segmentIndex;
-      if (segmentProgress.wrongAttempts >= this.maxAttemptsBeforeReveal) {
+      const { practice } = await this.practiceSettings();
+      if (practice.autoRevealEnabled && segmentProgress.wrongAttempts >= practice.maxAttemptsBeforeReveal) {
         segmentProgress.revealed = true;
         if (!progress.revealedSegments.includes(segmentIndex)) {
           progress.revealedSegments.push(segmentIndex);
@@ -1083,6 +1092,7 @@ private readonly configService: ConfigService,
 
   async revealSegment(userId: string, lessonId: string, segmentIndex: number) {
     if (!isUuid(lessonId)) throw new NotFoundException('Dictation lesson not found.');
+    if (!(await this.practiceSettings()).practice.allowReveal) throw new ForbiddenException('DICTATION_REVEAL_DISABLED');
     const lesson = await this.lessonModel.one(sql`("id" = ${lessonId}) AND ("status" = ${DictationStatus.PUBLISHED}) AND publication_status='PUBLISHED' AND ("is_deleted" IS DISTINCT FROM ${true})`);
     if (!lesson) throw new NotFoundException('Dictation lesson not found.');
     if (segmentIndex < 0 || segmentIndex >= lesson.sentenceCount) {
@@ -1106,6 +1116,7 @@ private readonly configService: ConfigService,
 
   async revealTranscript(userId: string, lessonId: string) {
     if (!isUuid(lessonId)) throw new NotFoundException('Dictation lesson not found.');
+    if (!(await this.practiceSettings()).transcript.enabled) throw new ForbiddenException('DICTATION_TRANSCRIPT_DISABLED');
     const lesson = await this.lessonModel.one(sql`("id" = ${lessonId}) AND ("status" = ${DictationStatus.PUBLISHED}) AND publication_status='PUBLISHED' AND ("is_deleted" IS DISTINCT FROM ${true})`);
     if (!lesson) throw new NotFoundException('Dictation lesson not found.');
     let progress = await this.progressModel.one(sql`("user_id" = ${String(userId)}) AND ("lesson_id" = ${String(lessonId)})`);
@@ -1146,6 +1157,7 @@ private readonly configService: ConfigService,
   }
 
   async recordHint(userId:string,lessonId:string,segmentIndex:number){
+    if(!(await this.practiceSettings()).practice.allowHint)throw new ForbiddenException('DICTATION_HINT_DISABLED');
     if(!isUuid(lessonId))throw new NotFoundException('Dictation lesson not found.');
     const lesson=await this.lessonModel.one(sql`id=${lessonId}::uuid AND status='PUBLISHED' AND publication_status='PUBLISHED' AND is_deleted IS NOT TRUE`);
     if(!lesson)throw new NotFoundException('Dictation lesson not found.');

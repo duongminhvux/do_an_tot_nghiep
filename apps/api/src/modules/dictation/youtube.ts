@@ -37,9 +37,9 @@ export function youtubeVideoId(value: string) {
     );
   return id;
 }
-export function gradeDictation(expected: string, answer: string) {
+export function gradeDictation(expected: string, answer: string, options?: Parameters<typeof scoreDictation>[2]) {
   try {
-    return scoreDictation(expected, answer);
+    return scoreDictation(expected, answer, options);
   } catch (e) {
     throw new BadRequestException(
       e instanceof Error ? e.message : 'Invalid answer.',
