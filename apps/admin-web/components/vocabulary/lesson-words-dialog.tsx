@@ -1,5 +1,5 @@
 'use client';
-import {PublicationBar} from '@/components/publication/publication-controls';
+import {VisibilityBar} from '@/components/publication/publication-controls';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -364,7 +364,7 @@ export function LessonWordsDialog({
           </div>
         </DialogHeader>
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6">
-        {lesson && <PublicationBar compact kind="lessons" id={lesson._id} version={lessonWords.length} />}
+        {lesson && <VisibilityBar kind="lessons" id={lesson._id} version={lessonWords.length} />}
 
         {/* Global Error Alert */}
         {errorMessage && (

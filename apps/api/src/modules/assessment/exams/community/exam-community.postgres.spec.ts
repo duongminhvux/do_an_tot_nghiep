@@ -269,6 +269,20 @@ describe.runIf(Boolean(process.env.F01_ASSESSMENT_TEST_DATABASE_URL))(
         community.react(exam, root, second, 'unsupported'),
       ).rejects.toMatchObject({ status: 400 });
     });
+    it('pins roots first, rejects replies/cross-exam pins and clears pin on deletion', async () => {
+      const pinned = await community.post(exam, third, { body: 'Pinned root' });
+      await community.post(exam, second, { body: 'Newer root' });
+      await community.pin(exam, pinned.id, true);
+      expect((await community.comments(exam, first)).items[0]).toMatchObject({ id: pinned.id, isPinned: true });
+      await expect(community.pin(other, pinned.id, true)).rejects.toMatchObject({ status: 404 });
+      await expect(community.pin(exam, reply, true)).rejects.toMatchObject({ status: 404 });
+      await community.pin(exam, pinned.id, false);
+      expect((await community.comments(exam, first)).items.find(i => i.id === pinned.id)?.isPinned).toBe(false);
+      await community.pin(exam, pinned.id, true);
+      await community.remove(exam, pinned.id, actor, true);
+      expect((await pool.query('SELECT is_pinned FROM exam_comments WHERE id=$1', [pinned.id])).rows[0].is_pinned).toBe(false);
+      await expect(community.pin(exam, pinned.id, true)).rejects.toMatchObject({ status: 404 });
+    });
     it('only owner/admin may delete; tombstones preserve replies and remove reactions', async () => {
       await expect(community.remove(exam, root, second)).rejects.toMatchObject({
         status: 403,
@@ -348,6 +362,9 @@ describe.runIf(Boolean(process.env.F01_ASSESSMENT_TEST_DATABASE_URL))(
       await expect(community.comments(exam, first)).rejects.toMatchObject({
         status: 404,
       });
+      expect((await community.comments(exam, first, 1, undefined, true)).total).toBeGreaterThan(0);
+      await community.pin(exam, target.id, true);
+      await community.remove(exam, target.id, actor, true);
       await expect(
         community.post(exam, first, { body: 'hidden' }),
       ).rejects.toMatchObject({ status: 404 });

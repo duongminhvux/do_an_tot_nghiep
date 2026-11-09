@@ -1,3 +1,4 @@
+import { PermissionCondition, PermissionExemption } from './decorators/require-permissions.decorator.js';
 import { Body,Controller,Get,Logger,Post,Req,Res,UnauthorizedException,UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import express from 'express';
@@ -172,6 +173,8 @@ export class AuthController {
       message: await this.i18n.t('auth.LOGOUT_SUCCESSFULLY') };
   }
 
+  @PermissionCondition('C5')
+  @PermissionExemption('E5')
   @UseGuards(JwtAuthGuard)
   @Post('change-password')
   async changePassword(

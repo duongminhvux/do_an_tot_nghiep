@@ -1,3 +1,5 @@
+import { resolveExamNames } from '../exams/community/exam-profile-names.js';
+import { examTimeLimitSeconds } from '@repo/shared-types/exam-timing';
 import {
 BadRequestException,
 ConflictException,
@@ -162,7 +164,8 @@ constructor(
   private async hydrateAttempts(pending:Promise<any[]>,includeUser=false){
     const list=await pending;const exams=await this.exams.select(sql`id=ANY(${list.map(row=>row.examId)}::uuid[])`);const map=new Map(exams.map(row=>[String(row._id),{_id:String(row._id),name:row.name,slug:row.slug}]));
     const users=includeUser?await new SqlRecords(this.nativeDb,'identity_profiles').select(sql`id=ANY(${list.map(row=>row.userId)}::uuid[])`):[];const userMap=new Map(users.map(row=>[String(row._id),{_id:String(row._id),username:row.username}]));
-    return list.map(row=>({...row,examId:map.get(String(row.examId))??null,...(includeUser?{userId:userMap.get(String(row.userId))??null}:{})}));
+    const names = includeUser ? await resolveExamNames(list.map(row => String(row.userId))) : {};
+    return list.map(row=>({...row,examId:map.get(String(row.examId))??null,...(includeUser?{userId:{_id:String(row.userId),username:Object.hasOwn(names,String(row.userId))?names[String(row.userId)]:userMap.get(String(row.userId))?.username}}:{})}));
   }
   private uuid(id: string) {
     if (!isUuid(id))
@@ -316,14 +319,9 @@ constructor(
           .filter(Boolean)
           .join('\n') };
     });
-    const timeLimitSeconds =
-      dto.mode === ExamMode.TEST
-        ? testTimeLimitSeconds(
-            questions,
-            dto.selectedParts,
-            exam.durationMinutes,
-          )
-        : undefined;
+    const partCounts=new Map<number,number>();
+    for(const question of questions)partCounts.set(question.part,(partCounts.get(question.part)||0)+1);
+    const timeLimitSeconds=examTimeLimitSeconds(dto.mode,[...partCounts].map(([part,totalQuestions])=>({part,totalQuestions})),dto.selectedParts,exam);
     const startedAt = new Date();
     let attempt;
     try { attempt = await this.attempts.insert({

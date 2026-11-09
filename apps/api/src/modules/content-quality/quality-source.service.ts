@@ -22,13 +22,48 @@ export class QualitySourceService {
     @InjectPgConnection() private readonly db: PgConnection,
     private readonly publication: PublicationService,
   ) {}
+  private owns(kind: PublicationKind) {
+    if ((kind === 'exams' ? 'assessment' : 'content') !== serviceRole())
+      throw new ForbiddenException();
+  }
+  /** One content item, or null when it no longer exists (deleted). */
+  async one(kind: PublicationKind, id: string): Promise<QualityItem | null> {
+    this.owns(kind);
+    return this.item(kind, id);
+  }
+  private async item(kind: PublicationKind, id: string): Promise<QualityItem | null> {
+    try {
+      const doc = await this.publication.qualityDocument(kind, id);
+      const item = qualityItem(kind, doc);
+      if (kind === 'words' && typeof doc.word === 'string' && doc.word.trim()) {
+        const duplicate = await this.db.query(
+          `SELECT id FROM public.words WHERE lower(btrim(word))=lower(btrim($1::text)) AND id<>$2 AND is_deleted IS NOT TRUE LIMIT 1`,
+          [doc.word, id],
+        );
+        if (duplicate.rows.length)
+          item.issues.push({
+            category: 'DUPLICATE',
+            code: 'EXACT_WORD',
+            path: 'word',
+            severity: 'warning',
+            messageVi:
+              'Có từ khác trùng cách viết (bỏ khoảng trắng và hoa/thường); cần đối chiếu nghĩa.',
+            messageEn:
+              'Another word has the same spelling ignoring case and surrounding spaces; compare meanings.',
+          });
+      }
+      return item;
+    } catch (error) {
+      if (error instanceof NotFoundException) return null;
+      throw error;
+    }
+  }
   async batch(
     kind: PublicationKind,
     cursor: string | null,
     before: string,
   ): Promise<{ items: QualityItem[]; cursor: string | null; done: boolean }> {
-    if ((kind === 'exams' ? 'assessment' : 'content') !== serviceRole())
-      throw new ForbiddenException();
+    this.owns(kind);
     const table = QUALITY_TABLES[kind];
     if (!table) throw new ForbiddenException();
     const ids = await this.db.query(
@@ -37,34 +72,8 @@ export class QualitySourceService {
     );
     const items: QualityItem[] = [];
     for (const { id } of ids.rows) {
-      try {
-        const doc = await this.publication.qualityDocument(kind, id);
-        const item = qualityItem(kind, doc);
-        if (
-          kind === 'words' &&
-          typeof doc.word === 'string' &&
-          doc.word.trim()
-        ) {
-          const duplicate = await this.db.query(
-            `SELECT id FROM public.words WHERE lower(btrim(word))=lower(btrim($1::text)) AND id<>$2 AND is_deleted IS NOT TRUE LIMIT 1`,
-            [doc.word, id],
-          );
-          if (duplicate.rows.length)
-            item.issues.push({
-              category: 'DUPLICATE',
-              code: 'EXACT_WORD',
-              path: 'word',
-              severity: 'warning',
-              messageVi:
-                'Có từ khác trùng cách viết (bỏ khoảng trắng và hoa/thường); cần đối chiếu nghĩa.',
-              messageEn:
-                'Another word has the same spelling ignoring case and surrounding spaces; compare meanings.',
-            });
-        }
-        items.push(item);
-      } catch (error) {
-        if (!(error instanceof NotFoundException)) throw error;
-      }
+      const item = await this.item(kind, id);
+      if (item) items.push(item);
     }
     return {
       items,

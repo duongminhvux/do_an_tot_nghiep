@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { InjectPgConnection,withPgTransaction,type ClientSession,type PgConnection } from '../../postgres/connection.js';
-export type DomainEventType='identity.user.created.v1'|'assessment.exam.created.v1'|'arena.match.finished.v1'|'learning.activity.recorded.v1'|'identity.user.updated.v1';
+export type DomainEventType='identity.admin.activation_email_requested.v1'|'identity.admin.authorization_changed.v1'|'identity.admin.super_admin_bootstrapped.v1'|'identity.user.created.v1'|'assessment.exam.created.v1'|'arena.match.finished.v1'|'learning.activity.recorded.v1'|'identity.user.updated.v1';
 /** Prefer passing a caller-owned pg transaction client to make write + event atomic. */
 @Injectable()
 export class DomainOutboxService {

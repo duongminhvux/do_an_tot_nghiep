@@ -1,0 +1,23 @@
+{
+ "title":"Cắt ảnh",
+ "description":"Kéo ảnh hoặc dùng các thanh điều chỉnh. Chỉ tải lên sau khi bạn xác nhận.",
+ "preview":"Xem trước vùng cắt; kéo hoặc dùng phím mũi tên để di chuyển",
+ "original":"Ảnh gốc",
+ "output":"Ảnh xuất",
+ "small":"Vùng ảnh đã chọn nhỏ hơn kích thước khuyến nghị. Ảnh sẽ giữ độ phân giải hiện có, không bị phóng lớn.",
+ "zoom":"Thu phóng",
+ "x":"Vị trí ngang",
+ "y":"Vị trí dọc",
+ "reset":"Đặt lại",
+ "rotate":"Xoay 90°",
+ "choose":"Chọn ảnh khác",
+ "cancel":"Hủy",
+ "confirm":"Dùng ảnh đã cắt",
+ "loading":"Đang đọc ảnh…",
+ "fileSize":"Ảnh rỗng hoặc vượt quá giới hạn dung lượng của vị trí tải lên.",
+ "fileType":"Chọn ảnh JPEG, PNG hoặc WebP. SVG, GIF và ICO giữ luồng tải ảnh gốc.",
+ "decode":"Không đọc được ảnh này. Vui lòng chọn tệp khác.",
+ "dimensions":"Ảnh vượt giới hạn an toàn: 40 megapixel hoặc 16.384 pixel mỗi cạnh.",
+ "canvas":"Không thể tạo ảnh đã cắt. Hãy thử lại hoặc chọn ảnh khác.",
+ "animated":"Ảnh động cần được tải lên với định dạng gốc."
+}

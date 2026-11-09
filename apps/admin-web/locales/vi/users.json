@@ -87,6 +87,57 @@
     "confirm_delete": "Xác nhận xóa"
   },
   "detail": {
+    "modules": {
+      "activeStudyTime": "Thời gian học thực tế",
+      "minutes": "phút",
+      "title": "Tiến độ theo module",
+      "description": "Theo dõi kết quả học tập và luyện tập của người dùng trên từng module.",
+      "totalXp": "Tổng XP",
+      "activityCount": "Hoạt động đã ghi nhận",
+      "activeMinutes": "Thời gian học thực tế (phút)",
+      "summaryHelp": "XP và hoạt động lấy từ nhật ký học tập. Thời gian thực tế tính từ bộ theo dõi hoạt động, không cộng trùng thời gian các module. Dấu — nghĩa là chưa có dữ liệu để tính.",
+      "unavailable": "Chưa tải được dữ liệu module này. Vui lòng tải lại trang để thử lại.",
+      "lastActivity": "Gần nhất: {{date}}",
+      "noActivity": "Chưa ghi nhận thời điểm hoạt động.",
+      "vocabCourses": "Tiến độ lộ trình từ vựng",
+      "vocabCoursesHelp": "Số bài hoàn thành trong từng bộ từ vựng đã học.",
+      "courseRatio": "{{completed}} / {{total}} bài hoàn thành",
+      "descriptions": {
+        "VOCABULARY": "Từ đã học, ghi nhớ và ôn tập SRS",
+        "TOEIC": "Lịch sử làm bài và độ chính xác",
+        "DICTATION": "Luyện nghe chép chính tả",
+        "ARENA": "Kết quả các trận xếp hạng",
+        "MINIGAME": "Lượt chơi và các trò đã tham gia"
+      },
+      "metrics": {
+        "wordsLearned": "Từ đã học",
+        "wordsMastered": "Đã thành thạo",
+        "wordsDue": "Đến hạn ôn",
+        "lessonsCompleted": "Bài hoàn thành",
+        "accuracy": "Tỷ lệ trả lời đúng",
+        "roundsPlayed": "Lượt chơi",
+        "gameTypes": "Loại trò đã chơi",
+        "attempts": "Tổng lượt làm bài",
+        "attemptsCompleted": "Lượt hoàn thành",
+        "attemptsInProgress": "Đang làm",
+        "bestAccuracy": "Tỷ lệ đúng cao nhất",
+        "lessonsStarted": "Bài đã luyện",
+        "segmentsCompleted": "Câu đã hoàn thành",
+        "rankedMatches": "Trận xếp hạng",
+        "wins": "Thắng",
+        "losses": "Thua",
+        "draws": "Hòa",
+        "rating": "Điểm xếp hạng",
+        "winRate": "Tỷ lệ thắng"
+      },
+      "names": {
+        "VOCABULARY": "Từ vựng",
+        "TOEIC": "TOEIC",
+        "DICTATION": "Dictation",
+        "ARENA": "Đấu trường",
+        "MINIGAME": "Trò chơi"
+      }
+    },
     "title": "Thông tin người dùng",
     "user_id_label": "Mã định danh",
     "role_badge": "User",

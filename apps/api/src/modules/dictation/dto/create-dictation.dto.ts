@@ -3,6 +3,7 @@ import {
 ArrayMaxSize,
 ArrayMinSize,
 IsArray,
+IsBoolean,
 IsEnum,
 IsIn,
 IsInt,
@@ -21,6 +22,11 @@ DictationLevel
 } from '../rows/dictation-lesson.row.js';
 
 export class CreateDictationDto {
+  /** Show to learners right after saving, if the saved content is complete. */
+  @IsOptional()
+  @IsBoolean()
+  publish?: boolean;
+
   @IsString()
   @MinLength(2)
   @MaxLength(160)

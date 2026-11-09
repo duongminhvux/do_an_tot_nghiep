@@ -3,6 +3,7 @@ import { LoadError } from '@/components/ui/load-error';
 import { useListPagination } from '@/hooks/use-list-pagination';
 import { ListPagination } from '@/components/ui/list-pagination';
 import {PublicationBadge,PublicationFilter} from '@/components/publication/publication-controls';
+import { publicationVisibility } from '@repo/shared-types/publication';
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
@@ -19,6 +20,8 @@ import {
   Search,
   Trash2,
   CirclePlay,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { dictationService } from '@/services/dictation.service';
 import { DictationLesson, DictationStatus } from '@/types/dictation';
@@ -52,7 +55,11 @@ export default function AdminDictationPage() {
   const lessons = unwrap<DictationLesson[]>(data) || [];
   const filtered = useMemo(() => {
     const keyword = search.trim().toLowerCase();
-    const visible=lessons.filter(lesson=>!publicationFilter||lesson.publicationStatus===publicationFilter);
+    const visible=lessons.filter(lesson=>{
+      if(!publicationFilter)return true;
+      const shown=(lesson.visibility??publicationVisibility(lesson))==='VISIBLE';
+      return publicationFilter==='PUBLISHED'?shown:!shown;
+    });
     if (!keyword) return visible;
     return visible.filter((lesson) =>
       `${lesson.title} ${lesson.topic} ${lesson.level}`.toLowerCase().includes(keyword),
@@ -65,22 +72,28 @@ export default function AdminDictationPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-dictation'] }),
   });
 
+  const [visibilityError, setVisibilityError] = useState<{ id: string; title: string; count: number } | null>(null);
   const publishMutation = useMutation({
-    mutationFn: ({ id, publish }: { id: string; publish: boolean }) =>
+    mutationFn: ({ id, publish }: { id: string; title: string; publish: boolean }) =>
       publish ? dictationService.publish(id) : dictationService.unpublish(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-dictation'] }),
+    onMutate: () => setVisibilityError(null),
+    onError: (error: any, { id, title }) => {
+      const issues = error?.response?.data?.issues ?? [];
+      setVisibilityError({ id, title, count: issues.filter((i: any) => i.severity === 'error').length });
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['admin-dictation'] }),
   });
 
   const stats = {
     total: lessons.length,
-    published: lessons.filter((item) => item.status === 'PUBLISHED').length,
-    ready: lessons.filter((item) => item.status === 'READY').length,
+    published: lessons.filter((item) => (item.visibility ?? publicationVisibility(item)) === 'VISIBLE').length,
+    ready: lessons.filter((item) => (item.visibility ?? publicationVisibility(item)) === 'HIDDEN').length,
     sentences: lessons.reduce((sum, item) => sum + (item.sentenceCount || 0), 0),
   };
   const statCards: Array<{ label: string; value: number; Icon: LucideIcon }> = [
     { label: 'Tổng bài', value: stats.total, Icon: FileAudio },
-    { label: 'Đã xuất bản', value: stats.published, Icon: CheckCircle2 },
-    { label: 'Sẵn sàng', value: stats.ready, Icon: CirclePlay },
+    { label: 'Đang hiển thị', value: stats.published, Icon: CheckCircle2 },
+    { label: 'Đã ẩn (hợp lệ)', value: stats.ready, Icon: CirclePlay },
     { label: 'Tổng số câu', value: stats.sentences, Icon: AudioLines },
   ];
 
@@ -142,6 +155,13 @@ export default function AdminDictationPage() {
           <p className="text-xs text-slate-400">{filtered.length} bài</p>
         </div>
 
+        {visibilityError && (
+          <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-900">
+            <span><strong>{visibilityError.title}</strong>: {visibilityError.count ? `chưa hiển thị được, còn ${visibilityError.count} lỗi.` : 'thao tác chưa thành công, hãy thử lại.'}</span>
+            <Link href={`/${locale}/dictation/${visibilityError.id}`} className="font-semibold underline-offset-2 hover:underline">Mở bài để sửa</Link>
+          </div>
+        )}
+
         {isLoading ? (
           <div className="flex h-56 items-center justify-center text-slate-500">
             <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Đang tải...
@@ -187,26 +207,35 @@ export default function AdminDictationPage() {
                       </div>
                     </td>
                     <td className="px-4 py-4">
-                      <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${statusStyle[lesson.status]}`}>
-                        {lesson.status}
-                      </span><PublicationBadge item={lesson} />
+                      <div className="flex flex-col items-start gap-1">
+                        <PublicationBadge item={lesson} />
+                        {(lesson.status === 'PROCESSING_AUDIO' || lesson.status === 'AUDIO_FAILED') && (
+                          <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${statusStyle[lesson.status]}`}>
+                            {lesson.status === 'PROCESSING_AUDIO' ? 'Đang xử lý audio' : 'Xử lý audio lỗi'}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex items-center justify-end gap-2">
-                        {lesson.status === 'READY' && lesson.publicationStatus==='IN_REVIEW' && !lesson.publicationValidation?.issues.some(issue=>issue.severity==='error') && (
+                        {(lesson.visibility ?? publicationVisibility(lesson)) === 'VISIBLE' ? (
                           <button
-                            onClick={() => publishMutation.mutate({ id: lesson._id, publish: true })}
-                            className="rounded-lg border border-emerald-200 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                            type="button"
+                            disabled={publishMutation.isPending}
+                            onClick={() => publishMutation.mutate({ id: lesson._id, title: lesson.title, publish: false })}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
                           >
-                            Publish
+                            <EyeOff className="h-3.5 w-3.5" /> Ẩn
                           </button>
-                        )}
-                        {lesson.status === 'PUBLISHED' && (
+                        ) : (
                           <button
-                            onClick={() => publishMutation.mutate({ id: lesson._id, publish: false })}
-                            className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                            type="button"
+                            disabled={publishMutation.isPending || lesson.status === 'PROCESSING_AUDIO'}
+                            title={lesson.status === 'PROCESSING_AUDIO' ? 'Audio đang xử lý — chưa thể hiển thị.' : 'Hệ thống kiểm tra lại nội dung trước khi hiển thị.'}
+                            onClick={() => publishMutation.mutate({ id: lesson._id, title: lesson.title, publish: true })}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
                           >
-                            Unpublish
+                            <Eye className="h-3.5 w-3.5" /> Hiện
                           </button>
                         )}
                         <Link

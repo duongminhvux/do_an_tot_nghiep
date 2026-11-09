@@ -24,6 +24,11 @@ def process(job_id: str):
         return True
     directory = ROOT / job_id
     meta = json.loads((directory / 'input.json').read_text(encoding='utf8'))
+    # Acknowledge retired jobs so old messages cannot block PDF imports.
+    if meta.get('kind') == 'generation':
+        state.update(state='failed', error='Tính năng AI sinh đề mới đã được gỡ.', finishedAt=time.time())
+        pdf_app.persist_job(state)
+        return True
     files = {}
     for name in meta['files']:
         if not name.isidentifier():

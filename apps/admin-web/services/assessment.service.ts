@@ -9,7 +9,7 @@ import {
   ExamItem,
   ExamListResponse,
   ExamAttemptList,
-  ExamAttemptItem,
+  ExamAttemptDetail,
   PassageGroupItem,
   PassageItem,
   QueryExamDto,
@@ -42,7 +42,7 @@ export const examService = {
   },
   getAttempt: async (id: string) => {
     return (
-      await apiClient.get<ApiResponse<ExamAttemptItem>>(`/admin/attempts/${id}`)
+      await apiClient.get<ApiResponse<ExamAttemptDetail>>(`/admin/attempts/${id}`)
     ).data;
   },
   getAttemptStats: async (examId: string) => {
@@ -52,11 +52,12 @@ export const examService = {
       )
     ).data;
   },
-  getAll: async (params?: QueryExamDto) => {
+  getAll: async (params?: QueryExamDto, signal?: AbortSignal) => {
     const res = await apiClient.get<ApiResponse<ExamListResponse>>(
       "/admin/exams",
       {
         params,
+        signal,
       },
     );
     return res.data;

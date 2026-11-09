@@ -1,3 +1,5 @@
+import type { AdminPermissionCode } from '../admins/permission-catalogue.js';
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator.js';
 import {
 Get,
 Global,
@@ -23,11 +25,16 @@ function resourceController(kind: PublicationKind) {
     constructor(
       @Inject(PublicationService) readonly publication: PublicationService,
     ) {}
+    @RequirePermissions(publicationPermission(kind, 'read'), 'publication.read')
     @Get(':id/publication')
     @Header('Cache-Control', 'private, no-store')
-    info(@Param('id', new ParseUUIDPipe()) id: string) {
-      return this.publication.info(kind, id);
+    info(
+      @Param('id', new ParseUUIDPipe()) id: string,
+      @Query() query: PublicationLanguageDto,
+    ) {
+      return this.publication.info(kind, id, query.lang);
     }
+    @RequirePermissions(publicationPermission(kind, 'update'), 'publication.validate')
     @Post(':id/validate')
     validate(
       @Param('id', new ParseUUIDPipe()) id: string,
@@ -41,11 +48,13 @@ function resourceController(kind: PublicationKind) {
         query.lang,
       );
     }
+    @RequirePermissions(publicationPermission(kind, 'read'), 'publication.read')
     @Get(':id/preview')
     @Header('Cache-Control', 'private, no-store')
     preview(@Param('id', new ParseUUIDPipe()) id: string) {
       return this.publication.preview(kind, id);
     }
+    @RequirePermissions(publicationPermission(kind, 'update'), 'publication.publish')
     publish(
       @Param('id', new ParseUUIDPipe()) id: string,
       @Req() request: { user: { _id: string } },
@@ -58,11 +67,18 @@ function resourceController(kind: PublicationKind) {
         query.lang,
       );
     }
+    @RequirePermissions(publicationPermission(kind, 'update'), 'publication.unpublish')
     unpublish(
       @Param('id', new ParseUUIDPipe()) id: string,
       @Req() request: { user: { _id: string } },
+      @Query() query: PublicationLanguageDto,
     ) {
-      return this.publication.unpublish(kind, id, String(request.user._id));
+      return this.publication.unpublish(
+        kind,
+        id,
+        String(request.user._id),
+        query.lang,
+      );
     }
   }
   if (kind !== 'dictation') {
@@ -101,3 +117,8 @@ export const DictationPublicationController = resourceController('dictation');
   ],
 })
 export class PublicationModule {}
+
+function publicationPermission(kind: PublicationKind, action: 'read'|'update'): AdminPermissionCode {
+  const domain={exams:'toeic',words:'vocabulary',lessons:'vocabulary',dictation:'dictation'} as const;
+  return (domain[kind]+'.'+action) as AdminPermissionCode;
+}

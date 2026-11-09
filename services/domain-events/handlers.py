@@ -19,11 +19,47 @@ def _uuid(value):
     return str(UUID(str(value)))
 
 
+def _audit_safe(value):
+    """Durable audit metadata never carries credentials, mail body or bearer links."""
+    if isinstance(value,dict):
+        blocked={'password','password_hash','passwordHash','rawToken','token','token_hash','tokenHash','accessToken','refreshToken','secret','html','link','activationUrl'}
+        return {key:_audit_safe(item) for key,item in value.items() if key not in blocked}
+    if isinstance(value,list):
+        return [_audit_safe(item) for item in value]
+    return value
+
+
 def apply_event(cur, consumer, event):
     event_type = event.get('type')
     payload = event.get('payload')
     if not isinstance(payload, dict):
         raise ValueError('Event payload must be an object')
+    if event_type in ('identity.admin.authorization_changed.v1','identity.admin.super_admin_bootstrapped.v1') and consumer == 'notification':
+        action=payload.get('action')
+        allowed={'SUPER_ADMIN_BOOTSTRAPPED','ADMIN_ROLES_CHANGED','ROLE_PERMISSIONS_CHANGED','ADMIN_STATUS_CHANGED','ADMIN_INVITED','ADMIN_PROFILE_CHANGED','ROLE_CREATED','ROLE_PROFILE_CHANGED','ADMIN_REINVITED','ADMIN_ACTIVATED'}
+        if action not in allowed:
+            raise ValueError('Unsupported admin audit action')
+        actor_id=_uuid(payload['actorId']) if payload.get('actorId') else None
+        target_id=_uuid(payload.get('targetId') or payload.get('targetAdminId'))
+        metadata=_audit_safe({'targetId':target_id,'before':payload.get('before'),'after':payload.get('after'),'actor':payload.get('actor')})
+        cur.execute("""INSERT INTO public.activitylogs(id,user_id,user_name,role,action,category,description,metadata,status)
+            VALUES(%s,%s,%s,%s,%s,%s::jsonb,%s,%s,'SUCCESS') ON CONFLICT(id) DO NOTHING""",
+            (_uuid(event['eventId']),actor_id,'Admin '+actor_id if actor_id else 'Explicit operator','ADMIN' if actor_id else 'OPERATOR',action,json.dumps('GENERAL'),'Admin IAM: '+action,json.dumps(metadata)))
+        return 'admin-iam-audit'
+    if event_type == 'identity.admin.activation_email_requested.v1' and consumer == 'notification':
+        token_id = _uuid(payload['tokenId'])
+        _uuid(payload['adminId'])
+        if set(payload) != {'tokenId', 'adminId', 'expiresAt'}:
+            raise ValueError('Unexpected activation event fields')
+        expiry = datetime.fromisoformat(payload['expiresAt'].replace('Z', '+00:00'))
+        if expiry.tzinfo is None:
+            raise ValueError('Activation expiry needs timezone')
+        cur.execute("""INSERT INTO public.notification_email_jobs(id,recipient,subject,html)
+            VALUES(%s,'identity-resolved','ADMIN_ACTIVATION_V1',%s) ON CONFLICT(id) DO NOTHING""",
+            (token_id,json.dumps({'tokenId':token_id})))
+        return 'admin-activation-email-job'
+    if isinstance(event_type,str) and event_type.startswith('identity.admin.activation_') and consumer == 'notification':
+        raise ValueError('Unsupported activation contract; do not silently ACK')
     if event_type in ('identity.user.created.v1', 'identity.user.updated.v1') and consumer in ('learning', 'arena', 'notification'):
         user_id = _uuid(payload['userId'])
         username = payload.get('username')

@@ -160,6 +160,55 @@ services:
         condition: service_healthy
     networks:
     - toeic-network
+  demo-seed:
+    image: vocalearn-clean-api:local
+    pull_policy: never
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      provenance: false
+      sbom: false
+    profiles: [demo]
+    restart: 'no'
+    command: [node, scripts/demo-seed/run.ts, seed]
+    environment:
+      NODE_ENV: production
+      PGHOST: postgres
+      PGPORT: '5432'
+      PG_IDENTITY_PASSWORD: ${PG_IDENTITY_PASSWORD:?Set service PG password}
+      PG_CONTENT_PASSWORD: ${PG_CONTENT_PASSWORD:?Set service PG password}
+      PG_ASSESSMENT_PASSWORD: ${PG_ASSESSMENT_PASSWORD:?Set service PG password}
+      PG_ARENA_PASSWORD: ${PG_ARENA_PASSWORD:?Set service PG password}
+      PG_LEARNING_PASSWORD: ${PG_LEARNING_PASSWORD:?Set service PG password}
+      PG_NOTIFICATION_PASSWORD: ${PG_NOTIFICATION_PASSWORD:?Set service PG password}
+      DEMO_SEED_ENABLED: ${DEMO_SEED_ENABLED:-false}
+      DEMO_ENVIRONMENT: ${DEMO_ENVIRONMENT:-local}
+      DEMO_SEED_RANDOM: ${DEMO_SEED_RANDOM:-2026}
+      DEMO_PROFILE: ${DEMO_PROFILE:-standard}
+      DEMO_USER_COUNT: ${DEMO_USER_COUNT:-}
+      DEMO_ARENA_MATCH_COUNT: ${DEMO_ARENA_MATCH_COUNT:-}
+      DEMO_HISTORY_DAYS: ${DEMO_HISTORY_DAYS:-90}
+      DEMO_LOGIN_COUNT: ${DEMO_LOGIN_COUNT:-0}
+      DEMO_LOGIN_PASSWORD: ${DEMO_LOGIN_PASSWORD:-}
+      DEMO_MAX_RECORDS: ${DEMO_MAX_RECORDS:-1000000}
+      DEMO_SIMULATOR_ENABLED: 'false'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      schema-migrate:
+        condition: service_completed_successfully
+      outbox-identity:
+        condition: service_started
+      domain-consumer-arena:
+        condition: service_started
+      domain-consumer-learning:
+        condition: service_started
+      domain-consumer-notification:
+        condition: service_started
+    volumes:
+    - ./scripts/demo-seed/reports:/app/scripts/demo-seed/reports
+    networks:
+    - toeic-network
   identity-service:
     image: vocalearn-clean-api:local
     pull_policy: never
@@ -216,6 +265,10 @@ services:
       CONTENT_INTERNAL_URL: http://content-service:5000
       ASSESSMENT_INTERNAL_URL: http://assessment-service:5000
       SERVICE_ROLE: identity
+      ADMIN_ACTIVATION_DELIVERY_ENABLED: ${ADMIN_ACTIVATION_DELIVERY_ENABLED:-false}
+      ADMIN_ACTIVATION_CONSUMER_READY: ${ADMIN_ACTIVATION_CONSUMER_READY:-false}
+      ADMIN_ACTIVATION_TOKEN_KEY: ${ADMIN_ACTIVATION_TOKEN_KEY:-}
+      ADMIN_WEB_URL: ${ADMIN_WEB_URL:-}
       NOTIFICATION_INTERNAL_URL: http://notification-service:5000
       LEARNING_INTERNAL_URL: http://learning-service:5000
       PGHOST: postgres
@@ -301,6 +354,7 @@ services:
       CONTENT_INTERNAL_URL: http://content-service:5000
       ASSESSMENT_INTERNAL_URL: http://assessment-service:5000
       SERVICE_ROLE: content
+      YOUTUBE_CAPTIONS_URL: ${YOUTUBE_CAPTIONS_URL:-http://youtube-captions:8004}
       NOTIFICATION_INTERNAL_URL: http://notification-service:5000
       LEARNING_INTERNAL_URL: http://learning-service:5000
       PGHOST: postgres
@@ -799,6 +853,8 @@ services:
       CONTENT_INTERNAL_URL: http://content-service:5000
       ASSESSMENT_INTERNAL_URL: http://assessment-service:5000
       SERVICE_ROLE: notification
+      ADMIN_ACTIVATION_EMAIL_WORKER_ENABLED: ${ADMIN_ACTIVATION_EMAIL_WORKER_ENABLED:-false}
+      IDENTITY_INTERNAL_URL: http://identity-service:5000
       NOTIFICATION_INTERNAL_URL: http://notification-service:5000
       LEARNING_INTERNAL_URL: http://learning-service:5000
       PGHOST: postgres
@@ -1397,6 +1453,17 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+    networks:
+    - toeic-network
+  youtube-captions:
+    image: vocalearn-youtube-captions:local
+    build:
+      context: .
+      dockerfile: services/youtube-captions/Dockerfile
+    restart: unless-stopped
+    environment:
+      CAPTION_OLLAMA_URL: ${CAPTION_OLLAMA_URL:-http://ollama:11434}
+      CAPTION_SENTENCE_MODEL: ${CAPTION_SENTENCE_MODEL:-qwen2.5:7b}
     networks:
     - toeic-network
 volumes:

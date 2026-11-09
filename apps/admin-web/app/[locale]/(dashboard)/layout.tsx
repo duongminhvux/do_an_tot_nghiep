@@ -3,6 +3,7 @@
 import React from 'react';
 import { usePathname, useParams } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
+import { AdminHeaderActions } from '@/components/admin-header-actions';
 import AuthGuard from '@/components/auth-guard';
 import { AppSidebar } from '@/components/app-sidebar';
 import {
@@ -23,6 +24,8 @@ export default function DashboardLayout({
   const { t } = useTranslation('common');
 
   const getPageTitle = () => {
+    if (pathname?.includes('/iam/admins')) return t('iam:admins');
+    if (pathname?.includes('/iam/roles')) return t('iam:roles');
     if (pathname?.includes('/media')) return locale === 'en' ? 'Media library' : 'Quản lý media';
     if (pathname?.includes('/arena')) return t('nav.arena');
     if (pathname?.includes('/games')) return t('nav.games');
@@ -69,12 +72,13 @@ export default function DashboardLayout({
         <AppSidebar />
         <SidebarInset className="bg-slate-50 min-h-dvh">
           {/* Top Bar with Sidebar Trigger - Sticky Fixed to top */}
-          <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-slate-200 bg-white/95 px-4 sm:px-6 backdrop-blur-md shadow-xs">
+          <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-slate-200 bg-white/95 px-3 sm:px-6 backdrop-blur-md">
             <SidebarTrigger className="-ml-1 text-slate-600 hover:text-slate-900 cursor-pointer" />
-            <Separator orientation="vertical" className="mr-2 h-4" />
-            <span className="min-w-0 truncate text-xs font-semibold text-slate-700">
+            <Separator orientation="vertical" className="hidden h-5 sm:block" />
+            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-800">
               {getPageTitle()}
             </span>
+            <AdminHeaderActions />
           </header>
 
           {/* Page Content */}

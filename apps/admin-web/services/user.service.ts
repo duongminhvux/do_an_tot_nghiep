@@ -1,4 +1,5 @@
 import apiClient from '@/lib/axios';
+import type {ExerciseModule,ExerciseRecord,ExercisePage,ExerciseDetail} from '@/types/user-exercises';
 import { ApiResponse } from '@/types/common';
 import {
   CreateUserPayload,
@@ -10,6 +11,8 @@ import {
 } from '@/types/user';
 
 export const userService = {
+  getExercises:async(userId:string,module:ExerciseModule,params:Record<string,string|number|undefined>)=>(await apiClient.get<ApiResponse<ExercisePage<ExerciseRecord>>>(`/admin/users/${userId}/exercises/${module}`,{params})).data.data,
+  getExerciseDetail:async(userId:string,module:ExerciseModule,id:string,page:number)=>(await apiClient.get<ApiResponse<ExerciseDetail>>(`/admin/users/${userId}/exercises/${module}/${id}`,{params:{page,limit:20}})).data.data,
   getAll: async (params?: QueryUserDto): Promise<UserListResponse> => {
     const res = await apiClient.get<ApiResponse<UserListResponse>>('/admin/users', { params });
     return (

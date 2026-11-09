@@ -10,6 +10,10 @@ import {
 import { ApiResponse } from '@/services/types';
 
 export const dictationService = {
+  recordHint: async (lessonId:string,segmentIndex:number) =>
+    (await apiClient.post(`/dictation/${lessonId}/progress/hint`,{segmentIndex})).data,
+  checkAnswer:async(lessonId:string,segmentIndex:number,answer:string)=>
+    (await apiClient.post<ApiResponse<DictationProgress & {grading:{score:number;isCorrect:boolean;errors:number;totalWords:number}}>>(`/dictation/${lessonId}/progress/check`,{segmentIndex,answer})).data,
 
   getTopics: async () => {
     const res = await apiClient.get<ApiResponse<DictationTopicSummary[]>>('/dictation/topics');
@@ -40,10 +44,10 @@ export const dictationService = {
     return res.data;
   },
 
-  recordAttempt: async (lessonId: string, segmentIndex: number, isCorrect: boolean) => {
+  recordAttempt: async (lessonId: string, segmentIndex: number, isCorrect: boolean,submittedText?:string) => {
     const res = await apiClient.post<ApiResponse<DictationProgress>>(
       `/dictation/${lessonId}/progress/attempt`,
-      { segmentIndex, isCorrect },
+      { segmentIndex, isCorrect,submittedText,eventId:crypto.randomUUID() },
     );
     return res.data;
   },
@@ -52,7 +56,7 @@ export const dictationService = {
   revealSegment: async (lessonId: string, segmentIndex: number) => {
     const res = await apiClient.post<ApiResponse<DictationProgress>>(
       `/dictation/${lessonId}/progress/reveal-segment`,
-      { segmentIndex },
+      { segmentIndex,eventId:crypto.randomUUID() },
     );
     return res.data;
   },
@@ -60,6 +64,7 @@ export const dictationService = {
   revealTranscript: async (lessonId: string) => {
     const res = await apiClient.post<ApiResponse<DictationProgress>>(
       `/dictation/${lessonId}/progress/reveal-transcript`,
+      {eventId:crypto.randomUUID()},
     );
     return res.data;
   },
@@ -67,13 +72,13 @@ export const dictationService = {
   recordReplay: async (lessonId: string, segmentIndex: number) => {
     const res = await apiClient.post<ApiResponse<DictationProgress>>(
       `/dictation/${lessonId}/progress/replay`,
-      { segmentIndex },
+      { segmentIndex,eventId:crypto.randomUUID() },
     );
     return res.data;
   },
 
   resetProgress: async (lessonId: string) => {
-    const res = await apiClient.post<ApiResponse<{ success: boolean }>>(`/dictation/${lessonId}/progress/reset`);
+    const res = await apiClient.post<ApiResponse<{ success: boolean }>>(`/dictation/${lessonId}/progress/reset`,{eventId:crypto.randomUUID()});
     return res.data;
   },
 };

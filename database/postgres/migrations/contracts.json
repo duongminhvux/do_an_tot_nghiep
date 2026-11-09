@@ -1,18 +1,18 @@
 {
   "identity": {
-    "version": "0009_numeric_collation",
-    "migrationsChecksum": "0ffe5b33ab317f1464feb52bb416e369e5e651d80bc6aaaa99ce4db38c57f377",
-    "fingerprint": "1379b6ee30b9e2e9e912941ef9bc609082ec43f8d902306e6e123a42798b273c"
+    "version": "0020_admin_activation_tokens",
+    "migrationsChecksum": "734254bde0dab27487e527b62ad8b4c89e307c04df92f0298e5742c7a52c1858",
+    "fingerprint": "23658fdf825f23fb5c658b364f920f247231ea8c41d2ea7b878b4f91051932bf"
   },
   "content": {
-    "version": "0018_content_relations",
-    "migrationsChecksum": "0b3e3cbee4bbc3c84fb80f600c996f78ab41119f1a19a9fcefa46772c6e8e197",
-    "fingerprint": "0965a0f8008301591d75716e2a10ca0f669103263badb614abcf8e76ea74aa85"
+    "version": "0022_content_quality_recheck",
+    "migrationsChecksum": "d93c35b05c99a7c989fc4dce57cd286aa9cb8b3d264256e199c5700c9385057b",
+    "fingerprint": "14b002ded1d956b2b3405752b2fa837a9831ab20defda232f4aec068de44f5db"
   },
   "assessment": {
-    "version": "0018_attempt_exam_snapshot",
-    "migrationsChecksum": "bd74ac39d4334a7e7093a6c5f3094fe16b122e6d06cd7ccba6903b98ba4cb2de",
-    "fingerprint": "1b54b68dd887ecf526729ff930d4135dbd23d76cdcc08d7437ade667b75db91b"
+    "version": "0020_exam_group_publication",
+    "migrationsChecksum": "20bdc0a51505cec1fa7537ade25824e19f8d32abf5c65d54c4f83b70b95c829d",
+    "fingerprint": "e38faa0b8c4eeaf50ba5b49ebaedaeff30ff03699f3201ab6298819d57d567c1"
   },
   "arena": {
     "version": "0018_match_state_columns",

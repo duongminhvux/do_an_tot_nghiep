@@ -1,4 +1,6 @@
 "use client";
+import { ImageCropperProvider } from '@/components/image-cropper/image-cropper-provider';
+import { ActivationTokenProvider } from "@/components/iam/activation-token-context";
 import type { SiteSettings } from "@repo/shared-types/site-settings";
 import { SiteSettingsProvider } from "./site-settings-provider";
 
@@ -18,7 +20,9 @@ export function AppProviders({
     <ReduxProvider>
       <QueryProvider>
         <SiteSettingsProvider initialSettings={siteSettings}>
-          <I18nProvider>{children}</I18nProvider>
+          <ActivationTokenProvider>
+            <I18nProvider><ImageCropperProvider>{children}</ImageCropperProvider></I18nProvider>
+          </ActivationTokenProvider>
         </SiteSettingsProvider>
       </QueryProvider>
     </ReduxProvider>

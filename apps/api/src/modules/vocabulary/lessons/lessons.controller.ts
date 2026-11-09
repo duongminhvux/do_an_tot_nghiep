@@ -1,3 +1,4 @@
+import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator.js';
 import { Body,Controller,Delete,Get,Param,Patch,Post,Query,UseGuards } from '@nestjs/common';
 import { Roles } from '../../auth/decorators/roles.decorator.js';
 import { RolesGuard } from '../../auth/guards/roles.guard.js';
@@ -11,6 +12,7 @@ import { LessonsService } from './lessons.service.js';
 export class LessonsController {
   constructor(private readonly lessonsService: LessonsService) {}
 
+  @RequirePermissions('vocabulary.create')
   @Roles('ADMIN')
   @Post()
   createLesson(@Body() createLessonDto: CreateLessonDto) {
@@ -35,12 +37,14 @@ export class LessonsController {
     return this.lessonsService.findOneLesson(id);
   }
 
+  @RequirePermissions('vocabulary.update')
   @Roles('ADMIN')
   @Patch(':id')
   updateLesson(@Param('id') id: string, @Body() updateLessonDto: UpdateLessonDto) {
     return this.lessonsService.updateLesson(id, updateLessonDto);
   }
 
+  @RequirePermissions('vocabulary.delete')
   @Roles('ADMIN')
   @Delete(':id')
   removeLesson(@Param('id') id: string) {
@@ -54,6 +58,7 @@ export class LessonsController {
   }
 
   // Lesson Words Management
+  @RequirePermissions('vocabulary.update')
   @Roles('ADMIN')
   @Post(':id/words')
   addWordsToLesson(
@@ -75,6 +80,7 @@ export class LessonsController {
     return this.lessonsService.getWordsInLesson(id, sectionId);
   }
 
+  @RequirePermissions('vocabulary.update')
   @Roles('ADMIN')
   @Delete(':id/words/:wordId')
   removeWordFromLesson(

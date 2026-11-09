@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { collectionService } from '@/services/vocabulary.service';
+import { useImageCropper } from '@/components/image-cropper/image-cropper-provider';
+import { imageCropPresets } from '@/components/image-cropper/image-crop-presets';
 import { uploadService } from '@/services/upload.service';
 import { CollectionItem, UpdateCollectionDto } from '@/types/vocabulary';
 import {
@@ -110,14 +112,7 @@ export function EditCollectionDialog({
       return collectionService.update(collection._id, data);
     },
     onSuccess: () => {
-      // If collection originally had an image and it was replaced or removed, delete the old image from managed media
-      if (
-        initialCoverUrl.current &&
-        initialCoverUrl.current !== coverUrl &&
-        !initialCoverUrl.current.startsWith('data:')
-      ) {
-        uploadService.deleteFile(initialCoverUrl.current);
-      }
+      // Never delete the persisted source: another record may share it.
       // New image is officially saved, don't delete it
       tempUploadedUrls.current.clear();
       initialCoverUrl.current = coverUrl;
@@ -133,14 +128,18 @@ export function EditCollectionDialog({
     },
   });
 
+  const cropImage = useImageCropper();
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    let file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
 
     try {
       setIsUploading(true);
       setErrorMessage(null);
-      const res = await uploadService.uploadFile(file);
+      const cropped = await cropImage(file, imageCropPresets.collection);
+      if (!cropped) return;
+      const res = await uploadService.uploadFile(cropped);
       if (res?.url) {
         // If user already uploaded another temp image in this session, delete it immediately from managed media!
         tempUploadedUrls.current.forEach((prevUrl) => {

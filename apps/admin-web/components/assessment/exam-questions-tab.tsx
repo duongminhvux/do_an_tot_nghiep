@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import { Pagination } from '@/components/ui/pagination';
 
 import React from 'react';
@@ -241,62 +241,69 @@ export function ExamQuestionsTab({
   }, [displayItems, currentPage, pageSize]);
 
   return (
-    <>
-      {/* Part Filter Pills Row */}
-      <div className="bg-white rounded border border-slate-200/80 p-3 sm:p-4 shadow-xs">
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none text-xs">
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedPartPill('ALL');
-              setCurrentPage(1);
-            }}
-            className={`px-3 py-1.5 rounded font-semibold transition-all cursor-pointer shrink-0 ${
+    <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs overflow-hidden">
+      {/* 1. Integrated Part Segment Tabs */}
+      <div className="bg-slate-50/70 border-b border-slate-200/80 px-3 sm:px-4 py-2 flex items-center gap-1.5 overflow-x-auto scrollbar-none text-xs">
+        <button
+          type="button"
+          onClick={() => {
+            setSelectedPartPill('ALL');
+            setCurrentPage(1);
+          }}
+          className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer shrink-0 text-xs flex items-center gap-1.5 ${
+            selectedPartPill === 'ALL'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+          }`}
+        >
+          <span>{t('detailPage.all')}</span>
+          <span
+            className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
               selectedPartPill === 'ALL'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                ? 'bg-white/20 text-white'
+                : 'bg-slate-200 text-slate-700'
             }`}
           >
-            {t('detailPage.all')} ({questionsList.length})
-          </button>
+            {questionsList.length}
+          </span>
+        </button>
 
-          {allowedParts.map((partNum) => {
-            const count = partCounts[partNum] ?? 0;
-            const isSelected = selectedPartPill === partNum;
-            return (
-              <button
-                key={partNum}
-                type="button"
-                onClick={() => {
-                  setSelectedPartPill(partNum);
-                  setCurrentPage(1);
-                }}
-                className={`px-3 py-1.5 rounded font-semibold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 ${
+        <div className="h-4 w-px bg-slate-300 mx-1 shrink-0" />
+
+        {allowedParts.map((partNum) => {
+          const count = partCounts[partNum] ?? 0;
+          const isSelected = selectedPartPill === partNum;
+          return (
+            <button
+              key={partNum}
+              type="button"
+              onClick={() => {
+                setSelectedPartPill(partNum);
+                setCurrentPage(1);
+              }}
+              className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 text-xs ${
+                isSelected
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+              }`}
+            >
+              <span>Part {partNum}</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
                   isSelected
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                    ? 'bg-white/20 text-white'
+                    : 'bg-slate-200 text-slate-700'
                 }`}
               >
-                <span>Part {partNum}</span>
-                <span
-                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                    isSelected
-                      ? 'bg-white/20 text-white'
-                      : 'bg-slate-200/80 text-slate-700'
-                  }`}
-                >
-                  {count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Questions Table Card */}
-      <div className="bg-white rounded border border-slate-200/80 shadow-xs overflow-hidden">
-        {/* Table Filters & Search Row */}
-        <div className="p-4 border-b border-slate-100 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 text-xs">
+      {/* 2. Table Filters & Search Row */}
+      <div className="p-3.5 sm:p-4 border-b border-slate-100 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 text-xs">
           {/* Search Input */}
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
@@ -400,14 +407,6 @@ export function ExamQuestionsTab({
               </button>
             )}
 
-            {/* Quick Add Question Button */}
-            <Link
-              href={`/${locale}/assessment/${examId}/questions/create`}
-              className="h-8 px-3 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-1.5 shadow-2xs transition-colors shrink-0"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>{t('detailPage.addQuestion')}</span>
-            </Link>
           </div>
         </div>
 
@@ -908,6 +907,5 @@ export function ExamQuestionsTab({
           <div className="border-t border-slate-100 px-4"><Pagination currentPage={currentPage} totalPages={computedTotalPages} totalItems={totalDisplayItems} pageSize={pageSize} itemLabel={`${t('pagination.items')} (${totalFilteredQuestions} ${t('pagination.questions')})`} onPageChange={setCurrentPage} onPageSizeChange={value => { setPageSize(value); setCurrentPage(1); }} pageSizeOptions={[10,20,50]} /></div>
         )}
       </div>
-    </>
   );
 }

@@ -14,6 +14,7 @@ import {
   CirclePlay,
 } from 'lucide-react';
 import { dictationService } from '@/services/dictation.service';
+import {YoutubeLessonCreate} from '@/components/dictation/youtube-lesson-create';
 import {
   DictationAudioSource,
   DictationLevel,
@@ -99,7 +100,9 @@ export default function CreateDictationPage() {
         : await dictationService.analyzeAudio(created._id, audioFile!);
       const processed = unwrap<DictationLesson>(processedRes);
 
-      if (publishAfter) await dictationService.publish(processed._id);
+      // "Show" is validated by the server. If the lesson is not complete it
+      // stays hidden; the detail page lists exactly what blocks it.
+      if (publishAfter) await dictationService.publish(processed._id).catch(() => undefined);
       return processed;
     },
     onSuccess: (lesson) => router.push(`/${locale}/dictation/${lesson._id}`),
@@ -133,6 +136,7 @@ export default function CreateDictationPage() {
       (audioSource === 'TTS' ? sourceText.trim() : audioFile),
   );
 
+  if(audioSource==='YOUTUBE')return <YoutubeLessonCreate onBack={()=>setAudioSource('TTS')}/>;
   return (
     <div className="min-h-screen bg-slate-50/50 p-4 sm:p-6 md:p-8">
       <div className="w-full space-y-6">
@@ -142,7 +146,7 @@ export default function CreateDictationPage() {
           </Link>
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Tạo bài Dictation</h1>
-            <p className="mt-1 text-sm text-slate-500">Tạo audio bằng Kokoro hoặc upload audio để Faster Whisper tự transcript + tạo timestamp từng câu.</p>
+            <p className="mt-1 text-sm text-slate-500">Chọn nguồn bài nghe: YouTube, file audio có sẵn hoặc giọng đọc tổng hợp.</p>
           </div>
         </div>
 
@@ -190,6 +194,7 @@ export default function CreateDictationPage() {
             <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
               <h2 className="text-sm font-bold text-slate-900">Nguồn audio</h2>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <button type="button" onClick={()=>setAudioSource('YOUTUBE')} className="rounded-xl border border-red-200 bg-red-50 p-4 text-left sm:col-span-2"><div className="text-sm font-bold">YouTube + phụ đề</div><p className="mt-2 text-xs text-slate-600">Dán link video, lấy phụ đề và tạo bài nghe chép chính tả theo từng đoạn.</p></button>
                 <button type="button" onClick={() => { setAudioSource('TTS'); setPublishAfter(true); }} className={`rounded-xl border p-4 text-left transition ${audioSource === 'TTS' ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'}`}>
                   <div className="flex items-center gap-2 text-sm font-bold text-slate-800"><AudioLines className="h-4 w-4 text-blue-600" /> Kokoro TTS</div>
                   <p className="mt-2 text-xs leading-5 text-slate-500">Admin nhập transcript, backend generate từng segment trong memory rồi ghép thành một WAV duy nhất.</p>
@@ -261,7 +266,7 @@ export default function CreateDictationPage() {
             </section>
 
             <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-              <label className="flex cursor-pointer items-start gap-3"><input type="checkbox" checked={publishAfter} onChange={(e) => setPublishAfter(e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-slate-300" /><span><span className="block text-xs font-bold text-slate-700">Publish sau khi xử lý xong</span><span className="mt-1 block text-xs leading-5 text-slate-400">Với audio upload, nên bỏ chọn nếu muốn review transcript/timestamp trước.</span></span></label>
+              <label className="flex cursor-pointer items-start gap-3"><input type="checkbox" checked={publishAfter} onChange={(e) => setPublishAfter(e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-slate-300" /><span><span className="block text-xs font-bold text-slate-700">Hiển thị cho người học khi xử lý xong</span><span className="mt-1 block text-xs leading-5 text-slate-400">Chỉ hiển thị nếu bài đầy đủ và audio xử lý thành công; nếu không, bài được lưu ở trạng thái ẩn. Với audio upload, nên bỏ chọn để rà transcript/timestamp trước.</span></span></label>
 
               {error && <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</div>}
 

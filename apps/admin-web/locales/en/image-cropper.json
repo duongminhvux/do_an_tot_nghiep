@@ -1,0 +1,23 @@
+{
+  "title": "Crop image",
+  "description": "Drag the image or use the controls. Nothing uploads until you confirm.",
+  "preview": "Crop preview; drag or use arrow keys to reposition",
+  "original": "Original image",
+  "output": "Output",
+  "small": "The selected area is smaller than the recommended size. We will keep its resolution without enlarging it.",
+  "zoom": "Zoom",
+  "x": "Horizontal position",
+  "y": "Vertical position",
+  "reset": "Reset",
+  "rotate": "Rotate 90°",
+  "choose": "Choose another",
+  "cancel": "Cancel",
+  "confirm": "Use cropped image",
+  "loading": "Loading image…",
+  "fileSize": "The image is empty or exceeds the upload size limit.",
+  "fileType": "Choose a JPEG, PNG or WebP image. SVG, GIF and ICO keep their original upload flow.",
+  "decode": "This image cannot be decoded. Choose another file.",
+  "dimensions": "Image exceeds the safe limit: 40 megapixels or 16,384 pixels per edge.",
+  "canvas": "Could not prepare the image. Try again or choose another.",
+  "animated": "Animated images must be uploaded in their original format."
+}

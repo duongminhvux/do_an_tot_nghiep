@@ -1,3 +1,4 @@
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator.js';
 import {
 Body,
 Controller,
@@ -41,14 +42,17 @@ export class AdminSiteSettingsController {
   constructor(
     @Inject(SiteSettingsService) private readonly settings: SiteSettingsService,
   ) {}
+  @RequirePermissions('settings.recommendations.read')
   @Get('recommendations') readRecommendations() {
     return this.settings.readRecommendations();
   }
+  @RequirePermissions('settings.recommendations.update')
   @Put('recommendations') saveRecommendations(
     @Body() input: RecommendationRulesDto,
   ) {
     return this.settings.saveRecommendations(input);
   }
+  @RequirePermissions('settings.recommendations.read')
   @Post('recommendations/preview') previewRecommendations(
     @Body() input: RecommendationRulesDto,
     @Query() query: RecommendationPreviewQueryDto,
@@ -59,18 +63,23 @@ export class AdminSiteSettingsController {
       query.lang,
     );
   }
+  @RequirePermissions('settings.read')
   @Get() read() {
     return this.settings.read();
   }
+  @RequirePermissions('settings.landing.read')
   @Get('landing') readLanding() {
     return this.settings.readLanding();
   }
+  @RequirePermissions('settings.landing.update')
   @Put('landing') saveLanding(@Body() input: UpdateLandingPageSettingsDto) {
     return this.settings.saveLanding(input);
   }
+  @RequirePermissions('settings.read')
   @Get('timezones') timezones(@Query('lang') lang?: string) {
     return this.settings.timezones(lang);
   }
+  @RequirePermissions('settings.update')
   @Put() save(@Body() input: UpdateSiteSettingsDto) {
     return this.settings.save(input);
   }

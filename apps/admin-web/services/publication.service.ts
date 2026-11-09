@@ -6,6 +6,7 @@ import type {
 export interface PublicationPreview {
   kind: PublicationKind;
   title: string;
+  level?:string;
   questions?: {
     _id: string;
     part: number;
@@ -16,6 +17,7 @@ export interface PublicationPreview {
     passages: { content?: string; imageUrl?: string; audioUrl?: string }[];
   }[];
   fullAudioUrl?: string;
+  youtubeVideoId?: string;
   segments?: { id: string; text: string; startMs: number; endMs: number }[];
   parts?: {
     partOfSpeech: string;
@@ -25,8 +27,8 @@ export interface PublicationPreview {
   words?: { id: string; word: string; available: boolean }[];
 }
 export const publicationService = {
-  async info(kind: PublicationKind, id: string): Promise<PublicationInfo> {
-    return (await apiClient.get(`/admin/${kind}/${id}/publication`)).data.data;
+  async info(kind: PublicationKind, id: string, lang?: string): Promise<PublicationInfo> {
+    return (await apiClient.get(`/admin/${kind}/${id}/publication`, { params: lang ? { lang } : undefined })).data.data;
   },
   async action(
     kind: PublicationKind,
@@ -41,7 +43,7 @@ export const publicationService = {
     ).data.data;
     // Dictation keeps the legacy lesson response for publish/unpublish.
     return kind === "dictation" && action !== "validate"
-      ? this.info(kind, id)
+      ? this.info(kind, id, lang)
       : result;
   },
   async preview(

@@ -27,12 +27,14 @@ type ItemRow = MediaLibraryItem & {
   audio?: Record<string, string>;
   image_url?: string;
   settings?: Record<string, unknown>;
+  avatar_url?: string;
 };
 const owners = {
   dictation: 'content',
   vocab: 'content',
   toeic: 'assessment',
   games: 'learning',
+  users: 'identity',
 };
 
 /** Only explicit media fields of the selected business resource are exposed. No bucket scan or payload fallback. */
@@ -90,8 +92,17 @@ export class MediaLibraryService {
           vocab: 'lesson',
           toeic: 'exam',
           games: 'game',
+          users: 'user',
         } as const
       )[category];
+    if (category === 'users' && kind === 'user')
+      return {
+        kind,
+        available: literal("r.is_deleted IS NOT TRUE AND NULLIF(btrim(r.avatar_url),'') IS NOT NULL"),
+        source: literal(`SELECT r.id,COALESCE(NULLIF(btrim(r.username),''),r.email) AS title,
+          r.email AS subtitle,CASE WHEN r.is_banned IS TRUE THEN 'BANNED' ELSE 'ACTIVE' END AS status,
+          r.avatar_url FROM users r`),
+      };
     if (category === 'dictation' && kind === 'lesson')
       return {
         kind,
@@ -149,7 +160,18 @@ export class MediaLibraryService {
       subtitle: row.subtitle,
       status: row.status,
       kind,
+      ...(kind === 'user' ? { previewUrl: this.publicUrl(row.avatar_url) ?? undefined } : {}),
     };
+  }
+  private publicUrl(value: unknown): string | null {
+    const url = mediaUrl(value);
+    if (!url || !url.startsWith('/')) return url;
+    const frontend = process.env.FRONTEND_URL || 'http://localhost:3000';
+    if (url.startsWith('/media/')) {
+      const base = (process.env.MEDIA_PUBLIC_BASE_URL || 'http://localhost:5000/media').replace(/\/$/, '');
+      return new URL(base + url.slice('/media'.length), frontend).href;
+    }
+    return new URL(url, frontend).href;
   }
   async list(
     category: MediaCategory,
@@ -163,7 +185,7 @@ export class MediaLibraryService {
     const [items, count] = await Promise.all([
       rows<ItemRow>(
         this.db,
-        sql`${base} SELECT id,title,subtitle,status FROM resources WHERE ${filter} ORDER BY lower(title),id LIMIT ${query.pageSize} OFFSET ${(query.page - 1) * query.pageSize}`,
+        sql`${base} SELECT id,title,subtitle,status${kind === 'user' ? literal(',avatar_url') : literal('')} FROM resources WHERE ${filter} ORDER BY lower(title),id LIMIT ${query.pageSize} OFFSET ${(query.page - 1) * query.pageSize}`,
       ),
       first<{ total: number }>(
         this.db,
@@ -196,7 +218,9 @@ export class MediaLibraryService {
       vi: string,
       en: string,
     ) => addMedia(assets, url, type, sourceId, vi, en);
-    if (category === 'dictation') {
+    if (category === 'users') {
+      add(row.avatar_url, 'image', id, `Ảnh đại diện: ${row.title}`, `Avatar: ${row.title}`);
+    } else if (category === 'dictation') {
       add(row.thumbnail_url, 'image', id, 'Ảnh bài nghe', 'Lesson image');
       add(
         row.full_audio_url,
@@ -300,16 +324,8 @@ export class MediaLibraryService {
     }
     const normalized: MediaReference[] = [];
     for (const asset of assets) {
-      let url = asset.url;
-      if (url.startsWith('/')) {
-        const frontend = process.env.FRONTEND_URL || 'http://localhost:3000';
-        if (url.startsWith('/media/')) {
-          const base = (
-            process.env.MEDIA_PUBLIC_BASE_URL || 'http://localhost:5000/media'
-          ).replace(/\/$/, '');
-          url = new URL(base + url.slice('/media'.length), frontend).href;
-        } else url = new URL(url, frontend).href;
-      }
+      const url = this.publicUrl(asset.url);
+      if (!url) continue;
       for (const usage of asset.usages)
         addMedia(
           normalized,

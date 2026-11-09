@@ -7,6 +7,7 @@ export interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   isInitialized: boolean;
+  permissionsVerified: boolean;
 }
 
 const initialState: AuthState = {
@@ -15,6 +16,7 @@ const initialState: AuthState = {
   isAuthenticated: false,
   isLoading: false,
   isInitialized: false,
+  permissionsVerified: false,
 };
 
 const authSlice = createSlice({
@@ -25,6 +27,7 @@ const authSlice = createSlice({
       state,
       action: PayloadAction<{ user: UserProfile; accessToken: string; refreshToken?: string }>
     ) => {
+      state.permissionsVerified = false;
       state.user = action.payload.user;
       state.accessToken = action.payload.accessToken;
       state.isAuthenticated = true;
@@ -46,16 +49,19 @@ const authSlice = createSlice({
       }
     },
     setUser: (state, action: PayloadAction<UserProfile>) => {
+      state.permissionsVerified = true;
       state.user = action.payload;
       if (typeof window !== 'undefined') {
         localStorage.setItem('adminUser', JSON.stringify(action.payload));
       }
     },
     logout: (state) => {
+      state.permissionsVerified = false;
       state.user = null;
       state.accessToken = null;
       state.isAuthenticated = false;
       state.isLoading = false;
+      state.permissionsVerified = false;
       state.isInitialized = true;
       if (typeof window !== 'undefined') {
         localStorage.removeItem('adminAccessToken');
@@ -68,6 +74,7 @@ const authSlice = createSlice({
       state.isLoading = action.payload;
     },
     initializeAuth: (state) => {
+      state.permissionsVerified = false;
       state.isInitialized = true;
       if (typeof window !== 'undefined') {
         const token = localStorage.getItem('adminAccessToken');

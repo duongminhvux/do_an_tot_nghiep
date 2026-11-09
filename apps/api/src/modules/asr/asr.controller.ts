@@ -1,3 +1,4 @@
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator.js';
 import { Get,Param,Post,ServiceUnavailableException,UploadedFile,UseInterceptors } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -24,6 +25,7 @@ export class AsrController {
     }
   }
 
+  @RequirePermissions('asr.create')
   @Post('jobs')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 100 * 1024 * 1024 } }))
   async enqueue(@UploadedFile() file: Express.Multer.File) {
@@ -35,12 +37,14 @@ export class AsrController {
     return this.jobRequest('/jobs', { method: 'POST', body: form });
   }
 
+  @RequirePermissions('asr.read')
   @Get('jobs/:id')
   status(@Param('id') id: string) {
     if (!/^[0-9a-f-]{36}$/i.test(id)) throw new ServiceUnavailableException('Invalid job ID');
     return this.jobRequest(`/jobs/${id}`, { method: 'GET' });
   }
 
+  @RequirePermissions('asr.read')
   @Get('health')
   health() {
     return this.asrService.health();

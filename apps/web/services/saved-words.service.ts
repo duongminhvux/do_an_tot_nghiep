@@ -14,6 +14,10 @@ export interface SavedWordsListResponse {
 }
 
 export const savedWordsService = {
+  pronunciation:async(word:string,accent:string)=>(await apiClient.get<ApiResponse<{audio:string}>>("/learning/saved-words/pronunciation",{params:{word,accent}})).data.data.audio,
+  savePersonal: async(word:string,note?:string,details?:{ipa?:string;translation?:string})=>(await apiClient.post<ApiResponse<SavedWordWordDetail>>("/learning/saved-words/personal",{word,note,...details})).data,
+  lookup: async (word:string) =>
+    (await apiClient.get<ApiResponse<(SavedWordWordDetail & {saved:boolean}) | null>>("/learning/saved-words/lookup",{params:{word}})).data,
   /**
    * Lấy danh sách từ đã lưu phân trang, tìm kiếm, lọc
    */

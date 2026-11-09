@@ -136,9 +136,10 @@ export function ContinueLearning({ data }: { data: HomeData }) {
             detail: vocab.currentLesson.collectionName,
             progress: vocab.currentLesson.progress,
             cta: t("modules.vocabulary.lesson_cta"),
-            href: vocab.currentLesson.collectionSlug
-              ? `/vocabulary/${vocab.currentLesson.collectionSlug}/lessons/${vocab.currentLesson.slug}`
-              : "/vocabulary",
+            href:
+              vocab.currentLesson.collectionSlug && vocab.currentLesson.slug
+                ? `/vocabulary/collection/${encodeURIComponent(vocab.currentLesson.collectionSlug)}/lesson/${encodeURIComponent(vocab.currentLesson.slug)}`
+                : "/vocabulary",
           }
         : {
             headline: t("modules.vocabulary.empty"),

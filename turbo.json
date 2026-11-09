@@ -34,5 +34,8 @@
   },
   "globalDependencies": [
     ".env"
+  ],
+  "globalEnv": [
+    "IMPORT_EXPORT_QA"
   ]
 }

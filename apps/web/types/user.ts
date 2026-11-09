@@ -1,5 +1,7 @@
 export interface UpdateProfileDto {
   username?: string;
-  avatarUrl?: string;
+  fullName?: string;
+  phone?: string;
   bio?: string;
+  avatarUrl?: string;
 }

@@ -18,6 +18,19 @@ def open_db():
         user=os.environ['PGUSER'], password=os.environ['PGPASSWORD'])
 
 
+def receive_event(db, consumer, event):
+    """Transaction boundary shared by broker callback and integration tests."""
+    event_id = str(uuid.UUID(event['eventId']))
+    with db.transaction():
+        with db.cursor() as cur:
+            cur.execute("""INSERT INTO public.inbox_events(consumer_name,event_id,event_type)
+                VALUES(%s,%s,%s) ON CONFLICT DO NOTHING RETURNING event_id""",
+                (consumer,event_id,event.get('type')))
+            if cur.fetchone():
+                return apply_event(cur,consumer,event)
+    return None
+
+
 def main():
     while True:
         rabbit = None; db = None
@@ -45,15 +58,7 @@ def main():
                     if not isinstance(event, dict):
                         raise ValueError('Expected event object')
                     event_id = str(uuid.UUID(event['eventId']))
-                    with db.transaction():
-                        with db.cursor() as cur:
-                            cur.execute('''INSERT INTO public.inbox_events(consumer_name,event_id,event_type)
-                                VALUES(%s,%s,%s) ON CONFLICT DO NOTHING RETURNING event_id''',
-                                (NAME,event_id,event.get('type')))
-                            if cur.fetchone():
-                                effect = apply_event(cur, NAME, event)
-                                if effect:
-                                    print('Applied event', NAME, event.get('type'), event_id, effect, flush=True)
+                    receive_event(db, NAME, event)
                     channel.basic_ack(delivery.delivery_tag)
                 except Exception as exc:
                     # psycopg transaction context rolls back both inbox receipt

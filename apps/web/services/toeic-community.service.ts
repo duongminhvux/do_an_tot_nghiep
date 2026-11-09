@@ -6,6 +6,7 @@ export interface ExamComment {
   replyToId: string | null;
   body: string | null;
   deleted: boolean;
+  isPinned?: boolean;
   createdAt: string;
   authorId: string | null;
   username: string | null;

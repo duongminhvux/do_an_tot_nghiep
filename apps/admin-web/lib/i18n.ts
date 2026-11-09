@@ -1,3 +1,7 @@
+import viImageCropper from '../locales/vi/image-cropper.json';
+import enImageCropper from '../locales/en/image-cropper.json';
+import viIam from '../locales/vi/iam.json';
+import enIam from '../locales/en/iam.json';
 import viSiteSettings from '../locales/vi/site-settings.json';
 import enSiteSettings from '../locales/en/site-settings.json';
 import viArena from '../locales/vi/arena.json';
@@ -23,8 +27,10 @@ import enUsers from '../locales/en/users.json';
 import enAssessment from '../locales/en/assessment.json';
 import enActivityLog from '../locales/en/activity-log.json';
 
-const resources = {
+export const resources = {
   vi: {
+    imageCropper: viImageCropper,
+    iam: viIam,
     common: viCommon,
     games: viGames,
     arena: viArena,
@@ -37,6 +43,8 @@ const resources = {
     activityLog: viActivityLog,
   },
   en: {
+    imageCropper: enImageCropper,
+    iam: enIam,
     common: enCommon,
     games: enGames,
     arena: enArena,

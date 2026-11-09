@@ -17,7 +17,14 @@
     "test:docker-devices": "node --test tests/docker-devices.mjs && python -m unittest discover -s services/tts-service -p test_install_torch.py",
     "test:docker-compose-devices": "node --test tests/docker-compose-devices.mjs",
     "audit:postgres": "python scripts/audit-postgres.py",
-    "audit:postgres-native": "node scripts/audit-postgres-native.cjs"
+    "audit:postgres-native": "node scripts/audit-postgres-native.cjs",
+    "seed:demo": "node scripts/demo-seed/run.ts seed",
+    "seed:demo:plan": "node scripts/demo-seed/run.ts plan",
+    "seed:demo:verify": "node scripts/demo-seed/run.ts verify",
+    "seed:demo:reset": "node scripts/demo-seed/run.ts reset",
+    "seed:demo:content": "node scripts/demo-seed/run.ts content",
+    "seed:demo:api": "node scripts/demo-seed/run.ts api",
+    "test:demo": "node --test scripts/demo-seed/*.test.ts"
   },
   "devDependencies": {
     "prettier": "3.9.6",

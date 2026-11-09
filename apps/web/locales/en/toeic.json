@@ -191,7 +191,26 @@
     "btn_view_result": "View Result",
     "new_badge": "New",
     "questions_count": "{{count}} questions",
-    "mins_duration": "{{count}} mins"
+    "mins_duration": "{{count}} mins",
+    "hero_kicker": "TOEIC test set",
+    "exam_count": "{{count}} tests",
+    "total_questions": "Total questions",
+    "progress_title": "Your progress",
+    "progress_summary": "{{done}}/{{total}} tests completed",
+    "progress_in_progress": "{{count}} in progress",
+    "next_up": "Next test",
+    "all_done": "You have completed every test in this set",
+    "filter_all": "All",
+    "sort_default": "Test order",
+    "no_match": "No test matches these filters.",
+    "clear_filters": "Clear filters",
+    "browse_other_groups": "Browse other test sets",
+    "test_label": "Test",
+    "attempts_count": "{{count}} attempts",
+    "answered": "{{answered}}/{{total}} answered",
+    "progress_error": "Could not load your progress. You can still open the tests.",
+    "progress_unavailable": "Progress unavailable",
+    "no_attempt_yet": "No attempt yet"
   },
   "exam_detail": {
     "breadcrumb_exams": "Tests",
@@ -544,6 +563,7 @@
     "score_band_low": "Below average (< 450)"
   },
   "community": {
+    "pinned": "Pinned",
     "rankingTitle": "Test leaderboard",
     "rankingRule": "Each learner's best submitted TEST covering all questions in the current exam version. Ranked by correct answers, then time spent. Practice and partial tests are excluded. TOEIC scores shown are estimates.",
     "participants": "{{count}} ranked learners",

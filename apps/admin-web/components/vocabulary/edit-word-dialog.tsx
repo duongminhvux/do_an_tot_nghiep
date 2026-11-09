@@ -3,7 +3,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AudioLines, Link2, Loader2, Upload, Volume2 } from 'lucide-react';
-import { PublicationBar } from '@/components/publication/publication-controls';
+import { VisibilityBar } from '@/components/publication/publication-controls';
+import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { wordService } from '@/services/vocabulary.service';
 import { audioService } from '@/services/audio.service';
@@ -23,6 +24,7 @@ const STATUS_TONE: Record<string, string> = {
 };
 
 export function EditWordDialog({ wordId, open, onOpenChange }: Props) {
+  const { t: publicationT } = useTranslation('common');
   const queryClient = useQueryClient();
   const [form, setForm] = useState<WordFormState>(emptyWordForm);
   const [error, setError] = useState('');
@@ -205,7 +207,7 @@ export function EditWordDialog({ wordId, open, onOpenChange }: Props) {
             }}
           >
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-5 py-4">
-              {wordId && <PublicationBar compact kind="words" id={wordId} version={detail?.updatedAt} dirty={dirty || audioBusy !== null || updateMutation.isPending} />}
+              {wordId && <VisibilityBar kind="words" id={wordId} version={detail?.updatedAt} blockedReason={dirty || audioBusy !== null || updateMutation.isPending ? publicationT('publication.unsaved') : undefined} />}
               {error && <div role="alert" className="rounded-[4px] border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</div>}
               <WordFormFields
                 value={form}

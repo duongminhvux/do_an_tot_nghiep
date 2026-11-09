@@ -38,8 +38,11 @@ export interface Attempt {
     expiresAt?: Date;
     timeLimitSeconds?: number;
     /** Active-time clock, kept in payload; see attempt-clock.ts. */
+    /** @jsonbPayload Active-time clock stored in attempts.payload. */
     activeSeconds?: number;
+    /** @jsonbPayload Active-time clock stored in attempts.payload. */
     activeSince?: Date | string | null;
+    /** @jsonbPayload Active-time clock stored in attempts.payload. */
     lastSeenAt?: Date | string | null;
     submittedAt?: Date;
     totalQuestions: number;

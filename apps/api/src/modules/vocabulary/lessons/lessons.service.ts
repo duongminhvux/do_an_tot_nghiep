@@ -105,7 +105,7 @@ export class LessonsService {
   findAllLessons(collectionId?: string, publicationStatus?: string) {
     return this.lessons(
       sql`(${collectionId || null}::uuid IS NULL OR l.collection_id = ${collectionId || null}::uuid)
-      AND (${publicationStatus || null}::text IS NULL OR l.publication_status = ${publicationStatus || null})`,
+      AND (${publicationStatus || null}::text IS NULL OR l.publication_status = ${publicationStatus || null} OR (${publicationStatus || null}='NOT_PUBLISHED' AND l.publication_status<>'PUBLISHED'))`,
       literal('ORDER BY l."order" ASC NULLS LAST, l.created_at DESC, l.id'),
     );
   }

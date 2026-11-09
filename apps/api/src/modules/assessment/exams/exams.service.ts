@@ -22,6 +22,8 @@ import { QueryExamDto } from './dto/query-exam.dto.js';
 import { UpdateExamDto } from './dto/update-exam.dto.js';
 import { GROUP_EXAM_SORT,nextGroupOrder } from './group-order.js';
 import { Exam } from './rows/exam.row.js';
+import { PublicationService } from '../../publication/publication.service.js';
+import { publicationScope } from '../../publication/publication-scope.js';
 
 @Injectable()
 export class ExamsService {
@@ -53,8 +55,29 @@ export class ExamsService {
   private get examModel(){return new SqlRecords(this.nativeDb,'exams');}
 constructor(
 @InjectPgConnection() private readonly nativeDb:PgConnection,private readonly i18n: I18nService,
-@Optional() private readonly domainOutbox?: DomainOutboxService
+@Optional() private readonly domainOutbox?: DomainOutboxService,
+@Optional() private readonly publication?: PublicationService
   ) {}
+
+  /** Admin-only derived state (VISIBLE / HIDDEN / INCOMPLETE); learners never get it. */
+  private async withVisibility<T extends Record<string, any>>(items: T[]): Promise<T[]> {
+    if (publicationScope.getStore() || !this.publication || !items.length) return items;
+    const states = await this.publication.visibilityOf('exams', items);
+    return items.map((item) => ({ ...item, visibility: states.get(String(item._id)) }));
+  }
+
+  /** Create, then show to learners in the same request when asked and complete. */
+  async createWithVisibility(createExamDto: CreateExamDto, actorId: string) {
+    const { publish, ...dto } = createExamDto;
+    const exam = await this.create(dto as CreateExamDto);
+    const id = String((exam as unknown as { _id: string })._id);
+    if (!this.publication || publish === undefined) return exam;
+    const publication = await this.publication.applyRequestedVisibility(
+      'exams', id, actorId, publish, this.getLang(),
+    );
+    const withState = await this.findOne(id);
+    return { ...withState, publication };
+  }
 
   private getLang(): string {
     return I18nContext.current()?.lang || 'vi';
@@ -121,8 +144,9 @@ constructor(
         ? String(createExamDto.groupId)
         : null;
 
+    const { publish: _publish, ...fields } = createExamDto;
     const createdExam = newSqlRow('exams',{
-      ...createExamDto,
+      ...fields,
       name: trimmedName,
       slug,
       durationMinutes,
@@ -156,7 +180,10 @@ constructor(
     const term=q||search||'';
     const noGroup=['null','none','unassigned'].includes(groupId??'');
     const filter=sql`${learnerExamVisibility()} AND is_deleted IS NOT TRUE AND (${term}='' OR position(lower(${term}) in lower(name||' '||COALESCE(slug,'')||' '||COALESCE(description,'')))>0)
-      AND (${query.publicationStatus??null}::text IS NULL OR publication_status=${query.publicationStatus??null})
+      AND (${query.publicationStatus??null}::text IS NULL
+        OR (${query.publicationStatus??null}='PUBLISHED' AND publication_status='PUBLISHED' AND is_active IS NOT FALSE)
+        OR (${query.publicationStatus??null}='NOT_PUBLISHED' AND (publication_status<>'PUBLISHED' OR is_active IS FALSE))
+        OR (${query.publicationStatus??null} IN ('DRAFT','IN_REVIEW') AND publication_status=${query.publicationStatus??null}))
       AND (${type??null}::text IS NULL OR type=${type??null})
       AND (${isActive??null}::boolean IS NULL OR COALESCE(is_active,payload->>'status' IS NULL OR payload->>'status'='ACTIVE')=${isActive??null}::boolean)
       AND (NOT ${noGroup} OR group_id IS NULL)
@@ -167,12 +194,12 @@ constructor(
     const groups=await new SqlRecords(this.nativeDb,'examgroups').select(sql`id=ANY(${data.map(row=>row.groupId).filter(Boolean)}::uuid[])`);const map=new Map(groups.map(row=>[row._id,{_id:row._id,name:row.name,slug:row.slug}]));
     for(const exam of data)exam.groupId=map.get(exam.groupId)??null;
     return {
-      data: await withAttemptCounts(
+      data: await this.withVisibility(await withAttemptCounts(
         this.nativeDb,
         data.map((exam) => ({
           ...exam,
           isActive: exam.isActive ?? ('status' in exam ? exam.status === 'ACTIVE' : true) })),
-      ),
+      )),
       total,
       page,
       limit };
@@ -189,7 +216,7 @@ constructor(
     }
 
     const legacyStatus = (exam as any).status;
-    const [result] = await withAttemptCounts(this.nativeDb, [exam]);
+    const [result] = await this.withVisibility(await withAttemptCounts(this.nativeDb, [exam]));
     return {
       ...result,
       isActive:
@@ -197,6 +224,8 @@ constructor(
   }
 
   async update(id: string, updateExamDto: UpdateExamDto): Promise<Exam> {
+    // Visibility is changed only through publish/unpublish (validated + audited).
+    delete (updateExamDto as { publish?: boolean }).publish;
     return this.ordered(() => this.updateOrdered(id, updateExamDto));
   }
 
@@ -213,6 +242,19 @@ constructor(
 
     const { groupId, order, ...restDto } = updateExamDto;
     const updateData: Record<string, any> = { ...restDto };
+    const current=await this.examModel.one(sql`id=${id}::uuid AND is_deleted IS NOT TRUE`);
+    if(!current) throw new NotFoundException(await this.i18n.t('exam.EXAM_NOT_FOUND',{lang}));
+    if(updateExamDto.timingSettings!==undefined){
+      const timing=updateExamDto.timingSettings;
+      if(!timing || !Number.isInteger(timing.testDurationMinutes) || timing.testDurationMinutes<1 || timing.testDurationMinutes>1440 || !Number.isInteger(timing.practiceDurationMinutes) || timing.practiceDurationMinutes<0 || timing.practiceDurationMinutes>1440) throw new BadRequestException('Invalid exam timing');
+      if(updateExamDto.durationMinutes!==undefined && updateExamDto.durationMinutes!==timing.testDurationMinutes) throw new BadRequestException('Conflicting exam durations');
+      updateData.timingSettings={testDurationMinutes:timing.testDurationMinutes,practiceDurationMinutes:timing.practiceDurationMinutes};
+      updateData.durationMinutes=timing.testDurationMinutes;
+    }else if(updateExamDto.durationMinutes!==undefined && current.timingSettings){
+      if(!Number.isInteger(updateExamDto.durationMinutes)||updateExamDto.durationMinutes<1||updateExamDto.durationMinutes>1440)throw new BadRequestException('Invalid configured test duration');
+      updateData.timingSettings={...current.timingSettings,testDurationMinutes:updateExamDto.durationMinutes};
+    }
+
 
     if (updateExamDto.name) {
       const trimmedName = updateExamDto.name.trim();

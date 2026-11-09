@@ -5,6 +5,7 @@ const locales = ['vi', 'en'];
 const defaultLocale = 'vi';
 
 const authRoutes = ['/login'];
+// /activate intentionally remains public even when an admin cookie exists.
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;

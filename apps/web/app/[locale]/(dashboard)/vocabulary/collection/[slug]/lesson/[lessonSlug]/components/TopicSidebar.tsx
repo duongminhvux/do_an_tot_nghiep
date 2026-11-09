@@ -123,8 +123,8 @@ export function TopicSidebar({
 
                 {/* Thông tin số từ đã học của section */}
                 <div className="w-full space-y-1.5">
-                  <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
-                    <span className="flex items-center gap-1">
+                  <div className="grid min-h-10 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 text-xs font-medium text-slate-500">
+                    <span className="flex min-w-0 flex-wrap items-center gap-1">
                       {learnedInSec > 0 ? (
                         <>
                           <span className="font-semibold text-slate-700">
@@ -189,7 +189,7 @@ export function TopicSidebar({
                 </div>
 
                 <div className="w-full space-y-1.5">
-                  <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
+                  <div className="grid min-h-10 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 text-xs font-medium text-slate-500">
                     <span className="font-semibold text-slate-700">
                       {learnedTotal > 0
                         ? `${t('sidebar.learned_in_sec', { learned: learnedTotal, total })} (${totalPercent}%)`

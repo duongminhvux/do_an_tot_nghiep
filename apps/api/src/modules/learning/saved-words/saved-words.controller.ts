@@ -11,21 +11,32 @@ Req,
 UseGuards
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
-import { CreateSavedWordDto } from './dto/create-saved-word.dto.js';
+import { CreateSavedWordDto,CreatePersonalWordDto } from './dto/create-saved-word.dto.js';
 import { CreateVocabularyFolderDto } from './dto/create-vocabulary-folder.dto.js';
 import { QuerySavedWordsDto } from './dto/query-saved-words.dto.js';
 import { UpdateSavedWordNoteDto } from './dto/update-saved-word.dto.js';
 import { UpdateVocabularyFolderDto } from './dto/update-vocabulary-folder.dto.js';
 import { SavedWordsService } from './saved-words.service.js';
+import {dictionaryPronunciation} from './dictionary.js';
 
 @Controller('learning/saved-words')
 @UseGuards(JwtAuthGuard)
 export class SavedWordsController {
   constructor(private readonly savedWordsService: SavedWordsService) {}
 
+  @Get('lookup')
+  lookup(@Req() req:any,@Query('word') word?:string){
+    return this.savedWordsService.lookupWithDictionary(req.user._id,word);
+  }
+
   @Get('folders')
   getFolders(@Req() req: any) {
     return this.savedWordsService.getFolders(req.user._id);
+  }
+
+  @Get('pronunciation')
+  pronunciation(@Query('word') word='',@Query('accent') accent='us'){
+    return dictionaryPronunciation(word,accent);
   }
 
   @Get('folders/:folderId/words/search')
@@ -83,6 +94,11 @@ export class SavedWordsController {
   @Get('stats')
   getStats(@Req() req: any) {
     return this.savedWordsService.getStats(req.user._id);
+  }
+
+  @Post('personal')
+  savePersonal(@Req() req:any,@Body() dto:CreatePersonalWordDto){
+    return this.savedWordsService.savePersonalWord(req.user._id,dto.word,dto.note,{ipa:dto.ipa,translation:dto.translation});
   }
 
   @Get('check/:wordId')

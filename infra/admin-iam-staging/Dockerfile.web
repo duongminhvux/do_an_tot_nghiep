@@ -1,0 +1,7 @@
+FROM vocalearn-postgres-admin-web:latest
+WORKDIR /app
+COPY . .
+ARG NEXT_PUBLIC_API_URL=/api
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL} NODE_ENV=production
+RUN pnpm --dir apps/admin-web exec next build
+CMD ["pnpm","--dir","apps/admin-web","exec","next","start","-H","0.0.0.0","-p","3001"]

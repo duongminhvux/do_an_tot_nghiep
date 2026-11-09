@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { userProfile } from '../../users/user-profile.js';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt,Strategy } from 'passport-jwt';
@@ -20,32 +21,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(payload: any) {
     if (payload.role === 'ADMIN') {
-      const admin = payload._id
-        ? await this.adminsService.findById(payload._id)
-        : await this.adminsService.findByEmail(payload.email);
-
-      if (!admin || admin.isDeleted) {
-        return null;
-      }
-
-      return {
-        _id: String(admin._id),
-        email: admin.email,
-        username: admin.username,
-        avatarUrl: admin.avatarUrl,
-        role: 'ADMIN' };
+      return this.adminsService.authenticateToken(payload);
     }
 
+    if (payload.role !== 'USER') throw new UnauthorizedException('Invalid token role');
     const user = await this.usersService.findByEmail(payload.email);
     if (!user || user.isDeleted) {
       return null;
     }
 
-    return {
-      _id: String(user._id),
-      email: user.email,
-      username: user.username,
-      avatarUrl: user.avatarUrl,
-      role: 'USER' };
+    return userProfile(user);
   }
 }

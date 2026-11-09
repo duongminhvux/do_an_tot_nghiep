@@ -1,18 +1,11 @@
 import { Module } from '@nestjs/common';
 
-import { TtsModule } from '../tts/tts.module.js';
-
-
-
-
 import { AdminAudioController } from './admin-audio.controller.js';
 import { AdminInfrastructureController } from './admin-infrastructure.controller.js';
-import { AudioProcessingService } from './audio-processing.service.js';
-import { AudioQueueService } from './audio-queue.service.js';
+import { AudioProcessingCoreModule } from './audio-processing-core.module.js';
 
 @Module({
-  imports: [TtsModule],
+  imports: [AudioProcessingCoreModule],
   controllers: [AdminAudioController, AdminInfrastructureController],
-  providers: [AudioProcessingService, AudioQueueService],
-  exports: [AudioProcessingService, AudioQueueService] })
+  exports: [AudioProcessingCoreModule] })
 export class AudioProcessingModule {}

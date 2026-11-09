@@ -12,8 +12,8 @@ export function parseSeedOptions(argv, env) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new Error('Invalid admin email');
   }
-  if (!username || /\s/.test(username)) {
-    throw new Error('Admin username must be nonempty and contain no whitespace');
+  if (!username || /[\s@]/.test(username)) {
+    throw new Error('Admin username must be nonempty and contain no whitespace or @');
   }
 
   return {
@@ -41,16 +41,17 @@ export async function seedAdminSql(client, options, hashPassword) {
     throw new Error('Admin password must contain at least 12 characters unless explicitly allowed for local development');
   if(!existing){
     const digest=await hashPassword(password,12);
-    await client.query(`INSERT INTO public.admins(email,username,password_hash,is_deleted,payload)
-      VALUES ($1,$2,$3,false,$4::jsonb)`,[email,username,digest,JSON.stringify({email,username,password:digest,isDeleted:false})]);
+    await client.query(`INSERT INTO public.admins(email,username,password_hash,is_deleted,status,auth_version,payload)
+      VALUES ($1,$2,$3,false,'ACTIVE',1,$4::jsonb)`,[email,username,digest,JSON.stringify({email,username,isDeleted:false})]);
     return {status:'created',email};
   }
   if(resetPassword||reactivate){
+    if(existing.status==='PENDING_ACTIVATION')throw new Error('Seed cannot activate or set a password for a pending invitation');
     const digest=resetPassword?await hashPassword(password,12):existing.password_hash;
     await client.query(`UPDATE public.admins SET password_hash=$2,is_deleted=$3,deleted_at=$4,
-      payload=payload || $5::jsonb WHERE id=$1`,
+      status=$5,auth_version=auth_version+1,payload=payload - 'password' - 'isDeleted' WHERE id=$1`,
      [existing.id,digest,reactivate?false:existing.is_deleted,reactivate?null:existing.deleted_at,
-      JSON.stringify({password:digest,isDeleted:reactivate?false:existing.is_deleted})]);
+      reactivate?'ACTIVE':existing.status]);
     return {status:'updated',email};
   }
   return {status:existing.is_deleted?'existing-disabled':'existing',email};

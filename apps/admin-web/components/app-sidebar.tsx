@@ -1,13 +1,17 @@
-﻿"use client";
+"use client";
+import { canVisit } from "@/lib/admin-permissions";
 import { SiteLogo } from "@/components/site-logo";
 import { useSiteSettings } from "@/providers/site-settings-provider";
 
 import React from "react";
 import Link from "next/link";
-import { usePathname, useRouter, useParams } from "next/navigation";
+import { usePathname, useParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import {
   Shield,
+  ShieldCheck,
+  UserCog,
+  KeyRound,
   Swords,
   Gamepad2,
   LayoutDashboard,
@@ -15,8 +19,6 @@ import {
   FileText,
   Layers,
   Users,
-  LogOut,
-  Globe,
   ChevronRight,
   ClipboardCheck,
   Headphones,
@@ -34,7 +36,6 @@ import {
   Sidebar,
   useSidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -46,17 +47,13 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
   SidebarRail,
-  SidebarSeparator,
 } from "@/components/ui/sidebar";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import LanguageSwitcher from "@/components/language-switcher";
-import { useAppDispatch, useAppSelector } from "@/redux/hooks";
-import { logout } from "@/redux/features/auth/authSlice";
-import { authService } from "@/services";
+import { useAppSelector } from "@/redux/hooks";
 import { cn } from "@/lib/utils";
 type NavLink = {
   label: string;
@@ -72,26 +69,15 @@ const subMenuClass =
 
 export function AppSidebar() {
   const siteSettings = useSiteSettings();
-  const router = useRouter();
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
-  React.useEffect(() => { setOpenMobile(false); }, [pathname, setOpenMobile]);
+  React.useEffect(() => {
+    setOpenMobile(false);
+  }, [pathname, setOpenMobile]);
   const params = useParams();
   const locale = (params?.locale as string) || "vi";
-  const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
   const { t } = useTranslation("common");
-
-  const handleLogout = async () => {
-    try {
-      await authService.logout();
-    } catch {
-      // Ignore errors on logout
-    } finally {
-      dispatch(logout());
-      router.replace(`/${locale}/login`);
-    }
-  };
 
   const active = (path: string) =>
     pathname === path || pathname.startsWith(path + "/");
@@ -222,29 +208,39 @@ export function AppSidebar() {
       ),
     },
     {
-      label: t('recommendations.learningManagement'),
+      label: t("recommendations.learningManagement"),
       icon: BookOpen,
       active: active(`/${locale}/learning`),
-      children: [{
-        label: t('mistakes.adminTitle'),
-        href: `/${locale}/learning/mistakes`,
-        icon: ClipboardCheck,
-        active: active(`/${locale}/learning/mistakes`),
-      }, {
-        label: t('recommendations.title'),
-        href: `/${locale}/learning/recommendations`,
-        icon: Settings,
-        active: active(`/${locale}/learning/recommendations`),
-      }],
+      children: [
+        {
+          label: t("mistakes.adminTitle"),
+          href: `/${locale}/learning/mistakes`,
+          icon: ClipboardCheck,
+          active: active(`/${locale}/learning/mistakes`),
+        },
+        {
+          label: t("recommendations.title"),
+          href: `/${locale}/learning/recommendations`,
+          icon: Settings,
+          active: active(`/${locale}/learning/recommendations`),
+        },
+      ],
     },
     {
-      label: t('contentQuality.content'),
+      label: t("contentQuality.content"),
       icon: ClipboardCheck,
       active: active(`/${locale}/content`),
-      children: [{ label: t('contentQuality.title'), href: `/${locale}/content/quality`, icon: ClipboardCheck, active: active(`/${locale}/content/quality`) }],
+      children: [
+        {
+          label: t("contentQuality.title"),
+          href: `/${locale}/content/quality`,
+          icon: ClipboardCheck,
+          active: active(`/${locale}/content/quality`),
+        },
+      ],
     },
     {
-      label: locale === 'en' ? 'Media library' : 'Quản lý media',
+      label: locale === "en" ? "Media library" : "Quản lý media",
       href: `/${locale}/media`,
       icon: Images,
       active: active(`/${locale}/media`),
@@ -276,12 +272,48 @@ export function AppSidebar() {
     },
   ];
 
+  items.push({
+    label: t("iam:group"),
+    icon: ShieldCheck,
+    active: active(`/${locale}/iam`),
+    children: [
+      {
+        label: t("iam:admins"),
+        href: `/${locale}/iam/admins`,
+        icon: UserCog,
+        active: active(`/${locale}/iam/admins`),
+      },
+      {
+        label: t("iam:roles"),
+        href: `/${locale}/iam/roles`,
+        icon: KeyRound,
+        active: active(`/${locale}/iam/roles`),
+      },
+    ],
+  });
+  const visibleItems = items
+    .map((item) =>
+      item.children
+        ? {
+            ...item,
+            children: item.children.filter((child) =>
+              canVisit(user, child.href.replace(`/${locale}`, "") || "/"),
+            ),
+          }
+        : item,
+    )
+    .filter((item) =>
+      item.children
+        ? item.children.length > 0
+        : !!item.href &&
+          canVisit(user, item.href.replace(`/${locale}`, "") || "/"),
+    );
   return (
     <Sidebar collapsible="icon" className="border-r border-slate-200 bg-white">
       {/* Brand: the uploaded wordmark already contains the icon, so it is shown
           alone when expanded and the square icon alone when collapsed. The
           icon square sits on the same 8px inset as the menu buttons. */}
-      <SidebarHeader className="h-14 shrink-0 justify-center border-b border-slate-100 px-2">
+      <SidebarHeader className="h-16 shrink-0 justify-center border-b border-slate-100 px-2">
         <Link
           href={`/${locale}`}
           aria-label={siteSettings.siteName}
@@ -332,7 +364,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="gap-1">
-              {items.map((item) =>
+              {visibleItems.map((item) =>
                 item.children ? (
                   <Collapsible
                     key={item.label}
@@ -406,45 +438,6 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-
-      {/* Footer */}
-      <SidebarFooter className="border-t border-slate-100 p-2.5 space-y-2.5 group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:space-y-0 group-data-[collapsible=icon]:items-center">
-        {/* Language Switcher */}
-        <div className="flex items-center justify-between px-1 group-data-[collapsible=icon]:hidden">
-          <span className="text-xs text-slate-500 font-medium flex items-center gap-1.5">
-            <Globe className="h-3.5 w-3.5 text-slate-400" />
-            {t("language")}
-          </span>
-          <LanguageSwitcher />
-        </div>
-
-        <SidebarSeparator className="my-1 group-data-[collapsible=icon]:hidden" />
-
-        {/* User Card */}
-        <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200/80 group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:border-0 group-data-[collapsible=icon]:justify-center">
-          <div className="flex items-center gap-2.5 min-w-0 group-data-[collapsible=icon]:gap-0">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white font-semibold text-xs shadow-sm">
-              {(user?.username?.[0] || "A").toUpperCase()}
-            </div>
-            <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
-              <p className="text-xs font-semibold text-slate-900 truncate">
-                {user?.username || "Administrator"}
-              </p>
-              <p className="text-[11px] text-slate-500 truncate">
-                {user?.email || "admin@english.com"}
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer shrink-0 group-data-[collapsible=icon]:hidden"
-            title={t("logout")}
-          >
-            <LogOut className="h-4 w-4" />
-          </button>
-        </div>
-      </SidebarFooter>
 
       <SidebarRail />
     </Sidebar>

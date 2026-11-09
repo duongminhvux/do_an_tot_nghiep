@@ -1,3 +1,4 @@
+import { advanceReview } from '../reviews/review-schedule.js';
 import { InjectPgConnection,withPgTransaction,type PgConnection } from '../../../postgres/connection.js';
 import { SqlRecords } from '../../../postgres/records.js';
 import { rows,sql } from '../../../postgres/sql.js';
@@ -179,53 +180,7 @@ private readonly learningActivity: LearningActivityService
 
       if (!review) throw new Error('Review row was not persisted');
 
-      review.reviewCount += 1;
-      review.lastReviewedAt = now;
-
-      const isAgain = dto.rating === 'AGAIN';
-      const isHard = dto.rating === 'HARD';
-      const isEasy = dto.rating === 'EASY';
-
-      if (isAgain) {
-        review.incorrectCount += 1;
-        review.intervalDays = 0;
-        review.status = 'LEARNING';
-        // Học lại sau 10 phút
-        review.nextReviewAt = new Date(now.getTime() + 10 * 60 * 1000);
-      } else if (isHard) {
-        review.intervalDays = Math.max(
-          1,
-          Math.round((review.intervalDays || 1) * 1.2),
-        );
-        review.nextReviewAt = new Date(
-          now.getTime() + review.intervalDays * 24 * 60 * 60 * 1000,
-        );
-      } else if (isEasy) {
-        review.correctCount += 1;
-        review.intervalDays =
-          review.intervalDays === 0 ? 3 : Math.round(review.intervalDays * 3.5);
-        if (review.reviewCount >= 2) {
-          review.status = 'MASTERED';
-        }
-        review.nextReviewAt = new Date(
-          now.getTime() + review.intervalDays * 24 * 60 * 60 * 1000,
-        );
-      } else {
-        // 'GOOD'
-        review.correctCount += 1;
-        review.intervalDays =
-          review.intervalDays === 0
-            ? 1
-            : review.intervalDays === 1
-              ? 3
-              : Math.round(review.intervalDays * 2.5);
-        if (review.reviewCount >= 4 && review.correctCount >= 3) {
-          review.status = 'MASTERED';
-        }
-        review.nextReviewAt = new Date(
-          now.getTime() + review.intervalDays * 24 * 60 * 60 * 1000,
-        );
-      }
+      advanceReview(review,dto.rating as 'AGAIN'|'HARD'|'GOOD'|'EASY',now);
 
       await this.reviewModel.upsert(review,['user_id','word_id']);
 

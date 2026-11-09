@@ -1,11 +1,12 @@
-export type MediaCategory = "dictation" | "vocab" | "toeic" | "games";
-export type MediaItemKind = "lesson" | "collection" | "word" | "exam" | "game";
+export type MediaCategory = "dictation" | "vocab" | "toeic" | "games" | "users";
+export type MediaItemKind = "lesson" | "collection" | "word" | "exam" | "game" | "user";
 export interface MediaLibraryItem {
   id: string;
   title: string;
   subtitle: string;
   kind: MediaItemKind;
   status: string;
+  previewUrl?: string;
 }
 export interface MediaUsage {
   label: string;

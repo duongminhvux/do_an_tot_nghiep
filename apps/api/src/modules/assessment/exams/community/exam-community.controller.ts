@@ -1,3 +1,4 @@
+import { PermissionCondition, RequirePermissions } from '../../../auth/decorators/require-permissions.decorator.js';
 import {
   Body,
   Controller,
@@ -17,7 +18,7 @@ import {
   CommentReactionDto,
 } from './exam-community.dto.js';
 import { ExamCommunityService } from './exam-community.service.js';
-type Viewer = { user: { _id: string; role: string } };
+type Viewer = { user: { _id: string; role: string; permissions?: string[] } };
 @Controller('exams/:examId')
 export class ExamCommunityController {
   constructor(private readonly community: ExamCommunityService) {}
@@ -57,6 +58,8 @@ export class ExamCommunityController {
   ) {
     return this.community.post(exam, req.user._id, dto);
   }
+  @RequirePermissions('toeic.comments.moderate')
+  @PermissionCondition('C3')
   @Delete('comments/:id')
   remove(
     @Param('examId') exam: string,
@@ -67,7 +70,7 @@ export class ExamCommunityController {
       exam,
       id,
       req.user._id,
-      req.user.role === 'ADMIN',
+      req.user.role === 'ADMIN' && req.user.permissions?.includes('toeic.comments.moderate') === true,
     );
   }
   @Put('comments/:id/reaction')

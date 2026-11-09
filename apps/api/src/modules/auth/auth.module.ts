@@ -1,3 +1,4 @@
+import { PermissionsGuard } from './guards/permissions.guard.js';
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
@@ -43,6 +44,7 @@ import { LocalStrategy } from './strategy/local.strategy.js';
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: PermissionsGuard },
   ],
   exports: [AuthService] })
 export class AuthModule { }

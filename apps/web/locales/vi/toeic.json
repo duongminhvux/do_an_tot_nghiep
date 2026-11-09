@@ -191,7 +191,26 @@
     "btn_view_result": "Xem kết quả",
     "new_badge": "Mới",
     "questions_count": "{{count}} câu",
-    "mins_duration": "{{count}} phút"
+    "mins_duration": "{{count}} phút",
+    "hero_kicker": "Nhóm đề TOEIC",
+    "exam_count": "{{count}} đề",
+    "total_questions": "Tổng câu hỏi",
+    "progress_title": "Tiến độ của bạn",
+    "progress_summary": "Đã hoàn thành {{done}}/{{total}} đề",
+    "progress_in_progress": "{{count}} đề đang làm dở",
+    "next_up": "Đề tiếp theo",
+    "all_done": "Bạn đã hoàn thành tất cả đề trong nhóm",
+    "filter_all": "Tất cả",
+    "sort_default": "Thứ tự đề",
+    "no_match": "Không có đề nào khớp bộ lọc.",
+    "clear_filters": "Xóa bộ lọc",
+    "browse_other_groups": "Xem nhóm đề khác",
+    "test_label": "Đề",
+    "attempts_count": "{{count}} lượt làm",
+    "answered": "Đã làm {{answered}}/{{total}} câu",
+    "progress_error": "Chưa tải được tiến độ của bạn. Danh sách đề vẫn dùng được.",
+    "progress_unavailable": "Chưa rõ tiến độ",
+    "no_attempt_yet": "Chưa có lượt làm"
   },
   "exam_detail": {
     "breadcrumb_exams": "Đề thi",
@@ -544,6 +563,7 @@
     "score_band_low": "Dưới trung bình (< 450)"
   },
   "community": {
+    "pinned": "Đã ghim",
     "rankingTitle": "Bảng xếp hạng thi thật",
     "rankingRule": "Mỗi người lấy lượt TEST tốt nhất đã nộp với toàn bộ câu của phiên bản đề hiện tại. Xếp theo số câu đúng, sau đó thời gian làm bài; không tính luyện tập hoặc thi từng phần. Điểm TOEIC hiển thị là ước tính.",
     "participants": "{{count}} người được xếp hạng",

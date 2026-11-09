@@ -1,4 +1,5 @@
 /// <reference types="multer" />
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator.js';
 import {
 BadRequestException,
 Body,
@@ -27,6 +28,7 @@ export class UploadController {
     return Boolean(ext && ['mp3', 'wav', 'ogg', 'aac', 'm4a', 'webm', 'flac'].includes(ext));
   }
 
+  @RequirePermissions('media.upload')
   @Post()
   @UseInterceptors(
     FileInterceptor('file', {
@@ -42,6 +44,7 @@ export class UploadController {
     return {message:'Media uploaded to S3-compatible object storage',data:result};
   }
 
+  @RequirePermissions('media.delete')
   @Post('delete')
   async deleteFile(@Body() body: { public_id?: string; url?: string; resource_type?: string }) {
     const identifier = body?.public_id || body?.url;

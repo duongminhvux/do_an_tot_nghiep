@@ -5,7 +5,9 @@ Injectable,
 NotFoundException,
 } from '@nestjs/common';
 import {
+publicationVisibility,
 validatePublication,
+type PublicationIssue,
 type PublicationKind,
 } from '@repo/shared-types/publication';
 import {
@@ -108,14 +110,35 @@ export class PublicationService {
     }
     return document;
   }
-  async info(kind: PublicationKind, id: string) {
-    const doc = await this.document(this.db, kind, id, false, false);
+  /** Live, read-only validation of the saved content. Never changes state. */
+  private liveIssues(kind: PublicationKind, doc: Record<string, any>, language = 'vi') {
+    try {
+      return validatePublication(kind, doc, language);
+    } catch {
+      return [
+        {
+          code: 'MALFORMED',
+          path: '',
+          severity: 'error' as const,
+          message:
+            language === 'en'
+              ? 'Malformed content; review it in the editor.'
+              : 'Dữ liệu không đúng cấu trúc; cần kiểm tra trong trình biên tập.',
+        },
+      ];
+    }
+  }
+  async info(kind: PublicationKind, id: string, language = 'vi') {
+    const doc = await this.document(this.db, kind, id);
     const audit = (
       await this.db.query(
-        `SELECT action,actor_id AS "actorId",revision,created_at AS "createdAt" FROM public.content_publication_audit WHERE resource_type=$1 AND resource_id=$2 ORDER BY created_at DESC,id DESC LIMIT 20`,
+        `SELECT action,actor_id AS "actorId",revision,created_at AS "createdAt",
+          (SELECT COUNT(*) FROM jsonb_array_elements(issues) i WHERE i->>'severity'='error')::int AS "issueCount"
+          FROM public.content_publication_audit WHERE resource_type=$1 AND resource_id=$2 ORDER BY created_at DESC,id DESC LIMIT 20`,
         [kind, id],
       )
     ).rows;
+    const currentIssues = this.liveIssues(kind, doc, language);
     return {
       id,
       publicationStatus: doc.publicationStatus,
@@ -123,8 +146,38 @@ export class PublicationService {
       publicationValidation: doc.publicationValidation,
       publishedBy: doc.publishedBy,
       publishedAt: doc.publishedAt,
+      isActive: doc.isActive,
+      visibility: publicationVisibility(doc, currentIssues),
+      currentIssues,
       audit,
     };
+  }
+  /**
+   * Admin list badges. Uses the stored validation when it belongs to the
+   * current revision; otherwise validates the saved content in memory
+   * (read-only). Bounded by the caller's page size.
+   */
+  async visibilityOf(kind: PublicationKind, rows: Record<string, any>[]) {
+    const result = new Map<string, ReturnType<typeof publicationVisibility>>();
+    for (const row of rows) {
+      const id = String(row._id ?? row.id);
+      const quick = publicationVisibility(row);
+      const stored = row.publicationValidation;
+      if (
+        quick === 'VISIBLE' ||
+        (stored && stored.revision === row.publicationRevision)
+      ) {
+        result.set(id, quick);
+        continue;
+      }
+      try {
+        const doc = await this.document(this.db, kind, id);
+        result.set(id, publicationVisibility(doc, this.liveIssues(kind, doc)));
+      } catch {
+        result.set(id, quick);
+      }
+    }
+    return result;
   }
   /** Read-only owner-side input shared by publication and the quality scanner. */
   qualityDocument(kind: PublicationKind, id: string) {
@@ -141,39 +194,29 @@ export class PublicationService {
     if (!actorId)
       throw new ForbiddenException('Authenticated administrator required');
     const client = await this.db.pool.connect();
+    let rejected: PublicationIssue[] | null = null;
     try {
       await client.query('BEGIN');
       const doc = await this.document(client, kind, id, true);
-      if (
-        action === 'PUBLISH' &&
-        (doc.publicationStatus !== 'IN_REVIEW' ||
-          doc.publicationValidation?.revision !== doc.publicationRevision)
-      )
-        throw new ConflictException(
-          'Validate the latest saved content before publishing',
-        );
-      const issues =
-        action === 'UNPUBLISH' ? [] : validatePublication(kind, doc, language);
-      if (
-        action === 'PUBLISH' &&
-        issues.some((issue) => issue.severity === 'error')
-      )
-        throw new ConflictException({
-          message: 'Content validation failed',
-          issues,
-        });
+      const issues: PublicationIssue[] = validatePublication(kind, doc, language);
+      const invalid = issues.some((issue) => issue.severity === 'error');
       const validation = {
         revision: doc.publicationRevision,
         checkedAt: new Date().toISOString(),
         issues,
       };
+      // One-step "Show": PUBLISH validates the locked, saved content itself.
+      // A failed attempt is recorded as VALIDATE (with its issues) and rejected.
+      rejected = action === 'PUBLISH' && invalid ? issues : null;
+      const recorded = rejected ? 'VALIDATE' : action;
+      // VALIDATE never hides visible content; IN_REVIEW now means "valid, hidden".
       const status =
-        action === 'UNPUBLISH'
-          ? 'DRAFT'
-          : action === 'PUBLISH'
+        recorded === 'PUBLISH'
+          ? 'PUBLISHED'
+          : recorded === 'VALIDATE' && doc.publicationStatus === 'PUBLISHED'
             ? 'PUBLISHED'
-            : doc.publicationStatus === 'PUBLISHED' && !issues.length
-              ? 'PUBLISHED'
+            : invalid
+              ? 'DRAFT'
               : 'IN_REVIEW';
       await client.query(
         "SELECT set_config('vocalearn.publication_transition','1',true)",
@@ -183,12 +226,13 @@ export class PublicationService {
         published_by=CASE WHEN $4 THEN $5::uuid ELSE published_by END,
         published_at=CASE WHEN $4 THEN now() ELSE published_at END
         ${kind === 'dictation' ? ",status=CASE WHEN $2='PUBLISHED' THEN 'PUBLISHED' WHEN status='PUBLISHED' THEN 'READY' ELSE status END" : ''}
+        ${kind === 'exams' ? ',is_active=CASE WHEN $4 THEN true ELSE is_active END' : ''}
         WHERE id=$1`,
         [
           id,
           status,
-          action === 'UNPUBLISH' ? null : JSON.stringify(validation),
-          action === 'PUBLISH',
+          JSON.stringify(validation),
+          recorded === 'PUBLISH',
           actorId,
         ],
       );
@@ -197,7 +241,7 @@ export class PublicationService {
         [
           kind,
           id,
-          action,
+          recorded,
           actorId,
           doc.publicationRevision,
           JSON.stringify(issues),
@@ -210,7 +254,13 @@ export class PublicationService {
     } finally {
       client.release();
     }
-    return this.info(kind, id);
+    if (rejected)
+      throw new ConflictException({
+        message: 'Content validation failed',
+        code: 'CONTENT_INCOMPLETE',
+        issues: rejected,
+      });
+    return this.info(kind, id, language);
   }
   validate(
     kind: PublicationKind,
@@ -228,8 +278,32 @@ export class PublicationService {
   ) {
     return this.transition(kind, id, actorId, 'PUBLISH', language);
   }
-  unpublish(kind: PublicationKind, id: string, actorId: string) {
-    return this.transition(kind, id, actorId, 'UNPUBLISH');
+  unpublish(kind: PublicationKind, id: string, actorId: string, language?: string) {
+    return this.transition(kind, id, actorId, 'UNPUBLISH', language);
+  }
+  /**
+   * Used right after an admin creates content with "show to learners" selected.
+   * The content is already saved; if it is not complete it simply stays hidden
+   * and the caller receives the exact issues instead of an error.
+   */
+  async applyRequestedVisibility(
+    kind: PublicationKind,
+    id: string,
+    actorId: string,
+    visible: boolean | undefined,
+    language?: string,
+  ): Promise<{ visible: boolean; issues: PublicationIssue[] }> {
+    if (!visible) return { visible: false, issues: [] };
+    try {
+      await this.publish(kind, id, actorId, language);
+      return { visible: true, issues: [] };
+    } catch (error) {
+      if (error instanceof ConflictException) {
+        const body = error.getResponse() as { issues?: PublicationIssue[] };
+        return { visible: false, issues: body.issues ?? [] };
+      }
+      throw error;
+    }
   }
   async preview(kind: PublicationKind, id: string) {
     const doc = await this.document(this.db, kind, id);
@@ -259,6 +333,9 @@ export class PublicationService {
         kind,
         title: doc.title,
         fullAudioUrl: doc.fullAudioUrl,
+        level: doc.level,
+        youtubeVideoId: doc.youtubeVideoId,
+        audioSource: doc.audioSource,
         segments: doc.segments.map((s: any) => ({
           id: s.id,
           text: s.text,

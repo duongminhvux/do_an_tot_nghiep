@@ -1,3 +1,4 @@
+import { AdminExamCommunityController } from './community/admin-exam-community.controller.js';
 import { Module } from '@nestjs/common';
 
 
@@ -16,6 +17,7 @@ import { ExamGroupsService } from './exam-groups.service.js';
   imports: [],
   controllers: [
     ExamCommunityController,
+    AdminExamCommunityController,
     ExamsController,
     AdminExamsController,
     ExamGroupsController,

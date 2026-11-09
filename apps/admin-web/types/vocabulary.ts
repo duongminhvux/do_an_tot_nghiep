@@ -305,7 +305,7 @@ export interface WordItem {
 }
 
 export interface QueryWordDto {
-  publicationStatus?:PublicationStatus;
+  publicationStatus?:PublicationStatus|'NOT_PUBLISHED';
   search?: string;
   page?: number;
   limit?: number;

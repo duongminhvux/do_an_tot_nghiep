@@ -1,3 +1,5 @@
+import { AdminExamCommunityController } from './admin-exam-community.controller.js';
+import { PermissionsGuard } from '../../../auth/guards/permissions.guard.js';
 import 'reflect-metadata';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { Test } from '@nestjs/testing';
@@ -23,7 +25,8 @@ describe('TOEIC community HTTP', () => {
   const list = vi.fn(async () => ({ items: [] })),
     post = vi.fn(async () => ({ id })),
     react = vi.fn(async () => ({ emoji: '👍' })),
-    remove = vi.fn(async () => ({ deleted: true }));
+    remove = vi.fn(async () => ({ deleted: true })),
+    pin = vi.fn(async () => ({ id, isPinned: true }));
   const profileQuery = vi.fn(async () => ({
     rows: [
       {
@@ -34,13 +37,14 @@ describe('TOEIC community HTTP', () => {
       },
     ],
   }));
+  let verifiedAdminPermissions: string[] = [];
   const auth = async (role = 'USER') =>
     `Bearer ${await jwt.signAsync({ _id: actor, role }, { secret, expiresIn: '5m' })}`;
   beforeAll(async () => {
     const reflector = new Reflector();
     const module = await Test.createTestingModule({
       imports: [PassportModule.register({ defaultStrategy: 'jwt' })],
-      controllers: [ExamCommunityController, PublicProfilesController],
+      controllers: [ExamCommunityController, AdminExamCommunityController, PublicProfilesController],
       providers: [
         { provide: getConnectionToken(), useValue: { query: profileQuery } },
         {
@@ -48,19 +52,22 @@ describe('TOEIC community HTTP', () => {
           useValue: new ServiceJwtStrategy(
             new ConfigService({ JWT_ACCESS_SECRET: secret }),
             {
-              verifyToken: (raw: string) => jwt.verifyAsync(raw, { secret }),
+              verifyToken: async (raw: string) => {
+                const principal = await jwt.verifyAsync(raw, { secret });
+                return {...principal, status: 'ACTIVE', authVersion: 1, permissions: principal.role === 'ADMIN' ? verifiedAdminPermissions : []};
+              },
             } as never,
           ),
         },
         {
           provide: ExamCommunityService,
-          useValue: { leaderboard: list, comments: list, post, react, remove },
+          useValue: { leaderboard: list, comments: list, post, react, remove, pin },
         },
       ],
     }).compile();
     app = module.createNestApplication();
     app.setGlobalPrefix('api');
-    app.useGlobalGuards(new JwtAuthGuard(reflector));
+    app.useGlobalGuards(new JwtAuthGuard(reflector), new PermissionsGuard(reflector));
     app.useGlobalPipes(
       new ValidationPipe({
         transform: true,
@@ -154,7 +161,39 @@ describe('TOEIC community HTTP', () => {
       .delete(`${base}/comments/${id}`)
       .set('Authorization', await auth('ADMIN'))
       .expect(200);
+    expect(remove).toHaveBeenLastCalledWith(id, id, actor, false);
+    verifiedAdminPermissions = ['toeic.comments.moderate'];
+    await request(app.getHttpServer()).delete(`/api/exams/${id}/comments/${id}`).set('Authorization', await auth('ADMIN')).expect(200);
     expect(remove).toHaveBeenLastCalledWith(id, id, actor, true);
+    verifiedAdminPermissions = [];
+  });
+  it('requires explicit admin read/moderation permissions and validates pin mutations', async () => {
+    const base = `/api/admin/exams/${id}`;
+    await request(app.getHttpServer()).get(`${base}/comments`).expect(401);
+    await request(app.getHttpServer()).get(`${base}/leaderboard`).set('Authorization', await auth()).expect(403);
+    verifiedAdminPermissions = [];
+    await request(app.getHttpServer()).get(`${base}/comments`).set('Authorization', await auth('ADMIN')).expect(403);
+    verifiedAdminPermissions = ['toeic.read'];
+    const token = await auth('ADMIN');
+    await request(app.getHttpServer()).get(`${base}/leaderboard?page=2`).set('Authorization', token).expect(200);
+    expect(list).toHaveBeenLastCalledWith(id, actor, 2, true);
+    await request(app.getHttpServer()).get(`${base}/comments`).set('Authorization', token).expect(200);
+    expect(list).toHaveBeenLastCalledWith(id, actor, 1, undefined, true);
+    await request(app.getHttpServer()).get(`${base}/comments/${id}/replies`).set('Authorization', token).expect(200);
+    expect(list).toHaveBeenLastCalledWith(id, actor, 1, id, true);
+    await request(app.getHttpServer()).patch(`${base}/comments/${id}/pin`).set('Authorization', token).send({ pinned: true }).expect(403);
+    await request(app.getHttpServer()).delete(`${base}/comments/${id}`).set('Authorization', token).expect(403);
+    verifiedAdminPermissions = ['toeic.comments.moderate'];
+    for (const pinned of [true, false]) {
+      await request(app.getHttpServer()).patch(`${base}/comments/${id}/pin`).set('Authorization', token).send({ pinned }).expect(200);
+      expect(pin).toHaveBeenLastCalledWith(id, id, pinned);
+    }
+    for (const body of [{}, { pinned: 'false' }, { pinned: true, actor }]) {
+      await request(app.getHttpServer()).patch(`${base}/comments/${id}/pin`).set('Authorization', token).send(body).expect(400);
+    }
+    await request(app.getHttpServer()).delete(`${base}/comments/${id}`).set('Authorization', token).expect(200);
+    expect(remove).toHaveBeenLastCalledWith(id, id, actor, true);
+    verifiedAdminPermissions = [];
   });
   it('preserves Vietnamese translations and matching community keys', () => {
     const read = (language: string) =>

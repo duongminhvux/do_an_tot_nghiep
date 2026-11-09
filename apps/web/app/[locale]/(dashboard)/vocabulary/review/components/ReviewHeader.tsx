@@ -68,11 +68,11 @@ export function ReviewHeader({
   ];
 
   return (
-    // Sticks just below the dashboard shell's own sticky top bar (h-14, z-30).
-    <header className="sticky top-14 z-20 border-b border-slate-200 bg-white/95 backdrop-blur-md">
-      <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-2.5 sm:px-6 lg:px-8">
+    // Keep aligned with the study workspace below the dashboard's h-16 bar.
+    <header className="sticky top-16 z-20 border-b border-slate-200 bg-white/95 backdrop-blur-md">
+      <div className="flex w-full items-center justify-between gap-3 px-4 py-2.5 sm:px-6 lg:px-8">
         {/* Left: Back & Title */}
-        <div className="flex min-w-0 items-center gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
           <Button asChild variant="outline" size="icon" className="shrink-0" title={t('back', 'Quay lại')}>
             <Link href={`/${locale}/vocabulary`}>
               <ArrowLeft />
@@ -84,7 +84,7 @@ export function ReviewHeader({
               <RotateCcw className="h-4 w-4 shrink-0 text-blue-600" />
               <span className="truncate">{t('review.page_title', 'Ôn tập định kỳ (SRS)')}</span>
               {dueCount > 0 && (
-                <Badge tone="amber" className="hidden sm:inline-flex">
+                <Badge tone="amber" className="hidden lg:inline-flex">
                   {dueCount} {t('words', 'từ')}
                 </Badge>
               )}
@@ -96,12 +96,12 @@ export function ReviewHeader({
         </div>
 
         {/* Right: Mode Switcher + Streak + Controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <Segmented
             items={modeItems}
             value={mode}
             onChange={setMode}
-            className="hidden sm:inline-flex"
+            className="hidden lg:inline-flex"
           />
 
           {/* Gamification Streak Pill */}
@@ -138,7 +138,7 @@ export function ReviewHeader({
       </div>
 
       {/* Mobile Mode Switcher Bar */}
-      <div className="flex overflow-x-auto border-t border-slate-100 px-4 py-2 no-scrollbar sm:hidden">
+      <div className="flex overflow-x-auto border-t border-slate-100 px-4 py-2 no-scrollbar sm:px-6 lg:hidden">
         <Segmented items={modeItems} value={mode} onChange={setMode} className="shrink-0" />
       </div>
     </header>

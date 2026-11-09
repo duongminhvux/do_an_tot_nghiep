@@ -76,7 +76,7 @@ describe('F10 publication validation', () => {
       }).some((issue) => issue.code === 'AUDIO_STALE'),
     ).toBe(true);
   });
-  it('checks word meanings and lesson links without requiring the lesson to be published first', () => {
+  it('checks required word fields; a word does not need a lesson link', () => {
     const word = {
       word: 'test',
       slug: 'test',
@@ -87,9 +87,17 @@ describe('F10 publication validation', () => {
       linkedLessons: 1,
     };
     expect(validatePublication('words', word)).toEqual([]);
-    expect(
-      validatePublication('words', { ...word, linkedLessons: 0 })[0].code,
-    ).toBe('LESSON_REQUIRED');
+    expect(validatePublication('words', { ...word, linkedLessons: 0 })).toEqual(
+      [],
+    );
+    const missing = validatePublication('words', {
+      ...word,
+      slug: '',
+      level: 'X',
+    });
+    expect(missing[0].code).toBe('WORD_FIELDS');
+    expect(missing[0].message).toContain('slug');
+    expect(missing[0].message).toContain('trình độ');
     expect(validatePublication('words', { ...word, parts: {} })[0].code).toBe(
       'MEANING_REQUIRED',
     );
@@ -101,9 +109,26 @@ describe('F10 publication validation', () => {
         words: [{ id: 'w', available: true, publicationStatus: 'DRAFT' }],
       })[0].code,
     ).toBe('WORD_UNPUBLISHED');
+    // Many hidden words are reported once, with a count.
+    const many = validatePublication('lessons', {
+      title: 'Lesson',
+      slug: 'lesson',
+      collectionAvailable: true,
+      words: ['a', 'b', 'c'].map((id) => ({
+        id,
+        available: true,
+        publicationStatus: 'DRAFT',
+      })),
+    });
+    expect(many).toHaveLength(1);
+    expect(many[0].message).toContain('3/3');
   });
   it('requires ready audio and consistent Dictation timing/count metadata', () => {
     const lesson = {
+      title: 'Lesson',
+      slug: 'lesson',
+      topicId: 'topic',
+      level: 'B1',
       status: 'READY',
       fullAudioUrl: '/media/full.wav',
       totalDurationMs: 1000,
@@ -120,6 +145,11 @@ describe('F10 publication validation', () => {
       ],
     };
     expect(validatePublication('dictation', lesson)).toEqual([]);
+    // Required lesson fields are part of the "show" rule, not only the quality scan.
+    expect(
+      validatePublication('dictation', { ...lesson, title: ' ', topicId: null })
+        .map((issue) => issue.code),
+    ).toEqual(['DICTATION_FIELDS']);
     for (const patch of [
       { status: 'DRAFT' },
       { sentenceCount: 2 },
@@ -164,7 +194,8 @@ describe('F10 publication validation', () => {
           'utf8',
         ),
       ).publication;
-    expect(read('vi').title).toBe('Kiểm duyệt nội dung');
+    expect(read('vi').title).toBe('Trạng thái hiển thị');
+    expect(read('vi').visibility).toEqual({ VISIBLE: 'Hiển thị', HIDDEN: 'Đã ẩn', INCOMPLETE: 'Chưa hoàn thiện' });
     expect(Object.keys(read('vi')).sort()).toEqual(
       Object.keys(read('en')).sort(),
     );

@@ -1,8 +1,12 @@
 "use client";
 
-import React, { useEffect } from "react";
-import { useRemotePagination } from '@/hooks/use-remote-pagination';
-import { ListPagination } from '@/components/ui/list-pagination';
+import { Eye } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { AttemptDetailDialog } from "./attempt-detail-dialog";
+import { UserNameLink } from "@/components/users/user-name-link";
+import React, { useEffect, useState } from "react";
+import { useRemotePagination } from "@/hooks/use-remote-pagination";
+import { ListPagination } from "@/components/ui/list-pagination";
 import { useTranslation } from "react-i18next";
 import { useParams } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
@@ -12,18 +16,27 @@ export function ExamAttemptsTab() {
   const { t } = useTranslation("assessment");
   const { id, locale } = useParams<{ id: string; locale: string }>();
   const pagination = useRemotePagination(id);
+  const [selectedAttempt, setSelectedAttempt] = useState<string | null>(null);
   const { data, isLoading, isError, isFetching, isPlaceholderData } = useQuery({
     queryKey: ["admin-exam-attempts", id, pagination.page, pagination.pageSize],
-    queryFn: () => examService.getAttempts(id, { page: pagination.page, limit: pagination.pageSize }),
+    queryFn: () =>
+      examService.getAttempts(id, {
+        page: pagination.page,
+        limit: pagination.pageSize,
+      }),
     placeholderData: keepPreviousData,
     enabled: Boolean(id),
     refetchInterval: 30000,
   });
   const result = data?.data;
   const rows = result?.data ?? [];
-  const totalPages = Math.max(1, Math.ceil((result?.total ?? 0) / pagination.pageSize));
+  const totalPages = Math.max(
+    1,
+    Math.ceil((result?.total ?? 0) / pagination.pageSize),
+  );
   useEffect(() => {
-    if (result && !isPlaceholderData && pagination.page > totalPages) pagination.setPage(totalPages);
+    if (result && !isPlaceholderData && pagination.page > totalPages)
+      pagination.setPage(totalPages);
   }, [result, isPlaceholderData, pagination.page, totalPages]);
   const formatDate = (value?: string) =>
     value
@@ -65,6 +78,12 @@ export function ExamAttemptsTab() {
                     {t(`detailPage.${key}`)}
                   </th>
                 ))}
+                <th
+                  scope="col"
+                  className="sticky right-0 bg-white px-3 py-3 font-semibold"
+                >
+                  {locale === "en" ? "Actions" : "Thao tác"}
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -77,13 +96,15 @@ export function ExamAttemptsTab() {
                 return (
                   <tr key={attempt._id} className="text-slate-700">
                     <td className="px-3 py-4">
-                      <p className="font-semibold">
-                        {user?.username ||
-                          user?.email ||
+                      <UserNameLink
+                        userId={
+                          user?._id ||
                           (typeof attempt.userId === "string"
                             ? attempt.userId
-                            : "—")}
-                      </p>
+                            : null)
+                        }
+                        name={user?.username || user?.email}
+                      />
                     </td>
                     <td className="px-3 py-4">
                       <p>{attempt.mode || "—"}</p>
@@ -132,6 +153,20 @@ export function ExamAttemptsTab() {
                     <td className="px-3 py-4 whitespace-nowrap text-slate-500">
                       {formatDate(attempt.submittedAt || attempt.createdAt)}
                     </td>
+                    <td className="sticky right-0 border-l border-slate-100 bg-white px-3 py-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="min-h-10 whitespace-nowrap"
+                        onClick={() => setSelectedAttempt(attempt._id)}
+                      >
+                        <Eye aria-hidden="true" className="size-4" />
+                        {locale === "en"
+                          ? "View attempt"
+                          : "Xem chi tiết bài làm"}
+                      </Button>
+                    </td>
                   </tr>
                 );
               })}
@@ -143,7 +178,21 @@ export function ExamAttemptsTab() {
           {t("detailPage.noAttemptsDesc")}
         </div>
       )}
-      <ListPagination pagination={{ ...pagination, totalPages, totalItems: result?.total ?? 0 }} disabled={isFetching} />
+      {selectedAttempt && (
+        <AttemptDetailDialog
+          key={selectedAttempt}
+          attemptId={selectedAttempt}
+          onClose={() => setSelectedAttempt(null)}
+        />
+      )}
+      <ListPagination
+        pagination={{
+          ...pagination,
+          totalPages,
+          totalItems: result?.total ?? 0,
+        }}
+        disabled={isFetching}
+      />
     </div>
   );
 }

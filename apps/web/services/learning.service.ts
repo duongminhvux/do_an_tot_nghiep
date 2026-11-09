@@ -13,6 +13,12 @@ import {
 } from './types';
 
 export const learningService = {
+  getWordLibrary: async (params: { page?: number; limit?: number; status?: string; search?: string }) => {
+    return (await apiClient.get<ApiResponse<import('@/types/learning').WordLibraryPage>>('/learning/reviews/library', { params })).data;
+  },
+  getPracticeWords: async (params: { wordId?: string; status?: string; search?: string }) => {
+    return (await apiClient.get<ApiResponse<UserWordReviewItem[]>>('/learning/reviews/practice', { params })).data;
+  },
   /**
    * Tạo session học mới
    */

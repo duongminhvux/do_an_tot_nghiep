@@ -1,13 +1,18 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { store } from '@/redux/store';
-import { logout, updateAccessToken } from '@/redux/features/auth/authSlice';
+import { verifiedAdminProfile } from "./admin-permissions";
+import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
+import { store } from "@/redux/store";
+import {
+  logout,
+  updateAccessToken,
+  setUser,
+} from "@/redux/features/auth/authSlice";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
 export const apiClient = axios.create({
   baseURL: API_URL,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
   withCredentials: true,
 });
@@ -34,8 +39,8 @@ const processQueue = (error: unknown, token: string | null = null) => {
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     let token = store.getState().auth.accessToken;
-    if (!token && typeof window !== 'undefined') {
-      token = localStorage.getItem('adminAccessToken');
+    if (!token && typeof window !== "undefined") {
+      token = localStorage.getItem("adminAccessToken");
     }
 
     if (token && config.headers) {
@@ -43,13 +48,16 @@ apiClient.interceptors.request.use(
     }
 
     if (config.headers) {
-      const currentLang = typeof window !== 'undefined' ? (localStorage.getItem('i18nextLng') || 'vi') : 'vi';
-      config.headers['Accept-Language'] = currentLang;
+      const currentLang =
+        typeof window !== "undefined"
+          ? localStorage.getItem("i18nextLng") || "vi"
+          : "vi";
+      config.headers["Accept-Language"] = currentLang;
     }
 
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 // Response Interceptor: Handle Data Unwrapping & Auto Refresh Token
@@ -66,14 +74,28 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    if (
+      error.response?.status === 403 &&
+      !originalRequest.url?.includes("/admin/auth/me") &&
+      typeof window !== "undefined"
+    )
+      window.dispatchEvent(new Event("admin-permissions-refresh"));
+    if (error.response?.status === 401 && originalRequest._retry)
+      store.dispatch(logout());
+
     // Check if error is 401 and request is not authentication endpoints
     const isAuthEndpoint =
-      originalRequest.url?.includes('/auth/login') ||
-      originalRequest.url?.includes('/admin/auth/login') ||
-      originalRequest.url?.includes('/auth/refresh-token') ||
-      originalRequest.url?.includes('/admin/auth/refresh-token');
+      originalRequest.url?.includes("/auth/login") ||
+      originalRequest.url?.includes("/admin/auth/login") ||
+      originalRequest.url?.includes("/auth/refresh-token") ||
+      originalRequest.url?.includes("/admin/auth/refresh-token");
 
-    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !isAuthEndpoint
+    ) {
+      originalRequest._retry = true;
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -92,8 +114,8 @@ apiClient.interceptors.response.use(
 
       try {
         const storedRefreshToken =
-          typeof window !== 'undefined'
-            ? localStorage.getItem('adminRefreshToken')
+          typeof window !== "undefined"
+            ? localStorage.getItem("adminRefreshToken")
             : undefined;
 
         const response = await axios.post(
@@ -101,7 +123,7 @@ apiClient.interceptors.response.use(
           {
             refreshToken: storedRefreshToken || undefined,
           },
-          { withCredentials: true }
+          { withCredentials: true },
         );
 
         const newAccessToken =
@@ -110,15 +132,22 @@ apiClient.interceptors.response.use(
         const newRefreshToken =
           response.data?.data?.refreshToken || response.data?.refreshToken;
 
-        if (newRefreshToken && typeof window !== 'undefined') {
-          localStorage.setItem('adminRefreshToken', newRefreshToken);
+        if (newRefreshToken && typeof window !== "undefined") {
+          localStorage.setItem("adminRefreshToken", newRefreshToken);
         }
 
         if (!newAccessToken) {
-          throw new Error('Refresh token failed: No access token returned');
+          throw new Error("Refresh token failed: No access token returned");
         }
 
         store.dispatch(updateAccessToken(newAccessToken));
+        const principal = await axios.get(`${API_URL}/admin/auth/me`, {
+          headers: { Authorization: `Bearer ${newAccessToken}` },
+          withCredentials: true,
+        });
+        store.dispatch(
+          setUser(verifiedAdminProfile(principal.data?.data ?? principal.data)),
+        );
         processQueue(null, newAccessToken);
 
         if (originalRequest.headers) {
@@ -136,7 +165,7 @@ apiClient.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 export default apiClient;

@@ -1,0 +1,257 @@
+.editor {
+  position: relative;
+  padding: 24px 22px 14px;
+  color: var(--foreground);
+}
+.clear {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 29px;
+  height: 29px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  font-size: 24px !important;
+  line-height: 1;
+}
+.words {
+  min-height: 120px;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 14px 25px;
+}
+.token {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+  align-items: center;
+  flex-shrink: 0;
+}
+.editor .words input,
+.editor .words .measure,
+.editor .word,
+.mask {
+  font-size: 24px;
+  line-height: 1.6;
+  font-family: inherit;
+  letter-spacing: 0.2px;
+}
+.inputSizer {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  min-width: 2ch;
+}
+.measure {
+  display: block;
+  visibility: hidden;
+  white-space: pre;
+  padding: 0 4px;
+  user-select: none;
+}
+.inputSizer input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.words input {
+  min-width: 2ch;
+  max-width: 100%;
+  padding: 0 1px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--accent);
+  color: var(--foreground);
+  text-align: left;
+}
+.words input:focus {
+  outline: none !important;
+  box-shadow: none;
+}
+.words input::placeholder,
+.mask {
+  color: var(--muted-foreground);
+}
+.mask {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.mask:hover {
+  background: var(--accent);
+}
+.word {
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--foreground);
+}
+.word:hover {
+  background: var(--accent);
+}
+.words .correct {
+  color: color-mix(in srgb, #16a34a 70%, var(--foreground));
+}
+.words .wrong {
+  color: var(--destructive);
+}
+.words .hinted {
+  color: var(--primary);
+}
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+.mode,
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.microphone {
+  border: 0;
+  background: transparent;
+  color: var(--foreground);
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+}
+.microphone[aria-pressed="true"] {
+  color: var(--destructive);
+}
+.easy {
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 7px;
+  background: var(--muted);
+  padding: 5px 8px;
+}
+.actions button {
+  border: 1px solid var(--primary);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--primary);
+  min-height: 34px;
+  padding: 3px 9px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.actions button:first-child,
+.actions button:nth-child(2) {
+  font-size: 23px;
+  line-height: 1;
+  min-width: 34px;
+}
+.actions .check {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  padding: 5px 14px;
+  font-weight: 600;
+}
+.popover {
+  position: absolute;
+  z-index: 20;
+  bottom: calc(100% + 6px);
+  left: 0;
+  width: max-content;
+  max-width: min(280px, calc(100vw - 64px));
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: 0 5px 20px #0001;
+  font-size: 12px;
+  text-align: left;
+}
+.menu {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.menu button {
+  border: 0;
+  border-radius: 5px;
+  padding: 4px 7px;
+  background: transparent;
+  color: var(--primary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.menu button:hover {
+  background: var(--accent);
+}
+.definition {
+  padding: 6px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.definition p {
+  margin: 5px 0;
+}
+.definition ul {
+  margin: 5px 0;
+  padding-left: 17px;
+}
+.definition a {
+  color: var(--primary);
+  text-decoration: underline;
+}
+.message {
+  color: var(--muted-foreground);
+  font-size: 11px;
+  margin: 8px 0 0;
+}
+@media (max-width: 767px) {
+  .editor {
+    padding: 22px 12px 12px;
+  }
+  .words {
+    padding: 8px 4px 18px;
+    min-height: 110px;
+    gap: 4px;
+  }
+  .editor .words input,
+  .editor .words .measure,
+  .editor .word,
+  .mask {
+    font-size: 20px;
+  }
+  .mode,
+  .actions {
+    gap: 4px;
+  }
+  .actions button {
+    font-size: 12px;
+    padding: 3px 6px;
+  }
+  .actions .check {
+    padding: 5px 8px;
+  }
+  .easy {
+    font-size: 12px;
+    padding: 4px 6px;
+  }
+  .microphone {
+    width: 25px;
+  }
+  .actions button:first-child,
+  .actions button:nth-child(2) {
+    min-width: 28px;
+  }
+}

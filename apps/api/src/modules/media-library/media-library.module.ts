@@ -1,3 +1,4 @@
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator.js';
 import {
   Get,
   Header,
@@ -21,7 +22,7 @@ import { MediaLibraryService } from './media-library.service.js';
 
 export class MediaLibraryQuery {
   @IsOptional()
-  @IsIn(['lesson', 'collection', 'word', 'exam', 'game'])
+  @IsIn(['lesson', 'collection', 'word', 'exam', 'game', 'user'])
   kind?: string;
   @IsOptional() @IsString() @MaxLength(150) search?: string;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100000) page = 1;
@@ -30,11 +31,13 @@ export class MediaLibraryQuery {
 @AdminController('media-library/dictation')
 export class DictationMediaController {
   constructor(private readonly media: MediaLibraryService) {}
+  @RequirePermissions('media_library.read', 'dictation.read')
   @Get('items')
   @Header('Cache-Control', 'private, no-store')
   list(@Query() query: MediaLibraryQuery) {
     return this.media.list('dictation', query);
   }
+  @RequirePermissions('media_library.read', 'dictation.read')
   @Get('items/:id')
   @Header('Cache-Control', 'private, no-store')
   detail(
@@ -47,11 +50,13 @@ export class DictationMediaController {
 @AdminController('media-library/vocab')
 export class VocabMediaController {
   constructor(private readonly media: MediaLibraryService) {}
+  @RequirePermissions('media_library.read', 'vocabulary.read')
   @Get('items')
   @Header('Cache-Control', 'private, no-store')
   list(@Query() query: MediaLibraryQuery) {
     return this.media.list('vocab', query);
   }
+  @RequirePermissions('media_library.read', 'vocabulary.read')
   @Get('items/:id')
   @Header('Cache-Control', 'private, no-store')
   detail(
@@ -64,11 +69,13 @@ export class VocabMediaController {
 @AdminController('media-library/toeic')
 export class ToeicMediaController {
   constructor(private readonly media: MediaLibraryService) {}
+  @RequirePermissions('media_library.read', 'toeic.read')
   @Get('items')
   @Header('Cache-Control', 'private, no-store')
   list(@Query() query: MediaLibraryQuery) {
     return this.media.list('toeic', query);
   }
+  @RequirePermissions('media_library.read', 'toeic.read')
   @Get('items/:id')
   @Header('Cache-Control', 'private, no-store')
   detail(
@@ -81,11 +88,13 @@ export class ToeicMediaController {
 @AdminController('media-library/games')
 export class GamesMediaController {
   constructor(private readonly media: MediaLibraryService) {}
+  @RequirePermissions('media_library.read', 'games.read')
   @Get('items')
   @Header('Cache-Control', 'private, no-store')
   list(@Query() query: MediaLibraryQuery) {
     return this.media.list('games', query);
   }
+  @RequirePermissions('media_library.read', 'games.read')
   @Get('items/:id')
   @Header('Cache-Control', 'private, no-store')
   detail(
@@ -95,6 +104,30 @@ export class GamesMediaController {
     return this.media.detail('games', id, query.kind);
   }
 }
+@AdminController('media-library/users')
+export class UserMediaController {
+  constructor(private readonly media: MediaLibraryService) {}
+  @RequirePermissions('media_library.read', 'users.read')
+  @Get('items')
+  @Header('Cache-Control', 'private, no-store')
+  list(@Query() query: MediaLibraryQuery) {
+    return this.media.list('users', query);
+  }
+  @RequirePermissions('media_library.read', 'users.read')
+  @Get('items/:id')
+  @Header('Cache-Control', 'private, no-store')
+  detail(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Query() query: MediaLibraryQuery,
+  ) {
+    return this.media.detail('users', id, query.kind);
+  }
+}
+@Module({
+  controllers: [UserMediaController],
+  providers: [MediaLibraryService],
+})
+export class IdentityMediaLibraryModule {}
 @Module({
   controllers: [DictationMediaController, VocabMediaController],
   providers: [MediaLibraryService],

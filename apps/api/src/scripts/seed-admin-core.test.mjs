@@ -4,14 +4,14 @@ import {isEnabled,parseSeedOptions,seedAdminSql} from './seed-admin-core.mjs';
 const hash=async(password)=>`bcrypt-hash:${password}`;
 const env={DEFAULT_ADMIN_EMAIL:'ADMIN@gmail.com',DEFAULT_ADMIN_USERNAME:'admin',DEFAULT_ADMIN_PASSWORD:'admin',ADMIN_SEED_ALLOW_WEAK_PASSWORD:'true'};
 function fakePg(initial=[]){
- const data=initial.map(x=>({...x}));
+ const data=initial.map(x=>({status:x.is_deleted?'DISABLED':'ACTIVE',auth_version:1,...x}));
  return {data,async query(sql,params=[]){
    if(sql.startsWith('SELECT * FROM public.admins'))return {rows:data.filter(x=>x.email===params[0]||x.username===params[1])};
    if(sql.startsWith('INSERT INTO public.admins')){
-     data.push({id:`id-${data.length+1}`,email:params[0],username:params[1],password_hash:params[2],is_deleted:false,payload:JSON.parse(params[3])});return {rowCount:1};
+     data.push({id:`id-${data.length+1}`,email:params[0],username:params[1],password_hash:params[2],is_deleted:false,status:"ACTIVE",auth_version:1,payload:JSON.parse(params[3])});return {rowCount:1};
    }
    if(sql.startsWith('UPDATE public.admins')){
-     const target=data.find(x=>x.id===params[0]);assert(target);target.password_hash=params[1];target.is_deleted=params[2];target.deleted_at=params[3];return {rowCount:1};
+     const target=data.find(x=>x.id===params[0]);assert(target);target.password_hash=params[1];target.is_deleted=params[2];target.deleted_at=params[3];target.status=params[4];target.auth_version++;return {rowCount:1};
    }
    throw Error('Unexpected SQL: '+sql);
  }};
@@ -57,4 +57,20 @@ test('empty password only allowed for an already existing admin with no reset',a
  await assert.rejects(seedAdminSql(fakePg(),options,hash),/Admin password/);
  const pg=fakePg([{id:'a',email:'admin@gmail.com',username:'admin',password_hash:'safe',is_deleted:false}]);
  const result=await seedAdminSql(pg,options,hash);assert.equal(result.status,'existing');
+});
+
+test('seed cannot complete a pending invitation',async()=>{
+ const pg=fakePg([{id:'a',email:'admin@gmail.com',username:'admin',password_hash:null,is_deleted:false,status:'PENDING_ACTIVATION'}]);
+ await assert.rejects(seedAdminSql(pg,parseSeedOptions(['--reset-password','--reactivate'],env),hash),/pending invitation/);
+ assert.equal(pg.data[0].password_hash,null);assert.equal(pg.data[0].auth_version,1);
+});
+test('seed reset and reactivation increment epoch without granting roles',async()=>{
+ const pg=fakePg([{id:'a',email:'admin@gmail.com',username:'admin',password_hash:'existing',is_deleted:true}]);
+ await seedAdminSql(pg,parseSeedOptions(['--reactivate'],env),hash);
+ assert.equal(pg.data[0].status,'ACTIVE');assert.equal(pg.data[0].auth_version,2);assert.equal(pg.data[0].password_hash,'existing');
+ await seedAdminSql(pg,parseSeedOptions(['--reset-password'],env),hash);
+ assert.equal(pg.data[0].auth_version,3);
+});
+test('seed refuses email-shaped usernames',()=>{
+ assert.throws(()=>parseSeedOptions([],{...env,DEFAULT_ADMIN_USERNAME:'other@example.com'}),/whitespace or @/);
 });

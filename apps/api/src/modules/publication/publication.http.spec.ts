@@ -117,6 +117,7 @@ describe('F10 HTTP roles and actor attribution', () => {
       { publish, unpublish } as never,
       {} as never,
       {} as never,
+      {} as never,
     );
     controller.publish(id, { user: { _id: actor } });
     controller.unpublish(id, { user: { _id: actor } });

@@ -1,3 +1,6 @@
+import { LocalAuthGuard } from './guards/local-auth.guard.js';
+import { GoogleOauthGuard } from './guards/google-oauth.guard.js';
+import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import {ConfigService} from '@nestjs/config';
 import {JwtService} from '@nestjs/jwt';
 import {I18nService} from 'nestjs-i18n';
@@ -13,7 +16,9 @@ describe('AuthController', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AuthController],
-      providers: [{provide:AuthService,useValue:{}},{provide:ConfigService,useValue:new ConfigService()},{provide:JwtService,useValue:{}},{provide:I18nService,useValue:{}},{provide:UsersService,useValue:{}},{provide:NotificationClient,useValue:{}}] }).compile();
+      providers: [{provide:AuthService,useValue:{}},{provide:ConfigService,useValue:new ConfigService()},{provide:JwtService,useValue:{}},{provide:I18nService,useValue:{}},{provide:UsersService,useValue:{}},{provide:NotificationClient,useValue:{}}] }).overrideGuard(LocalAuthGuard).useValue({canActivate:()=>true})
+      .overrideGuard(GoogleOauthGuard).useValue({canActivate:()=>true})
+      .overrideGuard(JwtAuthGuard).useValue({canActivate:()=>true}).compile();
 
     controller = module.get<AuthController>(AuthController);
   });

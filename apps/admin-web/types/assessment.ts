@@ -55,8 +55,14 @@ export interface ExamItem extends Partial<PublicationInfo> {
   order: number;
   groupId?: string | null;
   group?: ExamGroupItem;
+  timingSettings?: TimingSettings;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface TimingSettings {
+  testDurationMinutes: number;
+  practiceDurationMinutes: number;
 }
 
 export interface RawAttemptResult {
@@ -87,6 +93,25 @@ export interface ExamAttemptItem {
   listeningResult?: RawAttemptResult;
   readingResult?: RawAttemptResult;
 }
+export interface ExamAttemptQuestion {
+  _id: string;
+  part: number;
+  content: string;
+  options: { key: string; text: string }[];
+  correctAnswer?: string;
+  explanation?: string;
+  transcript?: string;
+  imageUrl?: string;
+  audioUrl?: string;
+  passages?: { _id?: string; content?: string; imageUrl?: string; audioUrl?: string }[];
+}
+export interface ExamAttemptDetail extends ExamAttemptItem {
+  hasSnapshot: boolean;
+  questions: ExamAttemptQuestion[];
+  answers: Record<string, string>;
+  completedAt?: string;
+  score?: number;
+}
 export interface ExamAttemptList {
   data: ExamAttemptItem[];
   total: number;
@@ -104,12 +129,13 @@ export interface CreateExamDto {
   totalQuestions?: number;
   order?: number;
   groupId?: string | null;
+  timingSettings?: TimingSettings;
 }
 
 export interface UpdateExamDto extends Partial<CreateExamDto> {}
 
 export interface QueryExamDto {
-  publicationStatus?:PublicationStatus;
+  publicationStatus?:PublicationStatus|'NOT_PUBLISHED';
   sortBy?: "name" | "totalQuestions" | "durationMinutes" | "order" | "isActive";
   sortOrder?: "asc" | "desc";
   search?: string;
