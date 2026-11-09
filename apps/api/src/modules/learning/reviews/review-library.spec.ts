@@ -93,11 +93,12 @@ describe('learned vocabulary library', () => {
     expect(first.total).toBe(123);
     expect(first.items).toHaveLength(20);
     expect(last.items).toHaveLength(3);
-    expect(first.stats).toEqual({
+    expect(first.stats).toMatchObject({
       total: 123,
       due: 62,
       learning: 62,
       mastered: 61,
+      nextDueAt: expect.any(String),
     });
     expect(
       (

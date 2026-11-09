@@ -206,5 +206,5 @@ export interface RecentActivityItem {
 export interface WordLibraryPage {
   items: UserWordReviewItem[];
   total: number; page: number; limit: number; totalPages: number;
-  stats: { total: number; due: number; learning: number; mastered: number };
+  stats: { total: number; due: number; learning: number; mastered: number; nextDueAt?: string | null };
 }

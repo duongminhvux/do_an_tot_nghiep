@@ -23,11 +23,17 @@ export class ReviewsService {
     const available = owned.filter(row => row.wordId);
     const now = Date.now();
     const due = (row: any) => !!row.nextReviewAt && new Date(row.nextReviewAt).getTime() <= now;
-    const stats = { total: available.length, due: available.filter(due).length, learning: available.filter(row=>row.status==='LEARNING').length, mastered: available.filter(row=>row.status==='MASTERED').length };
+    const upcoming = available.filter(row => row.nextReviewAt && !due(row)).map(row => new Date(row.nextReviewAt).getTime());
+    const stats = { total: available.length, due: available.filter(due).length, learning: available.filter(row=>row.status==='LEARNING').length, mastered: available.filter(row=>row.status==='MASTERED').length,
+      nextDueAt: upcoming.length ? new Date(Math.min(...upcoming)).toISOString() : null };
     const search = query.search?.toLocaleLowerCase() || '';
     const searchable = (word: any) => [word.word,word.meaning,...(word.parts ?? []).flatMap((part: any)=>part.meanings ?? []).flatMap((meaning: any)=>[meaning.definition,...(Array.isArray(meaning.translation)?meaning.translation:[meaning.translation])])].filter(value=>typeof value==='string').join(' ').toLocaleLowerCase();
     const filtered = available.filter(row => (query.status==='ALL' || !query.status || query.status==='DUE' && due(row) || row.status===query.status) &&
       (!search || searchable(row.wordId).includes(search)));
+    // Due words first (most overdue on top) so the list matches what the learner should review next;
+    // the rest keep the most-recently-reviewed order.
+    const dueAt = (row: any) => (due(row) ? new Date(row.nextReviewAt).getTime() : Infinity);
+    filtered.sort((a, b) => { const x = dueAt(a), y = dueAt(b); return x === y ? 0 : x < y ? -1 : 1; });
     const page=query.page || 1, limit=Math.min(50,Math.max(1,query.limit || 20));
     return { items: filtered.slice((page-1)*limit,page*limit), total: filtered.length, page, limit, totalPages: Math.max(1,Math.ceil(filtered.length/limit)), stats };
   }
