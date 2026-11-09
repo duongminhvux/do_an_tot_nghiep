@@ -458,12 +458,9 @@ function PublicationPreviewDialog({
 function PreviewContent({ data }: { data: PublicationPreview }) {
   const { t } = useTranslation("common");
   const [revealed, setRevealed] = useState(false);
-<<<<<<< HEAD
+  if(data.kind==='dictation')return <DictationStudioPreview data={data}/>;
   const empty =
     !data.questions?.length && !data.segments?.length && !data.parts?.length && !data.words?.length && !data.fullAudioUrl;
-=======
-  if(data.kind==='dictation')return <DictationStudioPreview data={data}/>;
->>>>>>> 5f669d0 (update Dictation)
   return (
     <div className="min-w-0 space-y-4 [overflow-wrap:anywhere]">
       <h3 className="text-xl font-bold">{data.title}</h3>

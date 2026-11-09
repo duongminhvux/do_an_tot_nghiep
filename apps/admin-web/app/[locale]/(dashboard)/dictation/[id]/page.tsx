@@ -240,8 +240,7 @@ export default function DictationDetailPage() {
     return <div className="flex min-h-[60vh] items-center justify-center text-slate-500"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Đang tải bài Dictation...</div>;
   }
 
-<<<<<<< HEAD
-  const busy = saveMutation.isPending || processMutation.isPending || saveSegmentsMutation.isPending;
+  const busy = saveMutation.isPending || processMutation.isPending || saveSegmentsMutation.isPending || splitSentencesMutation.isPending;
   // Unsaved edits in this form (never sent to learners until saved and shown).
   const dirty = title!==lesson.title || description!==(lesson.description||'') || sourceText!==(lesson.sourceText||'') || level!==lesson.level || language!==(lesson.language||'en-US') || speed!==(lesson.speed??1) || pauseAfterMs!==(lesson.pauseAfterMs??300) || voice1!==(lesson.voiceIds?.[0]||'af_heart') || voice2!==(lesson.voiceIds?.[1]||'') || topicId!==(lesson.topicId||'') || sectionId!==(lesson.sectionId||'') || Boolean(replacementFile) || JSON.stringify(segmentDrafts)!==JSON.stringify((lesson.segments||[]).map(segment=>({order:segment.order,text:segment.text,startMs:segment.startMs??0,endMs:segment.endMs??Math.max(segment.durationMs||0,1),speaker:segment.speaker||''})));
   const audioProcessing = processMutation.isPending || lesson.status === 'PROCESSING_AUDIO';
@@ -277,9 +276,6 @@ export default function DictationDetailPage() {
     const target = scope === 'lesson' ? 'dictation-info' : 'dictation-audio';
     document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
-=======
-  const busy = saveMutation.isPending || processMutation.isPending || saveSegmentsMutation.isPending || splitSentencesMutation.isPending;
->>>>>>> 5f669d0 (update Dictation)
 
   return (
     <div className="min-h-screen bg-slate-50/50 p-4 sm:p-6 md:p-8">
@@ -356,15 +352,9 @@ export default function DictationDetailPage() {
           </div>
 
           <div className="space-y-5">
-<<<<<<< HEAD
             <section id="dictation-audio" className="scroll-mt-24 rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-              <div className="flex items-center justify-between gap-3"><div><h2 className="text-sm font-bold text-slate-900">Full audio duy nhất</h2><p className="mt-1 text-xs text-slate-400">{lesson.audioProcessor || '—'} · {lesson.audioProcessorDevice || '—'} · {lesson.totalDurationMs ? formatMs(lesson.totalDurationMs) : '—'}</p></div></div>
-              {lesson.fullAudioUrl ? <audio ref={audioRef} className="mt-4 w-full" controls src={lesson.fullAudioUrl} /> : <p className="mt-4 text-xs text-slate-400">Chưa có audio.</p>}
-=======
-            <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
               <div className="flex items-center justify-between gap-3"><div><h2 className="text-sm font-bold text-slate-900">{lesson.youtubeVideoId?'Video YouTube':'Bài nghe'}</h2><p className="mt-1 text-xs text-slate-400">{lesson.totalDurationMs ? formatMs(lesson.totalDurationMs) : '—'}</p></div></div>
               {lesson.youtubeVideoId?<YoutubePlayer ref={youtubeRef} videoId={lesson.youtubeVideoId}/>:lesson.fullAudioUrl ? <audio ref={audioRef} className="mt-4 w-full" controls src={lesson.fullAudioUrl} /> : <p className="mt-4 text-xs text-slate-400">Chưa có audio.</p>}
->>>>>>> 5f669d0 (update Dictation)
             </section>
 
             <section id="dictation-segments" className="scroll-mt-24 rounded-xl border border-slate-200 bg-white shadow-xs">
