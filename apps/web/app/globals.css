@@ -284,3 +284,19 @@ html:has(.landing-root) {
   [data-sidebar="menu-button"] { min-height: 2.75rem; }
   [data-sidebar="menu-sub-button"] { min-height: 2.5rem; }
 }
+
+/* Dictation full-transcript seek bar: the track is drawn underneath, the native input only supplies the thumb. */
+.dictation-seek::-webkit-slider-runnable-track { height: 100%; background: transparent; }
+.dictation-seek::-moz-range-track { background: transparent; }
+.dictation-seek::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; margin-top: 2px;
+  width: 16px; height: 16px; border-radius: 9999px;
+  background: #fff; border: 2px solid #2563eb; box-shadow: 0 1px 3px rgb(15 23 42 / 0.2);
+}
+.dictation-seek::-moz-range-thumb {
+  width: 12px; height: 12px; border-radius: 9999px;
+  background: #fff; border: 2px solid #2563eb; box-shadow: 0 1px 3px rgb(15 23 42 / 0.2);
+}
+.dictation-seek:focus-visible { outline: none; }
+.dictation-seek:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgb(59 130 246 / 0.3); }
+.dictation-seek:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 4px rgb(59 130 246 / 0.3); }
