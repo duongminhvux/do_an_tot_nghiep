@@ -448,6 +448,16 @@ export default function DictationPracticePage() {
       const control = (tag === 'BUTTON' && target?.getAttribute('role') !== 'tab') || tag === 'A';
       const mod = event.ctrlKey || event.metaKey;
 
+      // Tab = replay the sentence while typing the answer (Space can't be used there).
+      // Only hijacked in the answer box / on the page body, so Tab still moves focus between controls,
+      // and Shift+Tab always works normally.
+      if (event.key === 'Tab' && !event.shiftKey && !mod && !event.altKey && tab === 'dictation'
+        && (target === inputRef.current || target === document.body || !target)) {
+        event.preventDefault();
+        playCurrent();
+        return;
+      }
+
       if (mod && !event.altKey) {
         if (event.code === 'Space') {
           event.preventDefault();
@@ -545,6 +555,7 @@ export default function DictationPracticePage() {
     { keys: [<Kbd key="a">Ctrl</Kbd>, <Kbd key="b">↑</Kbd>, <Kbd key="c">↓</Kbd>], label: t('sc_prev_next_anywhere') },
     { keys: [<Kbd key="a">Enter</Kbd>], label: t('sc_check'), scope: 'Dictation' },
     { keys: [<Kbd key="a">Ctrl</Kbd>, <Kbd key="b">Shift</Kbd>, <Kbd key="c">Enter</Kbd>], label: t('sc_reveal'), scope: 'Dictation' },
+    { keys: [<Kbd key="a">Tab</Kbd>], label: t('sc_replay_tab'), scope: 'Dictation' },
     { keys: [<Kbd key="a">R</Kbd>], label: t('sc_replay'), scope: 'Dictation' },
     { keys: [<Kbd key="a">J</Kbd>, <Kbd key="b">L</Kbd>], label: t('sc_seek'), scope: t('transcript') },
     { keys: [<Kbd key="a">Ctrl</Kbd>, <Kbd key="b">[</Kbd>, <Kbd key="c">]</Kbd>], label: t('sc_speed') },
@@ -684,9 +695,9 @@ export default function DictationPracticePage() {
                             <Eye /> {t('reveal_answer')}
                           </Button>
                         )}
-                        <Button variant="outline" onClick={() => playCurrent()} aria-keyshortcuts="Control+Space">
+                        <Button variant="outline" onClick={() => playCurrent()} aria-keyshortcuts="Tab Control+Space">
                           <Volume2 /> {t('replay')}
-                          <Kbd className="ml-1 hidden sm:inline-flex">Ctrl Space</Kbd>
+                          <Kbd className="ml-1 hidden sm:inline-flex">Tab</Kbd>
                         </Button>
                         {showAnswer && currentIndex < segments.length - 1 && (
                           <Button className="ml-auto" onClick={() => goTo(currentIndex + 1)} aria-keyshortcuts="Enter">
@@ -926,7 +937,10 @@ export default function DictationPracticePage() {
               <span className="inline-flex items-center gap-1"><Kbd>←</Kbd><Kbd>→</Kbd> {t('sc_short_nav')}</span>
               {tab === 'transcript'
                 ? <span className="inline-flex items-center gap-1"><Kbd>J</Kbd><Kbd>L</Kbd> ±{SEEK_STEP}s</span>
-                : <span className="inline-flex items-center gap-1"><Kbd>Enter</Kbd> {t('sc_short_check')}</span>}
+                : <>
+                    <span className="inline-flex items-center gap-1"><Kbd>Tab</Kbd> {t('sc_short_replay')}</span>
+                    <span className="inline-flex items-center gap-1"><Kbd>Enter</Kbd> {t('sc_short_check')}</span>
+                  </>}
               <button type="button" onClick={() => setShowShortcuts(true)} className="ml-auto inline-flex items-center gap-1 font-medium text-blue-600 hover:underline">
                 <Kbd>?</Kbd> {t('shortcuts_more')}
               </button>

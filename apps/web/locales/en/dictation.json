@@ -91,5 +91,7 @@
   "sc_help": "Open shortcut list",
   "sc_short_play": "play",
   "sc_short_nav": "sentence",
-  "sc_short_check": "check"
+  "sc_short_check": "check",
+  "sc_replay_tab": "Replay current sentence (even while typing)",
+  "sc_short_replay": "replay"
 }

@@ -91,5 +91,7 @@
   "sc_help": "Mở bảng phím tắt",
   "sc_short_play": "phát",
   "sc_short_nav": "đổi câu",
-  "sc_short_check": "kiểm tra"
+  "sc_short_check": "kiểm tra",
+  "sc_replay_tab": "Nghe lại câu hiện tại (cả khi đang gõ)",
+  "sc_short_replay": "nghe lại"
 }
