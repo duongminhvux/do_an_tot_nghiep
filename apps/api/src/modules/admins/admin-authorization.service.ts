@@ -218,7 +218,7 @@ export class AdminAuthorizationService {
           admin.status === 'PENDING_ACTIVATION')
       )
         throw new BadRequestException(
-          'Unlock cannot activate an invitation or restore a deleted admin',
+          'This account was never activated; send a new invitation instead of unlocking it',
         );
       if (status !== 'ACTIVE') {
         const { rows: supers } =

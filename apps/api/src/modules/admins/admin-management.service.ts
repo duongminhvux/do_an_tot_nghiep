@@ -26,7 +26,7 @@ import {
 } from './admin-iam.validation.js';
 
 // Deliberately omit password_hash, payload and activation token/hash from every API projection.
-const profile = `a.id,a.email,a.username,NULLIF(a.payload->>'fullName','') AS "fullName",a.avatar_url AS "avatarUrl",a.status,a.auth_version AS "authVersion",
+const profile = `a.id,a.email,a.username,NULLIF(a.payload->>'fullName','') AS "fullName",a.avatar_url AS "avatarUrl",a.status,(a.password_hash IS NOT NULL) AS "hasPassword",a.auth_version AS "authVersion",
   a.created_by AS "createdBy",a.activated_at AS "activatedAt",a.last_login_at AS "lastLoginAt",
   a.created_at AS "createdAt",a.updated_at AS "updatedAt",
   COALESCE((SELECT jsonb_agg(jsonb_build_object('id',r.id,'code',r.code,'name',r.name,'isSystem',r.is_system) ORDER BY r.code)

@@ -68,8 +68,13 @@ export class AdminActivationService {
   private urls() {
     try {
       const base = new URL(this.config.get<string>('ADMIN_WEB_URL') || '');
+      // Plain HTTP is accepted only for loopback hosts used in local development.
+      const loopback =
+        base.hostname === 'localhost' ||
+        base.hostname === '127.0.0.1' ||
+        base.hostname.endsWith('.localhost');
       if (
-        base.protocol !== 'https:' ||
+        !(base.protocol === 'https:' || (base.protocol === 'http:' && loopback)) ||
         base.username ||
         base.password ||
         base.search ||
@@ -141,10 +146,19 @@ export class AdminActivationService {
         const {
           rows: [admin],
         } = await db.query(
-          'SELECT status,is_deleted FROM public.admins WHERE id=$1::uuid FOR UPDATE',
+          'SELECT status,is_deleted,password_hash IS NOT NULL AS has_password FROM public.admins WHERE id=$1::uuid FOR UPDATE',
           [adminId],
         );
-        if (!admin || admin.is_deleted || admin.status !== 'PENDING_ACTIVATION')
+        // A locked account that never set a password can only be recovered by a fresh invitation.
+        const neverActivatedLocked =
+          !!admin &&
+          !admin.has_password &&
+          (admin.status === 'SUSPENDED' || admin.status === 'DISABLED');
+        if (
+          !admin ||
+          admin.is_deleted ||
+          (admin.status !== 'PENDING_ACTIVATION' && !neverActivatedLocked)
+        )
           throw invalid();
         const {
           rows: [recent],
@@ -159,7 +173,7 @@ export class AdminActivationService {
           );
         const issued = await this.issue(db, adminId, actor._id);
         await db.query(
-          'UPDATE public.admins SET auth_version=auth_version+1 WHERE id=$1::uuid',
+          "UPDATE public.admins SET status='PENDING_ACTIVATION',auth_version=auth_version+1 WHERE id=$1::uuid",
           [adminId],
         );
         await this.authorization.recordAudit(
@@ -167,8 +181,12 @@ export class AdminActivationService {
           actor,
           'ADMIN_REINVITED',
           adminId,
-          null,
-          { activationTokenId: issued.id, expiresAt: issued.expiresAt },
+          { status: admin.status },
+          {
+            status: 'PENDING_ACTIVATION',
+            activationTokenId: issued.id,
+            expiresAt: issued.expiresAt,
+          },
         );
         return { expiresAt: issued.expiresAt, delivery: issued.delivery };
       },

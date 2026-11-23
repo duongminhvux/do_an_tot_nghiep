@@ -23,6 +23,8 @@ export interface IamAdmin {
   fullName: string | null;
   avatarUrl: string | null;
   status: AdminStatus;
+  /** False while the account has never completed activation. */
+  hasPassword?: boolean;
   authVersion: number;
   createdAt: string;
   activatedAt: string | null;
