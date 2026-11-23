@@ -60,7 +60,8 @@
     "dictation_settings": "Cấu hình",
     "exam_groups": "Nhóm đề thi",
     "exams": "Đề thi",
-    "systemSettings": "Cấu hình hệ thống"
+    "systemSettings": "Cấu hình hệ thống",
+    "infrastructure": "Hàng đợi & máy xử lý"
   },
   "nav.dashboard": "Bảng điều khiển",
   "nav.vocabulary": "Từ vựng",
@@ -357,6 +358,67 @@
       "PROGRAM_EMPTY": "Chương trình chưa có bài",
       "PROGRAM_UNPUBLISHED": "Chưa có bài hiển thị",
       "MALFORMED": "Dữ liệu sai cấu trúc"
+    }
+  },
+  "infrastructure": {
+    "title": "Hàng đợi & máy xử lý âm thanh",
+    "subtitle": "Theo dõi tình trạng các dịch vụ của hệ thống và hàng đợi tạo âm thanh (đọc từ vựng, bài nghe). Bạn cũng có thể bật thêm máy xử lý thứ 2 khi có nhiều việc tồn đọng.",
+    "loading": "Đang tải…",
+    "refresh": "Làm mới",
+    "loadError": "Không tải được một phần dữ liệu. Vui lòng thử làm mới lại.",
+    "saveError": "Không lưu được cấu hình.",
+    "saved": "Đã lưu cấu hình.",
+    "health": {
+      "title": "Tình trạng dịch vụ",
+      "hint": "Mỗi ô là một phần của hệ thống. \"Hoạt động tốt\" nghĩa là dịch vụ đang phản hồi bình thường.",
+      "empty": "Chưa có dữ liệu tình trạng dịch vụ."
+    },
+    "services": {
+      "identity": "Tài khoản & đăng nhập",
+      "content": "Nội dung học",
+      "assessment": "Đề thi",
+      "learning": "Tiến độ học tập",
+      "arena": "Đấu trường",
+      "ai-import": "Nhập dữ liệu bằng AI",
+      "notification": "Thông báo",
+      "tts": "Chuyển văn bản thành giọng nói",
+      "asr": "Nhận dạng giọng nói",
+      "qwen-pdf": "Đọc PDF bằng AI"
+    },
+    "states": {
+      "healthy": "Hoạt động tốt",
+      "unhealthy": "Đang gặp lỗi",
+      "unreachable": "Không kết nối được",
+      "not-configured": "Chưa cấu hình"
+    },
+    "metrics": {
+      "broker": "Hệ thống hàng đợi",
+      "brokerHint": "Công cụ đang lưu các việc cần xử lý",
+      "waiting": "Đang chờ xử lý",
+      "waitingHint": "Số việc tạo âm thanh đang xếp hàng",
+      "retrying": "Đang thử lại",
+      "retryingHint": "Việc bị lỗi tạm thời, sẽ tự chạy lại",
+      "dead": "Thất bại hẳn",
+      "deadHint": "Việc đã thử nhiều lần vẫn lỗi, cần kiểm tra"
+    },
+    "policy": {
+      "title": "Cấu hình máy xử lý giọng nói",
+      "desc": "Máy xử lý 1 luôn chạy. Máy xử lý 2 chỉ được dùng khi: đã được cài đặt sẵn, số việc đang chờ vượt ngưỡng bên dưới và máy chủ còn đủ tài nguyên GPU.",
+      "maxWorkers": "Số máy xử lý tối đa",
+      "maxWorkers1": "1 máy (chỉ máy chính)",
+      "maxWorkers2": "2 máy (máy chính + máy phụ khi quá tải)",
+      "threshold": "Bật máy phụ khi số việc chờ từ",
+      "thresholdHint": "Ví dụ: 10 nghĩa là khi có từ 10 việc đang chờ trở lên mới dùng thêm máy phụ.",
+      "noteDefault": "Số máy xử lý thực tế do đội vận hành cài đặt trên máy chủ; hệ thống không tự động tăng thêm máy.",
+      "save": "Lưu cấu hình",
+      "saving": "Đang lưu…"
+    },
+    "job": {
+      "title": "Tra cứu một việc tạo âm thanh",
+      "hint": "Dán mã việc (UUID) để xem trạng thái và chi tiết lỗi nếu có.",
+      "placeholder": "Mã việc, ví dụ 3f2a…",
+      "lookup": "Tra cứu",
+      "notFound": "Không tìm thấy việc này."
     }
   }
 }

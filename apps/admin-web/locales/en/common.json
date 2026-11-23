@@ -60,7 +60,8 @@
     "dictation_settings": "Configuration",
     "exam_groups": "Exam Groups",
     "exams": "Exams",
-    "systemSettings": "System settings"
+    "systemSettings": "System settings",
+    "infrastructure": "Workers & queue"
   },
   "nav.dashboard": "Dashboard",
   "nav.vocabulary": "Vocabulary",
@@ -357,6 +358,67 @@
       "PROGRAM_EMPTY": "Programme has no lessons",
       "PROGRAM_UNPUBLISHED": "No visible lesson",
       "MALFORMED": "Malformed data"
+    }
+  },
+  "infrastructure": {
+    "title": "Audio workers & queue",
+    "subtitle": "Check that every system service is up and watch the audio generation queue (word pronunciation, listening lessons). You can allow a second worker when jobs pile up.",
+    "loading": "Loading…",
+    "refresh": "Refresh",
+    "loadError": "Some data could not be loaded. Try refreshing.",
+    "saveError": "Could not save the configuration.",
+    "saved": "Configuration saved.",
+    "health": {
+      "title": "Service health",
+      "hint": "Each tile is one part of the system. \"Healthy\" means it is responding normally.",
+      "empty": "No service health data yet."
+    },
+    "services": {
+      "identity": "Accounts & sign-in",
+      "content": "Learning content",
+      "assessment": "Exams",
+      "learning": "Learning progress",
+      "arena": "Arena",
+      "ai-import": "AI data import",
+      "notification": "Notifications",
+      "tts": "Text-to-speech",
+      "asr": "Speech recognition",
+      "qwen-pdf": "AI PDF reader"
+    },
+    "states": {
+      "healthy": "Healthy",
+      "unhealthy": "Erroring",
+      "unreachable": "Unreachable",
+      "not-configured": "Not configured"
+    },
+    "metrics": {
+      "broker": "Queue system",
+      "brokerHint": "Tool that stores pending jobs",
+      "waiting": "Waiting",
+      "waitingHint": "Audio jobs in line",
+      "retrying": "Retrying",
+      "retryingHint": "Temporarily failed, will retry",
+      "dead": "Failed",
+      "deadHint": "Failed after all retries — needs a look"
+    },
+    "policy": {
+      "title": "Speech worker settings",
+      "desc": "Worker 1 always runs. Worker 2 is used only when it is installed, the waiting jobs exceed the threshold below, and the server has enough GPU capacity.",
+      "maxWorkers": "Maximum workers",
+      "maxWorkers1": "1 worker (main only)",
+      "maxWorkers2": "2 workers (main + extra when busy)",
+      "threshold": "Use the extra worker from this many waiting jobs",
+      "thresholdHint": "E.g. 10 means the extra worker starts helping once 10 or more jobs are waiting.",
+      "noteDefault": "The actual number of workers is set up on the server by operations; nothing is added automatically.",
+      "save": "Save settings",
+      "saving": "Saving…"
+    },
+    "job": {
+      "title": "Look up an audio job",
+      "hint": "Paste a job ID (UUID) to see its status and any error details.",
+      "placeholder": "Job ID, e.g. 3f2a…",
+      "lookup": "Look up",
+      "notFound": "Job not found."
     }
   }
 }

@@ -30,6 +30,7 @@ import {
   Images,
   LayoutTemplate,
   SlidersHorizontal,
+  Server,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -253,12 +254,6 @@ export function AppSidebar() {
       active: active(`/${locale}/media`),
     },
     {
-      label: "Workers & Queue",
-      href: `/${locale}/infrastructure`,
-      icon: Settings,
-      active: active(`/${locale}/infrastructure`),
-    },
-    {
       label: t("nav.systemSettings"),
       icon: Settings,
       active: active(`/${locale}/settings`),
@@ -297,6 +292,13 @@ export function AppSidebar() {
         active: active(`/${locale}/iam/roles`),
       },
     ],
+  });
+  // Ops tooling stays last so daily work and admin management come first.
+  items.push({
+    label: t("nav.infrastructure"),
+    href: `/${locale}/infrastructure`,
+    icon: Server,
+    active: active(`/${locale}/infrastructure`),
   });
   const visibleItems = items
     .map((item) =>
