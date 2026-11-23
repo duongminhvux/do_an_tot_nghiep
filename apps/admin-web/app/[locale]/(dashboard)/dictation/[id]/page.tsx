@@ -5,6 +5,7 @@ import { ListPagination } from '@/components/ui/list-pagination';
 import {VisibilityActions,VisibilityIssues,VisibilityStatus} from '@/components/publication/publication-controls';
 import type {PublicationIssue} from '@repo/shared-types/publication';
 import {DictationLearningHistory} from '@/components/dictation/learning-history';
+import { DictationReviewPanel } from '@/components/dictation/dictation-review-panel';
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -20,6 +21,7 @@ import {
   Save,
   Upload,
   BookOpen,
+  Headphones,
   Users,
 } from 'lucide-react';
 import { dictationService } from '@/services/dictation.service';
@@ -44,7 +46,7 @@ export default function DictationDetailPage() {
   const params = useParams();
   const locale = (params?.locale as string) || 'vi';
   const id = String(params?.id || '');
-  const [activeTab,setActiveTab]=useState<'content'|'learning'>('content');
+  const [activeTab,setActiveTab]=useState<'content'|'learning'|'review'>('content');
   const english=locale==='en';
   const queryClient = useQueryClient();
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -303,8 +305,11 @@ export default function DictationDetailPage() {
           </div>
         </div>
 
-        <div role="tablist" aria-label={english?'Lesson sections':'Các mục bài học'} className="flex gap-1 border-b border-slate-200" onKeyDown={event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const next=event.key==='Home'?'content':event.key==='End'?'learning':activeTab==='content'?'learning':'content';setActiveTab(next);audioRef.current?.pause();document.getElementById(`dictation-tab-${next}`)?.focus();}}>
-          {(['content','learning'] as const).map(tab=>{const Icon=tab==='content'?BookOpen:Users;return <button key={tab} id={`dictation-tab-${tab}`} type="button" role="tab" aria-selected={activeTab===tab} aria-controls={`dictation-panel-${tab}`} tabIndex={activeTab===tab?0:-1} onClick={()=>{setActiveTab(tab);audioRef.current?.pause();}} className={`inline-flex min-h-12 items-center gap-2 border-b-2 px-4 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 ${activeTab===tab?'border-blue-600 text-blue-700':'border-transparent text-slate-500 hover:text-slate-800'}`}><Icon aria-hidden className="h-4 w-4"/>{tab==='content'?(english?'Lesson content':'Nội dung bài học'):(english?'Learning activity':'Quá trình học')}</button>;})}
+        <div role="tablist" aria-label={english?'Lesson sections':'Các mục bài học'} className="flex gap-1 border-b border-slate-200" onKeyDown={event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const tabs=['content','review','learning'] as const;const index=tabs.indexOf(activeTab);const next=event.key==='Home'?'content':event.key==='End'?'learning':tabs[(index+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length]!;setActiveTab(next);audioRef.current?.pause();document.getElementById(`dictation-tab-${next}`)?.focus();}}>
+          {(['content','review','learning'] as const).map(tab=>{const Icon=tab==='content'?BookOpen:tab==='review'?Headphones:Users;return <button key={tab} id={`dictation-tab-${tab}`} type="button" role="tab" aria-selected={activeTab===tab} aria-controls={`dictation-panel-${tab}`} tabIndex={activeTab===tab?0:-1} onClick={()=>{setActiveTab(tab);audioRef.current?.pause();}} className={`inline-flex min-h-12 items-center gap-2 border-b-2 px-4 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 ${activeTab===tab?'border-blue-600 text-blue-700':'border-transparent text-slate-500 hover:text-slate-800'}`}><Icon aria-hidden className="h-4 w-4"/>{tab==='content'?(english?'Lesson content': 'Nội dung bài học'):tab==='review'?(english?'Review mode':'Kiểm tra bài'):(english?'Learning activity':'Quá trình học')}</button>;})}
+        </div>
+        <div role="tabpanel" id="dictation-panel-review" aria-labelledby="dictation-tab-review" hidden={activeTab!=='review'}>
+          {activeTab==='review' && <DictationReviewPanel lesson={lesson} />}
         </div>
         <div role="tabpanel" id="dictation-panel-learning" aria-labelledby="dictation-tab-learning" hidden={activeTab!=='learning'}>
           {activeTab==='learning'&&<DictationLearningHistory lesson={lesson}/>}

@@ -155,13 +155,20 @@ export function AppSidebar() {
           icon: BookOpen,
           active:
             active(`/${locale}/dictation`) &&
-            !active(`/${locale}/dictation/structure`),
+            !active(`/${locale}/dictation/structure`) &&
+            !active(`/${locale}/dictation/settings`),
         },
         {
           label: t("nav.dictation_structure"),
           href: `/${locale}/dictation/structure`,
           icon: FolderTree,
           active: active(`/${locale}/dictation/structure`),
+        },
+        {
+          label: t("nav.dictation_settings"),
+          href: `/${locale}/dictation/settings`,
+          icon: Settings,
+          active: active(`/${locale}/dictation/settings`),
         },
       ],
     },
