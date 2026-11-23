@@ -28,7 +28,7 @@ function ModeOption({
       aria-checked={active}
       onClick={onSelect}
       className={cn(
-        'flex min-w-0 cursor-pointer items-start gap-3 rounded-xl border p-4 text-left outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-blue-500/60',
+        'flex min-w-0 cursor-pointer items-start gap-3 rounded-xl border p-4 text-left lg:p-3 outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-blue-500/60',
         active
           ? 'border-blue-500 bg-blue-50/60 ring-1 ring-blue-500'
           : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50',
@@ -47,7 +47,7 @@ function ModeOption({
         <span className={cn('block text-[15px] font-semibold', active ? 'text-blue-700' : 'text-slate-800')}>
           {label}
         </span>
-        <span className="mt-1 block text-sm leading-relaxed text-slate-500">{description}</span>
+        <span className="mt-1 block text-sm leading-relaxed text-slate-500 lg:mt-0.5 lg:line-clamp-2 lg:text-[13px] lg:leading-snug">{description}</span>
       </span>
     </button>
   );
@@ -71,7 +71,7 @@ function PartGroup({
   if (!parts.length) return null;
   return (
     <fieldset>
-      <legend className={cn('mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider', tone)}>
+      <legend className={cn('mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider', tone)}>
         <Icon className="h-3.5 w-3.5" aria-hidden />
         {label}
       </legend>
@@ -82,7 +82,7 @@ function PartGroup({
             <label
               key={p._id}
               className={cn(
-                'flex min-h-10 cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 text-sm transition-colors duration-150 hover:bg-slate-50',
+                'flex min-h-10 cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 text-sm lg:min-h-8 lg:py-1 transition-colors duration-150 hover:bg-slate-50',
                 checked && 'bg-slate-50',
               )}
             >
@@ -142,12 +142,18 @@ export function ExamModePartsSelector({
   const allSelected = selectedCount === listeningParts.length + readingParts.length;
 
   return (
-    <section aria-labelledby="exam-start-title" className={cn(surface, 'divide-y divide-slate-100')}>
-      <div className="p-5 sm:p-6">
-        <h2 id="exam-start-title" className="text-lg font-semibold text-slate-900">
+    <section
+      aria-labelledby="exam-start-title"
+      className={cn(
+        surface,
+        'divide-y divide-slate-100 lg:flex lg:max-h-[calc(100dvh-6rem)] lg:flex-col lg:overflow-hidden',
+      )}
+    >
+      <div className="p-5 sm:p-6 lg:shrink-0 lg:p-5">
+        <h2 id="exam-start-title" className="text-lg font-semibold text-slate-900 lg:text-base">
           {t('exam_detail.mode_title')}
         </h2>
-        <div role="radiogroup" aria-labelledby="exam-start-title" className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
+        <div role="radiogroup" aria-labelledby="exam-start-title" className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:mt-3 lg:grid-cols-1 lg:gap-2">
           <ModeOption
             active={mode === 'TEST'}
             label={t('exam_detail.mode_exam_label')}
@@ -163,8 +169,8 @@ export function ExamModePartsSelector({
         </div>
       </div>
 
-      <div className="p-5">
-        <div className="mb-3 flex items-center justify-between gap-2">
+      <div className="p-5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain lg:py-4 lg:[scrollbar-width:thin]">
+        <div className="mb-3 flex items-center justify-between gap-2 lg:mb-2">
           <h3 className="text-sm font-semibold text-slate-900">{t('exam_detail.parts_title')}</h3>
           <button
             type="button"
@@ -174,7 +180,7 @@ export function ExamModePartsSelector({
             {t(allSelected ? 'exam_detail.deselect' : 'exam_detail.select_all')}
           </button>
         </div>
-        <div className="space-y-4">
+        <div className="space-y-4 lg:space-y-3">
           <PartGroup
             label="Listening"
             icon={Headphones}
@@ -194,7 +200,7 @@ export function ExamModePartsSelector({
         </div>
       </div>
 
-      <div className="space-y-3 p-5">
+      <div className="space-y-3 p-5 lg:shrink-0 lg:bg-white lg:py-4">
         <p className="flex items-center justify-between text-sm">
           <span className="text-slate-500">
             {t('exam_detail.summary', { parts: selectedCount, questions: selectedQuestions })}
@@ -222,7 +228,7 @@ export function ExamModePartsSelector({
           {starting ? <Loader2 className="animate-spin" /> : <PlayCircle />}
           {t(starting ? 'attempt.starting' : 'exam_detail.btn_start')}
         </Button>
-        <div className="space-y-1.5 pt-1 text-xs leading-relaxed text-slate-500">
+        <div className="space-y-1.5 pt-1 text-xs leading-relaxed text-slate-500 lg:space-y-1 lg:pt-0 lg:leading-snug">
           <p className="flex items-start gap-2">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
             {t('attempt.mode_hint')}

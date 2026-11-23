@@ -436,7 +436,8 @@ export function ToeicAttemptShell() {
         <>
         <div className="relative flex min-h-0 flex-1">
           <div
-            className="min-w-0 flex-1 overflow-y-auto overscroll-contain"
+            // Size container: sticky media below measures the real visible height (cqh).
+            className="min-w-0 flex-1 overflow-y-auto overscroll-contain [container-type:size]"
             id="exam-scroll-container"
           >
             {!finished && current && (
@@ -497,6 +498,20 @@ export function ToeicAttemptShell() {
                     ) ||
                     (shared && first.audioUrl),
                   );
+                  // Fit every image of the sticky column into the visible height,
+                  // leaving room for the audio player and per-image chrome.
+                  const imageCount =
+                    (first.imageUrl ? 1 : 0) +
+                    first.passages.filter((passage) => passage.imageUrl).length;
+                  const columnHasAudio = Boolean(
+                    first.audioUrl ||
+                      first.passages.some((passage) => passage.audioUrl),
+                  );
+                  const mediaStyle = imageCount
+                    ? ({
+                        "--toeic-media-max": `max(14rem, calc((100cqh - 2rem - ${columnHasAudio ? 7.5 : 0}rem) / ${imageCount} - ${first.passages.some((passage) => passage.imageUrl) ? 5 : 2.5}rem))`,
+                      } as React.CSSProperties)
+                    : undefined;
                   return (
                     <section
                       key={first._id}
@@ -532,14 +547,13 @@ export function ToeicAttemptShell() {
                       >
                         {hasContext && (
                           <div
+                            style={mediaStyle}
                             className={`min-w-0 space-y-4 ${
-                              !hasVisualContext
-                                ? ""
-                                : shared
-                                  ? // Long shared passages scroll inside their own column.
-                                    "xl:sticky xl:top-4 xl:max-h-[calc(100dvh-240px)] xl:self-start xl:overflow-y-auto xl:overscroll-contain xl:pr-1"
-                                  : // A single photo + audio (Part 1) must stay fully visible.
-                                    "xl:sticky xl:top-4 xl:self-start"
+                              hasVisualContext
+                                ? // Stays pinned while questions scroll; never taller than the
+                                  // visible area, so long passages scroll inside the column.
+                                  "xl:sticky xl:top-4 xl:max-h-[calc(100cqh-2rem)] xl:self-start xl:overflow-y-auto xl:overscroll-contain xl:pr-1 xl:[scrollbar-width:thin]"
+                                : ""
                             }`}
                           >
                             <QuestionMedia

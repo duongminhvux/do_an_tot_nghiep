@@ -237,7 +237,7 @@ export function QuestionMedia({
             <img
               src={imageUrl}
               alt={t("attempt.question_image")}
-              className="block h-auto max-h-[min(35dvh,360px)] w-full rounded-lg object-contain sm:max-h-[min(50dvh,540px)] xl:max-h-[min(calc(100dvh-360px),600px)]"
+              className="block h-auto max-h-[min(35dvh,360px)] w-full rounded-lg object-contain sm:max-h-[min(50dvh,540px)] xl:max-h-[var(--toeic-media-max,min(calc(100dvh-360px),600px))]"
             />
             <span className="absolute right-3 top-3 rounded-lg border border-slate-200 bg-white/95 p-2 text-slate-500 shadow-sm transition group-hover:text-blue-600">
               <ZoomIn className="size-4" />

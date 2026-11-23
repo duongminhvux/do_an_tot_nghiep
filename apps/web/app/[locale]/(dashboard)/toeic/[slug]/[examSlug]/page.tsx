@@ -215,7 +215,7 @@ export default function ToeicExamDetailPage() {
       ) : (
         // Start panel on the right (first on mobile); reference content on the left.
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_400px] xl:grid-cols-[minmax(0,1fr)_460px]">
-          <aside className="min-w-0 space-y-3 lg:order-2">
+          <aside className="min-w-0 space-y-3 lg:sticky lg:top-20 lg:order-2 lg:self-start">
             {startError && <ErrorState message={t('attempt.start_error')} />}
             {!parts.length && <p className="text-sm text-slate-500">{t('attempt.no_parts')}</p>}
             {latestAttempt ? (
